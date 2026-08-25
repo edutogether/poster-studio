@@ -4,6 +4,10 @@
    영화 크레딧·월계관·필름그레인을 입혀 4가지 고퀄 버전을 만든다.
    ==================================================================== */
 
+/* AI 생성은 더 이상 이 노트북 안 서버가 아니라 Firebase Functions(서버리스)가 처리한다.
+   Firebase 프로젝트 배포 후, 실제 발급된 함수 URL로 아래 한 줄만 바꾸면 된다. */
+const API_BASE = 'https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio';
+
 const FEST   = '제4회 인천어린이청소년영화제';
 const DATE   = '2026. 11. 14. (토)';
 const VENUE  = 'CGV 인천';
@@ -150,7 +154,7 @@ $('generateBtn').onclick = async () => {
   const ctrl = new AbortController();                       // 요청 시간 제한(부스 무한 멈춤 방지)
   const timer = setTimeout(() => ctrl.abort(), 150_000);
   try{
-    const res = await fetch('/api/generate', { method:'POST', body:form, signal: ctrl.signal });
+    const res = await fetch(`${API_BASE}/generate`, { method:'POST', body:form, signal: ctrl.signal });
     const data = await res.json().catch(() => ({}));
     if(!res.ok) throw new Error(data.error || '생성 실패');
     await buildAll(data.images, meta);
