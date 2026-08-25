@@ -1,0 +1,97 @@
+:root{
+  --navy:#0b1020; --navy2:#121a32; --panel:#161f3a; --line:rgba(255,255,255,.10);
+  --gold:#e9b949; --gold2:#f6d27a; --ink:#f4f6fb; --mut:#aeb7d0;
+  --rad:18px; --shadow:0 18px 40px rgba(0,0,0,.45);
+  --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:
+  radial-gradient(1200px 600px at 80% -10%, rgba(233,185,73,.10), transparent 60%),
+  radial-gradient(900px 500px at -10% 110%, rgba(80,120,255,.10), transparent 55%),
+  var(--navy);
+  color:var(--ink); font-family:var(--font); -webkit-font-smoothing:antialiased;}
+
+.topbar{display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:18px 26px; border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(255,255,255,.04), transparent);}
+.brand{display:flex; align-items:center; gap:14px}
+.reel{font-size:38px; filter:drop-shadow(0 4px 10px rgba(233,185,73,.5))}
+.eyebrow{margin:0; color:var(--gold); font-weight:800; letter-spacing:.04em; font-size:13px}
+.topbar h1{margin:2px 0 0; font-size:24px; letter-spacing:-.01em}
+.tagline{margin:0; color:var(--mut); font-size:15px; text-align:right}
+
+.app{display:grid; grid-template-columns:minmax(360px,1fr) minmax(420px,1.15fr);
+  gap:22px; max-width:1320px; margin:22px auto; padding:0 22px 60px}
+.left{display:flex; flex-direction:column; gap:22px}
+
+.panel{background:linear-gradient(180deg, var(--panel), var(--navy2));
+  border:1px solid var(--line); border-radius:var(--rad); padding:20px; box-shadow:var(--shadow)}
+.panel-head{display:flex; align-items:center; gap:12px; margin-bottom:14px}
+.panel-head h2{margin:0; font-size:19px}
+.num{display:grid; place-items:center; width:30px; height:30px; border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#3a2a00; font-weight:900}
+
+.cameraBox{position:relative; aspect-ratio:4/3; border-radius:14px; overflow:hidden;
+  background:#05070f; border:1px solid var(--line)}
+.cameraBox video, .cameraBox img{width:100%; height:100%; object-fit:cover; display:block}
+.camHint{position:absolute; inset:0; display:grid; place-items:center; color:var(--mut); font-size:15px}
+.countdown{position:absolute; inset:0; display:grid; place-items:center;
+  font-family:"Anton"; font-size:160px; color:#fff; text-shadow:0 8px 30px rgba(0,0,0,.7); background:rgba(0,0,0,.25)}
+
+label{display:block; margin:10px 0; font-size:14px; color:var(--mut); font-weight:700}
+.hint{color:#7d88a8; font-weight:600; font-size:12px}
+input, select{width:100%; margin-top:6px; padding:13px 14px; border-radius:12px;
+  border:1px solid var(--line); background:#0c1326; color:var(--ink); font-size:16px; font-family:var(--font)}
+input:focus, select:focus{outline:none; border-color:var(--gold)}
+
+.seg{display:flex; gap:8px; background:#0c1326; padding:6px; border-radius:14px; border:1px solid var(--line)}
+.seg-btn{flex:1; padding:11px; border:0; border-radius:10px; background:transparent;
+  color:var(--mut); font-weight:800; font-size:15px; cursor:pointer; font-family:var(--font)}
+.seg-btn.active{background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#3a2a00}
+
+.buttons{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px}
+.buttons.out{margin-top:16px}
+.btn{flex:1; min-width:120px; padding:14px 16px; border-radius:13px; border:1px solid var(--line);
+  background:#0c1326; color:var(--ink); font-weight:800; font-size:16px; cursor:pointer; font-family:var(--font);
+  transition:transform .06s ease, filter .2s ease}
+.btn:hover{filter:brightness(1.12)} .btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.45; cursor:not-allowed; filter:none; transform:none}
+.btn.primary{background:linear-gradient(135deg,var(--gold),var(--gold2)); color:#3a2a00; border-color:transparent}
+.btn.ghost{background:transparent}
+.btn.big{font-size:18px; padding:16px}
+
+.status{margin:12px 0 0; padding:11px 13px; border-radius:11px; background:#0c1326;
+  border:1px solid var(--line); color:var(--mut); font-size:14px; min-height:20px}
+
+.right{position:sticky; top:18px; align-self:start}
+.stage{position:relative; border-radius:14px; overflow:hidden; background:#05070f; border:1px solid var(--line)}
+#posterCanvas{width:100%; height:auto; display:block}
+.spinner{position:absolute; inset:0; display:grid; place-items:center; gap:14px;
+  background:rgba(5,7,15,.78); color:var(--gold2); font-weight:800}
+.ring{width:54px; height:54px; border-radius:50%; border:5px solid rgba(255,255,255,.15);
+  border-top-color:var(--gold); animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.gallery{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px}
+.gallery .thumb{aspect-ratio:2/3; border-radius:10px; overflow:hidden; cursor:pointer;
+  border:2px solid transparent; background:#05070f}
+.gallery .thumb img{width:100%; height:100%; object-fit:cover; display:block}
+.gallery .thumb.active{border-color:var(--gold); box-shadow:0 0 0 3px rgba(233,185,73,.3)}
+.gallery .label{position:relative; text-align:center; font-size:11px; color:var(--mut); margin-top:3px}
+
+.hidden{display:none !important}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .tagline{display:none}
+  .right{position:static}
+}
+
+/* ── 인쇄: 4x6 인화지(SELPHY 등) 여백 없이 포스터만 ── */
+@media print{
+  body *{visibility:hidden !important}
+  #printArea, #printArea *{visibility:visible !important}
+  #printArea{position:fixed; inset:0; margin:0; display:grid; place-items:center; background:#fff}
+  #printArea img{width:100%; height:100%; object-fit:contain}
+  @page{ size:4in 6in; margin:0 }
+}

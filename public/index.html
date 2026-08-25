@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>InKY AI 영화 포스터 제작소</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Serif+KR:wght@500;700;900&family=Anton&family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="reel">🎬</span>
+      <div>
+        <p class="eyebrow">제4회 인천어린이청소년영화제</p>
+        <h1>InKY AI 영화 포스터 제작소</h1>
+      </div>
+    </div>
+    <p class="tagline">사진 한 장으로 — 내가 영화의 주인공이 된다</p>
+  </header>
+
+  <main class="app">
+    <!-- 좌측: 입력 -->
+    <section class="left">
+      <div class="panel">
+        <div class="panel-head"><span class="num">1</span><h2>촬영</h2></div>
+        <div class="cameraBox">
+          <video id="video" autoplay playsinline muted></video>
+          <img id="snapshot" class="hidden" alt="촬영 사진" />
+          <div id="countdown" class="countdown hidden"></div>
+          <div id="camHint" class="camHint">‘카메라 켜기’를 누르세요</div>
+        </div>
+        <div class="buttons">
+          <button id="startBtn" class="btn">📷 카메라 켜기</button>
+          <button id="shotBtn" class="btn primary">3·2·1 촬영</button>
+          <button id="retakeBtn" class="btn ghost">다시 촬영</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><span class="num">2</span><h2>포스터 정보</h2></div>
+
+        <div class="seg" id="modeSeg">
+          <button class="seg-btn active" data-mode="solo">👤 개인</button>
+          <button class="seg-btn" data-mode="group">👥 단체</button>
+        </div>
+
+        <div id="soloFields">
+          <label>이름 <input id="studentName" placeholder="예: 김인키" maxlength="20" /></label>
+        </div>
+
+        <div id="groupFields" class="hidden">
+          <label>단체명 <input id="groupName" placeholder="예: 햇살초 5학년 2반 영화동아리" maxlength="40" /></label>
+          <label>출연진 <span class="hint">(선택 · 쉼표로 구분)</span>
+            <input id="members" placeholder="예: 김인키, 이영화, 박감독" maxlength="120" />
+          </label>
+        </div>
+
+        <label>영화 제목 <input id="movieTitle" placeholder="예: 우주를 달리는 인키" maxlength="40" /></label>
+
+        <label>장르
+          <select id="genre">
+            <option value="animation">🎨 애니메이션</option>
+            <option value="fantasy">🐉 판타지</option>
+            <option value="sf">🚀 SF·우주탐험</option>
+            <option value="hero">🦸 슈퍼히어로</option>
+            <option value="mystery">🔍 미스터리</option>
+            <option value="director">🎥 영화감독</option>
+            <option value="sports">🏃 스포츠·성장</option>
+            <option value="music">🎵 음악</option>
+          </select>
+        </label>
+
+        <label>홍보 문구 <span class="hint">(선택 · 비우면 자동 추천)</span>
+          <input id="tagline" placeholder="예: 올겨울, 가장 빛나는 모험이 시작된다" maxlength="40" />
+        </label>
+
+        <button id="generateBtn" class="btn primary big">✨ AI 포스터 만들기</button>
+        <p id="status" class="status">카메라를 켜고 사진을 촬영해 주세요.</p>
+      </div>
+    </section>
+
+    <!-- 우측: 결과 -->
+    <section class="right">
+      <div class="panel result">
+        <div class="panel-head"><span class="num">3</span><h2>완성 · 버전 선택 · 출력</h2></div>
+
+        <div class="stage">
+          <canvas id="posterCanvas" width="1200" height="1800"></canvas>
+          <div id="spinner" class="spinner hidden"><div class="ring"></div><p>AI가 그리는 중…</p></div>
+        </div>
+
+        <div id="gallery" class="gallery"></div>
+
+        <div class="buttons out">
+          <button id="printBtn" class="btn primary big">🖨️ 인쇄하기</button>
+          <button id="downloadBtn" class="btn ghost">PNG 저장</button>
+          <button id="regenBtn" class="btn ghost">🔄 다른 그림으로</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
