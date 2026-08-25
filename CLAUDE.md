@@ -6,7 +6,7 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 - **위치**: `D:\Projects\inky-festival\poster-studio`
 - **스택**: Node.js(>=20) + Express, OpenAI 이미지 생성 API(gpt-image 계열)
 - **기능**: 웹캠 촬영 → AI 포스터 4종 생성 → 4×6 현장 인쇄
-- **상태**: 온보딩 단계. 다른 사람이 만든 v2.2 원본 코드 그대로, 아직 코드 감사(Sonnet+Opus 크로스체크) 안 함. git 저장소 초기화됨(첫 커밋 전).
+- **상태**: 온보딩 단계. 다른 사람이 만든 v2.2 원본 코드 그대로, 아직 코드 감사(Sonnet+Opus 크로스체크) 안 함. GitHub 저장소 생성·초기 커밋·push 완료(`https://github.com/edutogether/poster-studio`, 커밋 `b108f3b`).
 
 ## 알아야 할 것
 - **실비용 발생**: OpenAI 이미지 생성 API가 장당 약 $0.04(medium 화질). 행사 규모(약 1,000명, 1인 1~2회 예상)면 대략 $20~30 예상. `.env`에 API 키 필요 — 절대 커밋 금지.
@@ -16,7 +16,7 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 - **행사 종료 후 로컬 저장물 수동 삭제 필요** — 자동 삭제 아님.
 
 ## 다음 단계 (사용자 요청 시 진행)
-"프론트 백엔드 전부 풀스택으로 100점 만점으로" — GitHub 업로드 + edutogether 조직 등록 + 포탈(같교오락실) 카드 추가 이후 착수. 처음 코드 감사는 `COMMON_STANDARDS.md` 기준 최대강도(실행+실측 포함)로 한 번에 진행할 것.
+"프론트 백엔드 전부 풀스택으로 100점 만점으로" — GitHub 업로드(완료) + 포탈(같교오락실) 카드 추가 이후 착수. 처음 코드 감사는 `COMMON_STANDARDS.md` 기준 최대강도(실행+실측 포함)로 한 번에 진행할 것.
 
 ## 자율 권한
 `.claude/settings.json` = `bypassPermissions`. push/배포/프리즈태그까지 전부 자율 진행, 완료 후 팀장에게 결과만 보고(코디세이만 예외).

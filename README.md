@@ -39,7 +39,7 @@ npm start
 - IMAGE_QUALITY: low / medium / high (4x6 인화는 medium 충분, 귀빈용만 high)
 - VARIANTS: 한 번에 만드는 AI 그림 장수(1~2). 1이면 4컷, 2면 8컷.
 
-> 비용 감(참고): gpt-image-2 세로 medium 약 $0.04/장. 300명×1회면 대략 $12~25 수준.
+> 비용 감(참고): gpt-image-2 세로 medium 약 $0.04/장. 행사 규모(약 1,000명, 1인 1~2회)면 대략 $20~30 수준.
 > 2K·4K는 4x6 인화에 불필요하니 medium 권장.
 
 ## 프린터 팁
