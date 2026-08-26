@@ -5,9 +5,9 @@
   "main": "index.js",
   "engines": { "node": "20" },
   "dependencies": {
+    "busboy": "^1.6.0",
     "express": "^5.2.1",
     "firebase-functions": "^6.5.0",
-    "multer": "^2.2.0",
     "openai": "^6.46.0"
   }
 }

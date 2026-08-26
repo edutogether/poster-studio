@@ -1,10 +1,11 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import express from 'express';
-import multer from 'multer';
+import Busboy from 'busboy';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import crypto from 'crypto';
 import OpenAI from 'openai';
 import { toFile } from 'openai';
 
@@ -26,12 +27,67 @@ const INPUT_FIDELITY = (process.env.INPUT_FIDELITY || 'high').toLowerCase();
 // 업로드는 반드시 /tmp(os.tmpdir()) 아래에만 써야 한다.
 const UPLOAD_DIR = path.join(os.tmpdir(), 'uploads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-const upload = multer({
-  dest: UPLOAD_DIR,
-  limits: { fileSize: 12 * 1024 * 1024 },
-  fileFilter: (req, file, cb) =>
-    /^image\/(png|jpe?g|webp)$/i.test(file.mimetype) ? cb(null, true) : cb(new Error('이미지 파일만 업로드할 수 있습니다.'))
-});
+const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
+
+/* Cloud Functions(v2)는 핸들러를 부르기 전에 요청 본문을 전부 읽어 req.rawBody(Buffer)로
+   채워두고, 원본 req 스트림은 이미 끝난 상태로 넘어온다. multer는 req 스트림에서 직접
+   읽으려 하므로 이 환경에서는 매번 "Unexpected end of form"으로 실패한다 — 그래서 req.rawBody를
+   busboy에 직접 흘려보내는 방식으로 대체한다. */
+function parseMultipart(req, res, next) {
+  if (!/^multipart\/form-data/i.test(req.headers['content-type'] || '')) return next();
+  if (!req.rawBody) return next(new Error('요청 본문을 읽을 수 없습니다.'));
+
+  let busboy;
+  try {
+    busboy = Busboy({ headers: req.headers, limits: { fileSize: MAX_PHOTO_BYTES } });
+  } catch (err) {
+    return next(err);
+  }
+
+  req.body = {};
+  let fileInfo = null;
+  let error = null;
+  let pendingWrite = null;
+  let busboyDone = false;
+
+  const maybeFinish = () => {
+    if (!busboyDone || pendingWrite) return;
+    if (error) return next(error);
+    req.file = fileInfo;
+    next();
+  };
+
+  busboy.on('field', (name, value) => { req.body[name] = value; });
+
+  busboy.on('file', (name, stream, info) => {
+    const { mimeType } = info;
+    if (name !== 'photo' || !/^image\/(png|jpe?g|webp)$/i.test(mimeType || '')) {
+      error = error || new Error('이미지 파일만 업로드할 수 있습니다.');
+      stream.resume();
+      return;
+    }
+    const tmpPath = path.join(UPLOAD_DIR, `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`);
+    const out = fs.createWriteStream(tmpPath);
+    pendingWrite = new Promise((resolve) => out.on('close', resolve));
+    stream.pipe(out);
+    stream.on('limit', () => {
+      error = Object.assign(new Error('사진 파일이 너무 큽니다(최대 12MB).'), { code: 'LIMIT_FILE_SIZE' });
+    });
+    pendingWrite.then(() => {
+      fileInfo = { path: tmpPath, mimetype: mimeType };
+      pendingWrite = null;
+      maybeFinish();
+    });
+  });
+
+  busboy.on('error', (err) => next(err));
+  busboy.on('finish', () => {
+    busboyDone = true;
+    maybeFinish();
+  });
+
+  busboy.end(req.rawBody);
+}
 
 let _client = null;
 function getClient() {
@@ -140,7 +196,7 @@ app.get('/health', (req, res) => {
   res.json({ ok: true, hasKey: !!OPENAI_API_KEY.value(), model: MODEL, quality: QUALITY, fidelity: INPUT_FIDELITY, size: ART_SIZE, variants: VARIANTS });
 });
 
-app.post('/generate', upload.single('photo'), async (req, res) => {
+app.post('/generate', parseMultipart, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '사진 파일이 없습니다. 먼저 촬영해 주세요.' });
 
   const genre = req.body.genre || 'animation';
