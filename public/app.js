@@ -5,7 +5,11 @@
    ==================================================================== */
 
 /* AI 생성은 더 이상 이 노트북 안 서버가 아니라 Firebase Functions(서버리스)가 처리한다.
-   Firebase 프로젝트 배포 후, 실제 발급된 함수 URL로 아래 한 줄만 바꾸면 된다. */
+   Firebase 프로젝트를 새로 만들거나 옮기면 이 URL이 바뀐다 — 그럴 땐 아래 두 곳을
+   반드시 같이 고칠 것(한쪽만 고치면 CORS가 막히거나 엉뚱한 프로젝트를 호출하게 됨):
+     1. 이 줄의 API_BASE
+     2. functions/index.js의 ALLOWED_ORIGINS (지금 이 페이지 도메인이 그 목록에 있어야
+        Functions가 브라우저 요청을 허용한다) */
 const API_BASE = 'https://asia-northeast3-inky-poster.cloudfunctions.net/posterStudio';
 
 const FEST   = '제4회 인천어린이청소년영화제';
@@ -38,6 +42,22 @@ let LOGO_LIGHT = null, LOGO_DARK = null, LOGO_TRIED = false;  // 교육청 로�
 let selected = 0;
 
 function setStatus(m){ $('status').textContent = m; }
+
+/* AI 서버(Firebase Functions) 연결 상태를 미리 확인한다.
+   촬영·정보입력을 다 마친 뒤에야 실패를 알게 되는 것보다, 부스 진행자가
+   페이지를 여는 순간 바로 문제를 알 수 있는 게 훨씬 낫다. 실패해도 촬영
+   자체는 막지 않는다(연결이 잠깐 불안정했을 수도 있으므로 fail-open). */
+(async function checkHealth(){
+  try{
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(`${API_BASE}/health`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if(!r.ok) throw new Error('unhealthy');
+  }catch(e){
+    setStatus('⚠ AI 서버 연결을 확인할 수 없습니다. 와이파이를 확인해 주세요. (촬영은 가능하지만 포스터 생성이 실패할 수 있어요)');
+  }
+})();
 
 /* ── 폰트 보장(캔버스는 폰트 로드 후 그려야 깨지지 않음) ── */
 async function ensureFonts(){

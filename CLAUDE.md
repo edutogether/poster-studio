@@ -44,10 +44,22 @@ Cloud Functions(v2)는 핸들러 실행 전에 요청 본문 전체를 읽어 `r
 - `.github/workflows/pages.yml`의 `configure-pages@v5` `enablement:true` 제거 — 이게 원인으로 push 트리거 배포가 3연속 실패했었는데(Pages 사이트가 이미 있는데도 매번 새로 만들려다 권한 부족으로 실패), 제거 후 push 배포가 실제로 성공하는 것까지 확인함(commit `d6e8b42`, run 32961706735).
 - `firebase deploy --only functions --project inky-poster`로 실제 재배포 후 `/health`·실제 사진 업로드(`/generate`) 재확인 완료.
 
-**이번 라운드에서 발견됐지만 아직 안 고친 것(다음 라운드 또는 사용자 요청 시)**:
-- 프론트(`public/app.js:9`)의 `API_BASE` 하드코딩, `functions/`는 CI 배포 파이프라인 밖(수동 `firebase deploy`만 존재), `/health` 엔드포인트를 프론트가 아예 안 씀(연결 끊김을 촬영 전에 미리 알 방법이 없음).
-- 프롬프트 인젝션 미방어(`functions/index.js`의 `buildPrompt`), Pretendard/구글폰트 CDN 단일장애점, `openai`·`firebase-functions` 의존성 각각 major 1개 뒤처짐, 자동화 테스트 0개(재발 — 1차 감사 때도 지적됐던 항목).
-- **대표 콘솔 작업 필요**: OpenAI 대시보드 월 하드리밋 + GCP 예산 알림 설정 — 코드 레벨 방어(레이트리밋·maxInstances)는 끝났지만 이건 세션 권한 밖.
+## 3차 라운드 — 남은 🔴🟡 전부 처리 (2026-08-27, 대표 지시 "빠지지말고 다 해")
+2차 정밀감사에서 "아직 안 고친 것"으로 남겨뒀던 항목을 전부 처리했다(테스트 커버리지 포함, 실제 버그이력 있는 로직이라 우선순위 최상단):
+
+- **자동화 테스트 신설** — [functions/test/index.test.js](functions/test/index.test.js), Node 내장 테스트러너(`node --test`, `npm test`), 13개 케이스. 실제 OpenAI 호출(=실비용)은 어떤 테스트도 하지 않는다 — `sanitizePromptField`/`buildPrompt`는 순수함수 테스트, `parseMultipart`는 Node 내장 `FormData`/`Request`로 진짜 멀티파트 바이트를 만들어 실제 파싱 로직을 검증한다. 특히 2차 라운드에서 고친 두 버그(파일 2개 동시 업로드 시 경쟁조건, 오류 경로 임시파일 누수)를 그대로 회귀 테스트로 박아뒀고, 레이트리밋도 실제 로컬 HTTP 서버를 띄워 11번째 요청이 429인지 검증한다.
+- **프롬프트 인젝션 완화** — `functions/index.js`에 `sanitizePromptField` 추가. 학생이 입력한 제목/문구에서 줄바꿈과 큰따옴표를 제거해, 프롬프트 안의 따옴표 경계를 깨고 "글자 넣지 마라" 같은 안전 지시문을 무력화하는 입력을 막는다.
+- **의존성 업그레이드** — `openai` 6.49→7.5.0, `firebase-functions` 6.6→7.3.2(둘 다 최신 major). openai v7의 유일한 breaking change는 "Node 22 요구"인데 이미 Node 22로 올려둔 상태라 영향 없음(공식 CHANGELOG 확인). 업그레이드 후 테스트 13개 전부 통과 + 재배포 후 실제 사진 업로드로 재검증함(아래 "재배포 검증" 참고).
+- **CDN 폰트 단일장애점 — 부분 해결(의도적 판단)** — Pretendard는 [public/fonts/](public/fonts/)에 실제 쓰는 6개 굵기(400/500/600/700/800/900)만 내려받아 자체 호스팅으로 전환(jsDelivr GitHub-raw 의존 제거, `PRETENDARD-LICENSE.txt`로 OFL 라이선스 준수). **Black Han Sans·Noto Serif KR 등 Google Fonts 쪽은 의도적으로 안 옮겼다** — 학생이 입력하는 임의의 한글 텍스트 전부를 커버하려면 CJK 폰트 특성상 서브셋 없이는 굵기당 수 MB~수십 MB가 들어 사이트가 수십 MB로 불어나고, Google Fonts 자체 CDN은 jsDelivr GitHub-raw보다 훨씬 안정적인 인프라라 위험 대비 이득이 낮다고 판단함(`public/index.html`에 이 판단 근거를 주석으로 남겨둠). 학교망이 Google Fonts 도메인 자체를 막는 사례가 실제로 확인되면 그때 재검토.
+- **API_BASE / CORS 동기화 지점 문서화** — `public/app.js`의 `API_BASE`와 `functions/index.js`의 `ALLOWED_ORIGINS`가 프로젝트 이전 시 반드시 같이 바뀌어야 한다는 걸 양쪽 코드에 상호 참조 주석으로 남김. (완전한 구조적 제거는 이 앱 규모에서 과잉설계로 판단해 안 함 — 문서화로 대응.)
+- **`/health` 프론트 연동** — `public/app.js`가 페이지 로드 시 `/health`를 호출해 연결 상태를 확인한다. 실패해도 촬영은 막지 않고(fail-open) 경고 문구만 띄운다 — 촬영·정보입력 다 끝낸 뒤에야 실패를 알게 되는 것보다 훨씬 낫다.
+- **functions/ CI 배포 — 스캐폴딩만 완료, 활성화는 대표 작업 필요** — [.github/workflows/functions-deploy.yml](.github/workflows/functions-deploy.yml) 작성해뒀지만 `workflow_dispatch`(수동)로만 열어둠. GCP 서비스 계정 생성은 이 세션(auto mode classifier)이 대신할 수 없는 영역이라, 대표가 콘솔에서 배포 권한을 가진 서비스 계정 키를 만들어 GitHub 저장소 시크릿 `FIREBASE_SERVICE_ACCOUNT`로 등록해야 `push` 트리거를 켤 수 있다(파일 안 주석 참고).
+
+**재배포 검증**: `firebase deploy --only functions --project inky-poster` 재실행 후 `/health`·실제 사진 업로드(`/generate`)로 재확인 완료. GitHub Pages도 재배포되어 폰트 자체호스팅·health체크 반영된 라이브 확인함.
+
+**여전히 대표 콘솔 작업으로 남은 것**:
+- OpenAI 대시보드 월 하드리밋 + GCP 예산 알림 설정.
+- `FIREBASE_SERVICE_ACCOUNT` GitHub 시크릿 등록(functions CI 자동배포 활성화용).
 
 ## 자율 권한
 `.claude/settings.json` = `bypassPermissions`. push/배포/프리즈태그까지 전부 자율 진행, 완료 후 팀장에게 결과만 보고(코디세이만 예외). 단, 외부 서비스 계정 생성·결제수단 등록처럼 대표 본인만 할 수 있는 것은 이 정책과 별개로 auto mode classifier가 차단하며, 그 경우 팀장에게 보고하고 대표 처리를 기다린다.

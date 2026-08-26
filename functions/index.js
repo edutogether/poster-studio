@@ -135,6 +135,18 @@ const genrePrompts = {
   music:     'a vibrant music movie poster key art, the subject as a radiant young performer on a glowing stage, colorful concert lighting, bokeh light beams, joyful uplifting festival atmosphere'
 };
 
+/* 학생이 입력한 제목/문구는 프롬프트 문자열 안에 큰따옴표로 감싸 그대로 삽입된다
+   (buildPrompt 참고). 줄바꿈이나 큰따옴표를 그대로 두면 그 따옴표 경계를 깨고
+   뒤에 이어지는 안전 지시문("절대 글자 넣지 마라" 등)을 무력화하는 문장을 끼워
+   넣을 수 있으므로, 여기서 미리 없앤다. */
+function sanitizePromptField(value, maxLen) {
+  return (value || '')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/["“”]/g, '')
+    .trim()
+    .slice(0, maxLen);
+}
+
 function buildPrompt({ genre, mode, title, tagline }) {
   const base = genrePrompts[genre] || genrePrompts.animation;
   const ensemble = mode === 'group'
@@ -238,8 +250,8 @@ app.post('/generate', rateLimit, parseMultipart, async (req, res) => {
 
   const genre = req.body.genre || 'animation';
   const mode = req.body.mode === 'group' ? 'group' : 'solo';
-  const title = (req.body.movieTitle || '').slice(0, 60);
-  const tagline = (req.body.tagline || '').slice(0, 80);
+  const title = sanitizePromptField(req.body.movieTitle, 60);
+  const tagline = sanitizePromptField(req.body.tagline, 80);
   const prompt = buildPrompt({ genre, mode, title, tagline });
 
   try {
@@ -276,11 +288,17 @@ app.use((err, req, res, next) => {
 
 // GitHub Pages(edutogether.github.io)에서만 호출 가능하도록 CORS 제한.
 // 로컬 개발 시에는 5500(Live Server)·8080(firebase serve) 포트도 허용.
+// 프로젝트를 옮기거나 배포 도메인이 바뀌면 public/app.js의 API_BASE와 이 목록을
+// 반드시 같이 고칠 것 — 한쪽만 고치면 CORS가 막히거나 엉뚱한 프로젝트를 호출한다.
 const ALLOWED_ORIGINS = [
   /^https:\/\/edutogether\.github\.io$/,
   /^http:\/\/localhost:(5500|8080)$/,
   /^http:\/\/127\.0\.0\.1:(5500|8080)$/
 ];
+
+// 테스트 전용 export. onRequest로 감싸기 전의 순수 함수/미들웨어를 그대로 노출해서,
+// 실제 OpenAI 호출(=실비용) 없이 프롬프트 구성·업로드 파싱·레이트리밋을 검증한다.
+export { app, buildPrompt, sanitizePromptField, parseMultipart, UPLOAD_DIR };
 
 export const posterStudio = onRequest(
   {
