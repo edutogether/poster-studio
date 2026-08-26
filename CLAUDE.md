@@ -6,15 +6,10 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 - **위치**: `D:\Projects\inky-festival\poster-studio`
 - **스택(2026-08-26 재설계)**: 정적 프론트엔드(`public/`, GitHub Pages 배포) + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 API 전담). 예전 Node/Express 로컬 서버(`server.js`)는 제거됨 — 행사장 교육청 MDM 노트북이 설치를 못 받을 수 있고 방화벽 문제도 있어서, 나머지 5개 앱과 동일하게 "주소만 열면 되는" 방식으로 전환.
 - **기능**: 웹캠 촬영(브라우저) → Firebase Functions가 AI 그림 생성 → 브라우저 캔버스가 타이포·크레딧 합성해 4종 완성 → 4×6 현장 인쇄
-- **상태**: 재설계 코드 작성 완료(2026-08-26), **배포는 아직 안 됨**. GitHub 저장소: `https://github.com/edutogether/poster-studio`.
+- **상태**: **정상 운영중 (2026-08-26 배포 완료)**. Firebase 프로젝트 `inky-poster`(Blaze), Cloud Functions `posterStudio`(asia-northeast3) 배포됨, GitHub Pages Actions로 라이브: `https://edutogether.github.io/poster-studio/`. 실제 웹캠 촬영→AI 포스터 생성까지 실사용 확인 완료. 포털 카드도 이 실주소로 연결됨.
 
-## 재설계 후 남은 배포 단계 — 대표 확인/실행 필요 (2026-08-26)
-아래 3가지는 이 세션이 콘솔 로그인·과금 동의가 필요해 직접 못 하고, 팀장을 거쳐 대표가 처리해야 한다:
-1. **Firebase 프로젝트 생성 + Blaze(종량제) 플랜 전환** — Cloud Functions 2세대는 무료(Spark) 플랜에서 아예 배포가 안 됨. 콘솔(console.firebase.google.com)에서 새 프로젝트 만들고 결제수단 등록 필요. (CLI로 프로젝트 생성 자체는 가능하지만 이 세션 권한 정책상 자동 실행이 막혀 있음 — auto mode classifier가 차단.)
-2. **`firebase functions:secrets:set OPENAI_API_KEY`** — 실제 운영용 API 키를 Firebase Secret Manager에 등록. 키 값은 세션에 노출하지 말고 대표가 터미널에서 직접 입력.
-3. **`firebase deploy --only functions`** 실행 후 발급되는 함수 URL을 [public/app.js](public/app.js) 최상단 `API_BASE` 상수에 반영, GitHub Pages(`.github/workflows/pages.yml`, 이미 작성됨) 배포와 실제 라이브 동작(Claude in Chrome으로) 확인.
-
-위 3가지가 끝나면 이 섹션은 지우고 "정상 운영중"으로 갱신할 것.
+## 2026-08-26 배포 후 발견·수정한 버그
+Cloud Functions(v2)는 핸들러 실행 전에 요청 본문 전체를 읽어 `req.rawBody`로 채워두고, 원본 `req` 스트림은 이미 끝난 상태로 넘어온다. `multer`는 그 원본 스트림에서 직접 읽으려 해서 이 환경에서는 매번 "Unexpected end of form" 오류로 사진 업로드가 실패했다. `multer`를 제거하고 `req.rawBody`를 `busboy`에 직접 흘려보내는 방식([functions/index.js](functions/index.js))으로 교체해 해결, 실제 업로드로 재확인함.
 
 ## 알아야 할 것
 - **실비용 발생**: OpenAI 이미지 생성 API가 장당 약 $0.04(medium 화질). 행사 규모(약 1,000명, 1인 1~2회 예상)면 대략 $20~30 예상. API 키는 Firebase Secret Manager 보관 — 절대 코드/커밋에 직접 작성 금지.
