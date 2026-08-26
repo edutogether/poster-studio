@@ -39,7 +39,11 @@ function parseMultipart(req, res, next) {
 
   let busboy;
   try {
-    busboy = Busboy({ headers: req.headers, limits: { fileSize: MAX_PHOTO_BYTES } });
+    // files:1 — 'photo' 파트가 두 개 이상 와도 두 번째부터는 busboy가 즉시 스트림을
+    // 비워버리고 'file' 이벤트 자체를 안 준다. 이게 없으면 아래 fileInfo/pendingWrite
+    // 변수 하나를 여러 파일이 공유하다가 어느 파일이 최종 채택될지 불확정해지고,
+    // 채택 안 된 쪽은 삭제 코드가 못 건드려 /tmp에 영구히 남는다.
+    busboy = Busboy({ headers: req.headers, limits: { fileSize: MAX_PHOTO_BYTES, files: 1 } });
   } catch (err) {
     return next(err);
   }
@@ -49,12 +53,24 @@ function parseMultipart(req, res, next) {
   let error = null;
   let pendingWrite = null;
   let busboyDone = false;
+  let finished = false;
+
+  // 여기서 next()/next(err)로 나가는 모든 경로가 반드시 이 함수를 거치게 해서,
+  // 이미 디스크에 쓴 임시 사진이 에러 경로에서 안 지워지고 남는 일이 없게 한다.
+  const finish = (err) => {
+    if (finished) return;
+    finished = true;
+    if (err) {
+      if (fileInfo) fs.unlink(fileInfo.path, () => {});
+      return next(err);
+    }
+    req.file = fileInfo;
+    next();
+  };
 
   const maybeFinish = () => {
     if (!busboyDone || pendingWrite) return;
-    if (error) return next(error);
-    req.file = fileInfo;
-    next();
+    finish(error || null);
   };
 
   busboy.on('field', (name, value) => { req.body[name] = value; });
@@ -74,13 +90,16 @@ function parseMultipart(req, res, next) {
       error = Object.assign(new Error('사진 파일이 너무 큽니다(최대 12MB).'), { code: 'LIMIT_FILE_SIZE' });
     });
     pendingWrite.then(() => {
-      fileInfo = { path: tmpPath, mimetype: mimeType };
       pendingWrite = null;
+      // busboy가 쓰기 도중 'error'를 내서 finish()가 이미 먼저 끝난 경우
+      // (아래 finished 플래그) — 이 파일은 아무도 안 지워줄 뻔했으니 바로 삭제.
+      if (finished) return fs.unlink(tmpPath, () => {});
+      fileInfo = { path: tmpPath, mimetype: mimeType };
       maybeFinish();
     });
   });
 
-  busboy.on('error', (err) => next(err));
+  busboy.on('error', (err) => finish(err));
   busboy.on('finish', () => {
     busboyDone = true;
     maybeFinish();
@@ -196,7 +215,25 @@ app.get('/health', (req, res) => {
   res.json({ ok: true, hasKey: !!OPENAI_API_KEY.value(), model: MODEL, quality: QUALITY, fidelity: INPUT_FIDELITY, size: ART_SIZE, variants: VARIANTS });
 });
 
-app.post('/generate', parseMultipart, async (req, res) => {
+// 인스턴스별 초당요청이 아닌 '최근 N분간 몇 건' 슬라이딩 윈도로 본다.
+// 완벽한 방어(공격자가 요청을 인스턴스 여러 개로 분산시키면 못 막음)는 아니지만,
+// 무인증 공개 엔드포인트에 자동화 스크립트를 돌리는 가장 흔한 형태(한 브라우저 탭/
+// 스크립트가 반복 호출)는 확실히 끊는다. concurrency:1이라 이 배열은 인스턴스당
+// 한 요청씩만 접근하므로 별도 락이 필요 없다.
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+let recentHits = [];
+function rateLimit(req, res, next) {
+  const now = Date.now();
+  recentHits = recentHits.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  if (recentHits.length >= RATE_LIMIT_MAX) {
+    return res.status(429).json({ error: '이 노트북에서 요청이 너무 많이 몰렸습니다. 잠시 후 다시 시도해 주세요.' });
+  }
+  recentHits.push(now);
+  next();
+}
+
+app.post('/generate', rateLimit, parseMultipart, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '사진 파일이 없습니다. 먼저 촬영해 주세요.' });
 
   const genre = req.body.genre || 'animation';
@@ -251,7 +288,9 @@ export const posterStudio = onRequest(
     memory: '512MiB',
     timeoutSeconds: 120,
     concurrency: 1,
-    maxInstances: 10,
+    // 노트북 최대 4대(예비 1대 포함)라 동시에 이보다 많은 인스턴스가 필요할 일이 없다.
+    // 이 값 자체가 폭주 시 과금 상한 역할도 겸한다(요청 1건당 최대 약 $0.04 × 5).
+    maxInstances: 5,
     secrets: [OPENAI_API_KEY],
     cors: ALLOWED_ORIGINS
   },
