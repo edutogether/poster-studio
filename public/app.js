@@ -6,7 +6,7 @@
 
 /* AI 생성은 더 이상 이 노트북 안 서버가 아니라 Firebase Functions(서버리스)가 처리한다.
    Firebase 프로젝트 배포 후, 실제 발급된 함수 URL로 아래 한 줄만 바꾸면 된다. */
-const API_BASE = 'https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio';
+const API_BASE = 'https://asia-northeast3-inky-poster.cloudfunctions.net/posterStudio';
 
 const FEST   = '제4회 인천어린이청소년영화제';
 const DATE   = '2026. 11. 14. (토)';
