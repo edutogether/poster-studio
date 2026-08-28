@@ -15,7 +15,8 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 - Artifact Registry 컨테이너 이미지 정리 정책 없다는 경고가 떠서 `firebase functions:artifacts:setpolicy`로 1일 보관 정책 설정(방치하면 이미지가 쌓여 소액이지만 스토리지 비용이 계속 늘어남).
 - `public/app.js`의 `API_BASE`를 새 함수 URL로 변경, `.github/workflows/functions-deploy.yml`의 프로젝트 ID도 같이 변경.
 - `/health`(hasKey:true 확인) + 실제 사진 업로드(`/generate`)로 재검증 완료, GitHub Pages도 재배포되어 새 프로젝트를 호출하는 것 확인.
-- **구 프로젝트(`inky-poster`)는 대표가 확인 후 직접 삭제 예정 — 이 세션은 건드리지 않음.**
+- **정리 완료(2026-08-27, 대표 직접 처리)**: 구 프로젝트 `inky-poster` 삭제됨(`firebase projects:list`로 목록에서 사라진 것 확인, 새 프로젝트 `inky-poster-studio`는 정상 조회됨), 구 OpenAI API 키 삭제, 새 키 이름을 `poster-studio-v2` → `poster-studio`로 정리. 삭제/키 교체 이후에도 `/health`가 여전히 `hasKey:true`로 정상 응답하는 것 재확인함(새 프로젝트의 Secret Manager가 새 키를 정상 참조 중).
+- **Poster Studio 프로젝트 이전 건 완전 종결.** 이 시점부터 이 저장소의 유일한 Firebase 프로젝트는 `inky-poster-studio`이며, 위 "Firebase 계정 접근 이슈" 섹션의 `inky-poster` 관련 내용은 전부 과거 이력이다.
 
 ## 2026-08-26 배포 후 발견·수정한 버그
 Cloud Functions(v2)는 핸들러 실행 전에 요청 본문 전체를 읽어 `req.rawBody`로 채워두고, 원본 `req` 스트림은 이미 끝난 상태로 넘어온다. `multer`는 그 원본 스트림에서 직접 읽으려 해서 이 환경에서는 매번 "Unexpected end of form" 오류로 사진 업로드가 실패했다. `multer`를 제거하고 `req.rawBody`를 `busboy`에 직접 흘려보내는 방식([functions/index.js](functions/index.js))으로 교체해 해결, 실제 업로드로 재확인함.
@@ -70,8 +71,8 @@ Cloud Functions(v2)는 핸들러 실행 전에 요청 본문 전체를 읽어 `r
 - OpenAI 대시보드 월 하드리밋 + GCP 예산 알림 설정.
 - `FIREBASE_SERVICE_ACCOUNT` GitHub 시크릿 등록(functions CI 자동배포 활성화용).
 
-## Firebase 계정 접근 이슈 (2026-08-27 발견)
-`firebase deploy`가 갑자기 IAM 오류로 막혔다가(대표가 IAM을 손보는 과정에서 생긴 것으로 추정), 원래 쓰던 `817beatles@gmail.com` 계정은 오히려 `inky-poster` 프로젝트가 `firebase projects:list`에서 아예 사라지는 상태가 됐다. 반면 두 번째 계정 `edutogether2015@gmail.com`으로 전환하니 `inky-poster`가 정상적으로 보이고 `firebase deploy --only functions --project inky-poster`도 성공했다(실제로 이 계정으로 3차 라운드 코드를 배포·재검증함). **앞으로 이 저장소에서 firebase CLI 작업이 막히면 `firebase login:use edutogether2015@gmail.com`으로 전환해서 시도해볼 것.** 어느 계정이 "의도된" 접근 계정인지는 대표 확인이 필요해서 팀장에게 보고해뒀다 — 이상적으로는 두 계정 다 접근 가능한 상태가 안전하다(계정 하나에만 의존하면 그 계정에 문제가 생겼을 때 완전히 막힘).
+## Firebase 계정 접근 이슈 (2026-08-27 발견 — `inky-poster` 삭제로 종결된 과거 이력)
+`firebase deploy`가 갑자기 IAM 오류로 막혔다가(대표가 IAM을 손보는 과정에서 생긴 것으로 추정), 원래 쓰던 `817beatles@gmail.com` 계정은 오히려 `inky-poster` 프로젝트가 `firebase projects:list`에서 아예 사라지는 상태가 됐다. 반면 두 번째 계정 `edutogether2015@gmail.com`으로는 정상 접근됐다. 이 문제가 계기가 되어 대표가 `inky-poster-studio`로 완전히 새로 옮기기로 결정했고(위 "Firebase 프로젝트 이전" 참고), 구 프로젝트는 이전 완료 후 삭제됐다. **지금은 `inky-poster-studio` 하나만 존재하므로 이 계정 혼선 자체는 더 이상 유효하지 않다** — 새 프로젝트는 `edutogether2015@gmail.com` 계정 기준으로 처음부터 설정됐다는 것만 기억해두면 된다. `firebase login:list`로 현재 로그인 계정 확인 가능.
 
 ## 3차 라운드 반영 후 재추정 점수 (2026-08-27, Sonnet 단독 재평가 — 정식 재감사 아님)
 | 항목 | 2차 점수 | 3차 반영 후 |
