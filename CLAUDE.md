@@ -6,7 +6,16 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 - **위치**: `D:\Projects\inky-festival\poster-studio`
 - **스택(2026-08-26 재설계)**: 정적 프론트엔드(`public/`, GitHub Pages 배포) + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 API 전담). 예전 Node/Express 로컬 서버(`server.js`)는 제거됨 — 행사장 교육청 MDM 노트북이 설치를 못 받을 수 있고 방화벽 문제도 있어서, 나머지 5개 앱과 동일하게 "주소만 열면 되는" 방식으로 전환.
 - **기능**: 웹캠 촬영(브라우저) → Firebase Functions가 AI 그림 생성 → 브라우저 캔버스가 타이포·크레딧 합성해 4종 완성 → 4×6 현장 인쇄
-- **상태**: **정상 운영중 (2026-08-26 배포 완료, 같은 날 정밀감사+수정까지 반영)**. Firebase 프로젝트 `inky-poster`(Blaze), Cloud Functions `posterStudio`(asia-northeast3) 배포됨, GitHub Pages Actions로 라이브: `https://edutogether.github.io/poster-studio/`. 실제 웹캠 촬영→AI 포스터 생성까지 실사용 확인 완료. 포털 카드도 이 실주소로 연결됨. `poster-studio-freeze-20260826` 태그는 정밀감사 "이전" 스냅샷이고, master는 그 뒤 감사에서 나온 결함 수정·재배포까지 반영해 태그보다 앞서 있다(아래 "감사 이력" 참고).
+- **상태**: **정상 운영중**. Firebase 프로젝트는 **2026-08-27부로 `inky-poster` → `inky-poster-studio`로 이전 완료**(구 프로젝트의 IAM 권한 문제 때문 — 아래 "Firebase 프로젝트 이전" 참고). Cloud Functions `posterStudio`(asia-northeast3, `https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio`) 배포됨, GitHub Pages Actions로 라이브: `https://edutogether.github.io/poster-studio/`. 실제 웹캠 촬영→AI 포스터 생성까지 실사용 확인 완료. 포털 카드도 이 실주소로 연결됨. `poster-studio-freeze-20260826` 태그는 구 프로젝트(`inky-poster`) 기준 정밀감사 "이전" 스냅샷이며, 프로젝트 이전 후에도 여전히 유효한 코드 이력 참고용이다.
+
+## Firebase 프로젝트 이전: inky-poster → inky-poster-studio (2026-08-27)
+구 프로젝트(`inky-poster`)에서 배포 계정 IAM이 꼬여(아래 "Firebase 계정 접근 이슈" 참고) 대표가 아예 새 프로젝트를 만들기로 결정. 데이터가 전혀 없는 앱이라(Firestore/Storage 미사용, 사진은 처리 직후 삭제) 마이그레이션은 순수 재배포뿐이었다:
+- `.firebaserc`의 기본 프로젝트를 `inky-poster-studio`로 변경.
+- `firebase deploy --only functions --project inky-poster-studio`로 신규 배포 — **여기서도 구 프로젝트와 완전히 같은 종류의 IAM 오류(`iam.serviceaccounts.actAs` 거부)가 재현됐다.** 새로 만든 프로젝트라도 Firebase 콘솔에서 프로젝트를 만든 계정에 Cloud Run 배포에 필요한 "Service Account User" 역할이 자동으로 안 붙는 경우가 있다는 뜻 — **다음에 새 Firebase 프로젝트를 만들 때는 배포 전에 IAM에서 이 역할을 미리 확인/부여할 것.** 대표가 콘솔에서 역할 부여 후 재시도해서 배포 성공.
+- Artifact Registry 컨테이너 이미지 정리 정책 없다는 경고가 떠서 `firebase functions:artifacts:setpolicy`로 1일 보관 정책 설정(방치하면 이미지가 쌓여 소액이지만 스토리지 비용이 계속 늘어남).
+- `public/app.js`의 `API_BASE`를 새 함수 URL로 변경, `.github/workflows/functions-deploy.yml`의 프로젝트 ID도 같이 변경.
+- `/health`(hasKey:true 확인) + 실제 사진 업로드(`/generate`)로 재검증 완료, GitHub Pages도 재배포되어 새 프로젝트를 호출하는 것 확인.
+- **구 프로젝트(`inky-poster`)는 대표가 확인 후 직접 삭제 예정 — 이 세션은 건드리지 않음.**
 
 ## 2026-08-26 배포 후 발견·수정한 버그
 Cloud Functions(v2)는 핸들러 실행 전에 요청 본문 전체를 읽어 `req.rawBody`로 채워두고, 원본 `req` 스트림은 이미 끝난 상태로 넘어온다. `multer`는 그 원본 스트림에서 직접 읽으려 해서 이 환경에서는 매번 "Unexpected end of form" 오류로 사진 업로드가 실패했다. `multer`를 제거하고 `req.rawBody`를 `busboy`에 직접 흘려보내는 방식([functions/index.js](functions/index.js))으로 교체해 해결, 실제 업로드로 재확인함.

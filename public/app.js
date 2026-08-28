@@ -10,7 +10,7 @@
      1. 이 줄의 API_BASE
      2. functions/index.js의 ALLOWED_ORIGINS (지금 이 페이지 도메인이 그 목록에 있어야
         Functions가 브라우저 요청을 허용한다) */
-const API_BASE = 'https://asia-northeast3-inky-poster.cloudfunctions.net/posterStudio';
+const API_BASE = 'https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio';
 
 const FEST   = '제4회 인천어린이청소년영화제';
 const DATE   = '2026. 11. 14. (토)';
