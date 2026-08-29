@@ -9,7 +9,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
 
-import { app, buildPrompt, sanitizePromptField, parseMultipart, UPLOAD_DIR, mapGenerateError } from '../index.js';
+import {
+  app,
+  buildPrompt,
+  sanitizePromptField,
+  parseMultipart,
+  UPLOAD_DIR,
+  mapGenerateError,
+  RATE_LIMIT_MAX
+} from '../index.js';
 
 // ── sanitizePromptField ─────────────────────────────────────────────
 test('sanitizePromptField: 줄바꿈을 공백으로 치환한다', () => {
@@ -202,12 +210,12 @@ test('POST /generate: 부스 토큰 헤더가 없거나 틀리면 401이고 레�
   }
 });
 
-test('POST /generate: 올바른 토큰으로 사진 없는 요청을 10분 안에 11번 보내면 11번째는 429다', async () => {
+test('POST /generate: 올바른 토큰으로 사진 없는 요청을 10분 안에 RATE_LIMIT_MAX+1번 보내면 마지막은 429다', async () => {
   const server = await startTestServer();
   const port = server.address().port;
   try {
     const statuses = [];
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < RATE_LIMIT_MAX + 1; i++) {
       const r = await fetch(`http://127.0.0.1:${port}/generate`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-booth-token': 'test-booth-token' },
@@ -215,8 +223,8 @@ test('POST /generate: 올바른 토큰으로 사진 없는 요청을 10분 안�
       });
       statuses.push(r.status);
     }
-    assert.deepEqual(statuses.slice(0, 10), Array(10).fill(400), '앞 10건은 사진이 없어 400');
-    assert.equal(statuses[10], 429, '11번째는 레이트리밋에 걸려 429');
+    assert.deepEqual(statuses.slice(0, RATE_LIMIT_MAX), Array(RATE_LIMIT_MAX).fill(400), '한도 안까지는 사진이 없어 400');
+    assert.equal(statuses[RATE_LIMIT_MAX], 429, '한도를 넘긴 마지막 요청은 레이트리밋에 걸려 429');
   } finally {
     server.close();
   }

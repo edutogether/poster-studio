@@ -257,10 +257,14 @@ app.get('/health', (req, res) => {
 
 // 인스턴스별 초당요청이 아닌 '최근 N분간 몇 건' 슬라이딩 윈도로 본다.
 // 완벽한 방어(공격자가 요청을 인스턴스 여러 개로 분산시키면 못 막음)는 아니지만,
-// 무인증 공개 엔드포인트에 자동화 스크립트를 돌리는 가장 흔한 형태(한 브라우저 탭/
-// 스크립트가 반복 호출)는 확실히 끊는다. concurrency:1이라 이 배열은 인스턴스당
-// 한 요청씩만 접근하므로 별도 락이 필요 없다.
-const RATE_LIMIT_MAX = 10;
+// booth_token 인증을 우회하지 못하는 스크립트가 반복 호출하는 흔한 오작동/남용
+// 패턴은 확실히 끊는다. concurrency:1이라 이 배열은 인스턴스당 한 요청씩만
+// 접근하므로 별도 락이 필요 없다.
+// 2026-08-29: 10 → 30으로 상향(대표 결정). 노트북 3대가 쉬지 않고 돌려도(생성
+// 1건 15~30초) 인스턴스당 최대 약 3건/분 수준이라 30/10분이면 정상 이용을 막지
+// 않는다. 진짜 비용 하드캡은 이제 OpenAI 대시보드 월 지출 상한($100)이 맡는다 —
+// 이 값은 "정상 사용을 막지 않는 선"의 UX 안전장치이지 비용 캡이 아니다.
+const RATE_LIMIT_MAX = 30;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 let recentHits = [];
 function rateLimit(req, res, next) {
@@ -350,7 +354,7 @@ const ALLOWED_ORIGINS = [
 
 // 테스트 전용 export. onRequest로 감싸기 전의 순수 함수/미들웨어를 그대로 노출해서,
 // 실제 OpenAI 호출(=실비용) 없이 프롬프트 구성·업로드 파싱·레이트리밋을 검증한다.
-export { app, buildPrompt, sanitizePromptField, parseMultipart, UPLOAD_DIR, mapGenerateError };
+export { app, buildPrompt, sanitizePromptField, parseMultipart, UPLOAD_DIR, mapGenerateError, RATE_LIMIT_MAX };
 
 export const posterStudio = onRequest(
   {

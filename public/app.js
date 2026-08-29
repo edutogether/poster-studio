@@ -128,12 +128,14 @@ $('shotBtn').onclick = async () => {
     snapshot.src = snapshotURL;
     snapshot.classList.remove('hidden'); video.classList.add('hidden');
     setStatus('촬영 완료! 정보를 입력하고 ‘AI 포스터 만들기’를 누르세요.');
+    genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
   }, 'image/jpeg', 0.85);
 };
 $('retakeBtn').onclick = () => {
   capturedBlob = null; snapshot.classList.add('hidden');
   video.classList.remove('hidden'); setStatus('다시 촬영할 수 있습니다.');
   $('fallbackBtn').classList.add('hidden'); pendingMeta = null;
+  genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
 };
 
 /* ── 개인/단체 토글 ── */
@@ -180,13 +182,25 @@ function makePlaceholderArt(genre){
 }
 let pendingMeta = null; // AI 생성 실패 시 폴백 버튼이 재사용할 마지막 입력값
 
+/* 한 장의 사진(같은 capturedBlob)으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만
+   허용한다(2026-08-29 대표 결정) — 완전 무제한은 남용/과금 위험, 완전 금지는
+   "결과가 안 좋게 나온 아이는 그대로 끝"이 되는 문제가 있어 절충한 값. 다시
+   촬영하면(새 capturedBlob) 카운트가 초기화된다. */
+const MAX_GENERATIONS_PER_PHOTO = 2;
+let genCount = 0;
+
 /* ───────────────────────── 생성 ───────────────────────── */
 let isGenerating = false; // 이중 클릭 방지(중복 과금 차단)
 $('generateBtn').onclick = async () => {
   if(isGenerating) return;
   if(!capturedBlob){ setStatus('먼저 사진을 촬영해 주세요.'); return; }
+  if(genCount >= MAX_GENERATIONS_PER_PHOTO){
+    setStatus('이 사진으로는 재생성 횟수를 모두 사용했어요. 다시 촬영하면 새로 만들 수 있어요.');
+    return;
+  }
   const meta = getMeta();
   isGenerating = true;
+  genCount++;
   $('generateBtn').disabled = true; $('regenBtn').disabled = true;
   $('fallbackBtn').classList.add('hidden');
   $('spinner').classList.remove('hidden');
@@ -220,7 +234,13 @@ $('generateBtn').onclick = async () => {
     clearInterval(tick);
     if(spinText) spinText.textContent = 'AI가 그리는 중…';
     isGenerating = false;
-    $('generateBtn').disabled = false; $('regenBtn').disabled = false;
+    $('generateBtn').disabled = false;
+    if(genCount >= MAX_GENERATIONS_PER_PHOTO){
+      $('regenBtn').disabled = true;
+      $('regenBtn').textContent = '🔄 재생성 횟수 소진(다시 촬영 시 초기화)';
+    } else {
+      $('regenBtn').disabled = false;
+    }
     $('spinner').classList.add('hidden');
   }
 };
