@@ -47,23 +47,13 @@ jobs:
       - run: npm ci
         working-directory: functions
       - uses: google-github-actions/auth@v2
-        id: auth
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
-      # 진단용: Secret Manager 권한 오류가 IAM에 부여한 계정과 실제로 CI가 쓰는
-      # 계정이 일치하는지 확인하기 위해 이메일만 출력한다(민감정보 아님, 키 내용 아님).
-      - run: echo "CI가 인증한 서비스 계정 이메일:"; jq -r .client_email "$GOOGLE_APPLICATION_CREDENTIALS"
-      # 진단용: firebase-tools를 거치지 않고 같은 REST 엔드포인트를 access token으로
-      # 직접 호출해, IAM 자체 문제인지 firebase-tools 쪽 문제인지 구분한다.
-      # (token_format:'access_token'을 auth 액션에 직접 주면 iam.serviceAccounts.getAccessToken
-      #  라는 또다른 권한이 필요해져서 실패했다 — 그래서 키 파일로 직접 gcloud 토큰을 발급받는다.)
-      - run: |
-          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-          TOKEN=$(gcloud auth print-access-token)
-          echo "Secret Manager REST 직접 호출 결과:"
-          curl -s -w "\nHTTP_STATUS:%{http_code}\n" \
-            -H "Authorization: Bearer $TOKEN" \
-            "https://secretmanager.googleapis.com/v1/projects/inky-poster-studio/secrets/OPENAI_API_KEY"
+      # github-actions-deploy 서비스 계정은 project-level roles/secretmanager.secretAccessor
+      # (값 읽기, secrets.versions.access) + roles/secretmanager.viewer(존재/메타데이터
+      # 조회, secrets.get — firebase-tools가 배포 시점에 필요) 둘 다 있어야 한다.
+      # Secret Accessor 하나만으로는 secrets.get이 없어서 배포가 403으로 막힌다
+      # (2026-08-29 실제로 겪고 원인 확인함).
       - run: npx firebase-tools deploy --only functions --project inky-poster-studio --non-interactive
 
   deploy-pages:
