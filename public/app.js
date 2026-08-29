@@ -61,6 +61,12 @@ function setStatus(m){ $('status').textContent = m; }
     const r = await fetch(`${API_BASE}/health`, { signal: ctrl.signal });
     clearTimeout(timer);
     if(!r.ok) throw new Error('unhealthy');
+    const data = await r.json().catch(() => ({}));
+    // 5차 감사 발견: 예전엔 HTTP 상태만 봐서, /health가 "키는 있음"만 확인하고
+    // OpenAI가 실제로 죽어있어도 이 경고가 안 떴다 — 응답 본문의 openaiReachable도 확인한다.
+    if(data.openaiReachable === false){
+      setStatus('⚠ AI(OpenAI) 서버에 연결할 수 없습니다. 잠시 후 다시 열어보거나 담당자에게 알려주세요. (촬영은 가능하지만 포스터 생성이 실패할 수 있어요)');
+    }
   }catch(e){
     setStatus('⚠ AI 서버 연결을 확인할 수 없습니다. 와이파이를 확인해 주세요. (촬영은 가능하지만 포스터 생성이 실패할 수 있어요)');
   }
@@ -357,24 +363,12 @@ function drawOrgLogo(ctx, cx, cy, h, variant){
   const w = h*ar;
   ctx.drawImage(img, cx - w/2, cy - h/2, w, h);
 }
-/* 월계관 한 쌍(공식 초청작 느낌) */
-function laurels(ctx, cx, cy, r, color){
-  ctx.save(); ctx.strokeStyle=color; ctx.fillStyle=color; ctx.globalAlpha=.95;
-  [-1,1].forEach(side=>{
-    ctx.save(); ctx.translate(cx,cy); ctx.scale(side,1);
-    ctx.beginPath(); ctx.lineWidth=Math.max(2,r*0.05);
-    ctx.arc(-r*0.9, 0, r, Math.PI*0.78, Math.PI*1.5); ctx.stroke();
-    for(let i=0;i<6;i++){ const a=Math.PI*0.85 + i*0.12; const x=-r*0.9+Math.cos(a)*r, y=Math.sin(a)*r;
-      ctx.save(); ctx.translate(x,y); ctx.rotate(a+Math.PI/2);
-      ctx.beginPath(); ctx.ellipse(0,0,r*0.18,r*0.07,0,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-    ctx.restore();
-  });
-  ctx.restore();
-}
-
 /* ───────────────────────── 템플릿 4종 ───────────────────────── */
 const W=1200, H=1800;
-const TEMPLATES = [
+/* var(const 아님) — 테스트(public/test/load-app.js)가 vm 샌드박스에서 이 값을
+   꺼내 4가지 템플릿의 render()를 직접 호출해 검증할 수 있게 하기 위함.
+   런타임 동작은 const와 동일(재할당 없음). */
+var TEMPLATES = [
   /* 1) 클래식 시네마 */
   { label:'클래식', render(ctx,art,m,g){
     ctx.fillStyle='#05070f'; ctx.fillRect(0,0,W,H);

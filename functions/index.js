@@ -243,10 +243,34 @@ async function generateArt(filePath, mimetype, prompt) {
   throw lastErr;
 }
 
-app.get('/health', (req, res) => {
+/* 5차 감사 발견: 기존 /health는 "키가 설정돼 있나"만 봐서 OpenAI가 완전히
+   다운돼도 ok:true를 반환했다 — 부스 진행자가 가장 안심하면 안 될 순간에
+   "정상"이라고 오인시킬 수 있었다. 여기서는 실제 OpenAI 도달성을 확인하되,
+   매 /health 호출마다 부르면 낭비이므로 인스턴스 안에서 결과를 잠깐 캐싱한다.
+   models.list()는 이미지 생성이 아닌 메타데이터 조회라 토큰/이미지 과금이 없다. */
+const OPENAI_HEALTH_CACHE_MS = 60_000;
+let openaiHealthCache = { reachable: null, checkedAt: 0 };
+async function checkOpenAIReachable() {
+  const now = Date.now();
+  if (now - openaiHealthCache.checkedAt < OPENAI_HEALTH_CACHE_MS) {
+    return openaiHealthCache.reachable;
+  }
+  try {
+    await getClient().models.list();
+    openaiHealthCache = { reachable: true, checkedAt: now };
+  } catch (err) {
+    console.warn('[health] OpenAI 도달 실패:', err?.status || '', err?.message || err);
+    openaiHealthCache = { reachable: false, checkedAt: now };
+  }
+  return openaiHealthCache.reachable;
+}
+
+app.get('/health', async (req, res) => {
+  const openaiReachable = await checkOpenAIReachable();
   res.json({
     ok: true,
     hasKey: !!OPENAI_API_KEY.value(),
+    openaiReachable,
     model: MODEL,
     quality: QUALITY,
     fidelity: INPUT_FIDELITY,
@@ -354,7 +378,7 @@ const ALLOWED_ORIGINS = [
 
 // 테스트 전용 export. onRequest로 감싸기 전의 순수 함수/미들웨어를 그대로 노출해서,
 // 실제 OpenAI 호출(=실비용) 없이 프롬프트 구성·업로드 파싱·레이트리밋을 검증한다.
-export { app, buildPrompt, sanitizePromptField, parseMultipart, UPLOAD_DIR, mapGenerateError, RATE_LIMIT_MAX };
+export { app, buildPrompt, sanitizePromptField, parseMultipart, UPLOAD_DIR, mapGenerateError, RATE_LIMIT_MAX, checkBoothToken };
 
 export const posterStudio = onRequest(
   {

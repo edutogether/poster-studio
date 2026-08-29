@@ -13,6 +13,7 @@ import {
   app,
   buildPrompt,
   sanitizePromptField,
+  checkBoothToken,
   parseMultipart,
   UPLOAD_DIR,
   mapGenerateError,
@@ -207,6 +208,28 @@ test('POST /generate: 부스 토큰 헤더가 없거나 틀리면 401이고 레�
     assert.equal(wrongToken.status, 401);
   } finally {
     server.close();
+  }
+});
+
+// 5차 감사 발견: BOOTH_TOKEN 시크릿 자체가 비어있는 엣지케이스(설정 누락)는
+// 코드는 이미 방어돼 있었지만(expected.length>0 가드) 테스트가 없었다.
+test('checkBoothToken: 시크릿(BOOTH_TOKEN) 자체가 비어있으면 어떤 헤더를 보내도 401이다', () => {
+  const original = process.env.BOOTH_TOKEN;
+  process.env.BOOTH_TOKEN = '';
+  try {
+    const calls = [];
+    const res = { status: (code) => { calls.push(code); return { json: () => {} }; } };
+    let nextCalled = false;
+    checkBoothToken({ headers: {} }, res, () => { nextCalled = true; });
+    assert.deepEqual(calls, [401]);
+    assert.equal(nextCalled, false);
+
+    // 빈 헤더값(빈 문자열)으로 "일치"를 노리는 시도도 막혀야 한다.
+    const res2 = { status: (code) => { calls.push(code); return { json: () => {} }; } };
+    checkBoothToken({ headers: { 'x-booth-token': '' } }, res2, () => { nextCalled = true; });
+    assert.deepEqual(calls, [401, 401]);
+  } finally {
+    process.env.BOOTH_TOKEN = original;
   }
 });
 

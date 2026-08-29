@@ -101,6 +101,11 @@ class FakeImage {
   }
 }
 
+class FakeFormData {
+  constructor() { this._entries = []; }
+  append(name, value) { this._entries.push([name, value]); }
+}
+
 /* app.js 소스를 읽어 최소 가짜 DOM 환경에서 실행하고, top-level function 선언들이
    담긴 샌드박스(전역 객체 역할)를 돌려준다. */
 export function loadApp() {
@@ -134,6 +139,7 @@ export function loadApp() {
     Math,
     Date,
     Image: FakeImage,
+    FormData: FakeFormData,
     URL: { createObjectURL: () => 'blob:fake', revokeObjectURL() {} },
     addEventListener() {}
   };
@@ -143,6 +149,10 @@ export function loadApp() {
   const context = vm.createContext(sandbox);
   const code = fs.readFileSync(APP_JS_PATH, 'utf8');
   vm.runInContext(code, context, { filename: 'app.js' });
+  // app.js의 let/const top-level 바인딩(예: capturedBlob, genCount)은 함수 선언과
+  // 달리 sandbox 객체의 속성이 되지 않는다 — 같은 vm 컨텍스트에서 추가 코드를
+  // 실행하면 그 렉시컬 스코프를 그대로 공유하므로, 이 방법으로만 읽고 쓸 수 있다.
+  sandbox.__eval = (src) => vm.runInContext(src, context);
   return sandbox;
 }
 
