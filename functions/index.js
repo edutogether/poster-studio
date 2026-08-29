@@ -357,7 +357,9 @@ async function checkPhotoGenerationLimit(req, res, next) {
     if (!allowed) {
       // 여기서 막으면 이 요청은 아래 /generate 핸들러(임시파일 정리 담당)까지 못 가므로,
       // 여기서 직접 지워야 /tmp에 고아 파일이 안 남는다(2차 감사 때 고친 것과 같은 종류의 버그 재발 방지).
-      fs.unlink(req.file.path, () => {});
+      // await 없이 fs.unlink(콜백)만 쓰면 응답을 먼저 보내버려서, 삭제가 실제로 끝나기 전에
+      // 호출부가 "파일이 없어졌다"고 확인하려 하면 타이밍에 따라 실패할 수 있다(CI에서 실제로 발견).
+      await fs.promises.unlink(req.file.path).catch(() => {});
       return res.status(429).json({ error: '이 사진으로는 생성 횟수를 모두 사용했어요. 다시 촬영해 주세요.' });
     }
     next();
