@@ -362,9 +362,12 @@ export const posterStudio = onRequest(
     memory: '512MiB',
     timeoutSeconds: 120,
     concurrency: 1,
-    // 노트북 최대 4대(예비 1대 포함)라 동시에 이보다 많은 인스턴스가 필요할 일이 없다.
-    // 이 값 자체가 폭주 시 과금 상한 역할도 겸한다(요청 1건당 최대 약 $0.04 × 5).
-    maxInstances: 5,
+    // 2026-08-29: 노트북 대수 확장 논의(최대 20대 검토) 때문에 5 → 25로 미리 상향.
+    // concurrency:1이라 동시 처리 가능 요청 수 = maxInstances 그 자체 — 노트북 수보다
+    // 낮으면 나머지는 대기열에 걸리다 timeoutSeconds(120초) 넘어 실패한다. 인스턴스
+    // 상한 자체는 비용이 붙지 않는다(실제 생성 건수만 과금) — 진짜 비용 상한은
+    // OpenAI 대시보드 월 지출 한도($200)가 맡는다.
+    maxInstances: 25,
     secrets: [OPENAI_API_KEY, BOOTH_TOKEN],
     cors: ALLOWED_ORIGINS
   },
