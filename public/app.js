@@ -133,6 +133,7 @@ $('shotBtn').onclick = async () => {
 $('retakeBtn').onclick = () => {
   capturedBlob = null; snapshot.classList.add('hidden');
   video.classList.remove('hidden'); setStatus('다시 촬영할 수 있습니다.');
+  $('fallbackBtn').classList.add('hidden'); pendingMeta = null;
 };
 
 /* ── 개인/단체 토글 ── */
@@ -159,6 +160,26 @@ function getMeta(){
 function creditMain(m){ return m.mode==='group' ? m.groupName : `주연 · 감독   ${m.name}`; }
 function creditSub(m){ return (m.mode==='group' && m.members) ? `출연  ${m.members}` : ''; }
 
+/* AI(OpenAI) 자체가 완전히 막힌 상황(네트워크 두절·크레딧 소진·서버 장애 등)에서도
+   부스 운영이 통째로 멈추지 않도록, 실패 시 AI 그림 없이(단색/그라디언트 배경)
+   같은 타이포·크레딧 레이아웃으로 인쇄 가능한 버전을 만드는 최소한의 폴백. */
+function makePlaceholderArt(genre){
+  const c = document.createElement('canvas'); c.width=1024; c.height=1536;
+  const ctx = c.getContext('2d');
+  const accent = (GENRES[genre] || GENRES.animation).accent;
+  const g = ctx.createLinearGradient(0,0,0,c.height);
+  g.addColorStop(0, accent); g.addColorStop(1, '#0b1020');
+  ctx.fillStyle = g; ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle = 'rgba(255,255,255,.10)';
+  for(let i=0;i<50;i++){
+    ctx.beginPath();
+    ctx.arc(Math.random()*c.width, Math.random()*c.height, Math.random()*3+1, 0, Math.PI*2);
+    ctx.fill();
+  }
+  return c.toDataURL('image/png');
+}
+let pendingMeta = null; // AI 생성 실패 시 폴백 버튼이 재사용할 마지막 입력값
+
 /* ───────────────────────── 생성 ───────────────────────── */
 let isGenerating = false; // 이중 클릭 방지(중복 과금 차단)
 $('generateBtn').onclick = async () => {
@@ -167,6 +188,7 @@ $('generateBtn').onclick = async () => {
   const meta = getMeta();
   isGenerating = true;
   $('generateBtn').disabled = true; $('regenBtn').disabled = true;
+  $('fallbackBtn').classList.add('hidden');
   $('spinner').classList.remove('hidden');
   setStatus('AI가 영화 포스터 그림을 그리는 중입니다… (10~25초)');
   const form = new FormData();
@@ -190,7 +212,9 @@ $('generateBtn').onclick = async () => {
     let msg = e.message;
     if(e.name === 'AbortError') msg = '시간이 너무 오래 걸려 중단했어요. 잠시 후 다시 시도해 주세요.';
     else if(e instanceof TypeError) msg = '서버 또는 인터넷 연결을 확인해 주세요. (검은 창이 켜져 있나요? 와이파이는 연결됐나요?)';
-    setStatus('오류: ' + msg);
+    setStatus('오류: ' + msg + ' — 계속 안 되면 아래 "AI 없이 계속하기"로 진행할 수 있어요.');
+    pendingMeta = meta;
+    $('fallbackBtn').classList.remove('hidden');
   }finally{
     clearTimeout(timer);
     clearInterval(tick);
@@ -200,15 +224,20 @@ $('generateBtn').onclick = async () => {
     $('spinner').classList.add('hidden');
   }
 };
-let lastMeta = null;
-$('regenBtn').onclick = () => { if(lastMeta) $('generateBtn').click(); };
+$('regenBtn').onclick = () => { if(posters.length) $('generateBtn').click(); };
+$('fallbackBtn').onclick = async () => {
+  if(!pendingMeta || isGenerating) return;
+  $('fallbackBtn').classList.add('hidden');
+  setStatus('AI 없이 기본 버전을 만드는 중…');
+  await buildAll([makePlaceholderArt(pendingMeta.genre)], pendingMeta);
+  setStatus('AI 그림 없이 만든 기본 버전이에요(얼굴 그림은 안 들어갑니다). 인쇄는 그대로 가능해요.');
+};
 
 /* ── 그림 N장 × 템플릿 4종 = 갤러리 ── */
 async function buildAll(images, meta){
   await ensureFonts();
   await ensureGlyphs(meta);
   await ensureLogo();
-  lastMeta = meta;
   const arts = await Promise.all(images.map(loadImg));
   posters = [];
   for(const art of arts){

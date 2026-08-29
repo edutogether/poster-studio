@@ -7,10 +7,9 @@ process.env.BOOTH_TOKEN = 'test-booth-token';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import path from 'node:path';
 import http from 'node:http';
 
-import { app, buildPrompt, sanitizePromptField, parseMultipart, UPLOAD_DIR } from '../index.js';
+import { app, buildPrompt, sanitizePromptField, parseMultipart, UPLOAD_DIR, mapGenerateError } from '../index.js';
 
 // ── sanitizePromptField ─────────────────────────────────────────────
 test('sanitizePromptField: 줄바꿈을 공백으로 치환한다', () => {
@@ -63,7 +62,7 @@ function buildMultipartRequest(parts) {
     else fd.append(name, value);
   }
   const req = new Request('http://test/generate', { method: 'POST', body: fd });
-  return req.arrayBuffer().then(buf => ({
+  return req.arrayBuffer().then((buf) => ({
     headers: { 'content-type': req.headers.get('content-type') },
     rawBody: Buffer.from(buf)
   }));
@@ -119,9 +118,52 @@ test('parseMultipart: 같은 이름(photo)으로 파일을 2개 보내도 임시
   // files:1 한도 때문에 두 번째 photo 파트는 busboy가 아예 무시한다.
   assert.equal(err, undefined);
   assert.ok(req.file, '첫 번째 파일은 정상 채택돼야 한다');
-  await new Promise(r => setTimeout(r, 50)); // 혹시 남는 비동기 쓰기가 있다면 정리될 시간을 준다
+  await new Promise((r) => setTimeout(r, 50)); // 혹시 남는 비동기 쓰기가 있다면 정리될 시간을 준다
   assert.equal(fs.readdirSync(UPLOAD_DIR).length, before + 1, 'UPLOAD_DIR에 고아 파일이 남으면 안 된다');
   fs.unlinkSync(req.file.path);
+});
+
+// ── mapGenerateError(OpenAI 오류 → 상태코드/문구 매핑, 실제 호출 없이 검증) ──
+test('mapGenerateError: 429는 429 그대로, 대기 안내문구', () => {
+  const { status, message } = mapGenerateError({ status: 429, message: 'Rate limit exceeded' });
+  assert.equal(status, 429);
+  assert.match(message, /대기/);
+});
+
+test('mapGenerateError: 크레딧 부족은 500 + 충전 안내', () => {
+  const { status, message } = mapGenerateError({
+    message: 'You exceeded your current quota, billing details required'
+  });
+  assert.equal(status, 500);
+  assert.match(message, /크레딧/);
+});
+
+test('mapGenerateError: 콘텐츠 정책 위반은 400(클라이언트 쪽 재시도 유도)', () => {
+  const { status, message } = mapGenerateError({
+    message: 'Your request was rejected by our content moderation system'
+  });
+  assert.equal(status, 400);
+  assert.match(message, /안전 기준/);
+});
+
+test('mapGenerateError: 타임아웃은 504', () => {
+  const { status } = mapGenerateError({ message: 'Request timed out' });
+  assert.equal(status, 504);
+});
+
+test('mapGenerateError: 네트워크 오류는 502', () => {
+  const { status } = mapGenerateError({ message: 'fetch failed: ENOTFOUND api.openai.com' });
+  assert.equal(status, 502);
+});
+
+test('mapGenerateError: 알 수 없는 오류는 500 + 원문(raw) 노출 없이 일반 문구만 준다', () => {
+  const raw = 'internal upstream stack trace with sensitive path /var/secret/x.js:42';
+  const { status, message } = mapGenerateError({ message: raw });
+  assert.equal(status, 500);
+  assert.ok(
+    !message.includes('stack trace') && !message.includes('/var/secret'),
+    '원문이 그대로 노출되면 안 된다: ' + message
+  );
 });
 
 // ── /generate 레이트리밋(실제 OpenAI 호출 전에 막히는 경로만 검증) ────
@@ -129,7 +171,7 @@ function startTestServer() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       const chunks = [];
-      req.on('data', c => chunks.push(c));
+      req.on('data', (c) => chunks.push(c));
       req.on('end', () => {
         req.rawBody = Buffer.concat(chunks);
         app(req, res);
@@ -144,11 +186,15 @@ test('POST /generate: 부스 토큰 헤더가 없거나 틀리면 401이고 레�
   const port = server.address().port;
   try {
     const noToken = await fetch(`http://127.0.0.1:${port}/generate`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}'
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}'
     });
     assert.equal(noToken.status, 401);
     const wrongToken = await fetch(`http://127.0.0.1:${port}/generate`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'x-booth-token': 'nope' }, body: '{}'
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-booth-token': 'nope' },
+      body: '{}'
     });
     assert.equal(wrongToken.status, 401);
   } finally {
