@@ -112,9 +112,9 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 - `lastMeta` 죽은코드 — 제거, 이미 존재하던 `posters.length`로 "생성 이력 있음" 판단 대체.
 - ESLint/Prettier 미도입 — `functions/`에 flat config(`eslint.config.js`) + `.prettierrc.json` 도입, `npm run lint`/`npm run format` 스크립트 추가. 기존 코드 lint 통과 확인(0 errors/warnings).
 
-**보류 — 대표 확인 후 진행 예정**:
-- 레이트리밋 상한(10건/10분)이 부스 실수요보다 낮음 — 대표가 OpenAI 월 지출 상한($100, Tier 2~3)을 별도로 걸어 비용 통제 백스톱이 생겼으니, 앱 레벨 제한은 완화하는 방향으로 논의 중(구체적 수치는 팀장 세션에 의견 전달함, 확정 대기).
-- 재생성 버튼 확인/횟수제한 없음 — 완전 제거 대신 "1인당 제한된 무료 재시도" 절충안을 논의 중, 확정 대기.
+**완료(2026-08-29, 대표 최종 확정, 커밋 `7b43304`, 재배포·검증 완료)**:
+- 레이트리밋 상한 10 → **30건/10분**(인스턴스당). OpenAI 월 지출 상한($100)이 진짜 비용 백스톱을 맡게 되면서, 앱 레벨 제한은 "정상 이용을 막지 않는 선"으로 완화. `RATE_LIMIT_MAX`를 테스트에서도 export해 하드코딩 없이 검증.
+- 재생성 버튼 → **한 장의 사진당 최초 생성 1회 + 재생성 1회, 총 2회로 제한**(대표 확정: "1인당 1회"). `public/app.js`에 `genCount`/`MAX_GENERATIONS_PER_PHOTO=2` 추가, 한도 도달 시 재생성 버튼 비활성화+문구 표시, 다시 촬영하면 초기화. 브라우저에서 fetch를 목(mock)으로 바꿔 1차/2차 성공, 3차 시도 차단까지 실제 동작 확인함.
 
 **여전히 대표 콘솔 작업 필요(코드로 불가)**:
 - `FIREBASE_SERVICE_ACCOUNT` GitHub 시크릿 미등록으로 CI 자동배포 실행이력 0건 — GCP 서비스 계정 생성·JSON 키 발급은 이 세션(auto mode classifier)이 대신할 수 없는 영역, 대표 콘솔 작업 필요(~15분+검증 10분).
