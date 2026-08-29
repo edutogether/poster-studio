@@ -18,8 +18,12 @@ jobs:
           node-version: '22'
       - run: npm ci
         working-directory: functions
+      - run: npm run lint
+        working-directory: functions
       - run: npm test
         working-directory: functions
+      - run: npm test
+        working-directory: public
       # 아래 두 스텝은 GCP 자격증명이 GitHub 저장소 시크릿(FIREBASE_SERVICE_ACCOUNT)에
       # 등록돼 있어야 동작한다. 서비스 계정 생성·키 발급은 GCP 콘솔 권한이 필요한
       # 작업이라 이 세션(auto mode classifier)이 대신할 수 없다 — CLAUDE.md의
