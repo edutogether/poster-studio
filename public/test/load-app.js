@@ -11,7 +11,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const APP_JS_PATH = path.join(__dirname, '..', 'app.js');
+// index.html의 <script> 로드 순서와 정확히 일치해야 한다 — app.js가 나머지
+// 전부가 쓰는 공유 상수/DOM 참조/상태변수를 정의하므로 항상 먼저 실행돼야 함.
+const APP_FILES = ['app.js', 'layout.js', 'templates.js', 'camera.js', 'api.js', 'print.js'];
 
 /* measureText가 "글자 수 × 현재 폰트 크기 비례"로 너비를 흉내낸다 — 실제 폰트와
    글자 폭은 다르지만, "폰트를 줄이면 measureText 너비도 줄어든다"는 setFitFont/
@@ -147,8 +149,10 @@ export function loadApp() {
   sandbox.globalThis = sandbox;
 
   const context = vm.createContext(sandbox);
-  const code = fs.readFileSync(APP_JS_PATH, 'utf8');
-  vm.runInContext(code, context, { filename: 'app.js' });
+  for (const filename of APP_FILES) {
+    const code = fs.readFileSync(path.join(__dirname, '..', filename), 'utf8');
+    vm.runInContext(code, context, { filename });
+  }
   // app.js의 let/const top-level 바인딩(예: capturedBlob, genCount)은 함수 선언과
   // 달리 sandbox 객체의 속성이 되지 않는다 — 같은 vm 컨텍스트에서 추가 코드를
   // 실행하면 그 렉시컬 스코프를 그대로 공유하므로, 이 방법으로만 읽고 쓸 수 있다.

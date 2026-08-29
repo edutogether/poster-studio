@@ -28,7 +28,30 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         queueMicrotask: 'readonly',
-        Uint8ClampedArray: 'readonly'
+        Uint8ClampedArray: 'readonly',
+
+        // app.js/layout.js/templates.js/camera.js/api.js는 전부 classic <script>로
+        // 로드되는 하나의 공유 전역 스코프다(모듈 아님, import/export 없음) — 5차
+        // 감사 후속조치로 app.js 하나였던 걸 역할별 6개 파일로 분리(2026-08-30)하면서
+        // ESLint가 파일 단위로만 보기 때문에 "여기 정의 안 됨" 오탐이 생긴다. 실제
+        // 브라우저에서는 전부 같은 전역이므로 여기서 한 번에 선언해 오탐을 없앤다.
+        API_BASE: 'readonly', BOOTH_TOKEN: 'readonly', FEST: 'readonly', DATE: 'readonly',
+        VENUE: 'readonly', EN: 'readonly', GENRES: 'readonly', $: 'readonly', val: 'readonly',
+        pick: 'readonly', video: 'readonly', snapshot: 'readonly', posterCanvas: 'readonly',
+        pctx: 'readonly', W: 'readonly', H: 'readonly', setStatus: 'readonly',
+        stream: 'writable', capturedBlob: 'writable', currentMode: 'writable',
+        posters: 'writable', LOGO_LIGHT: 'writable', LOGO_DARK: 'writable',
+        LOGO_TRIED: 'writable', selected: 'writable',
+        ensureFonts: 'readonly', ensureGlyphs: 'readonly', loadImg: 'readonly',
+        coverDraw: 'readonly', roundRect: 'readonly', vignette: 'readonly',
+        grain: 'readonly', grainTile: 'writable', setLS: 'readonly',
+        setFitFont: 'readonly', layoutTitle: 'readonly', drawTitle: 'readonly',
+        ensureLogo: 'readonly', drawOrgLogo: 'readonly',
+        creditMain: 'readonly', creditSub: 'readonly', TEMPLATES: 'readonly',
+        startCamera: 'readonly', snapshotURL: 'writable',
+        getMeta: 'readonly', makePlaceholderArt: 'readonly', pendingMeta: 'writable',
+        MAX_GENERATIONS_PER_PHOTO: 'readonly', genCount: 'writable', isGenerating: 'writable',
+        buildAll: 'readonly', renderGallery: 'readonly', select: 'readonly'
       }
     },
     rules: {
