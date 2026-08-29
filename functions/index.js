@@ -8,6 +8,17 @@ import path from 'path';
 import crypto from 'crypto';
 import OpenAI from 'openai';
 import { toFile } from 'openai';
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+
+/* 5차 감사 후속조치(2026-08-30, 대표 승인) — 레이트리밋/재생성한도가 인스턴스별
+   메모리(Map)에만 있어서 인스턴스가 여러 개로 늘어나면(maxInstances 상향) 사실상
+   전역 강제가 안 됐다. Firestore에 "순수 숫자 카운터"만 저장해 인스턴스 전체에
+   걸쳐 진짜로 강제한다 — 사진·이름 등 개인정보는 여기 전혀 안 들어간다(사진의
+   SHA-256 해시값과 정수 카운트뿐). 클라이언트가 Firestore에 직접 접근하는 경로가
+   없으므로(Admin SDK로 서버 안에서만 접근) 별도 보안 규칙이 필요 없다. */
+initializeApp();
+const db = getFirestore();
 
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
 // 부스 공유 토큰 — curl 등 브라우저 Origin 헤더 없는 요청이 CORS를 그냥 지나쳐
@@ -279,26 +290,49 @@ app.get('/health', async (req, res) => {
   });
 });
 
-// 인스턴스별 초당요청이 아닌 '최근 N분간 몇 건' 슬라이딩 윈도로 본다.
-// 완벽한 방어(공격자가 요청을 인스턴스 여러 개로 분산시키면 못 막음)는 아니지만,
-// booth_token 인증을 우회하지 못하는 스크립트가 반복 호출하는 흔한 오작동/남용
-// 패턴은 확실히 끊는다. concurrency:1이라 이 배열은 인스턴스당 한 요청씩만
-// 접근하므로 별도 락이 필요 없다.
-// 2026-08-29: 10 → 30으로 상향(대표 결정). 노트북 3대가 쉬지 않고 돌려도(생성
-// 1건 15~30초) 인스턴스당 최대 약 3건/분 수준이라 30/10분이면 정상 이용을 막지
-// 않는다. 진짜 비용 하드캡은 이제 OpenAI 대시보드 월 지출 상한($100)이 맡는다 —
-// 이 값은 "정상 사용을 막지 않는 선"의 UX 안전장치이지 비용 캡이 아니다.
-const RATE_LIMIT_MAX = 30;
+/* 전역(인스턴스 간 공유) 원자적 증가+한도체크 — Firestore 트랜잭션으로 구현.
+   레이트리밋/사진별 생성한도 둘 다 이걸 쓴다. 저장하는 건 컬렉션/문서ID(버킷번호
+   또는 사진 SHA-256 해시)와 정수 count뿐 — 개인정보 없음.
+   테스트에서는 실제 Firestore 대신 인메모리 가짜 구현을 주입한다(_setCounterImplForTesting) —
+   OpenAI 실호출 코드를 테스트 안 하는 것과 같은 이유(실비용은 안 들지만, 매 테스트마다
+   진짜 프로젝트의 Firestore를 두드리는 건 zero-dependency 테스트 철학과 안 맞음). */
+async function _firestoreIncrementAndCheck(collectionName, docId, limit) {
+  const ref = db.collection(collectionName).doc(docId);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.exists ? snap.data().count || 0 : 0;
+    if (current >= limit) return { allowed: false, count: current };
+    tx.set(ref, { count: current + 1, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    return { allowed: true, count: current + 1 };
+  });
+}
+let _incrementAndCheck = _firestoreIncrementAndCheck;
+function _setCounterImplForTesting(fn) {
+  _incrementAndCheck = fn || _firestoreIncrementAndCheck;
+}
+
+// 노트북/인스턴스 여러 개에 걸쳐 진짜로 전역 강제되는 상한. 2026-08-29엔 인스턴스별
+// 메모리 카운터(30/10분)라 maxInstances를 올릴 때마다 실효 상한이 같이 커졌는데
+// (25대면 이론상 750/10분), 이제 Firestore로 전역화하면서 "노트북 최대 20대가
+// 각자 분당 1건 안팎으로 정상 사용하는 수준"을 기준으로 새로 산정함(20대 × 분당
+// 1.5건 ≈ 10분당 150건 — 여유 포함). 진짜 비용 하드캡은 OpenAI 대시보드 월 지출
+// 상한이 맡고, 이 값은 "정상 사용은 막지 않으면서 폭주는 끊는" UX 안전장치다.
+const RATE_LIMIT_MAX = 150;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
-let recentHits = [];
-function rateLimit(req, res, next) {
-  const now = Date.now();
-  recentHits = recentHits.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  if (recentHits.length >= RATE_LIMIT_MAX) {
-    return res.status(429).json({ error: '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.' });
+async function rateLimit(req, res, next) {
+  const bucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
+  try {
+    const { allowed } = await _incrementAndCheck('rateLimitBuckets', String(bucket), RATE_LIMIT_MAX);
+    if (!allowed) {
+      return res.status(429).json({ error: '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.' });
+    }
+    next();
+  } catch (err) {
+    // Firestore 장애로 부스 전체가 멈추면 안 되므로 fail-open(레이트리밋 없이 통과) —
+    // 진짜 비용 하드캡은 어차피 OpenAI 월 지출 상한이 맡고 있다.
+    console.error('[rateLimit] Firestore 오류, fail-open:', err?.message || err);
+    next();
   }
-  recentHits.push(now);
-  next();
 }
 
 function checkBoothToken(req, res, next) {
@@ -309,35 +343,28 @@ function checkBoothToken(req, res, next) {
   next();
 }
 
-/* 5차 감사 발견: "한 장의 사진당 최초 생성 1회 + 재생성 1회"(PHOTO_GENERATION_LIMIT)는
-   지금까지 public/app.js의 genCount 변수로만 강제됐는데, 이건 순수 브라우저 상태라
-   새로고침 한 번이면 초기화된다 — 부스에서 진행자가 "한 번 더 해줄게" 하며 새로고침
-   하는 건 매우 자연스러운 행동이라 이 정책이 사실상 강제되지 않았다.
-   같은 사진(바이트 단위 동일)의 SHA-256 해시를 키로 인스턴스 안에서 짧게(TTL) 카운트해,
-   최소한 "새로고침으로 우회"는 막는다. 레이트리밋과 마찬가지로 인스턴스-로컬이라
-   완벽한 전역 강제는 아니다(다른 인스턴스로 라우팅되면 카운트가 안 이어짐) — 완전한
-   전역 강제는 공유 DB가 필요한데, 이 앱은 개인정보 최소화를 위해 의도적으로 DB를
-   안 쓰고 있어서 그 트레이드오프는 대표 판단이 필요한 별도 사안으로 남겨둔다. */
+/* "한 장의 사진당 최초 생성 1회 + 재생성 1회"(대표 확정 정책)를 Firestore로 전역
+   강제한다. 2026-08-30 이전엔 인스턴스 로컬 Map이라 다른 인스턴스로 라우팅되면
+   카운트가 안 이어지는 한계가 있었는데(5차 감사 발견), Firestore 트랜잭션으로
+   바꿔 어느 인스턴스가 처리하든 같은 사진은 진짜로 최대 2번까지만 허용된다. */
 const PHOTO_GENERATION_LIMIT = 2;
-const PHOTO_HASH_TTL_MS = 30 * 60 * 1000;
-let photoGenCounts = new Map(); // sha256(photo bytes) -> { count, ts }
 
-function checkPhotoGenerationLimit(req, res, next) {
+async function checkPhotoGenerationLimit(req, res, next) {
   if (!req.file) return next(); // 사진이 없으면(400으로 이어짐) 이 체크는 의미 없음
-  const now = Date.now();
-  for (const [hash, entry] of photoGenCounts) {
-    if (now - entry.ts > PHOTO_HASH_TTL_MS) photoGenCounts.delete(hash);
-  }
   const hash = crypto.createHash('sha256').update(fs.readFileSync(req.file.path)).digest('hex');
-  const entry = photoGenCounts.get(hash);
-  if (entry && entry.count >= PHOTO_GENERATION_LIMIT) {
-    // 여기서 막으면 이 요청은 아래 /generate 핸들러(임시파일 정리 담당)까지 못 가므로,
-    // 여기서 직접 지워야 /tmp에 고아 파일이 안 남는다(2차 감사 때 고친 것과 같은 종류의 버그 재발 방지).
-    fs.unlink(req.file.path, () => {});
-    return res.status(429).json({ error: '이 사진으로는 생성 횟수를 모두 사용했어요. 다시 촬영해 주세요.' });
+  try {
+    const { allowed } = await _incrementAndCheck('photoGenCounts', hash, PHOTO_GENERATION_LIMIT);
+    if (!allowed) {
+      // 여기서 막으면 이 요청은 아래 /generate 핸들러(임시파일 정리 담당)까지 못 가므로,
+      // 여기서 직접 지워야 /tmp에 고아 파일이 안 남는다(2차 감사 때 고친 것과 같은 종류의 버그 재발 방지).
+      fs.unlink(req.file.path, () => {});
+      return res.status(429).json({ error: '이 사진으로는 생성 횟수를 모두 사용했어요. 다시 촬영해 주세요.' });
+    }
+    next();
+  } catch (err) {
+    console.error('[checkPhotoGenerationLimit] Firestore 오류, fail-open:', err?.message || err);
+    next();
   }
-  photoGenCounts.set(hash, { count: (entry?.count || 0) + 1, ts: now });
-  next();
 }
 
 /* OpenAI 오류를 상태코드·사용자 문구로 매핑한다. 알 수 없는 오류의 원문(raw)은
@@ -418,8 +445,10 @@ export {
   mapGenerateError,
   RATE_LIMIT_MAX,
   checkBoothToken,
+  rateLimit,
   checkPhotoGenerationLimit,
-  PHOTO_GENERATION_LIMIT
+  PHOTO_GENERATION_LIMIT,
+  _setCounterImplForTesting
 };
 
 export const posterStudio = onRequest(

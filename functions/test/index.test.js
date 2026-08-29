@@ -18,13 +18,31 @@ import {
   buildPrompt,
   sanitizePromptField,
   checkBoothToken,
+  rateLimit,
   checkPhotoGenerationLimit,
   PHOTO_GENERATION_LIMIT,
   parseMultipart,
   UPLOAD_DIR,
   mapGenerateError,
-  RATE_LIMIT_MAX
+  RATE_LIMIT_MAX,
+  _setCounterImplForTesting
 } from '../index.js';
+
+// 레이트리밋/사진별 생성한도는 이제 Firestore 트랜잭션으로 전역 강제되는데(5차
+// 감사 후속조치, 2026-08-30), 테스트에서 실제 프로젝트의 Firestore를 두드리는 건
+// OpenAI 실호출을 테스트 안 하는 것과 같은 이유로 하지 않는다 — 대신 같은 함수
+// 시그니처((collectionName, docId, limit) => {allowed, count})의 인메모리 가짜를
+// 주입해, "한도 넘으면 막는다"는 로직 자체(원래 있던 인스턴스-로컬 Map 버전과
+// 동일한 동작)를 실제 프로덕션 미들웨어(rateLimit/checkPhotoGenerationLimit)를
+// 그대로 호출해서 검증한다.
+const _fakeCounters = new Map();
+_setCounterImplForTesting(async (collectionName, docId, limit) => {
+  const key = `${collectionName}/${docId}`;
+  const current = _fakeCounters.get(key) || 0;
+  if (current >= limit) return { allowed: false, count: current };
+  _fakeCounters.set(key, current + 1);
+  return { allowed: true, count: current + 1 };
+});
 
 // ── sanitizePromptField ─────────────────────────────────────────────
 test('sanitizePromptField: 줄바꿈을 공백으로 치환한다', () => {
@@ -296,6 +314,37 @@ test('checkPhotoGenerationLimit: req.file이 없으면(사진 없는 요청) 그
     checkPhotoGenerationLimit({ file: null }, {}, () => resolve({ blocked: false }));
   });
   assert.equal(result.blocked, false);
+});
+
+// Firestore 장애 시 fail-open(부스 전체가 멈추면 안 됨) — rateLimit/checkPhotoGenerationLimit
+// 둘 다 같은 구조의 try/catch를 쓰므로, 카운터 구현이 실제로 예외를 던지는 상황을
+// 재현해 "막지 않고 통과시킨다"는 안전장치 자체를 검증한다.
+test('rateLimit·checkPhotoGenerationLimit: Firestore 오류 시 요청을 막지 않고 통과시킨다(fail-open)', async () => {
+  _setCounterImplForTesting(async () => {
+    throw new Error('시뮬레이션: Firestore 연결 실패');
+  });
+  try {
+    const rateLimitNextCalled = await new Promise((resolve) => {
+      rateLimit({}, { status: () => ({ json: () => resolve(false) }) }, () => resolve(true));
+    });
+    assert.equal(rateLimitNextCalled, true, 'Firestore 오류여도 rateLimit은 next()를 호출해야 한다');
+
+    const filePath = makeTempFile(Buffer.from(`failopen-test-${crypto.randomBytes(8).toString('hex')}`));
+    const photoNextCalled = await new Promise((resolve) => {
+      checkPhotoGenerationLimit({ file: { path: filePath } }, { status: () => ({ json: () => resolve(false) }) }, () => resolve(true));
+    });
+    assert.equal(photoNextCalled, true, 'Firestore 오류여도 checkPhotoGenerationLimit은 next()를 호출해야 한다');
+    fs.unlinkSync(filePath);
+  } finally {
+    // 원래 있던 인메모리 가짜 구현으로 복원(이후 테스트들이 계속 그걸 쓰도록)
+    _setCounterImplForTesting(async (collectionName, docId, limit) => {
+      const key = `${collectionName}/${docId}`;
+      const current = _fakeCounters.get(key) || 0;
+      if (current >= limit) return { allowed: false, count: current };
+      _fakeCounters.set(key, current + 1);
+      return { allowed: true, count: current + 1 };
+    });
+  }
 });
 
 test('POST /generate: 올바른 토큰으로 사진 없는 요청을 10분 안에 RATE_LIMIT_MAX+1번 보내면 마지막은 429다', async () => {
