@@ -116,11 +116,11 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 - 레이트리밋 상한 10 → **30건/10분**(인스턴스당). OpenAI 월 지출 상한($100)이 진짜 비용 백스톱을 맡게 되면서, 앱 레벨 제한은 "정상 이용을 막지 않는 선"으로 완화. `RATE_LIMIT_MAX`를 테스트에서도 export해 하드코딩 없이 검증.
 - 재생성 버튼 → **한 장의 사진당 최초 생성 1회 + 재생성 1회, 총 2회로 제한**(대표 확정: "1인당 1회"). `public/app.js`에 `genCount`/`MAX_GENERATIONS_PER_PHOTO=2` 추가, 한도 도달 시 재생성 버튼 비활성화+문구 표시, 다시 촬영하면 초기화. 브라우저에서 fetch를 목(mock)으로 바꿔 1차/2차 성공, 3차 시도 차단까지 실제 동작 확인함.
 
-**여전히 대표 콘솔 작업 필요(코드로 불가)**:
-- `FIREBASE_SERVICE_ACCOUNT` GitHub 시크릿 미등록으로 CI 자동배포 실행이력 0건 — GCP 서비스 계정 생성·JSON 키 발급은 이 세션(auto mode classifier)이 대신할 수 없는 영역, 대표 콘솔 작업 필요(~15분+검증 10분).
+**완료(2026-08-29, 커밋 `7f8eabd`)**:
+- 프론트 텍스트레이아웃(타이포 합성) 테스트 0개 — `public/test/`에 zero-dependency 테스트 신설(`npm test`, node 내장 테스트러너). `jsdom`/`canvas` npm 패키지를 시도했으나 `canvas`가 네이티브 컴파일이 필요하고 이 환경(Windows, MSVC 빌드툴 미설치)에서 설치가 안 돼서, 대신 `public/test/load-app.js`가 `node:vm`으로 실제 `public/app.js`를 최소 가짜 document/canvas 환경에서 그대로 실행해 top-level 함수(`setFitFont`/`layoutTitle`/`creditMain`/`creditSub`/`makePlaceholderArt`)를 꺼내 검증한다. 로직을 베껴 재구현한 게 아니라 실제 프로덕션 함수를 호출하는 진짜 테스트다. 14개 케이스(폰트 자동축소, 제목 1줄/2줄 분할, 극단적으로 긴 제목의 minSize 강제, 개인/단체 크레딧 조립, AI장애 폴백 그림 생성) 전부 통과. `TEMPLATES.render()` 자체(4가지 틀)는 `const`라 외부 접근이 안 돼 손대지 않았음 — 대표가 "틀 자체 재검토는 나중에"라고 확인한 부분이라 이번 스코프에서 의도적으로 제외.
 
-**남은 것**:
-- 프론트 텍스트레이아웃(타이포 합성) 테스트 0개 — DOM/캔버스 테스트 인프라(jsdom 등)가 아직 없어 별도 셋업이 필요, 아직 미착수.
+**여전히 대표 콘솔 작업 필요(코드로 불가)**:
+- `FIREBASE_SERVICE_ACCOUNT` GitHub 시크릿 미등록으로 CI 자동배포 실행이력 0건 — GCP 서비스 계정 생성·JSON 키 발급은 이 세션(auto mode classifier)이 대신할 수 없는 영역, 대표 콘솔 작업 필요(~15분+검증 10분). 단계별 안내는 팀장 세션에 전달 완료, 진행 대기중.
 
 ### 🔵 문제없음(재검증 완료, 재발 없음)
 프롬프트 인젝션 방어, /tmp 유출 방지(회귀테스트 있음), API 키 유출 0건(git 히스토리 전수 스캔), CORS 정규식 앵커링, 실명 미전송 설계, VARIANTS 클램프, maxRetries:0, 이중클릭 방지, Artifact Registry 정리정책, `npm test` 13/13.
