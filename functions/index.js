@@ -309,6 +309,37 @@ function checkBoothToken(req, res, next) {
   next();
 }
 
+/* 5차 감사 발견: "한 장의 사진당 최초 생성 1회 + 재생성 1회"(PHOTO_GENERATION_LIMIT)는
+   지금까지 public/app.js의 genCount 변수로만 강제됐는데, 이건 순수 브라우저 상태라
+   새로고침 한 번이면 초기화된다 — 부스에서 진행자가 "한 번 더 해줄게" 하며 새로고침
+   하는 건 매우 자연스러운 행동이라 이 정책이 사실상 강제되지 않았다.
+   같은 사진(바이트 단위 동일)의 SHA-256 해시를 키로 인스턴스 안에서 짧게(TTL) 카운트해,
+   최소한 "새로고침으로 우회"는 막는다. 레이트리밋과 마찬가지로 인스턴스-로컬이라
+   완벽한 전역 강제는 아니다(다른 인스턴스로 라우팅되면 카운트가 안 이어짐) — 완전한
+   전역 강제는 공유 DB가 필요한데, 이 앱은 개인정보 최소화를 위해 의도적으로 DB를
+   안 쓰고 있어서 그 트레이드오프는 대표 판단이 필요한 별도 사안으로 남겨둔다. */
+const PHOTO_GENERATION_LIMIT = 2;
+const PHOTO_HASH_TTL_MS = 30 * 60 * 1000;
+let photoGenCounts = new Map(); // sha256(photo bytes) -> { count, ts }
+
+function checkPhotoGenerationLimit(req, res, next) {
+  if (!req.file) return next(); // 사진이 없으면(400으로 이어짐) 이 체크는 의미 없음
+  const now = Date.now();
+  for (const [hash, entry] of photoGenCounts) {
+    if (now - entry.ts > PHOTO_HASH_TTL_MS) photoGenCounts.delete(hash);
+  }
+  const hash = crypto.createHash('sha256').update(fs.readFileSync(req.file.path)).digest('hex');
+  const entry = photoGenCounts.get(hash);
+  if (entry && entry.count >= PHOTO_GENERATION_LIMIT) {
+    // 여기서 막으면 이 요청은 아래 /generate 핸들러(임시파일 정리 담당)까지 못 가므로,
+    // 여기서 직접 지워야 /tmp에 고아 파일이 안 남는다(2차 감사 때 고친 것과 같은 종류의 버그 재발 방지).
+    fs.unlink(req.file.path, () => {});
+    return res.status(429).json({ error: '이 사진으로는 생성 횟수를 모두 사용했어요. 다시 촬영해 주세요.' });
+  }
+  photoGenCounts.set(hash, { count: (entry?.count || 0) + 1, ts: now });
+  next();
+}
+
 /* OpenAI 오류를 상태코드·사용자 문구로 매핑한다. 알 수 없는 오류의 원문(raw)은
    OpenAI 내부 구현 세부사항이 그대로 사용자 화면에 노출될 수 있어(4차 감사 🟡)
    절대 클라이언트로 돌려주지 않는다 — 서버 로그(console.error, 호출부)에만 남긴다. */
@@ -333,7 +364,7 @@ function mapGenerateError(err) {
   return { status: 500, message: 'AI 이미지 생성 중 알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' };
 }
 
-app.post('/generate', checkBoothToken, rateLimit, parseMultipart, async (req, res) => {
+app.post('/generate', checkBoothToken, rateLimit, parseMultipart, checkPhotoGenerationLimit, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '사진 파일이 없습니다. 먼저 촬영해 주세요.' });
 
   const genre = req.body.genre || 'animation';
@@ -378,7 +409,18 @@ const ALLOWED_ORIGINS = [
 
 // 테스트 전용 export. onRequest로 감싸기 전의 순수 함수/미들웨어를 그대로 노출해서,
 // 실제 OpenAI 호출(=실비용) 없이 프롬프트 구성·업로드 파싱·레이트리밋을 검증한다.
-export { app, buildPrompt, sanitizePromptField, parseMultipart, UPLOAD_DIR, mapGenerateError, RATE_LIMIT_MAX, checkBoothToken };
+export {
+  app,
+  buildPrompt,
+  sanitizePromptField,
+  parseMultipart,
+  UPLOAD_DIR,
+  mapGenerateError,
+  RATE_LIMIT_MAX,
+  checkBoothToken,
+  checkPhotoGenerationLimit,
+  PHOTO_GENERATION_LIMIT
+};
 
 export const posterStudio = onRequest(
   {

@@ -15,9 +15,11 @@ const API_BASE = 'https://asia-northeast3-inky-poster-studio.cloudfunctions.net/
 /* 부스 공유 토큰 — functions/index.js의 BOOTH_TOKEN 시크릿과 같은 값이어야 한다.
    정적 사이트라 이 값은 누구나 소스에서 볼 수 있다(진짜 비밀이 아니다) — 목적은
    자동화 스크립트가 소스를 안 보고 /generate URL만 찔러보는 걸 막는 최소한의
-   문지기이지, 강한 인증이 아니다. 토큰을 바꾸면 Firebase 시크릿도 같이 갱신할 것:
-   firebase functions:secrets:set BOOTH_TOKEN --project inky-poster-studio */
-const BOOTH_TOKEN = 'inky-poster-booth-2026';
+   문지기이지, 강한 인증이 아니다. 교체 절차는 RUNBOOK.md "부스토큰 교체" 참고.
+   2026-08-30: 5차 감사에서 이전 값이 예측 가능한 패턴이라는 지적을 받아 무작위
+   문자열로 교체함(무작위 자체가 보안을 강하게 만들진 않지만, 최소한 "부스 이름을
+   안다"는 정보만으로는 더 이상 추측할 수 없게 함). */
+const BOOTH_TOKEN = 'XQp4tQ97rS_fUPz4zgCEBTYnUEOs48C0';
 
 const FEST   = '제4회 인천어린이청소년영화제';
 const DATE   = '2026. 11. 14. (토)';

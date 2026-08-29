@@ -9,11 +9,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
 
+import path from 'node:path';
+import os from 'node:os';
+import crypto from 'node:crypto';
+
 import {
   app,
   buildPrompt,
   sanitizePromptField,
   checkBoothToken,
+  checkPhotoGenerationLimit,
+  PHOTO_GENERATION_LIMIT,
   parseMultipart,
   UPLOAD_DIR,
   mapGenerateError,
@@ -231,6 +237,65 @@ test('checkBoothToken: 시크릿(BOOTH_TOKEN) 자체가 비어있으면 어떤 �
   } finally {
     process.env.BOOTH_TOKEN = original;
   }
+});
+
+// ── checkPhotoGenerationLimit (5차 감사 발견: "1인당 1회 재생성"을 서버측에서도
+// 강제 — 이전엔 브라우저 상태(genCount)뿐이라 새로고침으로 우회 가능했다) ────
+function makeTempFile(bytes) {
+  const p = path.join(os.tmpdir(), `photolimit-test-${crypto.randomBytes(6).toString('hex')}`);
+  fs.writeFileSync(p, bytes);
+  return p;
+}
+function runCheckPhotoLimit(filePath) {
+  return new Promise((resolve) => {
+    const req = { file: { path: filePath } };
+    const res = { status: (code) => ({ json: (body) => resolve({ blocked: true, code, body }) }) };
+    checkPhotoGenerationLimit(req, res, () => resolve({ blocked: false }));
+  });
+}
+
+test(`checkPhotoGenerationLimit: 같은 사진으로 ${PHOTO_GENERATION_LIMIT}번까지는 통과하고, 그 다음은 429다`, async () => {
+  const bytes = Buffer.from(`unique-photo-${crypto.randomBytes(8).toString('hex')}`);
+  const results = [];
+  for (let i = 0; i < PHOTO_GENERATION_LIMIT + 1; i++) {
+    const filePath = makeTempFile(bytes); // 매번 새 임시파일이지만 내용(=해시)은 동일
+    results.push(await runCheckPhotoLimit(filePath));
+  }
+  for (let i = 0; i < PHOTO_GENERATION_LIMIT; i++) {
+    assert.equal(results[i].blocked, false, `${i + 1}번째는 통과해야 한다`);
+  }
+  const last = results[PHOTO_GENERATION_LIMIT];
+  assert.equal(last.blocked, true, `${PHOTO_GENERATION_LIMIT + 1}번째는 막혀야 한다`);
+  assert.equal(last.code, 429);
+});
+
+test('checkPhotoGenerationLimit: 한도 초과로 막힌 요청의 임시파일은 직접 정리된다(고아 파일 방지)', async () => {
+  const bytes = Buffer.from(`unique-photo-cleanup-${crypto.randomBytes(8).toString('hex')}`);
+  let lastPath;
+  for (let i = 0; i < PHOTO_GENERATION_LIMIT + 1; i++) {
+    lastPath = makeTempFile(bytes);
+    await runCheckPhotoLimit(lastPath);
+  }
+  assert.equal(fs.existsSync(lastPath), false, '한도 초과로 막힌 요청의 임시파일이 남아있으면 안 된다');
+});
+
+test('checkPhotoGenerationLimit: 다른 사진(다른 내용)은 별도로 카운트된다', async () => {
+  const bytesA = Buffer.from(`photo-a-${crypto.randomBytes(8).toString('hex')}`);
+  const bytesB = Buffer.from(`photo-b-${crypto.randomBytes(8).toString('hex')}`);
+  for (let i = 0; i < PHOTO_GENERATION_LIMIT; i++) {
+    const r = await runCheckPhotoLimit(makeTempFile(bytesA));
+    assert.equal(r.blocked, false);
+  }
+  // A는 한도 도달, B는 완전히 새 사진이라 통과해야 한다.
+  const rB = await runCheckPhotoLimit(makeTempFile(bytesB));
+  assert.equal(rB.blocked, false, '다른 사진은 A의 카운트에 영향받지 않아야 한다');
+});
+
+test('checkPhotoGenerationLimit: req.file이 없으면(사진 없는 요청) 그냥 통과시킨다(핸들러의 400 처리에 맡김)', async () => {
+  const result = await new Promise((resolve) => {
+    checkPhotoGenerationLimit({ file: null }, {}, () => resolve({ blocked: false }));
+  });
+  assert.equal(result.blocked, false);
 });
 
 test('POST /generate: 올바른 토큰으로 사진 없는 요청을 10분 안에 RATE_LIMIT_MAX+1번 보내면 마지막은 429다', async () => {
