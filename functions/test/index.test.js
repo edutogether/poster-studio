@@ -2,6 +2,7 @@
 // generateArt/editWithRetry(실제 이미지 생성)는 여기서 다루지 않는다 — 매 테스트
 // 실행마다 돈이 나가고 인터넷이 있어야 하는 테스트는 CI/로컬 어디서도 바람직하지 않다.
 process.env.OPENAI_API_KEY = 'test-key-not-real';
+process.env.BOOTH_TOKEN = 'test-booth-token';
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -138,14 +139,33 @@ function startTestServer() {
   });
 }
 
-test('POST /generate: 사진 없는 요청을 10분 안에 11번 보내면 11번째는 429다', async () => {
+test('POST /generate: 부스 토큰 헤더가 없거나 틀리면 401이고 레이트리밋 카운트도 안 늘어난다', async () => {
+  const server = await startTestServer();
+  const port = server.address().port;
+  try {
+    const noToken = await fetch(`http://127.0.0.1:${port}/generate`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}'
+    });
+    assert.equal(noToken.status, 401);
+    const wrongToken = await fetch(`http://127.0.0.1:${port}/generate`, {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-booth-token': 'nope' }, body: '{}'
+    });
+    assert.equal(wrongToken.status, 401);
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /generate: 올바른 토큰으로 사진 없는 요청을 10분 안에 11번 보내면 11번째는 429다', async () => {
   const server = await startTestServer();
   const port = server.address().port;
   try {
     const statuses = [];
     for (let i = 0; i < 11; i++) {
       const r = await fetch(`http://127.0.0.1:${port}/generate`, {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}'
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-booth-token': 'test-booth-token' },
+        body: '{}'
       });
       statuses.push(r.status);
     }

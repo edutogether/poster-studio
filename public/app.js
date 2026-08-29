@@ -12,6 +12,13 @@
         Functions가 브라우저 요청을 허용한다) */
 const API_BASE = 'https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio';
 
+/* 부스 공유 토큰 — functions/index.js의 BOOTH_TOKEN 시크릿과 같은 값이어야 한다.
+   정적 사이트라 이 값은 누구나 소스에서 볼 수 있다(진짜 비밀이 아니다) — 목적은
+   자동화 스크립트가 소스를 안 보고 /generate URL만 찔러보는 걸 막는 최소한의
+   문지기이지, 강한 인증이 아니다. 토큰을 바꾸면 Firebase 시크릿도 같이 갱신할 것:
+   firebase functions:secrets:set BOOTH_TOKEN --project inky-poster-studio */
+const BOOTH_TOKEN = 'inky-poster-booth-2026';
+
 const FEST   = '제4회 인천어린이청소년영화제';
 const DATE   = '2026. 11. 14. (토)';
 const VENUE  = 'CGV 인천';
@@ -174,7 +181,7 @@ $('generateBtn').onclick = async () => {
   const ctrl = new AbortController();                       // 요청 시간 제한(부스 무한 멈춤 방지)
   const timer = setTimeout(() => ctrl.abort(), 150_000);
   try{
-    const res = await fetch(`${API_BASE}/generate`, { method:'POST', body:form, signal: ctrl.signal });
+    const res = await fetch(`${API_BASE}/generate`, { method:'POST', headers:{ 'x-booth-token': BOOTH_TOKEN }, body:form, signal: ctrl.signal });
     const data = await res.json().catch(() => ({}));
     if(!res.ok) throw new Error(data.error || '생성 실패');
     await buildAll(data.images, meta);

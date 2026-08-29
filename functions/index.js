@@ -10,6 +10,11 @@ import OpenAI from 'openai';
 import { toFile } from 'openai';
 
 const OPENAI_API_KEY = defineSecret('OPENAI_API_KEY');
+// 부스 공유 토큰 — curl 등 브라우저 Origin 헤더 없는 요청이 CORS를 그냥 지나쳐
+// /generate에 바로 도달하는 걸 막기 위한 최소한의 문지기. 정적 사이트라 클라이언트
+// 코드(public/app.js)에 이 값이 그대로 노출되므로 "진짜 비밀"은 아니고, 자동화
+// 스크립트가 소스를 안 보고 URL만 찔러보는 가장 흔한 형태를 막는 용도다.
+const BOOTH_TOKEN = defineSecret('BOOTH_TOKEN');
 
 /* ──────────────────────────────────────────────────────────
    운영 설정 (행사 상황에 맞춰 조절 — Firebase Functions 환경변수로 주입)
@@ -245,7 +250,15 @@ function rateLimit(req, res, next) {
   next();
 }
 
-app.post('/generate', rateLimit, parseMultipart, async (req, res) => {
+function checkBoothToken(req, res, next) {
+  const expected = Buffer.from(BOOTH_TOKEN.value() || '');
+  const provided = Buffer.from(req.headers['x-booth-token'] || '');
+  const ok = expected.length > 0 && expected.length === provided.length && crypto.timingSafeEqual(expected, provided);
+  if (!ok) return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
+  next();
+}
+
+app.post('/generate', checkBoothToken, rateLimit, parseMultipart, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '사진 파일이 없습니다. 먼저 촬영해 주세요.' });
 
   const genre = req.body.genre || 'animation';
@@ -309,7 +322,7 @@ export const posterStudio = onRequest(
     // 노트북 최대 4대(예비 1대 포함)라 동시에 이보다 많은 인스턴스가 필요할 일이 없다.
     // 이 값 자체가 폭주 시 과금 상한 역할도 겸한다(요청 1건당 최대 약 $0.04 × 5).
     maxInstances: 5,
-    secrets: [OPENAI_API_KEY],
+    secrets: [OPENAI_API_KEY, BOOTH_TOKEN],
     cors: ALLOWED_ORIGINS
   },
   app
