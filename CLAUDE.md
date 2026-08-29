@@ -119,11 +119,12 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 **완료(2026-08-29, 커밋 `7f8eabd`)**:
 - 프론트 텍스트레이아웃(타이포 합성) 테스트 0개 — `public/test/`에 zero-dependency 테스트 신설(`npm test`, node 내장 테스트러너). `jsdom`/`canvas` npm 패키지를 시도했으나 `canvas`가 네이티브 컴파일이 필요하고 이 환경(Windows, MSVC 빌드툴 미설치)에서 설치가 안 돼서, 대신 `public/test/load-app.js`가 `node:vm`으로 실제 `public/app.js`를 최소 가짜 document/canvas 환경에서 그대로 실행해 top-level 함수(`setFitFont`/`layoutTitle`/`creditMain`/`creditSub`/`makePlaceholderArt`)를 꺼내 검증한다. 로직을 베껴 재구현한 게 아니라 실제 프로덕션 함수를 호출하는 진짜 테스트다. 14개 케이스(폰트 자동축소, 제목 1줄/2줄 분할, 극단적으로 긴 제목의 minSize 강제, 개인/단체 크레딧 조립, AI장애 폴백 그림 생성) 전부 통과. `TEMPLATES.render()` 자체(4가지 틀)는 `const`라 외부 접근이 안 돼 손대지 않았음 — 대표가 "틀 자체 재검토는 나중에"라고 확인한 부분이라 이번 스코프에서 의도적으로 제외.
 
-**진행중(2026-08-29)**:
-- `FIREBASE_SERVICE_ACCOUNT` GitHub 시크릿 등록 완료(대표 콘솔 작업 완료 확인됨).
-- 코디세이(`D:\Projects\817beatles\codyssey`) CI 기준(lint+테스트 통과해야 배포 → functions/규칙 먼저, hosting 나중)에 맞춰 `functions-deploy.yml`+`pages.yml`을 `deploy.yml` 하나로 병합(커밋 `be123b8`) — `test`(lint+functions 테스트 20개+프론트 테스트 14개) → `deploy-functions` → `deploy-pages` 순서로 `needs:` 체인. 포스터 스튜디오는 Firestore/Storage 자체를 안 써서 코디세이의 "Firestore 규칙 에뮬레이터 테스트"에 대응하는 단계는 없음(해당 없음으로 확인).
-- **실제 push로 검증 완료**: `test` 통과 → `deploy-functions`가 IAM 권한 부족(`secretmanager.secrets.get` 거부, OPENAI_API_KEY)으로 실패 → `deploy-pages`가 자동으로 **skip**됨. 이건 순서 강제 자체는 의도대로 정확히 작동한다는 증거(functions 실패 시 hosting도 안 나감). GitHub Actions run: `33253657821`.
-- **막힌 것 — 대표 콘솔 작업 필요**: `FIREBASE_SERVICE_ACCOUNT`로 등록한 서비스 계정에 Secret Manager 읽기 권한(`roles/secretmanager.secretAccessor`)이 없음. 이전 프로젝트 이전(2026-08-27) 때 두 번 겪었던 것과 같은 유형의 IAM 갭 — GCP 콘솔에서 그 서비스 계정에 "Secret Manager 보안 비밀 접근자" 역할을 추가해야 함. 부여되면 재검증 예정. 라이브 서비스(수동 배포된 현재 버전)에는 영향 없음.
+**완료(2026-08-29, 커밋 `e2efe21`, 실제 push로 3회 연속 성공 검증)**:
+- `FIREBASE_SERVICE_ACCOUNT` GitHub 시크릿 등록 완료(대표 콘솔 작업).
+- 코디세이(`D:\Projects\817beatles\codyssey`) CI 기준(lint+테스트 통과해야 배포 → functions/규칙 먼저, hosting 나중)에 맞춰 `functions-deploy.yml`+`pages.yml`을 `deploy.yml` 하나로 병합(최초 커밋 `be123b8`) — `test`(lint+functions 테스트 20개+프론트 테스트 14개) → `deploy-functions` → `deploy-pages` 순서로 `needs:` 체인. 포스터 스튜디오는 Firestore/Storage 자체를 안 써서 코디세이의 "Firestore 규칙 에뮬레이터 테스트"에 대응하는 단계는 없음(해당 없음으로 확인).
+- **순서 강제 검증**: 첫 push에서 `test` 통과 → `deploy-functions` 실패 → `deploy-pages`가 자동으로 **skip**됨. functions 실패 시 hosting도 안 나가는 게 실제로 확인됨(run `33253657821`).
+- **IAM 삽질(중요, 재발 방지용 기록)** — `deploy-functions`가 `Permission 'secretmanager.secrets.get' denied` 403으로 계속 실패. `github-actions-deploy@inky-poster-studio.iam.gserviceaccount.com`에 `roles/secretmanager.secretAccessor`(대표가 프로젝트 레벨로 확인, 스크린샷까지 3번 재확인)가 있는데도 재발 — firebase-tools를 거치지 않고 `gcloud auth activate-service-account` + 순수 `curl`로 Secret Manager REST를 직접 호출해도 똑같이 막혀서 firebase-tools 버그 가능성을 완전히 배제함. **근본 원인**: `roles/secretmanager.secretAccessor`는 시크릿 값 읽기(`secretmanager.versions.access`)만 포함하고, 시크릿 존재/메타데이터 조회(`secretmanager.secrets.get` — firebase-tools가 배포 시점에 호출)는 포함하지 않는다. `roles/secretmanager.viewer`를 같은 계정에 프로젝트 레벨로 추가하니 즉시 해결됨. **앞으로 CI 배포 계정을 새로 만들 때는 secretAccessor + viewer 둘 다 부여할 것.**
+- 최종 확인: 3회 연속 push에서 `test`→`deploy-functions`→`deploy-pages` 전부 성공(예: run `33254884317`).
 
 ### 🔵 문제없음(재검증 완료, 재발 없음)
 프롬프트 인젝션 방어, /tmp 유출 방지(회귀테스트 있음), API 키 유출 0건(git 히스토리 전수 스캔), CORS 정규식 앵커링, 실명 미전송 설계, VARIANTS 클램프, maxRetries:0, 이중클릭 방지, Artifact Registry 정리정책, `npm test` 13/13.
