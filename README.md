@@ -39,7 +39,7 @@ npm install
 firebase functions:secrets:set OPENAI_API_KEY   # 최초 1회, 콘솔에 값 직접 입력
 firebase deploy --only functions
 ```
-배포 후 발급되는 함수 URL을 `public/app.js` 최상단의 `API_BASE` 상수에 넣어야 프론트엔드가 연결된다.
+배포 후 발급되는 함수 URL을 `public/constants.js`의 `API_BASE` 상수에 넣어야 프론트엔드가 연결된다.
 
 > Firebase 프로젝트 생성·Blaze(종량제) 플랜 전환은 콘솔(대표 계정) 작업이 먼저 필요하다 — 자세한 내용은 `CLAUDE.md` 참고.
 

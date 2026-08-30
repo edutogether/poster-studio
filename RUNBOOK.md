@@ -33,12 +33,12 @@
 - 이 문서 범위 밖(앱 문제 아님) — 프린터 전원/용지/드라이버 확인, 필요시 예비 프린터로 교체.
 
 ## 7. 부스토큰(BOOTH_TOKEN) 유출 시 교체 절차
-부스토큰은 정적 사이트(`public/app.js`)에 값이 그대로 노출되므로 "진짜 비밀"이 아니다 — 소스를 안 보는 자동화 스크립트를 막는 최소 문지기일 뿐이다. 그래도 값을 바꿔야 할 상황(예: 저장소가 예상 밖으로 알려짐, 남용 정황 발견)이 생기면 **아래 순서를 반드시 지킬 것** — 순서가 틀리면 부스 전체가 일시적으로 401로 막힌다.
+부스토큰은 정적 사이트(`public/constants.js` — ES모듈 전환 전엔 `public/app.js`였음, 2026-08-30 이동)에 값이 그대로 노출되므로 "진짜 비밀"이 아니다 — 소스를 안 보는 자동화 스크립트를 막는 최소 문지기일 뿐이다. 그래도 값을 바꿔야 할 상황(예: 저장소가 예상 밖으로 알려짐, 남용 정황 발견)이 생기면 **아래 순서를 반드시 지킬 것** — 순서가 틀리면 부스 전체가 일시적으로 401로 막힌다.
 
 1. 새 무작위 토큰 생성: `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`
 2. Firebase Secret Manager에 새 값 등록: `printf '<새토큰>' | firebase functions:secrets:set BOOTH_TOKEN --project inky-poster-studio --data-file -`
-3. `public/app.js`의 `BOOTH_TOKEN` 상수를 **같은 값**으로 수정
-4. 커밋 후 `master`에 push — CI가 `test` → `deploy-functions`(새 시크릿 반영) → `deploy-pages`(새 app.js 반영) 순서로 자동 배포한다. **2·3번을 같은 커밋에 같이 넣을 것** — 하나만 먼저 나가면 그 사이에 401이 뜬다.
+3. `public/constants.js`의 `BOOTH_TOKEN` 상수를 **같은 값**으로 수정
+4. 커밋 후 `master`에 push — CI가 `test` → `deploy-functions`(새 시크릿 반영) → `deploy-pages`(새 constants.js 반영) 순서로 자동 배포한다. **2·3번을 같은 커밋에 같이 넣을 것** — 하나만 먼저 나가면 그 사이에 401이 뜬다.
 5. 배포 완료 후 실제로 `/generate`가 새 토큰으로 정상 응답하는지 확인(CI의 "부스토큰 스모크테스트" 단계가 자동으로 확인하고, 실패하면 파이프라인이 실패로 표시된다).
 
 ## 참고

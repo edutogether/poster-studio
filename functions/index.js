@@ -429,7 +429,7 @@ app.use((err, req, res, _next) => {
 
 // GitHub Pages(edutogether.github.io)에서만 호출 가능하도록 CORS 제한.
 // 로컬 개발 시에는 5500(Live Server)·8080(firebase serve) 포트도 허용.
-// 프로젝트를 옮기거나 배포 도메인이 바뀌면 public/app.js의 API_BASE와 이 목록을
+// 프로젝트를 옮기거나 배포 도메인이 바뀌면 public/constants.js의 API_BASE와 이 목록을
 // 반드시 같이 고칠 것 — 한쪽만 고치면 CORS가 막히거나 엉뚱한 프로젝트를 호출한다.
 const ALLOWED_ORIGINS = [
   /^https:\/\/edutogether\.github\.io$/,
