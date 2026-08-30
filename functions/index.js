@@ -128,7 +128,9 @@ function parseMultipart(req, res, next) {
 }
 
 let _client = null;
+let _clientOverride = null;
 function getClient() {
+  if (_clientOverride) return _clientOverride;
   if (!_client)
     _client = new OpenAI({
       apiKey: OPENAI_API_KEY.value(),
@@ -136,6 +138,14 @@ function getClient() {
       maxRetries: 0
     });
   return _client;
+}
+// 테스트 전용 — 실제 OpenAI를 두드리지 않고 editWithRetry/generateArt/
+// checkOpenAIReachable의 우리 쪽 로직(재시도, 파라미터 폴백, 캐싱)만 가짜
+// 클라이언트로 검증한다. Firestore 카운터 때(_setCounterImplForTesting)와
+// 같은 이유·같은 패턴 — 실비용 없이 로직만 검증하고, 실제 API 응답 형식이
+// 정말 이 가정과 같은지는 여전히 검증하지 못한다(구조적 한계, 인정하고 감).
+function _setClientForTesting(fake) {
+  _clientOverride = fake;
 }
 
 const app = express();
@@ -203,6 +213,12 @@ function buildPrompt({ genre, mode, title, tagline }) {
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
+// 테스트 전용 — editWithRetry의 재시도 로직 자체(횟수·조건)를 검증하려면
+// 재시도 간 실제 대기(최대 8초+)를 겪을 필요가 없다. 기본값은 진짜 sleep.
+let _sleepImpl = sleep;
+function _setSleepForTesting(fake) {
+  _sleepImpl = fake || sleep;
+}
 
 async function editWithRetry(params) {
   const maxRetries = 4;
@@ -215,7 +231,7 @@ async function editWithRetry(params) {
       if (retryable && attempt < maxRetries) {
         const waitMs = Math.min(1000 * 2 ** attempt, 8000) + Math.floor(Math.random() * 600);
         console.warn(`[retry] ${status} → ${waitMs}ms 후 재시도 (${attempt + 1}/${maxRetries})`);
-        await sleep(waitMs);
+        await _sleepImpl(waitMs);
         continue;
       }
       throw err;
@@ -262,6 +278,11 @@ async function generateArt(filePath, mimetype, prompt) {
    models.list()는 이미지 생성이 아닌 메타데이터 조회라 토큰/이미지 과금이 없다. */
 const OPENAI_HEALTH_CACHE_MS = 60_000;
 let openaiHealthCache = { reachable: null, checkedAt: 0 };
+// 테스트 전용 — 60초 캐시가 실제로 걸려있으면 테스트끼리 서로의 캐시 결과를
+// 보게 돼 격리가 깨진다. 각 캐싱 시나리오 테스트가 이걸로 캐시를 비우고 시작한다.
+function _resetOpenAIHealthCacheForTesting() {
+  openaiHealthCache = { reachable: null, checkedAt: 0 };
+}
 async function checkOpenAIReachable() {
   const now = Date.now();
   if (now - openaiHealthCache.checkedAt < OPENAI_HEALTH_CACHE_MS) {
@@ -451,7 +472,13 @@ export {
   rateLimit,
   checkPhotoGenerationLimit,
   PHOTO_GENERATION_LIMIT,
-  _setCounterImplForTesting
+  _setCounterImplForTesting,
+  editWithRetry,
+  generateArt,
+  checkOpenAIReachable,
+  _setClientForTesting,
+  _setSleepForTesting,
+  _resetOpenAIHealthCacheForTesting
 };
 
 export const posterStudio = onRequest(

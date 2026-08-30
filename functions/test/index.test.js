@@ -25,7 +25,13 @@ import {
   UPLOAD_DIR,
   mapGenerateError,
   RATE_LIMIT_MAX,
-  _setCounterImplForTesting
+  _setCounterImplForTesting,
+  editWithRetry,
+  generateArt,
+  checkOpenAIReachable,
+  _setClientForTesting,
+  _setSleepForTesting,
+  _resetOpenAIHealthCacheForTesting
 } from '../index.js';
 
 // 레이트리밋/사진별 생성한도는 이제 Firestore 트랜잭션으로 전역 강제되는데(5차
@@ -364,5 +370,155 @@ test('POST /generate: 올바른 토큰으로 사진 없는 요청을 10분 안�
     assert.equal(statuses[RATE_LIMIT_MAX], 429, '한도를 넘긴 마지막 요청은 레이트리밋에 걸려 429');
   } finally {
     server.close();
+  }
+});
+
+// ── editWithRetry/generateArt/checkOpenAIReachable: 가짜 OpenAI 클라이언트로 검증 ──
+// 실제 OpenAI를 호출하지 않는다(실비용 없음) — _setClientForTesting으로 갈아끼운
+// 가짜 클라이언트가 우리 쪽 재시도/폴백/캐싱 "로직"만 검증한다. 실제 OpenAI API가
+// 정말 이 가정과 같은 형식으로 응답하는지는 여전히 검증하지 못한다(구조적 한계).
+function makeFakeClient(editImpl, listImpl) {
+  return {
+    images: { edit: editImpl },
+    models: { list: listImpl || (async () => ({ data: [] })) }
+  };
+}
+
+test('editWithRetry: 첫 시도가 성공하면 그대로 반환한다', async () => {
+  let calls = 0;
+  _setClientForTesting(makeFakeClient(async () => { calls++; return { data: [{ b64_json: 'AAA' }] }; }));
+  try {
+    const result = await editWithRetry({});
+    assert.equal(calls, 1);
+    assert.equal(result.data[0].b64_json, 'AAA');
+  } finally {
+    _setClientForTesting(null);
+  }
+});
+
+test('editWithRetry: 429는 재시도해서 결국 성공하면 그 결과를 반환한다', async () => {
+  let calls = 0;
+  _setClientForTesting(
+    makeFakeClient(async () => {
+      calls++;
+      if (calls < 3) { const e = new Error('rate limited'); e.status = 429; throw e; }
+      return { data: [{ b64_json: 'OK' }] };
+    })
+  );
+  _setSleepForTesting(async () => {}); // 실제 대기(최대 8초+) 없이 재시도 로직만 검증
+  try {
+    const result = await editWithRetry({});
+    assert.equal(calls, 3, '2번 실패 후 3번째에 성공해야 한다');
+    assert.equal(result.data[0].b64_json, 'OK');
+  } finally {
+    _setClientForTesting(null);
+    _setSleepForTesting(null);
+  }
+});
+
+test('editWithRetry: 재시도 불가능한 오류(예: 400)는 즉시 던지고 재시도하지 않는다', async () => {
+  let calls = 0;
+  _setClientForTesting(
+    makeFakeClient(async () => {
+      calls++;
+      const e = new Error('bad request');
+      e.status = 400;
+      throw e;
+    })
+  );
+  try {
+    await assert.rejects(() => editWithRetry({}), /bad request/);
+    assert.equal(calls, 1, '재시도 불가능한 오류는 한 번만 호출돼야 한다');
+  } finally {
+    _setClientForTesting(null);
+  }
+});
+
+test('editWithRetry: 429가 재시도 한도(4회)를 넘기면 결국 그 오류를 던진다', async () => {
+  let calls = 0;
+  _setClientForTesting(
+    makeFakeClient(async () => {
+      calls++;
+      const e = new Error('always rate limited');
+      e.status = 429;
+      throw e;
+    })
+  );
+  _setSleepForTesting(async () => {});
+  try {
+    await assert.rejects(() => editWithRetry({}), /always rate limited/);
+    assert.equal(calls, 5, '최초 시도 1 + 재시도 4 = 5번 호출돼야 한다');
+  } finally {
+    _setClientForTesting(null);
+    _setSleepForTesting(null);
+  }
+});
+
+test('generateArt: input_fidelity가 거부되면(400) 그 파라미터 없이 재시도해서 성공한다', async () => {
+  const seenParams = [];
+  _setClientForTesting(
+    makeFakeClient(async (params) => {
+      seenParams.push(params);
+      if ('input_fidelity' in params) {
+        const e = new Error('Unknown parameter: input_fidelity');
+        e.status = 400;
+        throw e;
+      }
+      return { data: [{ b64_json: 'FALLBACK_OK' }] };
+    })
+  );
+  const filePath = makeTempFile(Buffer.from('fake-photo-bytes'));
+  try {
+    const images = await generateArt(filePath, 'image/png', 'a test prompt');
+    assert.deepEqual(images, ['data:image/png;base64,FALLBACK_OK']);
+    assert.ok(seenParams.length >= 2, '최소 2번(원래 시도 + 폴백) 호출돼야 한다');
+    assert.ok('input_fidelity' in seenParams[0], '첫 시도는 input_fidelity를 포함해야 한다');
+    assert.ok(!('input_fidelity' in seenParams[seenParams.length - 1]), '마지막 성공 시도는 input_fidelity가 빠져야 한다');
+  } finally {
+    _setClientForTesting(null);
+    fs.unlinkSync(filePath);
+  }
+});
+
+test('generateArt: 결과 이미지가 비어 있으면 에러를 던진다', async () => {
+  _setClientForTesting(makeFakeClient(async () => ({ data: [] })));
+  const filePath = makeTempFile(Buffer.from('fake-photo-bytes'));
+  try {
+    await assert.rejects(() => generateArt(filePath, 'image/png', 'prompt'), /비어 있습니다/);
+  } finally {
+    _setClientForTesting(null);
+    fs.unlinkSync(filePath);
+  }
+});
+
+test('checkOpenAIReachable: 성공하면 true, 이후 캐시 기간 안에는 다시 호출하지 않는다', async () => {
+  let calls = 0;
+  _setClientForTesting(makeFakeClient(null, async () => { calls++; return { data: [] }; }));
+  _resetOpenAIHealthCacheForTesting();
+  try {
+    const first = await checkOpenAIReachable();
+    const second = await checkOpenAIReachable();
+    assert.equal(first, true);
+    assert.equal(second, true);
+    assert.equal(calls, 1, '캐시 기간 안 두 번째 호출은 실제 models.list()를 다시 부르면 안 된다');
+  } finally {
+    _setClientForTesting(null);
+    _resetOpenAIHealthCacheForTesting();
+  }
+});
+
+test('checkOpenAIReachable: OpenAI 도달 실패면 false를 반환하고(부스 진행자 경고용) 그 결과도 캐싱한다', async () => {
+  let calls = 0;
+  _setClientForTesting(makeFakeClient(null, async () => { calls++; throw new Error('network down'); }));
+  _resetOpenAIHealthCacheForTesting();
+  try {
+    const first = await checkOpenAIReachable();
+    const second = await checkOpenAIReachable();
+    assert.equal(first, false);
+    assert.equal(second, false);
+    assert.equal(calls, 1, '실패 결과도 캐싱되어 두 번째 호출에서 다시 부르면 안 된다');
+  } finally {
+    _setClientForTesting(null);
+    _resetOpenAIHealthCacheForTesting();
   }
 });
