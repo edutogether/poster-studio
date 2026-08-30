@@ -1,5 +1,5 @@
 import { onRequest } from 'firebase-functions/v2/https';
-import { onSchedule } from 'firebase-functions/v2/scheduler';
+// import { onSchedule } from 'firebase-functions/v2/scheduler'; // keepWarm 배포 대기 중(아래 참고) — 같이 주석 처리
 import { defineSecret } from 'firebase-functions/params';
 import express from 'express';
 import Busboy from 'busboy';
@@ -483,22 +483,30 @@ export const posterStudio = onRequest(
    URL은 posterStudio 함수 URL과 같은 프로젝트/리전이어야 한다 — 프로젝트 이전 시
    ALLOWED_ORIGINS·API_BASE와 함께 반드시 같이 고칠 것(RUNBOOK.md 참고).
 
-   2026-08-30: 배포 시도 초기엔 cloudscheduler.googleapis.com 미활성화로 CI 서비스
-   계정 권한 부족(Firestore API를 처음 켤 때와 같은 패턴)에 막혀 export를 임시로
-   꺼뒀었다. 대표가 GCP 콘솔에서 API를 활성화 완료(Status: Enabled 확인)해 다시 켬. */
-export const keepWarm = onSchedule(
-  {
-    region: 'asia-northeast3',
-    timeoutSeconds: 30,
-    schedule: '*/5 9-17 14 11 *',
-    timeZone: 'Asia/Seoul'
-  },
-  async () => {
-    try {
-      const res = await fetch('https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/health');
-      console.log('[keepWarm] ping', res.status);
-    } catch (err) {
-      console.warn('[keepWarm] ping 실패:', err?.message || err);
-    }
-  }
-);
+   2026-08-30: 1차 시도는 cloudscheduler.googleapis.com 미활성화로 막혔었고(대표가
+   콘솔에서 활성화 완료), 2차 시도에서는 API는 통과했지만 실제 스케줄러 "작업(job)"
+   생성/갱신에 필요한 IAM 권한이 CI 배포 계정에 없어서 다시 막힘:
+     Request ... jobs/firebase-schedule-keepWarm-asia-northeast3 ...
+     lacks IAM permission "cloudscheduler.jobs.update"
+   Secret Manager 때(secretAccessor만으로는 부족, viewer도 필요했던 것)와 같은
+   패턴 — API 활성화와 그 API 리소스를 실제로 만들 IAM 역할은 별개다.
+   github-actions-deploy@inky-poster-studio.iam.gserviceaccount.com 계정에
+   roles/cloudscheduler.admin(또는 최소 cloudscheduler.jobs.* 포함 역할)을
+   프로젝트 레벨로 추가해야 한다 — 이것도 이 세션 권한 밖(IAM 역할 부여)이라
+   export를 다시 꺼둔다. posterStudio 본체는 이 실패와 무관하게 정상 배포됨. */
+// export const keepWarm = onSchedule(
+//   {
+//     region: 'asia-northeast3',
+//     timeoutSeconds: 30,
+//     schedule: '*/5 9-17 14 11 *',
+//     timeZone: 'Asia/Seoul'
+//   },
+//   async () => {
+//     try {
+//       const res = await fetch('https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/health');
+//       console.log('[keepWarm] ping', res.status);
+//     } catch (err) {
+//       console.warn('[keepWarm] ping 실패:', err?.message || err);
+//     }
+//   }
+// );
