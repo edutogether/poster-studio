@@ -55,3 +55,6 @@ import './print.js';
   pctx.font="900 56px 'Black Han Sans', sans-serif"; pctx.fillText('AI 영화 포스터', W/2, 880);
   pctx.fillStyle='#aeb7d0'; pctx.font="500 30px sans-serif"; pctx.fillText('촬영 후 이곳에 4가지 버전이 표시됩니다', W/2, 950);
 })();
+
+// 첫 의미있는 화면(플레이스홀더 포스터)이 그려졌으니 부트 스플래시를 내린다(index.html 참고).
+window.__posterStudioHideBootSplash?.();

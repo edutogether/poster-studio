@@ -15,6 +15,39 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- 부트 스플래시. 스타일을 인라인으로 적는 이유: 외부 스타일시트가 도착해
+       화면이 처음 그려지는 그 순간, 이미 완성된 브랜드 화면이 보이게 하려는
+       것이다. 배경은 앱과 같은 --navy(#0b1020)라 앱으로 넘어갈 때 색이 안 튄다.
+       app.js가 초기 플레이스홀더 포스터를 그리고 나면(첫 의미있는 화면) 페이드아웃한다. -->
+  <div id="bootSplash" style="position:fixed;inset:0;z-index:9999;display:grid;place-items:center;align-content:center;gap:26px;background:radial-gradient(1200px 600px at 80% -10%, rgba(233,185,73,.14), transparent 60%),radial-gradient(900px 500px at -10% 110%, rgba(80,120,255,.12), transparent 55%),#0b1020;transition:opacity .45s ease">
+    <span style="display:grid;place-items:center;width:88px;height:88px;padding:10px;border-radius:26px;background:linear-gradient(155deg,#fff 12%,#fbf3e0 56%,#f6d27a 100%);box-shadow:0 2px 10px rgba(0,0,0,.35), inset 0 1px rgba(255,255,255,.9), 0 0 34px rgba(233,185,73,.28);font-size:44px">
+      🎬
+    </span>
+    <span style="display:grid;justify-items:center;gap:10px;text-align:center">
+      <span style="color:#e9b949;font-size:15px;font-weight:800;letter-spacing:.46em;padding-left:.46em">POSTER STUDIO</span>
+      <span style="color:#f4f6fb;font-size:24px;font-weight:850;letter-spacing:-.02em">사진 한 장, 내가 영화의 주인공이 된다</span>
+    </span>
+    <span style="display:block;width:190px;height:3px;border-radius:99px;background:rgba(233,185,73,.20);overflow:hidden">
+      <span style="display:block;width:40%;height:100%;border-radius:99px;background:linear-gradient(90deg,#e9b949,#f6d27a);animation:poster-studio-boot-bar 1.15s ease-in-out infinite"></span>
+    </span>
+    <style>@keyframes poster-studio-boot-bar{0%{margin-left:-40%}100%{margin-left:100%}}</style>
+  </div>
+  <script>
+    (function () {
+      var el = document.getElementById("bootSplash");
+      var done = false;
+      function hide() {
+        if (done) return;
+        done = true;
+        el.style.opacity = "0";
+        el.style.pointerEvents = "none";
+        window.setTimeout(function () { el.style.display = "none"; }, 470);
+      }
+      window.__posterStudioHideBootSplash = hide;
+      // 부팅이 실패해도 사용자가 스플래시 뒤에 영영 갇히는 일은 없게 한다.
+      window.setTimeout(hide, 5000);
+    })();
+  </script>
   <header class="topbar">
     <div class="brand">
       <span class="reel">🎬</span>
