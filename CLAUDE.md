@@ -309,7 +309,7 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 - `generateArt`: `input_fidelity` 파라미터 거부(400) 시 그 파라미터 없이 재시도해서 성공, 결과 이미지가 비어있으면 에러.
 - `checkOpenAIReachable`: 성공/실패 각각의 60초 캐싱 동작(재호출 시 실제로 다시 안 부르는지).
 실제 OpenAI 호출은 여전히 0건(무비용 원칙 유지). **한계는 예상대로 남음**: "우리 로직이 맞다"만 검증되고 실제 API 응답 형식과 정말 같은지는 구조적으로 검증 불가 — 이게 대표가 4번을 3번과 다르게 유지시킨 바로 그 이유라 95→98로만 개선(완전한 100은 애초에 이 항목의 정의상 불가능).
-**부수 발견(중요, CI에 영향)**: 이 커밋을 push하자 CI가 `keepWarm` 배포에서 또 실패했는데, 조사해보니 **일회성이 아니라 구조적으로 재발하는 문제**였다 — CI는 매번 새 체크아웃이라 배포 상태 캐시가 없어 매번 "변경 있음"으로 판단해 Cloud Scheduler 작업 갱신을 시도하고, 그때마다 `github-actions-deploy` 계정에 `cloudscheduler.jobs.update` 권한이 없어 403이 난다(로컬 배포는 이전 상태를 캐시해두고 있어 "변경 없음"으로 스킵되기 때문에 안 걸림). **`keepWarm`이 존재하는 한 앞으로 모든 functions/ CI 배포가 이 이유로 계속 실패한다** — 팀장 세션에 `github-actions-deploy@inky-poster-studio.iam.gserviceaccount.com`에 `roles/cloudscheduler.admin` 프로젝트 레벨 부여를 요청해뒀다(대표 콘솔 작업, 이 세션 권한 밖). 그 사이 이 세션이 로컬(소유자급 계정)로 동기화 배포해 프로덕션은 정상(`/health` 200, `posterStudio`·`keepWarm` 둘 다 정상 조회) — 4번 테스트 코드 자체는 이미 라이브에 반영됨.
+**부수 발견(중요, CI에 영향) — 완전히 해결됨.** 이 커밋을 push하자 CI가 `keepWarm` 배포에서 또 실패했는데, 조사해보니 **일회성이 아니라 구조적으로 재발하는 문제**였다 — CI는 매번 새 체크아웃이라 배포 상태 캐시가 없어 매번 "변경 있음"으로 판단해 Cloud Scheduler 작업 갱신을 시도하고, 그때마다 `github-actions-deploy` 계정에 `cloudscheduler.jobs.update` 권한이 없어 403이 난다(로컬 배포는 이전 상태를 캐시해두고 있어 "변경 없음"으로 스킵되기 때문에 안 걸림). 대표가 `github-actions-deploy@inky-poster-studio.iam.gserviceaccount.com`에 `roles/cloudscheduler.admin`을 프로젝트 레벨로 추가 — 검증을 위해 `keepWarm`의 스케줄을 실제로 바꾸는 커밋(09:00~17:55 → 09:00~18:55, 행사 종료 후 정리시간 버퍼 추가라는 실제 의미도 있는 변경)을 push해서 CI가 이번엔 스케줄러 작업 갱신까지 정상 처리하는 것을 로그로 직접 확인함(`Skipped`가 아니라 실제 업데이트 성공). 이제 `keepWarm` 관련 CI 배포 문제는 완전히 종결.
 
 **최종 평균 99.8** — 위 표(2·3·7·10번 100점 정정 + 4번 98점) 참고.
 

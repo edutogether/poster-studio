@@ -512,23 +512,18 @@ export const posterStudio = onRequest(
 
    2026-08-30: 1차 시도는 cloudscheduler.googleapis.com 미활성화로 막혔었고(대표가
    콘솔에서 활성화 완료), 2차 시도에서는 API는 통과했지만 실제 스케줄러 "작업(job)"
-   생성/갱신에 필요한 IAM 권한이 CI 배포 계정에 없어서 다시 막힘:
-     Request ... jobs/firebase-schedule-keepWarm-asia-northeast3 ...
-     lacks IAM permission "cloudscheduler.jobs.update"
-   Secret Manager 때(secretAccessor만으로는 부족, viewer도 필요했던 것)와 같은
-   패턴 — API 활성화와 그 API 리소스를 실제로 만들 IAM 역할은 별개다.
-   github-actions-deploy@inky-poster-studio.iam.gserviceaccount.com 계정(CI 전용
-   서비스계정)엔 이 권한이 없지만, 이 저장소를 원래 관리해온 계정(edutogether2015@gmail.com,
-   Firestore DB 생성 등에도 써온 계정)으로 로컬에서 직접 배포하면 소유자급 권한이라
-   문제없이 배포된다 — 2026-08-30 이렇게 1회성으로 로컬 배포해 스케줄러 작업까지
-   정상 생성됨을 확인함. CI(GitHub Actions) 쪽은 여전히 이 권한이 없으므로, 다음에
-   keepWarm의 스케줄/설정을 다시 바꿔 재배포해야 할 때는 로컬에서 하거나
-   github-actions-deploy 계정에 roles/cloudscheduler.admin을 추가해야 한다. */
+   생성/갱신에 필요한 IAM 권한이 CI 배포 계정에 없어서 다시 막혔었다(Secret Manager
+   때 secretAccessor만으론 부족, viewer도 필요했던 것과 같은 패턴 — API 활성화와
+   그 API 리소스를 실제로 만들 IAM 역할은 별개). 대표가
+   github-actions-deploy@inky-poster-studio.iam.gserviceaccount.com에
+   roles/cloudscheduler.admin을 프로젝트 레벨로 추가해 해결 — 아래 스케줄을
+   09:00~18:55(기존 17:55에서 +1시간, 행사 종료 후 정리시간 버퍼)로 조정해
+   CI가 실제로 스케줄러 작업 갱신까지 정상 처리하는지 검증한다. */
 export const keepWarm = onSchedule(
   {
     region: 'asia-northeast3',
     timeoutSeconds: 30,
-    schedule: '*/5 9-17 14 11 *',
+    schedule: '*/5 9-18 14 11 *',
     timeZone: 'Asia/Seoul'
   },
   async () => {
