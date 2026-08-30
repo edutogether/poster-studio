@@ -11,6 +11,7 @@
      camera.js    — 웹캠 촬영(import만으로 버튼 핸들러가 등록됨)
      api.js       — 메타데이터 수집, AI 생성 요청, 갤러리 빌드(위와 동일)
      print.js     — PNG 저장/인쇄(위와 동일)
+     favicon.js   — 📷 이모지 파비콘 + 탭 비활성 시 흑백 전환(위와 동일)
    이전(2026-08-30 1차 분리)엔 classic <script> 6개가 하나의 전역 스코프를
    공유해서 재할당 가능한 상태(capturedBlob 등)를 그냥 top-level let으로
    뒀는데, ES모듈의 import 바인딩은 읽기전용 라이브뷰라 다른 모듈이 직접
@@ -24,6 +25,7 @@ import { W, H } from './constants.js';
 import './camera.js';
 import './api.js';
 import './print.js';
+import './favicon.js';
 
 /* AI 서버(Firebase Functions) 연결 상태를 미리 확인한다.
    촬영·정보입력을 다 마친 뒤에야 실패를 알게 되는 것보다, 부스 진행자가
