@@ -7,6 +7,7 @@
     "lint": "eslint ."
   },
   "devDependencies": {
+    "@napi-rs/canvas": "^1.0.8",
     "eslint": "^10.9.1"
   }
 }

@@ -110,7 +110,12 @@ class FakeFormData {
 
 /* app.js 소스를 읽어 최소 가짜 DOM 환경에서 실행하고, top-level function 선언들이
    담긴 샌드박스(전역 객체 역할)를 돌려준다. */
-export function loadApp() {
+export function loadApp({ createRealCanvas } = {}) {
+  // createRealCanvas: templates-canvas.test.js가 @napi-rs/canvas의 createCanvas를
+  // 넘겨준다 — grain()이 document.createElement('canvas')로 만드는 오프스크린
+  // 캔버스(그레인 패턴용)가 진짜 캔버스 ctx와 같은 구현체(realm)여야
+  // createPattern()이 받아준다(가짜 캔버스 객체는 타입 검사에서 거부됨).
+  // 기존 FakeCtx 기반 테스트는 이 옵션을 안 넘기므로 동작 그대로.
   const elements = new Map();
   const document = {
     getElementById(id) {
@@ -120,7 +125,8 @@ export function loadApp() {
       return elements.get(id);
     },
     createElement(tag) {
-      return tag === 'canvas' ? makeCanvasElement() : makeElement();
+      if (tag !== 'canvas') return makeElement();
+      return createRealCanvas ? createRealCanvas(1, 1) : makeCanvasElement();
     },
     fonts: { load: async () => {}, ready: Promise.resolve() },
     addEventListener() {},
