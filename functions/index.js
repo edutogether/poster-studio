@@ -1,5 +1,5 @@
 import { onRequest } from 'firebase-functions/v2/https';
-import { onSchedule } from 'firebase-functions/v2/scheduler';
+// import { onSchedule } from 'firebase-functions/v2/scheduler'; // keepWarm 배포 대기 중(아래 참고) — 같이 주석 처리
 import { defineSecret } from 'firebase-functions/params';
 import express from 'express';
 import Busboy from 'busboy';
@@ -481,20 +481,26 @@ export const posterStudio = onRequest(
    어긋나므로, 행사 당일(2026-11-14) 시간대에만 동작하도록 cron을 제한했다 — 평상시엔
    완전히 비활성.
    URL은 posterStudio 함수 URL과 같은 프로젝트/리전이어야 한다 — 프로젝트 이전 시
-   ALLOWED_ORIGINS·API_BASE와 함께 반드시 같이 고칠 것(RUNBOOK.md 참고). */
-export const keepWarm = onSchedule(
-  {
-    region: 'asia-northeast3',
-    timeoutSeconds: 30,
-    schedule: '*/5 9-17 14 11 *',
-    timeZone: 'Asia/Seoul'
-  },
-  async () => {
-    try {
-      const res = await fetch('https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/health');
-      console.log('[keepWarm] ping', res.status);
-    } catch (err) {
-      console.warn('[keepWarm] ping 실패:', err?.message || err);
-    }
-  }
-);
+   ALLOWED_ORIGINS·API_BASE와 함께 반드시 같이 고칠 것(RUNBOOK.md 참고).
+
+   2026-08-30: export를 임시로 꺼둔 상태 — firebase-tools가 배포 시 이 함수를 보고
+   cloudscheduler.googleapis.com을 자동으로 켜려다 CI 서비스 계정 권한 부족으로
+   deploy-functions 전체가 실패했다(Firestore API를 처음 켤 때와 같은 패턴).
+   대표가 아래 링크에서 API를 켜주면 export 주석을 풀고 재배포할 것:
+   https://console.cloud.google.com/apis/library/cloudscheduler.googleapis.com?project=652638343764 */
+// export const keepWarm = onSchedule(
+//   {
+//     region: 'asia-northeast3',
+//     timeoutSeconds: 30,
+//     schedule: '*/5 9-17 14 11 *',
+//     timeZone: 'Asia/Seoul'
+//   },
+//   async () => {
+//     try {
+//       const res = await fetch('https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/health');
+//       console.log('[keepWarm] ping', res.status);
+//     } catch (err) {
+//       console.warn('[keepWarm] ping 실패:', err?.message || err);
+//     }
+//   }
+// );
