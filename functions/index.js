@@ -1,4 +1,5 @@
 import { onRequest } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret } from 'firebase-functions/params';
 import express from 'express';
 import Busboy from 'busboy';
@@ -469,4 +470,31 @@ export const posterStudio = onRequest(
     cors: ALLOWED_ORIGINS
   },
   app
+);
+
+/* 5차 감사 후속조치(2026-08-30, 대표 승인) — 콜드스타트 완화. minInstances 상시유지는
+   월 $71~93로 대표가 명확히 거부했으나("저 돈을 왜 낭비함"), Cloud Scheduler로 몇 분
+   간격 핑을 보내 인스턴스를 미리 데워두는 방식은 스케줄러 자체가 사실상 무료다
+   (완전한 0→1 콜드스타트 보장은 아니고, 이미 떠있는데 갑자기 몰리는 1→N 스케일업
+   콜드스타트는 못 막는다 — 노트북 대수가 적어 영향은 제한적).
+   상시 24시간 켜두면 그만큼 인스턴스를 계속 깨워두는 셈이라 minInstances 거부 취지와
+   어긋나므로, 행사 당일(2026-11-14) 시간대에만 동작하도록 cron을 제한했다 — 평상시엔
+   완전히 비활성.
+   URL은 posterStudio 함수 URL과 같은 프로젝트/리전이어야 한다 — 프로젝트 이전 시
+   ALLOWED_ORIGINS·API_BASE와 함께 반드시 같이 고칠 것(RUNBOOK.md 참고). */
+export const keepWarm = onSchedule(
+  {
+    region: 'asia-northeast3',
+    timeoutSeconds: 30,
+    schedule: '*/5 9-17 14 11 *',
+    timeZone: 'Asia/Seoul'
+  },
+  async () => {
+    try {
+      const res = await fetch('https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/health');
+      console.log('[keepWarm] ping', res.status);
+    } catch (err) {
+      console.warn('[keepWarm] ping 실패:', err?.message || err);
+    }
+  }
 );
