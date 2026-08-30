@@ -117,14 +117,9 @@
     </section>
   </main>
 
-  <!-- 로드 순서가 곧 실행 순서 — app.js가 다른 모든 파일이 쓰는 공유 상수/DOM
-       참조/상태변수를 정의하므로 항상 첫 번째. 그 뒤 순서는 논리적 흐름일 뿐
-       엄격한 제약은 아님(각 파일의 핸들러 등록은 클릭 시점에야 실행되므로). -->
-  <script src="app.js"></script>
-  <script src="layout.js"></script>
-  <script src="templates.js"></script>
-  <script src="camera.js"></script>
-  <script src="api.js"></script>
-  <script src="print.js"></script>
+  <!-- ES모듈 전환(2026-08-30) — app.js 하나만 로드하면 나머지는 import 그래프로
+       자동 로드된다. 로드 순서는 이제 <script> 태그 순서가 아니라 import 의존관계가
+       결정한다(브라우저가 알아서 처리). -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>

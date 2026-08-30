@@ -1,19 +1,19 @@
-// public/app.js는 모듈이 아니라 <script src> 로만 로드되는 평범한 브라우저 스크립트다.
-// export가 없으므로, 실제 브라우저 API 없이 Node에서 그대로 실행해 top-level
-// function 선언(hoist되어 전역 객체 속성이 됨)들을 꺼내 쓰기 위한 최소한의 가짜
-// document/window/canvas 환경을 vm 샌드박스로 만든다. 외부 패키지(jsdom, canvas 등)
-// 없이 zero-dependency로 유지한다 — canvas 네이티브 바이너리는 이 환경(Windows,
-// Visual C++ 빌드툴 없음)에서 설치가 안 됐고, 텍스트 레이아웃 "계산" 로직 검증에는
-// 실제 폰트 렌더링이 필요 없다(measureText를 텍스트 길이 비례로 흉내내는 것으로 충분).
+// ES모듈 전환(2026-08-30) 이후의 테스트 하네스. public/*.js는 이제 진짜
+// import/export를 쓰는 ES모듈이라 예전처럼 여러 <script> 파일을 순서대로
+// 한 vm 컨텍스트에 실행해 전역을 공유시키는 방식이 안 통한다 — 대신 Node의
+// vm.SourceTextModule(--experimental-vm-modules)로 실제 모듈 그래프를
+// 링크·평가한다. 여전히 외부 패키지(jsdom 등) 없이 zero-dependency 유지.
+// state.js가 내보내는 state 객체는 모듈 그래프 전체가 같은 참조를 공유하므로
+// (실제 브라우저의 ES모듈과 동일한 라이브 바인딩 성질), 이 객체 하나만 있으면
+// __eval 같은 우회 없이도 캡처된 사진·재생성 횟수 등을 테스트에서 그대로
+// 읽고 쓸 수 있다.
 import vm from 'node:vm';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// index.html의 <script> 로드 순서와 정확히 일치해야 한다 — app.js가 나머지
-// 전부가 쓰는 공유 상수/DOM 참조/상태변수를 정의하므로 항상 먼저 실행돼야 함.
-const APP_FILES = ['app.js', 'layout.js', 'templates.js', 'camera.js', 'api.js', 'print.js'];
+const APP_DIR = path.join(__dirname, '..');
 
 /* measureText가 "글자 수 × 현재 폰트 크기 비례"로 너비를 흉내낸다 — 실제 폰트와
    글자 폭은 다르지만, "폰트를 줄이면 measureText 너비도 줄어든다"는 setFitFont/
@@ -108,19 +108,26 @@ class FakeFormData {
   append(name, value) { this._entries.push([name, value]); }
 }
 
-/* app.js 소스를 읽어 최소 가짜 DOM 환경에서 실행하고, top-level function 선언들이
-   담긴 샌드박스(전역 객체 역할)를 돌려준다. */
-export function loadApp({ createRealCanvas } = {}) {
-  // createRealCanvas: templates-canvas.test.js가 @napi-rs/canvas의 createCanvas를
-  // 넘겨준다 — grain()이 document.createElement('canvas')로 만드는 오프스크린
-  // 캔버스(그레인 패턴용)가 진짜 캔버스 ctx와 같은 구현체(realm)여야
-  // createPattern()이 받아준다(가짜 캔버스 객체는 타입 검사에서 거부됨).
-  // 기존 FakeCtx 기반 테스트는 이 옵션을 안 넘기므로 동작 그대로.
+/* public/*.js 소스를 읽어 최소 가짜 DOM 환경(vm 컨텍스트)에서 실제 ES모듈
+   그래프로 링크·평가하고, 모든 모듈의 export를 하나의 평평한 객체로 합쳐
+   돌려준다(app.TEMPLATES, app.state, app.getMeta 처럼 접근). loadApp()을
+   호출할 때마다 새 vm 컨텍스트 + 새 모듈 인스턴스를 만들어(모듈 캐시를
+   호출마다 새로 시작) 테스트 간 상태가 절대 새지 않게 한다.
+   createRealCanvas: templates-canvas.test.js가 @napi-rs/canvas의 createCanvas를
+   넘겨준다 — grain()이 만드는 오프스크린 캔버스가 진짜 캔버스 ctx와 같은
+   구현체(realm)여야 createPattern()이 받아준다(가짜 캔버스 객체는 타입
+   검사에서 거부됨). */
+export async function loadApp({ createRealCanvas } = {}) {
   const elements = new Map();
   const document = {
     getElementById(id) {
       if (!elements.has(id)) {
-        elements.set(id, id === 'posterCanvas' ? makeCanvasElement() : makeElement());
+        elements.set(
+          id,
+          id === 'posterCanvas'
+            ? (createRealCanvas ? createRealCanvas(1200, 1800) : makeCanvasElement())
+            : makeElement()
+        );
       }
       return elements.get(id);
     },
@@ -155,14 +162,28 @@ export function loadApp({ createRealCanvas } = {}) {
   sandbox.globalThis = sandbox;
 
   const context = vm.createContext(sandbox);
-  for (const filename of APP_FILES) {
-    const code = fs.readFileSync(path.join(__dirname, '..', filename), 'utf8');
-    vm.runInContext(code, context, { filename });
+  const moduleCache = new Map(); // 이 loadApp() 호출 전용 — 매번 새로 시작해 테스트 격리 보장
+
+  async function loadModule(filePath) {
+    if (moduleCache.has(filePath)) return moduleCache.get(filePath);
+    const src = fs.readFileSync(filePath, 'utf8');
+    const mod = new vm.SourceTextModule(src, { identifier: filePath, context });
+    moduleCache.set(filePath, mod);
+    await mod.link(async (specifier) => loadModule(path.join(path.dirname(filePath), specifier)));
+    await mod.evaluate();
+    return mod;
   }
-  // app.js의 let/const top-level 바인딩(예: capturedBlob, genCount)은 함수 선언과
-  // 달리 sandbox 객체의 속성이 되지 않는다 — 같은 vm 컨텍스트에서 추가 코드를
-  // 실행하면 그 렉시컬 스코프를 그대로 공유하므로, 이 방법으로만 읽고 쓸 수 있다.
-  sandbox.__eval = (src) => vm.runInContext(src, context);
+
+  await loadModule(path.join(APP_DIR, 'app.js'));
+
+  // 모든 모듈의 export를 sandbox 위에 얹는다 — sandbox 자체를 반환해서
+  // (복사본이 아니라) app.fetch = fn 같은 테스트 쪽 오버라이드가 실제 vm
+  // 컨텍스트의 전역을 그대로 바꾸도록 한다(기존 하네스와 동일한 성질).
+  for (const mod of moduleCache.values()) {
+    for (const key of Object.keys(mod.namespace)) {
+      if (!(key in sandbox)) sandbox[key] = mod.namespace[key];
+    }
+  }
   return sandbox;
 }
 

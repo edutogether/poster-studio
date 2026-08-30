@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadApp, FakeCtx } from './load-app.js';
 
-const app = loadApp();
+const app = await loadApp();
 
 // ── setFitFont: 텍스트가 maxW를 넘으면 폰트를 줄여 잘림을 막는다 ──
 test('setFitFont: maxW 안에 들어가는 짧은 텍스트는 원래 크기 그대로 유지한다', () => {

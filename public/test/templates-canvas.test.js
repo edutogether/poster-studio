@@ -20,11 +20,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 GlobalFonts.registerFromPath(path.join(__dirname, '..', 'fonts', 'Pretendard-Bold.woff2'), 'Pretendard');
 GlobalFonts.registerFromPath(path.join(__dirname, '..', 'fonts', 'Pretendard-Black.woff2'), 'Pretendard');
 
-const app = loadApp({ createRealCanvas: createCanvas });
-// W/H는 app.js에 const로 선언돼 있어(함수 선언과 달리) sandbox 객체 속성이 되지
-// 않는다 — load-app.js의 __eval 이스케이프해치로 같은 렉시컬 스코프에서 읽는다.
-const W = app.__eval('W');
-const H = app.__eval('H');
+const app = await loadApp({ createRealCanvas: createCanvas });
+const { W, H } = app;
 const GENRE_STUB = { font: "'Pretendard'", accent: '#ffd23f', taglines: ['테스트 문구'] };
 
 function makeFakeArt() {

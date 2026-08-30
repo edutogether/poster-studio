@@ -11,7 +11,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadApp, FakeCtx } from './load-app.js';
 
-const app = loadApp();
+const app = await loadApp();
 const FAKE_ART = { width: 1024, height: 1536 };
 
 const GENRE_STUB = { font: "'Black Han Sans'", accent: '#ffd23f', taglines: ['테스트 문구'] };

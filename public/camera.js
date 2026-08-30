@@ -1,11 +1,14 @@
 /* ────────────────────────────────────────────────────────────────────
-   웹캠 촬영. app.js 분리 작업(2026-08-30)으로 이 파일로 이동됨 —
-   로직 변경 없음.
+   웹캠 촬영. app.js 분리 작업(2026-08-30)으로 이 파일로 이동, 이어서
+   ES모듈 전환(2026-08-30) — 로직 변경 없음.
    ──────────────────────────────────────────────────────────────────── */
+import { $ } from './constants.js';
+import { video, snapshot, setStatus } from './dom.js';
+import { state } from './state.js';
 
-async function startCamera(){
-  stream = await navigator.mediaDevices.getUserMedia({ video:{ width:1280, height:960, facingMode:'user' }, audio:false });
-  video.srcObject = stream;
+export async function startCamera(){
+  state.stream = await navigator.mediaDevices.getUserMedia({ video:{ width:1280, height:960, facingMode:'user' }, audio:false });
+  video.srcObject = state.stream;
   video.classList.remove('hidden'); snapshot.classList.add('hidden');
   $('camHint').classList.add('hidden');
   setStatus('카메라 준비 완료. ‘3·2·1 촬영’을 누르세요.');
@@ -14,7 +17,7 @@ $('startBtn').onclick = async () => { try{ await startCamera(); }catch(e){ setSt
 
 let snapshotURL = null; // 미리보기 Blob URL(누수 방지용 추적)
 $('shotBtn').onclick = async () => {
-  if(!stream){ try{ await startCamera(); }catch(e){ setStatus('카메라 권한을 허용해 주세요.'); return; } }
+  if(!state.stream){ try{ await startCamera(); }catch(e){ setStatus('카메라 권한을 허용해 주세요.'); return; } }
   const cd = $('countdown'); cd.classList.remove('hidden');
   for(let i=3;i>0;i--){ cd.textContent=i; await new Promise(r=>setTimeout(r,800)); }
   cd.textContent='📸'; await new Promise(r=>setTimeout(r,250)); cd.classList.add('hidden');
@@ -29,26 +32,26 @@ $('shotBtn').onclick = async () => {
   c.drawImage(video,0,0,cap.width,cap.height);
   cap.toBlob(blob => {
     if(!blob){ setStatus('촬영에 실패했어요. 다시 시도해 주세요.'); return; }
-    capturedBlob = blob;
+    state.capturedBlob = blob;
     if(snapshotURL) URL.revokeObjectURL(snapshotURL);  // 이전 미리보기 메모리 해제(장시간 운영 대비)
     snapshotURL = URL.createObjectURL(blob);
     snapshot.src = snapshotURL;
     snapshot.classList.remove('hidden'); video.classList.add('hidden');
     setStatus('촬영 완료! 정보를 입력하고 ‘AI 포스터 만들기’를 누르세요.');
-    genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
+    state.genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
   }, 'image/jpeg', 0.85);
 };
 $('retakeBtn').onclick = () => {
-  capturedBlob = null; snapshot.classList.add('hidden');
+  state.capturedBlob = null; snapshot.classList.add('hidden');
   video.classList.remove('hidden'); setStatus('다시 촬영할 수 있습니다.');
-  $('fallbackBtn').classList.add('hidden'); pendingMeta = null;
-  genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
+  $('fallbackBtn').classList.add('hidden'); state.pendingMeta = null;
+  state.genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
 };
 
 /* ── 개인/단체 토글 ── */
 $('modeSeg').querySelectorAll('.seg-btn').forEach(b => b.onclick = () => {
-  currentMode = b.dataset.mode;
+  state.currentMode = b.dataset.mode;
   $('modeSeg').querySelectorAll('.seg-btn').forEach(x=>x.classList.toggle('active', x===b));
-  $('soloFields').classList.toggle('hidden', currentMode!=='solo');
-  $('groupFields').classList.toggle('hidden', currentMode!=='group');
+  $('soloFields').classList.toggle('hidden', state.currentMode!=='solo');
+  $('groupFields').classList.toggle('hidden', state.currentMode!=='group');
 });

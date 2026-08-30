@@ -1,17 +1,19 @@
-/* exported TEMPLATES */
 /* ────────────────────────────────────────────────────────────────────
    포스터 4종 템플릿 — 크레딧 문구 조립 + TEMPLATES 렌더 함수.
    layout.js의 그리기 도구를 사용한다. app.js 분리 작업(2026-08-30)으로
-   이 파일로 이동됨 — 로직 변경 없음.
+   이 파일로 이동, 이어서 ES모듈 전환(2026-08-30) — 로직 변경 없음.
    ──────────────────────────────────────────────────────────────────── */
+import { FEST, DATE, VENUE, EN, W, H } from './constants.js';
+import { coverDraw, vignette, grain, setLS, setFitFont, drawTitle, layoutTitle, roundRect, drawOrgLogo } from './layout.js';
 
-function creditMain(m){ return m.mode==='group' ? m.groupName : `주연 · 감독   ${m.name}`; }
-function creditSub(m){ return (m.mode==='group' && m.members) ? `출연  ${m.members}` : ''; }
+// 테스트(public/test/layout.test.js)가 크레딧 문구 조립 로직을 직접 검증할 수
+// 있도록 export한다 — TEMPLATES 내부에서만 쓰이던 원래 로직/동작은 그대로.
+export function creditMain(m){ return m.mode==='group' ? m.groupName : `주연 · 감독   ${m.name}`; }
+export function creditSub(m){ return (m.mode==='group' && m.members) ? `출연  ${m.members}` : ''; }
 
-/* var(const 아님) — 테스트(public/test/load-app.js)가 vm 샌드박스에서 이 값을
-   꺼내 4가지 템플릿의 render()를 직접 호출해 검증할 수 있게 하기 위함.
-   런타임 동작은 const와 동일(재할당 없음). */
-var TEMPLATES = [
+/* ES모듈 전환 전엔 vm 테스트 하네스가 이 값을 꺼내야 해서 var를 썼는데,
+   이제 진짜 export이므로 다시 const로 되돌렸다(동작 동일). */
+export const TEMPLATES = [
   /* 1) 클래식 시네마 */
   { label:'클래식', render(ctx,art,m,g){
     ctx.fillStyle='#05070f'; ctx.fillRect(0,0,W,H);
