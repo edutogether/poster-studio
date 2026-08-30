@@ -1,5 +1,5 @@
 import { onRequest } from 'firebase-functions/v2/https';
-// import { onSchedule } from 'firebase-functions/v2/scheduler'; // keepWarm 배포 대기 중(아래 참고) — 같이 주석 처리
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret } from 'firebase-functions/params';
 import express from 'express';
 import Busboy from 'busboy';
@@ -490,23 +490,26 @@ export const posterStudio = onRequest(
      lacks IAM permission "cloudscheduler.jobs.update"
    Secret Manager 때(secretAccessor만으로는 부족, viewer도 필요했던 것)와 같은
    패턴 — API 활성화와 그 API 리소스를 실제로 만들 IAM 역할은 별개다.
-   github-actions-deploy@inky-poster-studio.iam.gserviceaccount.com 계정에
-   roles/cloudscheduler.admin(또는 최소 cloudscheduler.jobs.* 포함 역할)을
-   프로젝트 레벨로 추가해야 한다 — 이것도 이 세션 권한 밖(IAM 역할 부여)이라
-   export를 다시 꺼둔다. posterStudio 본체는 이 실패와 무관하게 정상 배포됨. */
-// export const keepWarm = onSchedule(
-//   {
-//     region: 'asia-northeast3',
-//     timeoutSeconds: 30,
-//     schedule: '*/5 9-17 14 11 *',
-//     timeZone: 'Asia/Seoul'
-//   },
-//   async () => {
-//     try {
-//       const res = await fetch('https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/health');
-//       console.log('[keepWarm] ping', res.status);
-//     } catch (err) {
-//       console.warn('[keepWarm] ping 실패:', err?.message || err);
-//     }
-//   }
-// );
+   github-actions-deploy@inky-poster-studio.iam.gserviceaccount.com 계정(CI 전용
+   서비스계정)엔 이 권한이 없지만, 이 저장소를 원래 관리해온 계정(edutogether2015@gmail.com,
+   Firestore DB 생성 등에도 써온 계정)으로 로컬에서 직접 배포하면 소유자급 권한이라
+   문제없이 배포된다 — 2026-08-30 이렇게 1회성으로 로컬 배포해 스케줄러 작업까지
+   정상 생성됨을 확인함. CI(GitHub Actions) 쪽은 여전히 이 권한이 없으므로, 다음에
+   keepWarm의 스케줄/설정을 다시 바꿔 재배포해야 할 때는 로컬에서 하거나
+   github-actions-deploy 계정에 roles/cloudscheduler.admin을 추가해야 한다. */
+export const keepWarm = onSchedule(
+  {
+    region: 'asia-northeast3',
+    timeoutSeconds: 30,
+    schedule: '*/5 9-17 14 11 *',
+    timeZone: 'Asia/Seoul'
+  },
+  async () => {
+    try {
+      const res = await fetch('https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/health');
+      console.log('[keepWarm] ping', res.status);
+    } catch (err) {
+      console.warn('[keepWarm] ping 실패:', err?.message || err);
+    }
+  }
+);
