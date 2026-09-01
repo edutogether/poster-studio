@@ -494,12 +494,14 @@ app.use((err, req, res, _next) => {
   res.status(400).json({ error: err?.message || '요청 처리 중 오류가 발생했습니다.' });
 });
 
-// GitHub Pages(edutogether.github.io)에서만 호출 가능하도록 CORS 제한.
+// Firebase Hosting(poster-studio.web.app — 2026-09-01부로 GitHub Pages에서 이전)에서만
+// 호출 가능하도록 CORS 제한.
 // 로컬 개발 시에는 5500(Live Server)·8080(firebase serve) 포트도 허용.
 // 프로젝트를 옮기거나 배포 도메인이 바뀌면 public/constants.js의 API_BASE와 이 목록을
 // 반드시 같이 고칠 것 — 한쪽만 고치면 CORS가 막히거나 엉뚱한 프로젝트를 호출한다.
 const ALLOWED_ORIGINS = [
-  /^https:\/\/edutogether\.github\.io$/,
+  /^https:\/\/poster-studio\.web\.app$/,
+  /^https:\/\/poster-studio\.firebaseapp\.com$/,
   /^http:\/\/localhost:(5500|8080)$/,
   /^http:\/\/127\.0\.0\.1:(5500|8080)$/
 ];

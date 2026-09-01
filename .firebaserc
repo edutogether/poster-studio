@@ -2,6 +2,14 @@
   "projects": {
     "default": "inky-poster-studio"
   },
-  "targets": {},
+  "targets": {
+    "inky-poster-studio": {
+      "hosting": {
+        "poster-studio": [
+          "poster-studio"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

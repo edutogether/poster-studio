@@ -4,25 +4,25 @@
 웹캠으로 찍은 사진을 AI가 영화 포스터로 바꾸고, **클래식·임팩트·시네마·포토카드 4가지 버전**을 즉석에서 골라 인쇄합니다.
 
 ## v3에서 바뀐 점
-- **설치 없이 브라우저 주소만 열면 바로 됨** — 이전 버전은 노트북마다 Node.js 서버를 설치·실행해야 했지만, 이제 GitHub Pages에 배포된 정적 웹페이지를 여는 것만으로 끝난다. 교육청 관리 노트북(MDM)이라 소프트웨어 설치가 막혀 있어도 문제없다.
+- **설치 없이 브라우저 주소만 열면 바로 됨** — 이전 버전은 노트북마다 Node.js 서버를 설치·실행해야 했지만, 이제 Firebase Hosting에 배포된 정적 웹페이지를 여는 것만으로 끝난다(2026-09-01부로 GitHub Pages에서 이전). 교육청 관리 노트북(MDM)이라 소프트웨어 설치가 막혀 있어도 문제없다.
 - **AI 이미지 생성만 Firebase Functions(서버리스)가 처리** — OpenAI API 키는 노트북이 아니라 Firebase Secret Manager에 보관되고, 웹캠 촬영·포스터 합성(타이포·크레딧·필름그레인)은 이전처럼 전부 브라우저에서 그대로 실행된다.
 - v2 기능(개인/단체 선택, 자동 타이포그래피, 4가지 고퀄 버전, 얼굴 보존 강화)은 그대로 유지.
 
 ## 구조
 ```
-public/          정적 프론트엔드 (GitHub Pages로 배포)
+public/          정적 프론트엔드 (Firebase Hosting으로 배포 — https://poster-studio.web.app)
   index.html
   app.js         촬영 → 프롬프트 구성 → Functions 호출 → 캔버스 합성
   style.css
 functions/       Firebase Cloud Functions (AI 이미지 생성 API만 담당)
   index.js
   package.json
-firebase.json
-.github/workflows/pages.yml   master 푸시 시 public/ 을 GitHub Pages로 자동 배포
+firebase.json    hosting(poster-studio 타겟) + functions 설정, 보안헤더(CSP 등) 포함
+.github/workflows/deploy.yml   master 푸시 시 test → functions 배포 → hosting(poster-studio) 배포 순서로 자동 진행
 ```
 
 ## 운영 순서 (행사 당일)
-1. 부스 노트북에서 배포된 GitHub Pages 주소를 연다 (즐겨찾기 권장).
+1. 부스 노트북에서 https://poster-studio.web.app 을 연다 (즐겨찾기 권장).
 2. 카메라 켜기 → 3·2·1 촬영
 3. 개인/단체 선택, 이름(또는 단체명·출연진), 영화 제목, 장르 입력
 4. AI 포스터 만들기 → 4가지 버전 자동 생성
@@ -30,7 +30,7 @@ firebase.json
 
 ## 개발/배포 (관리자용)
 ### 프론트엔드
-`public/` 아래 정적 파일을 고치고 `master`에 푸시하면 `.github/workflows/pages.yml`이 자동으로 GitHub Pages에 배포한다. 로컬 미리보기는 `public/index.html`을 정적 서버(예: VS Code Live Server)로 열면 된다 — 단, AI 생성 버튼은 Firebase Functions 배포가 끝나야 동작한다.
+`public/` 아래 정적 파일을 고치고 `master`에 푸시하면 `.github/workflows/deploy.yml`이 자동으로 Firebase Hosting(`poster-studio` 사이트)에 배포한다. 로컬 미리보기는 `public/index.html`을 정적 서버(예: VS Code Live Server)로 열면 된다 — 단, AI 생성 버튼은 Firebase Functions 배포가 끝나야 동작한다. `firebase.json`의 CSP 등 보안헤더는 정적 서버 미리보기에는 안 걸리므로, 헤더 관련 동작을 확인하려면 `firebase deploy --only hosting:poster-studio`로 실제 배포하거나 `firebase emulators:start --only hosting`을 쓸 것.
 
 ### Firebase Functions (AI 생성 API)
 ```bash
