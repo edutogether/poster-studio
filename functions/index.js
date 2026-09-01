@@ -149,6 +149,10 @@ function _setClientForTesting(fake) {
 }
 
 const app = express();
+// Cloud Run(Functions v2가 그 위에서 돎)은 항상 Google Front End 한 홉을 거쳐
+// X-Forwarded-For를 신뢰할 수 있게 채워준다 — 이걸 켜야 req.ip가 실제 클라이언트
+// IP를 준다(안 켜면 모든 요청이 같은 내부 주소로 보여 아래 ipRateLimit이 무의미해짐).
+app.set('trust proxy', true);
 
 /* 장르별 '그림 컨셉' 프롬프트.
    공통 규칙: 글자/문자 절대 금지(한글은 브라우저 캔버스가 입힘), 세로 영화 포스터,
@@ -339,8 +343,28 @@ function _setCounterImplForTesting(fn) {
 // 각자 분당 1건 안팎으로 정상 사용하는 수준"을 기준으로 새로 산정함(20대 × 분당
 // 1.5건 ≈ 10분당 150건 — 여유 포함). 진짜 비용 하드캡은 OpenAI 대시보드 월 지출
 // 상한이 맡고, 이 값은 "정상 사용은 막지 않으면서 폭주는 끊는" UX 안전장치다.
+//
+// 6차 감사 발견(2026-09-01, 실측): rateLimit이 parseMultipart보다 먼저 실행되던
+// 예전 순서에서는 사진 없이 빈 바디만 보내는 요청도 카운트를 그대로 소모했다 —
+// 라이브 /generate에 사진 없는 요청 170개를 동시에 보냈더니 149개가 10.5초 만에
+// 전역 한도(150)를 소진시켜 그 뒤로 모든 부스가 10분간 동시에 429를 받는 것까지
+// 실제로 확인됨(부스토큰은 공개 저장소 소스에서 그대로 복사 가능이라 누구나 가능).
+// 그래서 순서를 "사진이 실제로 있는지 먼저 확인(requirePhoto) → 그 다음에만 카운트"로
+// 바꿨고, 한 IP가 전역 예산 전체를 혼자 다 써버릴 수 없도록 IP별 서브한도
+// (ipRateLimit)를 추가했다. IP별 한도는 정상적인 한 부스(노트북 1대)가 절대
+// 도달할 수 없을 만큼 넉넉하게(전역치의 2/3) 잡아서, 행사장이 공유 IP(NAT) 뒤에
+// 있어 여러 노트북이 같은 IP로 보이는 경우에도 정상 사용을 막지 않게 했다 —
+// 다만 이건 행사장 네트워크 구조를 정확히 모르는 상태에서의 판단이라, 실제
+// 행사 전에 "노트북들이 같은 공인 IP를 공유하는지" 확인해 필요하면 조정할 것.
 const RATE_LIMIT_MAX = 150;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const IP_RATE_LIMIT_MAX = 100;
+
+function requirePhoto(req, res, next) {
+  if (!req.file) return res.status(400).json({ error: '사진 파일이 없습니다. 먼저 촬영해 주세요.' });
+  next();
+}
+
 async function rateLimit(req, res, next) {
   const bucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
   try {
@@ -353,6 +377,21 @@ async function rateLimit(req, res, next) {
     // Firestore 장애로 부스 전체가 멈추면 안 되므로 fail-open(레이트리밋 없이 통과) —
     // 진짜 비용 하드캡은 어차피 OpenAI 월 지출 상한이 맡고 있다.
     console.error('[rateLimit] Firestore 오류, fail-open:', err?.message || err);
+    next();
+  }
+}
+
+async function ipRateLimit(req, res, next) {
+  const bucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
+  const ip = req.ip || 'unknown';
+  try {
+    const { allowed } = await _incrementAndCheck('ipRateLimitBuckets', `${bucket}:${ip}`, IP_RATE_LIMIT_MAX);
+    if (!allowed) {
+      return res.status(429).json({ error: '이 네트워크에서 요청이 너무 많이 몰렸습니다. 잠시 후 다시 시도해 주세요.' });
+    }
+    next();
+  } catch (err) {
+    console.error('[ipRateLimit] Firestore 오류, fail-open:', err?.message || err);
     next();
   }
 }
@@ -415,29 +454,36 @@ function mapGenerateError(err) {
   return { status: 500, message: 'AI 이미지 생성 중 알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' };
 }
 
-app.post('/generate', checkBoothToken, rateLimit, parseMultipart, checkPhotoGenerationLimit, async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: '사진 파일이 없습니다. 먼저 촬영해 주세요.' });
+app.post(
+  '/generate',
+  checkBoothToken,
+  parseMultipart,
+  requirePhoto,
+  rateLimit,
+  ipRateLimit,
+  checkPhotoGenerationLimit,
+  async (req, res) => {
+    const genre = req.body.genre || 'animation';
+    const mode = req.body.mode === 'group' ? 'group' : 'solo';
+    const title = sanitizePromptField(req.body.movieTitle, 60);
+    const tagline = sanitizePromptField(req.body.tagline, 80);
+    const prompt = buildPrompt({ genre, mode, title, tagline });
 
-  const genre = req.body.genre || 'animation';
-  const mode = req.body.mode === 'group' ? 'group' : 'solo';
-  const title = sanitizePromptField(req.body.movieTitle, 60);
-  const tagline = sanitizePromptField(req.body.tagline, 80);
-  const prompt = buildPrompt({ genre, mode, title, tagline });
-
-  try {
-    const t0 = Date.now();
-    const images = await generateArt(req.file.path, req.file.mimetype, prompt);
-    const sec = ((Date.now() - t0) / 1000).toFixed(1);
-    console.log(`[generate] 완료 ${sec}초  (모델=${MODEL} · 화질=${QUALITY} · 얼굴보존=${INPUT_FIDELITY})`);
-    res.json({ images, meta: { genre, mode, seconds: Number(sec) } });
-  } catch (err) {
-    console.error('[generate]', err?.status || '', err?.message || err);
-    const { status, message } = mapGenerateError(err);
-    res.status(status).json({ error: message });
-  } finally {
-    fs.unlink(req.file.path, () => {});
+    try {
+      const t0 = Date.now();
+      const images = await generateArt(req.file.path, req.file.mimetype, prompt);
+      const sec = ((Date.now() - t0) / 1000).toFixed(1);
+      console.log(`[generate] 완료 ${sec}초  (모델=${MODEL} · 화질=${QUALITY} · 얼굴보존=${INPUT_FIDELITY})`);
+      res.json({ images, meta: { genre, mode, seconds: Number(sec) } });
+    } catch (err) {
+      console.error('[generate]', err?.status || '', err?.message || err);
+      const { status, message } = mapGenerateError(err);
+      res.status(status).json({ error: message });
+    } finally {
+      fs.unlink(req.file.path, () => {});
+    }
   }
-});
+);
 
 // 업로드/기타 오류도 항상 JSON으로 응답(브라우저가 HTML 오류를 받아 이상한 문구가 뜨는 것 방지)
 app.use((err, req, res, _next) => {
@@ -468,8 +514,11 @@ export {
   UPLOAD_DIR,
   mapGenerateError,
   RATE_LIMIT_MAX,
+  IP_RATE_LIMIT_MAX,
   checkBoothToken,
+  requirePhoto,
   rateLimit,
+  ipRateLimit,
   checkPhotoGenerationLimit,
   PHOTO_GENERATION_LIMIT,
   _setCounterImplForTesting,
