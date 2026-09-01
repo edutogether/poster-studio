@@ -40,10 +40,22 @@ import하고, `/generate`·`/health` 요청마다 Firestore 트랜잭션을 실�
 
 ## Firestore에 저장하는 값과 보관 기간
 
-`rateLimitBuckets`(10분 버킷별 요청 수)·`photoGenCounts`(사진 SHA-256 해시별 생성
-횟수) 두 컬렉션만 쓴다 — 둘 다 정수 카운터 + `updatedAt` 타임스탬프뿐이고, 사진
-원본·이름 등 개인정보는 어디에도 저장하지 않는다. 다만 `photoGenCounts`의 문서ID
-자체가 사진의 SHA-256 해시라 완전한 익명 데이터는 아니다(원본 사진을 따로 가진
-사람이 "이 사진이 언제 제출됐는지" 대조 확인 가능 — README 개인정보 안내 참고).
-두 컬렉션 모두 `updatedAt` 필드에 30일 TTL 정책을 걸어 자동 삭제되게 할 것(대표
-콘솔 작업 필요 — 이 세션엔 `gcloud`가 없어 Firestore TTL을 CLI로 설정할 수 없다).
+`rateLimitBuckets`(10분 버킷별 요청 수) · `ipRateLimitBuckets`(IP별 10분 버킷 요청 수,
+6차 감사 후속조치) · `dailyBudgetBuckets`(KST 날짜별 하루 총 요청 수, 6차 감사
+후속조치) · `photoGenCounts`(사진 SHA-256 해시별 생성 횟수) 4개 컬렉션만 쓴다 —
+전부 정수 카운터 + `updatedAt` 타임스탬프뿐이고, 사진 원본·이름 등 개인정보는
+어디에도 저장하지 않는다. 다만 `photoGenCounts`의 문서ID 자체가 사진의 SHA-256
+해시라 완전한 익명 데이터는 아니다(원본 사진을 따로 가진 사람이 "이 사진이 언제
+제출됐는지" 대조 확인 가능 — README 개인정보 안내 참고).
+
+**정정(2026-09-01, 6차 감사 발견)**: 이 문서는 예전에 "30일 TTL 정책을 걸어 자동
+삭제되게 할 것(대표 콘솔 작업 필요)"이라고 적혀 있었는데, 같은 시점 README.md는
+반대로 "TTL 정책을 적용합니다"라고 이미 완료된 것처럼 단정하고 있어 두 문서가
+서로 모순됐다. 실제로는 콘솔 TTL 정책도, 코드상 삭제 경로도 둘 다 없었다.
+"콘솔 작업이라 코드로는 불가능하다"는 전제 자체가 틀렸다는 게 이번에 확인돼(이미
+운영 중인 `keepWarm`과 같은 `onSchedule` 패턴을 그대로 재사용할 수 있음), 매일
+04:00(KST)에 `updatedAt` 기준 30일 지난 문서를 지우는 `functions/index.js`의
+`cleanupOldCountersSchedule` 함수로 실제 구현했다. 콘솔 TTL 정책(있으면 더 저렴하고
+정확함)과는 별개로 동작하는 애플리케이션 레벨 삭제이며, 실제 Firestore를 두드리지
+않는 인메모리 가짜 db로 삭제 로직 자체는 테스트로 검증돼 있다(`functions/test/index.test.js`의
+`cleanupOldCounters` 테스트 참고).

@@ -37,15 +37,20 @@ $('shotBtn').onclick = async () => {
     snapshotURL = URL.createObjectURL(blob);
     snapshot.src = snapshotURL;
     snapshot.classList.remove('hidden'); video.classList.add('hidden');
+    // 6차 감사 발견(2026-09-01): 촬영 후에도 카메라가 계속 켜진 채로 남아 다음 아동이
+    // 올 때까지의 공백에도 계속 캡처 중이었다(최소수집 원칙 위반, 아동 대상이라 더 중요) —
+    // 촬영이 끝나면 스트림을 실제로 끈다. 다시 촬영(retakeBtn)/재촬영(shotBtn 재클릭) 시 재시작된다.
+    if(state.stream){ state.stream.getTracks().forEach(t => t.stop()); state.stream = null; }
+    video.srcObject = null;
     setStatus('촬영 완료! 정보를 입력하고 ‘AI 포스터 만들기’를 누르세요.');
     state.genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
   }, 'image/jpeg', 0.85);
 };
-$('retakeBtn').onclick = () => {
-  state.capturedBlob = null; snapshot.classList.add('hidden');
-  video.classList.remove('hidden'); setStatus('다시 촬영할 수 있습니다.');
+$('retakeBtn').onclick = async () => {
+  state.capturedBlob = null;
   $('fallbackBtn').classList.add('hidden'); state.pendingMeta = null;
   state.genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
+  try{ await startCamera(); }catch(e){ setStatus('카메라 권한을 허용해 주세요.'); }
 };
 
 /* ── 개인/단체 토글 ── */

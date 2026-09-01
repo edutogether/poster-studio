@@ -360,6 +360,33 @@ const RATE_LIMIT_MAX = 150;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const IP_RATE_LIMIT_MAX = 100;
 
+// 6차 감사 발견(2026-09-01): 위 RATE_LIMIT_MAX는 10분 버킷마다 초기화되므로,
+// "행사 당일 270분 동안만 호출된다"는 가정이 있어야 하루 지출이 $162 근처로
+// 묶인다는 CLAUDE.md의 기존 결론이 성립했다 — 그런데 그 가정을 강제하는 코드가
+// 없어서, 하루 종일(144개 버킷) 호출되면 이론상 150×144=21,600건/일까지
+// 코드가 물리적으로 허용했다. 여기에 별도의 "하루 총량" 상한을 둬서, 어떤
+// 시간대·트래픽 패턴이든 하루 지출이 물리적으로 넘을 수 없게 만든다.
+// 4000건 = $0.04 × 4000 = $160 — 행사 당일 목표치($162 근처)를 그대로 하루
+// 전체의 물리적 상한으로 삼는다. 날짜 경계는 행사가 KST 기준이라 KST로 자른다.
+const DAILY_BUDGET_MAX = 4000;
+
+function kstDateKey(now = Date.now()) {
+  return new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10); // "YYYY-MM-DD" (KST)
+}
+
+async function dailyBudgetCap(req, res, next) {
+  try {
+    const { allowed } = await _incrementAndCheck('dailyBudgetBuckets', kstDateKey(), DAILY_BUDGET_MAX);
+    if (!allowed) {
+      return res.status(429).json({ error: '오늘의 생성 한도에 도달했습니다. 운영팀에 문의해 주세요.' });
+    }
+    next();
+  } catch (err) {
+    console.error('[dailyBudgetCap] Firestore 오류, fail-open:', err?.message || err);
+    next();
+  }
+}
+
 function requirePhoto(req, res, next) {
   if (!req.file) return res.status(400).json({ error: '사진 파일이 없습니다. 먼저 촬영해 주세요.' });
   next();
@@ -461,6 +488,7 @@ app.post(
   requirePhoto,
   rateLimit,
   ipRateLimit,
+  dailyBudgetCap,
   checkPhotoGenerationLimit,
   async (req, res) => {
     const genre = req.body.genre || 'animation';
@@ -517,10 +545,13 @@ export {
   mapGenerateError,
   RATE_LIMIT_MAX,
   IP_RATE_LIMIT_MAX,
+  DAILY_BUDGET_MAX,
+  kstDateKey,
   checkBoothToken,
   requirePhoto,
   rateLimit,
   ipRateLimit,
+  dailyBudgetCap,
   checkPhotoGenerationLimit,
   PHOTO_GENERATION_LIMIT,
   _setCounterImplForTesting,
@@ -529,7 +560,10 @@ export {
   checkOpenAIReachable,
   _setClientForTesting,
   _setSleepForTesting,
-  _resetOpenAIHealthCacheForTesting
+  _resetOpenAIHealthCacheForTesting,
+  COUNTER_COLLECTIONS,
+  COUNTER_TTL_MS,
+  cleanupOldCounters
 };
 
 export const posterStudio = onRequest(
@@ -570,6 +604,63 @@ export const posterStudio = onRequest(
    roles/cloudscheduler.admin을 프로젝트 레벨로 추가해 해결 — 아래 스케줄을
    09:00~18:55(기존 17:55에서 +1시간, 행사 종료 후 정리시간 버퍼)로 조정해
    CI가 실제로 스케줄러 작업 갱신까지 정상 처리하는지 검증한다. */
+/* 6차 감사 발견(2026-09-01): README.md가 "30일 뒤 자동 삭제되도록 Firestore TTL
+   정책을 적용합니다"라고 완료형으로 단정했는데, 실제로는 콘솔에서 TTL 정책을
+   걸어야만 하는 미완료 상태였고(대표 콘솔 작업 필요, 이 세션은 gcloud가 없어
+   CLI로 설정 불가) 코드에는 삭제 경로가 전혀 없었다 — README와 SECURITY_NOTES.md가
+   서로 모순되는 상태였다. "콘솔 작업이라 코드로는 불가능"이라는 전제 자체가
+   틀렸다는 게 이번에 확인돼(keepWarm과 같은 onSchedule 패턴을 그대로 재사용할 수
+   있음), §4-1의 구조적 상한이 아니라 미구현 결함으로 재채점하고 여기서 직접 구현한다.
+   지우는 대상은 순수 숫자 카운터 4종뿐(사진 원본·이름 등 개인정보는 애초에 여기 저장
+   안 함) — updatedAt 필드는 _incrementAndCheck가 매번 갱신해두고 있어 추가 저장 불필요. */
+const COUNTER_COLLECTIONS = ['rateLimitBuckets', 'ipRateLimitBuckets', 'photoGenCounts', 'dailyBudgetBuckets'];
+const COUNTER_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+// dbInstance를 인자로 받는 이유: 테스트에서 진짜 Firestore를 두드리지 않고
+// Firestore와 같은 모양(collection/where/limit/get/batch)의 가짜 객체를 주입하기 위함
+// (_setCounterImplForTesting과 같은 취지 — 실비용 없이 삭제 로직 자체만 검증한다).
+async function _deleteOldDocsInCollection(dbInstance, collectionName, cutoffDate) {
+  let deleted = 0;
+  for (;;) {
+    const snap = await dbInstance.collection(collectionName).where('updatedAt', '<', cutoffDate).limit(500).get();
+    if (snap.empty) break;
+    const batch = dbInstance.batch();
+    snap.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    deleted += snap.size;
+    if (snap.size < 500) break;
+  }
+  return deleted;
+}
+
+async function cleanupOldCounters(dbInstance = db, now = Date.now()) {
+  const cutoff = new Date(now - COUNTER_TTL_MS);
+  let total = 0;
+  for (const collectionName of COUNTER_COLLECTIONS) {
+    const deleted = await _deleteOldDocsInCollection(dbInstance, collectionName, cutoff);
+    total += deleted;
+    if (deleted) console.log(`[cleanupOldCounters] ${collectionName}: ${deleted}건 삭제`);
+  }
+  return total;
+}
+
+export const cleanupOldCountersSchedule = onSchedule(
+  {
+    region: 'asia-northeast3',
+    timeoutSeconds: 120,
+    schedule: '0 4 * * *',
+    timeZone: 'Asia/Seoul'
+  },
+  async () => {
+    try {
+      const total = await cleanupOldCounters();
+      console.log(`[cleanupOldCounters] 완료, 총 ${total}건 삭제`);
+    } catch (err) {
+      console.error('[cleanupOldCounters] 실패:', err?.message || err);
+    }
+  }
+);
+
 export const keepWarm = onSchedule(
   {
     region: 'asia-northeast3',

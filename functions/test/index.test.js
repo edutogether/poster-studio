@@ -21,6 +21,9 @@ import {
   requirePhoto,
   rateLimit,
   ipRateLimit,
+  dailyBudgetCap,
+  DAILY_BUDGET_MAX,
+  kstDateKey,
   checkPhotoGenerationLimit,
   PHOTO_GENERATION_LIMIT,
   parseMultipart,
@@ -34,7 +37,10 @@ import {
   checkOpenAIReachable,
   _setClientForTesting,
   _setSleepForTesting,
-  _resetOpenAIHealthCacheForTesting
+  _resetOpenAIHealthCacheForTesting,
+  COUNTER_COLLECTIONS,
+  COUNTER_TTL_MS,
+  cleanupOldCounters
 } from '../index.js';
 
 // 레이트리밋/사진별 생성한도는 이제 Firestore 트랜잭션으로 전역 강제되는데(5차
@@ -302,6 +308,41 @@ test('requirePhoto: req.file이 없으면 400이고, 있으면 next()로 넘어�
   assert.equal(nextCalled, true);
 });
 
+// ── dailyBudgetCap (6차 감사 발견, 2026-09-01: RATE_LIMIT_MAX는 10분마다
+// 초기화되므로 "행사 당일 270분만 호출된다"는 가정이 없으면 하루 지출 상한이
+// 실제로는 없는 것과 같았다 — 별도의 하루 총량 상한으로 이 가정 자체를 코드로
+// 강제한다) ──────────────────────────────────────────────────────────
+test('dailyBudgetCap: 한도(DAILY_BUDGET_MAX) 안에서는 통과하고, 넘으면 429다', async () => {
+  _setCounterImplForTesting(makeInMemoryCounterImpl());
+  try {
+    for (let i = 0; i < DAILY_BUDGET_MAX; i++) {
+      const passed = await new Promise((resolve) => {
+        dailyBudgetCap({}, { status: () => ({ json: () => resolve(false) }) }, () => resolve(true));
+      });
+      assert.equal(passed, true, `${i + 1}번째는 한도 안이라 통과해야 한다`);
+    }
+    const blocked = await new Promise((resolve) => {
+      dailyBudgetCap(
+        {},
+        { status: (code) => { assert.equal(code, 429); return { json: () => resolve(true) }; } },
+        () => resolve(false)
+      );
+    });
+    assert.equal(blocked, true, `${DAILY_BUDGET_MAX + 1}번째는 하루 한도를 넘겨 429여야 한다`);
+  } finally {
+    useSharedCounterImpl();
+  }
+});
+
+test('kstDateKey: 같은 KST 날짜 안에서는 항상 같은 키를 준다(날짜 버킷 안정성)', () => {
+  const noonKST = Date.UTC(2026, 10, 14, 3, 0, 0); // 2026-11-14 12:00 KST = 2026-11-14 03:00 UTC
+  const lateKST = Date.UTC(2026, 10, 14, 14, 59, 0); // 2026-11-14 23:59 KST
+  assert.equal(kstDateKey(noonKST), '2026-11-14');
+  assert.equal(kstDateKey(lateKST), '2026-11-14');
+  const nextDayKST = Date.UTC(2026, 10, 14, 15, 0, 0); // 2026-11-15 00:00 KST
+  assert.equal(kstDateKey(nextDayKST), '2026-11-15');
+});
+
 // ── checkPhotoGenerationLimit (5차 감사 발견: "1인당 1회 재생성"을 서버측에서도
 // 강제 — 이전엔 브라우저 상태(genCount)뿐이라 새로고침으로 우회 가능했다) ────
 function makeTempFile(bytes) {
@@ -365,7 +406,7 @@ test('checkPhotoGenerationLimit: req.file이 없으면(사진 없는 요청) 그
 // checkPhotoGenerationLimit 전부 같은 구조의 try/catch를 쓰므로, 카운터 구현이
 // 실제로 예외를 던지는 상황을 재현해 "막지 않고 통과시킨다"는 안전장치 자체를
 // 검증한다.
-test('rateLimit·ipRateLimit·checkPhotoGenerationLimit: Firestore 오류 시 요청을 막지 않고 통과시킨다(fail-open)', async () => {
+test('rateLimit·ipRateLimit·dailyBudgetCap·checkPhotoGenerationLimit: Firestore 오류 시 요청을 막지 않고 통과시킨다(fail-open)', async () => {
   _setCounterImplForTesting(async () => {
     throw new Error('시뮬레이션: Firestore 연결 실패');
   });
@@ -379,6 +420,11 @@ test('rateLimit·ipRateLimit·checkPhotoGenerationLimit: Firestore 오류 시 �
       ipRateLimit({ ip: '203.0.113.1' }, { status: () => ({ json: () => resolve(false) }) }, () => resolve(true));
     });
     assert.equal(ipRateLimitNextCalled, true, 'Firestore 오류여도 ipRateLimit은 next()를 호출해야 한다');
+
+    const dailyBudgetCapNextCalled = await new Promise((resolve) => {
+      dailyBudgetCap({}, { status: () => ({ json: () => resolve(false) }) }, () => resolve(true));
+    });
+    assert.equal(dailyBudgetCapNextCalled, true, 'Firestore 오류여도 dailyBudgetCap은 next()를 호출해야 한다');
 
     const filePath = makeTempFile(Buffer.from(`failopen-test-${crypto.randomBytes(8).toString('hex')}`));
     const photoNextCalled = await new Promise((resolve) => {
@@ -655,4 +701,101 @@ test('checkOpenAIReachable: OpenAI 도달 실패면 false를 반환하고(부스
     _setClientForTesting(null);
     _resetOpenAIHealthCacheForTesting();
   }
+});
+
+// ── cleanupOldCounters (6차 감사 발견, 2026-09-01: README가 "30일 뒤 자동
+// 삭제되도록 TTL 정책을 적용합니다"라고 완료형으로 단정했는데 실제로는 콘솔
+// TTL 정책도 코드 삭제 경로도 둘 다 없었다 — keepWarm과 같은 onSchedule 패턴으로
+// 직접 구현했다. 진짜 Firestore는 두드리지 않고, Firestore의 collection/where/
+// limit/get/batch 모양만 흉내낸 인메모리 가짜를 주입해 "30일 지난 것만 지운다"는
+// 로직 자체를 검증한다) ──────────────────────────────────────────────────
+function makeFakeFirestoreDb(seedByCollection) {
+  const store = new Map();
+  for (const [name, docs] of Object.entries(seedByCollection)) {
+    store.set(name, docs.map((d) => ({ id: d.id, updatedAt: d.updatedAt })));
+  }
+  return {
+    collection(name) {
+      return {
+        where(field, op, value) {
+          if (op !== '<') throw new Error(`이 가짜 db는 '<' 연산자만 지원한다: ${op}`);
+          return {
+            limit(n) {
+              return {
+                async get() {
+                  const docs = (store.get(name) || [])
+                    .filter((d) => d[field] < value)
+                    .slice(0, n)
+                    .map((d) => ({ ref: { collectionName: name, id: d.id } }));
+                  return { empty: docs.length === 0, size: docs.length, docs };
+                }
+              };
+            }
+          };
+        }
+      };
+    },
+    batch() {
+      const toDelete = [];
+      return {
+        delete(ref) {
+          toDelete.push(ref);
+        },
+        async commit() {
+          for (const ref of toDelete) {
+            const arr = store.get(ref.collectionName) || [];
+            const idx = arr.findIndex((d) => d.id === ref.id);
+            if (idx >= 0) arr.splice(idx, 1);
+          }
+        }
+      };
+    },
+    _remainingIds(name) {
+      return (store.get(name) || []).map((d) => d.id).sort();
+    }
+  };
+}
+
+test('COUNTER_TTL_MS는 정확히 30일이고, COUNTER_COLLECTIONS는 실제로 쓰이는 4개 컬렉션과 일치한다', () => {
+  assert.equal(COUNTER_TTL_MS, 30 * 24 * 60 * 60 * 1000);
+  assert.deepEqual(
+    [...COUNTER_COLLECTIONS].sort(),
+    ['dailyBudgetBuckets', 'ipRateLimitBuckets', 'photoGenCounts', 'rateLimitBuckets'].sort()
+  );
+});
+
+test('cleanupOldCounters: 30일 지난 문서만 지우고, 30일 안쪽 문서는 그대로 남긴다', async () => {
+  const now = Date.now();
+  const old = new Date(now - 31 * 24 * 60 * 60 * 1000);
+  const recent = new Date(now - 1 * 24 * 60 * 60 * 1000);
+  const fakeDb = makeFakeFirestoreDb({
+    rateLimitBuckets: [{ id: 'old1', updatedAt: old }, { id: 'recent1', updatedAt: recent }],
+    ipRateLimitBuckets: [{ id: 'old2', updatedAt: old }],
+    photoGenCounts: [{ id: 'recentHash', updatedAt: recent }],
+    dailyBudgetBuckets: [{ id: 'old3', updatedAt: old }]
+  });
+
+  const total = await cleanupOldCounters(fakeDb, now);
+
+  assert.equal(total, 3, 'old1/old2/old3 3건만 지워져야 한다');
+  assert.deepEqual(fakeDb._remainingIds('rateLimitBuckets'), ['recent1']);
+  assert.deepEqual(fakeDb._remainingIds('ipRateLimitBuckets'), []);
+  assert.deepEqual(fakeDb._remainingIds('photoGenCounts'), ['recentHash']);
+  assert.deepEqual(fakeDb._remainingIds('dailyBudgetBuckets'), []);
+});
+
+test('cleanupOldCounters: 지울 문서가 하나도 없으면 아무 것도 지우지 않고 0을 반환한다', async () => {
+  const now = Date.now();
+  const recent = new Date(now - 1 * 24 * 60 * 60 * 1000);
+  const fakeDb = makeFakeFirestoreDb({
+    rateLimitBuckets: [{ id: 'recent1', updatedAt: recent }],
+    ipRateLimitBuckets: [],
+    photoGenCounts: [],
+    dailyBudgetBuckets: []
+  });
+
+  const total = await cleanupOldCounters(fakeDb, now);
+
+  assert.equal(total, 0);
+  assert.deepEqual(fakeDb._remainingIds('rateLimitBuckets'), ['recent1']);
 });

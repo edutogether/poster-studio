@@ -9,7 +9,16 @@
   "hosting": {
     "target": "poster-studio",
     "public": "public",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "functions/**", "test/**"],
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "functions/**",
+      "test/**",
+      "package.json",
+      "package-lock.json",
+      "eslint.config.js"
+    ],
     "headers": [
       {
         "source": "**",
