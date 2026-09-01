@@ -1,26 +1,49 @@
 # 보안 참고사항 (감사마다 반복 질문되지 않도록 기록)
 
-## `npm audit`가 보고하는 moderate 9건은 실위험 없음 — `npm audit fix --force` 절대 금지
+## `npm audit`가 보고하는 moderate 7건은 실위험 없음 — `npm audit fix --force` 절대 금지
 
 `npm audit`를 돌리면 `uuid`(v3/v5/v6, buffer bounds check 누락)의 취약점이 아래 경로로
-전이 의존성에 걸려 있다고 9건 뜬다:
+전이 의존성에 걸려 있다고 뜬다(2026-09-01 기준 7건 — 예전엔 9건이었는데 의존성
+업데이트로 줄었다):
 
 ```
-uuid → gaxios/teeny-request/retry-request → google-gax
-     → @google-cloud/firestore, @google-cloud/storage
+uuid → gaxios/teeny-request/retry-request → @google-cloud/storage
      → firebase-admin
      → firebase-functions (우리가 실제로 의존하는 패키지)
 ```
 
-**이 앱은 `firebase-admin`을 전혀 import하지 않고, Firestore/Storage를 아예 쓰지
-않는다**(사진은 처리 직후 삭제, DB 미사용 — 개인정보 최소화 설계). 취약점이 실제로
-발동하는 경로(`uuid`에 `buf` 인자를 넘기는 호출)에 우리 코드가 도달하지 않으므로
-**실질적 위험은 없다.**
+**정정(2026-09-01, 6차 감사 발견)**: 이 문서는 예전에 "이 앱은 firebase-admin을
+전혀 import하지 않고 Firestore/Storage를 아예 안 쓴다"고 적혀 있었는데, 이건
+2026-08-30 Firestore 기반 전역 레이트리밋 도입 이후로 **더 이상 사실이 아니다** —
+`functions/index.js`가 `firebase-admin/app`·`firebase-admin/firestore`를 실제로
+import하고, `/generate`·`/health` 요청마다 Firestore 트랜잭션을 실행한다.
 
-`npm audit fix --force`가 제안하는 해결책은 `firebase-functions`를 **4.9.0으로
-다운그레이드**하는 것인데, 이는 현재 쓰는 v7 계열보다 훨씬 오래된 major 버전이라
-오히려 기능 퇴행·호환성 문제를 일으킨다. **절대 실행하지 말 것.**
+그래도 **실질적 위험은 여전히 낮다** — 단, 이유가 바뀌었다. `npm audit`가 짚어주는
+정확한 취약점 경로를 다시 추적해보면(`npm ls @google-cloud/firestore` +
+`npm audit --json`으로 확인), 문제의 uuid 취약점은 **`@google-cloud/storage`를
+거쳐야만** 도달한다 — `@google-cloud/firestore`(우리가 실제로 쓰는 패키지)는 이
+취약 경로에 아예 등장하지 않는다. 즉:
+- **맞는 이유**: "Firestore/firebase-admin을 안 쓴다" (더 이상 사실 아님)
+- **지금 맞는 이유**: "Firestore는 쓰지만, npm audit이 지목한 정확한 취약 경로는
+  우리가 절대 호출하지 않는 `@google-cloud/storage`(파일 저장소, 이 앱은 사진을
+  즉시 삭제하고 어디에도 영구 저장하지 않으므로 Storage API를 쓸 이유 자체가 없다)를
+  거쳐야만 발동한다."
 
-해소되려면 `firebase-functions`(또는 그 상위 의존성)가 새 버전에서 이 전이
-의존성 자체를 없애야 하는데, 이는 우리가 통제할 수 없는 upstream 문제다. 주기적으로
-`npm outdated`/`npm audit`로 새 버전이 나왔는지만 확인하면 된다.
+`npm audit fix --force`가 제안하는 해결책은 `firebase-admin`을 **10.3.0으로
+다운그레이드**하는 것인데(우리가 실제로 쓰는 Firestore 트랜잭션 API가 그 버전에서도
+동작하는지 검증되지 않았고, 현재 쓰는 v14 계열보다 훨씬 오래된 major다), 오히려
+기능 퇴행·호환성 문제를 일으킬 수 있다. **절대 실행하지 말 것.**
+
+해소되려면 `firebase-admin`(또는 그 상위 의존성 `@google-cloud/storage`)이 새
+버전에서 이 전이 의존성 자체를 없애야 하는데, 이는 우리가 통제할 수 없는 upstream
+문제다. 주기적으로 `npm outdated`/`npm audit`로 새 버전이 나왔는지만 확인하면 된다.
+
+## Firestore에 저장하는 값과 보관 기간
+
+`rateLimitBuckets`(10분 버킷별 요청 수)·`photoGenCounts`(사진 SHA-256 해시별 생성
+횟수) 두 컬렉션만 쓴다 — 둘 다 정수 카운터 + `updatedAt` 타임스탬프뿐이고, 사진
+원본·이름 등 개인정보는 어디에도 저장하지 않는다. 다만 `photoGenCounts`의 문서ID
+자체가 사진의 SHA-256 해시라 완전한 익명 데이터는 아니다(원본 사진을 따로 가진
+사람이 "이 사진이 언제 제출됐는지" 대조 확인 가능 — README 개인정보 안내 참고).
+두 컬렉션 모두 `updatedAt` 필드에 30일 TTL 정책을 걸어 자동 삭제되게 할 것(대표
+콘솔 작업 필요 — 이 세션엔 `gcloud`가 없어 Firestore TTL을 CLI로 설정할 수 없다).

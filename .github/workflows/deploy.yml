@@ -2,9 +2,11 @@ name: Test, Deploy Functions, Deploy Pages
 
 # 코디세이(codyssey-calendar)의 CI 기준에 맞춘 단일 워크플로우 —
 # lint+테스트 통과 → functions 배포 → (성공해야) Pages 배포, 순서 강제.
-# 포스터 스튜디오는 Firestore/Storage를 아예 안 써서(사진은 처리 직후 삭제,
-# DB 미사용 — CLAUDE.md 참고) 코디세이의 "Firestore 규칙 에뮬레이터 테스트"에
-# 대응하는 단계는 없다.
+# 포스터 스튜디오는 Firestore를 순수 숫자 카운터(레이트리밋·사진별 생성한도) 용도로만
+# 쓰고 클라이언트가 Firestore에 직접 접근하는 경로가 없다(서버 Admin SDK 전용) —
+# 그래서 코디세이의 "Firestore 규칙 에뮬레이터 테스트"에 대응하는 단계가 없다(클라이언트
+# 접근을 통제하는 규칙 자체가 이 구조에선 무의미). Storage는 정말 안 쓴다(사진은 처리
+# 직후 삭제). functions/SECURITY_NOTES.md 참고.
 on:
   push:
     branches: [master]
