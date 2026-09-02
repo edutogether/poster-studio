@@ -6,7 +6,7 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 - **위치**: `D:\Projects\inky-festival\poster-studio`
 - **스택(2026-08-26 재설계)**: 정적 프론트엔드(`public/`, GitHub Pages 배포) + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 API 전담). 예전 Node/Express 로컬 서버(`server.js`)는 제거됨 — 행사장 교육청 MDM 노트북이 설치를 못 받을 수 있고 방화벽 문제도 있어서, 나머지 5개 앱과 동일하게 "주소만 열면 되는" 방식으로 전환.
 - **기능**: 웹캠 촬영(브라우저) → Firebase Functions가 AI 그림 생성 → 브라우저 캔버스가 타이포·크레딧 합성해 4종 완성 → 4×6 현장 인쇄
-- **상태**: **실운영 모드(2026-09-03~2026-09-30 정기감사 전까지, 아래 "실운영 모드" 섹션 참고) — 7차 종합감사 100/100 확정, `poster-studio-freeze-20260903` 태그(커밋 `dcc3de7`) 완료. 2026-09-03 대표 직접 지시로 화면 디자인 전면 개편(배경·타이포·레이아웃 6건, 커밋 `326ee8b`) 완료, 라이브 반영됨.** Firebase 프로젝트는 **2026-08-27부로 `inky-poster` → `inky-poster-studio`로 이전 완료**(구 프로젝트의 IAM 권한 문제 때문 — 아래 "Firebase 프로젝트 이전" 참고). Cloud Functions `posterStudio`(asia-northeast3, `https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio`) 배포됨. **2026-09-01부로 프론트엔드를 GitHub Pages → Firebase Hosting으로 이전** — 새 주소: `https://poster-studio.web.app`(아래 "GitHub Pages → Firebase Hosting 이전" 참고), 포털 카드도 이 주소로 갱신·확인 완료. 실제 웹캠 촬영→AI 포스터 생성까지 실사용 확인 완료. 행사장 와이파이는 이 앱 요구 스펙(공인 IP 3개, 노트북 20대를 7/7/6대 분산)에 맞춰 신규 구매 예정(아래 "7차 종합감사" 참고). `poster-studio-freeze-20260826` 태그는 구 프로젝트(`inky-poster`) 기준 정밀감사 "이전" 스냅샷, `poster-studio-freeze-20260903`이 최신 프리즈다.
+- **상태**: **실운영 모드(2026-09-03~2026-09-30 정기감사 전까지, 아래 "실운영 모드" 섹션 참고) — 7차 종합감사 100/100 확정, `poster-studio-freeze-20260903` 태그(커밋 `dcc3de7`) 완료. 2026-09-03 대표 직접 지시로 화면 디자인 전면 개편(배경·타이포·레이아웃 6건, 커밋 `326ee8b`) + 시각적 밀도 2라운드(파티클·마퀴·필름릴 워터마크, 커밋 `917d975`) 완료, 라이브 반영됨.** Firebase 프로젝트는 **2026-08-27부로 `inky-poster` → `inky-poster-studio`로 이전 완료**(구 프로젝트의 IAM 권한 문제 때문 — 아래 "Firebase 프로젝트 이전" 참고). Cloud Functions `posterStudio`(asia-northeast3, `https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio`) 배포됨. **2026-09-01부로 프론트엔드를 GitHub Pages → Firebase Hosting으로 이전** — 새 주소: `https://poster-studio.web.app`(아래 "GitHub Pages → Firebase Hosting 이전" 참고), 포털 카드도 이 주소로 갱신·확인 완료. 실제 웹캠 촬영→AI 포스터 생성까지 실사용 확인 완료. 행사장 와이파이는 이 앱 요구 스펙(공인 IP 3개, 노트북 20대를 7/7/6대 분산)에 맞춰 신규 구매 예정(아래 "7차 종합감사" 참고). `poster-studio-freeze-20260826` 태그는 구 프로젝트(`inky-poster`) 기준 정밀감사 "이전" 스냅샷, `poster-studio-freeze-20260903`이 최신 프리즈다.
 
 ## Firebase 프로젝트 이전: inky-poster → inky-poster-studio (2026-08-27)
 구 프로젝트(`inky-poster`)에서 배포 계정 IAM이 꼬여(아래 "Firebase 계정 접근 이슈" 참고) 대표가 아예 새 프로젝트를 만들기로 결정. 데이터가 전혀 없는 앱이라(Firestore/Storage 미사용, 사진은 처리 직후 삭제) 마이그레이션은 순수 재배포뿐이었다:
@@ -359,6 +359,19 @@ Portal이 6개 앱을 `edutogether.kr/<앱이름>` 리버스 프록시로 통일
 **검증**: `npm test`(public/, 47/47, JS 무변경이라 회귀 없음) · `npm run lint` 클린 · Browser 패널로 데스크탑 3해상도+모바일(375×812) 직접 확인, 콘솔 에러 0건. 커밋 `326ee8b`, CI 성공, 라이브(`https://poster-studio.web.app`, `/privacy.html`) 재확인 완료.
 
 **스크린샷 첨부 한계**: 팀장 세션과의 통신(`SendMessage`)이 텍스트만 지원해 이미지 첨부가 안 됨 — 대표가 이 세션 창을 직접 열면 그 자리에서 라이브 화면을 보여줄 수 있고, 그 외엔 라이브 주소로 직접 확인해야 함.
+
+### 2라운드 — 시각적 밀도 재작업 (같은 날, 대표 재지적: "포탈/인천/구글러/클래스케이드 수준으로")
+1차 개편을 보고도 "배경이 거의 단색이라 밋밋하다"는 재지적을 받아, 대표가 참고하라고 준 4개 사이트(`edutogether.kr`, `ai-ways-incheon.web.app`, `g00gler.web.app`, `edutogether.github.io/classcade`)를 Browser 패널로 실제로 열어 직접 스타일을 분석한 뒤 반영했다. 구글러는 완전한 일러스트 배경(전문 삽화)이라 이 세션이 예산 승인 없이 만들 수 있는 범위가 아니고, 포스터 스튜디오는 스크롤 없이 꽉 채운 2단 컨트롤패널 구조라 포털/구글러 같은 여백 많은 랜딩페이지보다 배경이 드러날 공간 자체가 훨씬 적다는 구조적 차이를 인지한 채로, CSS/canvas만으로 할 수 있는 만큼 밀도를 올렸다:
+- `public/particles.js`(신설) — 의존성 없는 canvas 2D 파티클(금빛 먼지 약 80개, 매프레임 `shadowBlur` 대신 미리 그려둔 스프라이트 재사용으로 저사양 노트북 부담 최소화), `prefers-reduced-motion`이면 애니메이션 없이 정지 프레임만 그림.
+- 헤더 하단에 극장 마퀴(전구줄) 느낌의 애니메이션 점 띠.
+- 배경 스포트라이트를 단순 radial-gradient blob에서 conic-gradient 기반 무대조명 빔으로 교체.
+- 대기 중인 촬영 박스(카메라 켜기 전) 안에 필름릴 SVG 워터마크 — 예전엔 그냥 빈 검정이었음.
+- 모든 패널 표면에 옅은 점 텍스처를 깔아 단색 플랫함을 줄임.
+- `public/eslint.config.js`에 `performance`/`requestAnimationFrame` 전역 추가(새 classic script 대응).
+
+**검증 과정의 특이사항(중요, 재발 방지 기록)**: 이 세션이 canvas 파티클을 Browser 패널 스크린샷으로 확인하려다 여러 번 "완전히 안 보임"을 겪었는데, 원인을 깊이 파본 결과 **실제 코드/렌더링 결함이 아니라 두 가지 도구/캐시 관련 함정**이었다: (1) 세션 내 JS(`javascript_tool`)로 canvas에 직접 그림을 그리고 바로 스크린샷을 찍으면 스크린샷 파이프라인이 그 상태를 못 따라가는 것으로 보임 — 반면 페이지가 자연스럽게 로드되고 자체 애니메이션 루프(`requestAnimationFrame`)가 몇 초 돌아간 뒤 찍은 스크린샷에서는 파티클이 정상적으로 보임(로컬 정적서버로 여러 번 재현·확인). (2) 라이브 사이트(`poster-studio.web.app`)를 이 세션이 같은 브라우저 탭으로 여러 배포에 걸쳐 반복 방문하면서, 브라우저 디스크 캐시가 배포 전 구버전 CSS/HTML을 계속 재사용해 캔버스 위치 스타일(`position:fixed`)이 하나도 안 먹은 것처럼 보인 적이 있었다 — 이건 위에서 팀장 세션이 겪은 것과 정확히 같은 캐시 문제였다. `curl`로 라이브 서버에서 직접 받은 `index.html`/`style.css`/`particles.js`는 전부 정확했고, 로컬 정적서버(캐시 문제 없음)에서는 데스크탑 3해상도+모바일 전부 파티클·마퀴·필름릴 워터마크가 스크린샷으로 실제로 보이는 것까지 확인했다.
+
+**검증**: `npm test`(47/47) · `npm run lint` 클린 · 로컬 정적서버로 1366×768/375×812 스크린샷 직접 확인(파티클·마퀴·워터마크 전부 렌더링됨) · 라이브 서버 파일 내용을 `curl`로 직접 대조해 배포 정확성 확인. 커밋 `917d975`, CI 성공.
 
 ## 실운영 모드 (2026-09-03 대표 지시, Portal과 동일 방침)
 **2026-09-30 정기감사 전까지 이 세션은 스스로 재감사나 추가 작업을 먼저 제안하지 않는다.** 100/100이 확정된 시점부터는 실제 운영 중 발생하는 이슈 대응, 팀장이 명시적으로 요청하는 작업(기능 추가, 버그 수정, 스펙 산출 등)만 처리하고, "다시 감사해볼까요" "이 부분 더 개선할까요" 같은 세션 주도 제안은 하지 않는다. 이 방침은 §12(팀장 위임범위 확대)와는 다른 축이다 — §12는 "누가 결정하는가"를, 이 방침은 "이 세션이 먼저 일을 만들어내지 않는다"는 것을 다룬다. 팀장이나 대표가 요청하면 그 즉시 정상적으로 응답·작업한다.
