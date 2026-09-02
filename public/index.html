@@ -20,9 +20,13 @@
        것이다. 배경은 앱과 같은 --bg(#0d0f14)라 앱으로 넘어갈 때 색이 안 튄다.
        app.js가 초기 플레이스홀더 포스터를 그리고 나면(첫 의미있는 화면) 페이드아웃한다.
        2026-09-03 3라운드: 그라디언트 글로우를 걷어내고 단색 배경 + 절제된 배지로 정리. -->
-  <div id="bootSplash" style="position:fixed;inset:0;z-index:9999;overflow:hidden;background:#0d0f14;transition:opacity .45s ease">
-    <div style="position:absolute;inset:-15%;background-image:url('poster-wall.svg');background-repeat:repeat;background-size:340px 425px;transform:rotate(-8deg) scale(1.3);transform-origin:center;opacity:.9"></div>
-    <div style="position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 8%,rgba(13,15,20,.55),transparent 55%),linear-gradient(180deg,rgba(13,15,20,.55) 0%,rgba(13,15,20,.88) 46%,#0d0f14 78%),linear-gradient(90deg,rgba(13,15,20,.7) 0%,rgba(13,15,20,.25) 22%,rgba(13,15,20,.25) 78%,rgba(13,15,20,.7) 100%)"></div>
+  <div id="bootSplash" style="position:fixed;inset:0;z-index:9999;overflow:hidden;background:transparent;transition:opacity .45s ease;will-change:opacity">
+    <!-- 배경 포스터월은 여기서 다시 그리지 않는다 — style.css의 body::before가
+         이미 같은 패턴을 z-index:0으로 깔아두므로, 스플래시는 반투명 스크림만
+         얹어 그 위에 겹쳐 보이게 한다. 두 레이어가 동시에 무거운 SVG 타일을
+         회전+반복 렌더링하던 게 페이드아웃 순간 렉처럼 보이는 원인이었다
+         (대표 피드백, 2026-09-03) — 하나만 그리는 걸로 그 이중 비용을 없앤다. -->
+    <div style="position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 20%,rgba(13,15,20,.35),transparent 60%),linear-gradient(180deg,rgba(13,15,20,.15) 0%,rgba(13,15,20,.7) 60%,#0d0f14 92%)"></div>
     <div style="position:relative;z-index:1;height:100%;display:grid;place-items:center;align-content:center;gap:22px">
       <span style="display:grid;place-items:center;width:64px;height:64px;border-radius:16px;background:#16181f;border:1px solid rgba(255,255,255,.1);font-size:32px">
         🎬
