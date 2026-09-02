@@ -817,3 +817,68 @@ test('cleanupOldCounters: 지울 문서가 하나도 없으면 아무 것도 지
   assert.equal(total, 0);
   assert.deepEqual(fakeDb._remainingIds('rateLimitBuckets'), ['recent1']);
 });
+
+// ── 7차 감사 발견(2026-09-02): 한도 미들웨어가 429로 끊을 때 이미 /tmp에 써둔
+// 학생 사진이 남던 문제(denyWithCleanup으로 통일). README가 "정상/오류 경로 모두에서
+// 생성 직후 삭제"라고 약속한 부분의 실제 위반이었고, Cloud Run의 /tmp는 메모리라
+// 429가 쏟아지는 순간 인스턴스 메모리(512MiB)를 사진으로 채울 수 있었다. ──────
+function makeBlockingCounterImpl() {
+  return async () => ({ allowed: false, count: 999999 });
+}
+
+for (const [label, mw] of [
+  ['rateLimit', rateLimit],
+  ['ipRateLimit', ipRateLimit],
+  ['dailyBudgetCap', dailyBudgetCap]
+]) {
+  test(`${label}: 429로 막을 때 이미 저장된 임시 사진을 반드시 지운다(고아 파일 방지)`, async () => {
+    _setCounterImplForTesting(makeBlockingCounterImpl());
+    try {
+      const filePath = makeTempFile(Buffer.from('fake-photo-bytes'));
+      const req = { file: { path: filePath }, headers: {}, ip: '1.2.3.4' };
+      const code = await new Promise((resolve) => {
+        mw(req, { status: (c) => ({ json: () => resolve(c) }) }, () => resolve(null));
+      });
+      assert.equal(code, 429, `${label}은 한도 초과 시 429여야 한다`);
+      assert.equal(fs.existsSync(filePath), false, `${label}이 막은 요청의 임시 사진이 남아있으면 안 된다`);
+    } finally {
+      useSharedCounterImpl();
+    }
+  });
+
+  test(`${label}: 통과시키는 경우에는 임시 사진을 지우지 않는다(정상 흐름 보호)`, async () => {
+    _setCounterImplForTesting(makeInMemoryCounterImpl());
+    try {
+      const filePath = makeTempFile(Buffer.from('fake-photo-bytes-ok'));
+      const req = { file: { path: filePath }, headers: {}, ip: '1.2.3.4' };
+      const passed = await new Promise((resolve) => {
+        mw(req, { status: () => ({ json: () => resolve(false) }) }, () => resolve(true));
+      });
+      assert.equal(passed, true);
+      assert.equal(fs.existsSync(filePath), true, '통과한 요청의 사진은 핸들러가 쓸 수 있어야 한다');
+      fs.unlinkSync(filePath);
+    } finally {
+      useSharedCounterImpl();
+    }
+  });
+}
+
+// 7차 감사 발견: 지출 카운터(dailyBudgetCap)가 사진별 생성한도보다 앞에 있어서,
+// 절대 OpenAI를 부르지 않는 요청(같은 사진 3번째)도 하루 예산을 태웠다 —
+// 부스토큰은 공개 소스에서 복사 가능하므로 사진 한 장 반복 전송만으로 행사 당일
+// 전체를 셧다운시킬 수 있었다. 미들웨어 순서 자체를 회귀 테스트로 박아둔다.
+test('/generate 미들웨어 순서: checkPhotoGenerationLimit이 dailyBudgetCap보다 먼저다', () => {
+  // express 5는 app._router 대신 app.router를 노출한다(4는 그 반대) — 둘 다 지원.
+  const router = app.router || app._router;
+  const stack = router.stack.find((l) => l.route && l.route.path === '/generate').route.stack;
+  const names = stack.map((l) => l.name);
+  const photoIdx = names.indexOf('checkPhotoGenerationLimit');
+  const budgetIdx = names.indexOf('dailyBudgetCap');
+  assert.ok(photoIdx >= 0 && budgetIdx >= 0, `두 미들웨어가 다 있어야 한다: ${names.join(',')}`);
+  assert.ok(
+    photoIdx < budgetIdx,
+    '생성으로 이어지지 않는 요청이 하루 예산을 소모하면 안 되므로 사진별 한도가 먼저여야 한다'
+  );
+  // 6차 감사에서 잡은 순서(사진 확인이 레이트리밋보다 먼저)도 같이 지킨다.
+  assert.ok(names.indexOf('requirePhoto') < names.indexOf('rateLimit'), 'requirePhoto가 rateLimit보다 먼저여야 한다');
+});

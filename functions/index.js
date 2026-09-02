@@ -378,7 +378,7 @@ async function dailyBudgetCap(req, res, next) {
   try {
     const { allowed } = await _incrementAndCheck('dailyBudgetBuckets', kstDateKey(), DAILY_BUDGET_MAX);
     if (!allowed) {
-      return res.status(429).json({ error: '오늘의 생성 한도에 도달했습니다. 운영팀에 문의해 주세요.' });
+      return denyWithCleanup(req, res, 429, '오늘의 생성 한도에 도달했습니다. 운영팀에 문의해 주세요.');
     }
     next();
   } catch (err) {
@@ -392,12 +392,26 @@ function requirePhoto(req, res, next) {
   next();
 }
 
+/* 7차 감사 발견(2026-09-02): parseMultipart는 이미 학생 사진을 /tmp에 써둔 상태에서
+   다음 미들웨어로 넘어간다. 그런데 한도 미들웨어가 429로 요청을 끊으면 아래 /generate
+   핸들러(finally에서 임시파일을 지우는 유일한 곳)까지 도달하지 못해, 막힌 요청의
+   사진이 인스턴스 /tmp에 그대로 남았다 — checkPhotoGenerationLimit만 직접 지우고
+   있었고 rateLimit·ipRateLimit·dailyBudgetCap 세 경로는 누락돼 있었다. 이건
+   (a) README가 "정상/오류 경로 모두에서 생성 직후 삭제"라고 명시한 개인정보 약속의
+   실제 위반이고, (b) Cloud Run의 /tmp는 메모리(512MiB)를 쓰므로 429가 쏟아지는
+   바로 그 순간(=한도가 작동하는 순간)에 사진 12MB×N이 메모리에 쌓여 인스턴스가
+   죽을 수 있는 가용성 문제이기도 하다. 모든 거부 경로를 이 함수 하나로 통일한다. */
+async function denyWithCleanup(req, res, status, message) {
+  if (req.file) await fs.promises.unlink(req.file.path).catch(() => {});
+  return res.status(status).json({ error: message });
+}
+
 async function rateLimit(req, res, next) {
   const bucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
   try {
     const { allowed } = await _incrementAndCheck('rateLimitBuckets', String(bucket), RATE_LIMIT_MAX);
     if (!allowed) {
-      return res.status(429).json({ error: '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.' });
+      return denyWithCleanup(req, res, 429, '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.');
     }
     next();
   } catch (err) {
@@ -414,7 +428,7 @@ async function ipRateLimit(req, res, next) {
   try {
     const { allowed } = await _incrementAndCheck('ipRateLimitBuckets', `${bucket}:${ip}`, IP_RATE_LIMIT_MAX);
     if (!allowed) {
-      return res.status(429).json({ error: '이 네트워크에서 요청이 너무 많이 몰렸습니다. 잠시 후 다시 시도해 주세요.' });
+      return denyWithCleanup(req, res, 429, '이 네트워크에서 요청이 너무 많이 몰렸습니다. 잠시 후 다시 시도해 주세요.');
     }
     next();
   } catch (err) {
@@ -443,12 +457,12 @@ async function checkPhotoGenerationLimit(req, res, next) {
   try {
     const { allowed } = await _incrementAndCheck('photoGenCounts', hash, PHOTO_GENERATION_LIMIT);
     if (!allowed) {
-      // 여기서 막으면 이 요청은 아래 /generate 핸들러(임시파일 정리 담당)까지 못 가므로,
-      // 여기서 직접 지워야 /tmp에 고아 파일이 안 남는다(2차 감사 때 고친 것과 같은 종류의 버그 재발 방지).
-      // await 없이 fs.unlink(콜백)만 쓰면 응답을 먼저 보내버려서, 삭제가 실제로 끝나기 전에
-      // 호출부가 "파일이 없어졌다"고 확인하려 하면 타이밍에 따라 실패할 수 있다(CI에서 실제로 발견).
-      await fs.promises.unlink(req.file.path).catch(() => {});
-      return res.status(429).json({ error: '이 사진으로는 생성 횟수를 모두 사용했어요. 다시 촬영해 주세요.' });
+      // 막힌 요청은 아래 /generate 핸들러(임시파일 정리 담당)까지 못 가므로 여기서 직접
+      // 지워야 /tmp에 고아 파일이 안 남는다(2차 감사 때 고친 것과 같은 종류의 버그 재발 방지).
+      // 7차 감사(2026-09-02)에서 다른 한도 미들웨어에도 같은 누락이 있는 게 확인돼
+      // denyWithCleanup 하나로 통일했다 — await 없이 콜백 unlink만 쓰면 응답이 먼저 나가
+      // 삭제 완료 전에 호출부가 확인하려 할 때 타이밍에 따라 실패한다(CI에서 실제로 발견).
+      return denyWithCleanup(req, res, 429, '이 사진으로는 생성 횟수를 모두 사용했어요. 다시 촬영해 주세요.');
     }
     next();
   } catch (err) {
@@ -488,8 +502,15 @@ app.post(
   requirePhoto,
   rateLimit,
   ipRateLimit,
-  dailyBudgetCap,
+  // 7차 감사 발견(2026-09-02): checkPhotoGenerationLimit이 dailyBudgetCap 뒤에 있어서,
+  // "같은 사진 3번째 요청"처럼 애초에 OpenAI를 절대 부르지 않는(=돈이 안 나가는) 요청도
+  // 하루 예산 카운터를 그대로 소모했다. 부스토큰은 공개 소스에서 그대로 복사 가능하므로,
+  // 사진 한 장을 반복 전송하는 것만으로 실제 지출 없이 DAILY_BUDGET_MAX(4000)를 태워
+  // 행사 당일 전체를 "오늘의 생성 한도 도달"로 셧다운시킬 수 있었다(6차 감사에서 고친
+  // "사진 없는 요청이 레이트리밋을 태우던" 것과 완전히 같은 종류의 결함). 지출 카운터는
+  // 실제로 생성으로 이어질 요청만 세도록 순서를 뒤집는다.
   checkPhotoGenerationLimit,
+  dailyBudgetCap,
   async (req, res) => {
     const genre = req.body.genre || 'animation';
     const mode = req.body.mode === 'group' ? 'group' : 'solo';
