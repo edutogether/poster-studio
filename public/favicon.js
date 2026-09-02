@@ -56,3 +56,5 @@ document.addEventListener('visibilitychange', updateFavicon);
 window.addEventListener('focus', updateFavicon);
 window.addEventListener('blur', updateFavicon);
 updateFavicon();
+
+export { renderColorFavicon, toGrayscale, updateFavicon, setFaviconHref, COLOR_ICON, GRAY_ICON };

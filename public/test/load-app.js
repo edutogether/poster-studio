@@ -137,7 +137,10 @@ export async function loadApp({ createRealCanvas } = {}) {
     },
     fonts: { load: async () => {}, ready: Promise.resolve() },
     addEventListener() {},
-    querySelector: () => makeElement()
+    querySelector: () => null,
+    head: { appendChild() {} },
+    visibilityState: 'visible',
+    hasFocus: () => true
   };
 
   const sandbox = {
