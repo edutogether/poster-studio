@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 900" width="720" height="900">
+  <defs>
+    <linearGradient id="pA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2033"/><stop offset="1" stop-color="#120e17"/>
+    </linearGradient>
+    <linearGradient id="pB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2410"/><stop offset="1" stop-color="#170f06"/>
+    </linearGradient>
+    <linearGradient id="pC" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#123028"/><stop offset="1" stop-color="#0a1613"/>
+    </linearGradient>
+    <linearGradient id="pD" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a1420"/><stop offset="1" stop-color="#170a0d"/>
+    </linearGradient>
+    <linearGradient id="pE" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c1f28"/><stop offset="1" stop-color="#0d0f14"/>
+    </linearGradient>
+    <linearGradient id="pGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a3a14"/><stop offset="1" stop-color="#1c1608"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 3x3 poster grid, cell 240x300, poster 208x272 inset -->
+  <!-- row 1 -->
+  <g transform="translate(16,14)">
+    <rect width="208" height="272" rx="6" fill="url(#pA)" stroke="rgba(233,185,73,.22)"/>
+    <rect x="10" y="10" width="188" height="4" fill="rgba(255,255,255,.55)"/>
+    <circle cx="104" cy="120" r="46" fill="none" stroke="rgba(233,185,73,.5)" stroke-width="3"/>
+    <circle cx="104" cy="120" r="10" fill="rgba(233,185,73,.6)"/>
+    <g stroke="rgba(233,185,73,.4)" stroke-width="3">
+      <line x1="104" y1="74" x2="104" y2="90"/><line x1="104" y1="150" x2="104" y2="166"/>
+      <line x1="58" y1="120" x2="74" y2="120"/><line x1="134" y1="120" x2="150" y2="120"/>
+    </g>
+    <rect x="24" y="200" width="160" height="10" rx="3" fill="rgba(242,243,246,.5)"/>
+    <rect x="46" y="220" width="116" height="6" rx="3" fill="rgba(242,243,246,.25)"/>
+    <rect x="10" y="258" width="188" height="4" fill="rgba(255,255,255,.35)"/>
+  </g>
+
+  <g transform="translate(256,14)">
+    <rect width="208" height="272" rx="6" fill="url(#pGold)" stroke="rgba(233,185,73,.28)"/>
+    <rect x="10" y="10" width="188" height="4" fill="rgba(255,255,255,.5)"/>
+    <polygon points="104,68 118,108 160,108 126,132 138,172 104,148 70,172 82,132 48,108 90,108"
+      fill="rgba(233,185,73,.55)"/>
+    <rect x="24" y="202" width="160" height="10" rx="3" fill="rgba(242,243,246,.55)"/>
+    <rect x="52" y="222" width="104" height="6" rx="3" fill="rgba(242,243,246,.25)"/>
+    <rect x="10" y="258" width="188" height="4" fill="rgba(255,255,255,.3)"/>
+  </g>
+
+  <g transform="translate(496,14)">
+    <rect width="208" height="272" rx="6" fill="url(#pC)" stroke="rgba(233,185,73,.2)"/>
+    <rect x="10" y="10" width="188" height="4" fill="rgba(255,255,255,.5)"/>
+    <rect x="54" y="78" width="100" height="72" rx="8" fill="none" stroke="rgba(233,185,73,.45)" stroke-width="3"/>
+    <line x1="54" y1="102" x2="20" y2="88" stroke="rgba(233,185,73,.45)" stroke-width="3"/>
+    <line x1="54" y1="118" x2="20" y2="132" stroke="rgba(233,185,73,.3)" stroke-width="3"/>
+    <rect x="24" y="200" width="160" height="10" rx="3" fill="rgba(242,243,246,.5)"/>
+    <rect x="40" y="220" width="128" height="6" rx="3" fill="rgba(242,243,246,.22)"/>
+    <rect x="10" y="258" width="188" height="4" fill="rgba(255,255,255,.3)"/>
+  </g>
+
+  <!-- row 2 -->
+  <g transform="translate(16,314)">
+    <rect width="208" height="272" rx="6" fill="url(#pD)" stroke="rgba(233,185,73,.22)"/>
+    <rect x="10" y="10" width="188" height="4" fill="rgba(255,255,255,.5)"/>
+    <rect x="60" y="70" width="88" height="112" rx="10" fill="none" stroke="rgba(233,185,73,.4)" stroke-width="3"/>
+    <circle cx="104" cy="126" r="18" fill="rgba(233,185,73,.35)"/>
+    <rect x="24" y="200" width="160" height="10" rx="3" fill="rgba(242,243,246,.5)"/>
+    <rect x="46" y="220" width="116" height="6" rx="3" fill="rgba(242,243,246,.22)"/>
+    <rect x="10" y="258" width="188" height="4" fill="rgba(255,255,255,.3)"/>
+  </g>
+
+  <g transform="translate(256,314)">
+    <rect width="208" height="272" rx="6" fill="url(#pE)" stroke="rgba(233,185,73,.22)"/>
+    <rect x="10" y="10" width="188" height="4" fill="rgba(255,255,255,.5)"/>
+    <g fill="rgba(233,185,73,.45)">
+      <rect x="46" y="86" width="116" height="26" rx="4"/>
+      <rect x="66" y="112" width="76" height="72" rx="4"/>
+    </g>
+    <rect x="24" y="200" width="160" height="10" rx="3" fill="rgba(242,243,246,.5)"/>
+    <rect x="52" y="222" width="104" height="6" rx="3" fill="rgba(242,243,246,.22)"/>
+    <rect x="10" y="258" width="188" height="4" fill="rgba(255,255,255,.3)"/>
+  </g>
+
+  <g transform="translate(496,314)">
+    <rect width="208" height="272" rx="6" fill="url(#pB)" stroke="rgba(233,185,73,.24)"/>
+    <rect x="10" y="10" width="188" height="4" fill="rgba(255,255,255,.5)"/>
+    <circle cx="104" cy="122" r="48" fill="none" stroke="rgba(233,185,73,.4)" stroke-width="3" stroke-dasharray="6 10"/>
+    <polygon points="94,104 94,140 128,122" fill="rgba(233,185,73,.5)"/>
+    <rect x="24" y="200" width="160" height="10" rx="3" fill="rgba(242,243,246,.5)"/>
+    <rect x="46" y="220" width="116" height="6" rx="3" fill="rgba(242,243,246,.22)"/>
+    <rect x="10" y="258" width="188" height="4" fill="rgba(255,255,255,.3)"/>
+  </g>
+
+  <!-- row 3 -->
+  <g transform="translate(16,614)">
+    <rect width="208" height="272" rx="6" fill="url(#pC)" stroke="rgba(233,185,73,.2)"/>
+    <rect x="10" y="10" width="188" height="4" fill="rgba(255,255,255,.5)"/>
+    <polygon points="104,72 118,112 160,112 126,136 138,176 104,152 70,176 82,136 48,112 90,112"
+      fill="rgba(233,185,73,.4)"/>
+    <rect x="24" y="202" width="160" height="10" rx="3" fill="rgba(242,243,246,.5)"/>
+    <rect x="52" y="222" width="104" height="6" rx="3" fill="rgba(242,243,246,.22)"/>
+    <rect x="10" y="258" width="188" height="4" fill="rgba(255,255,255,.3)"/>
+  </g>
+
+  <g transform="translate(256,614)">
+    <rect width="208" height="272" rx="6" fill="url(#pGold)" stroke="rgba(233,185,73,.28)"/>
+    <rect x="10" y="10" width="188" height="4" fill="rgba(255,255,255,.5)"/>
+    <rect x="58" y="76" width="92" height="118" rx="8" fill="none" stroke="rgba(233,185,73,.5)" stroke-width="3"/>
+    <line x1="58" y1="102" x2="150" y2="102" stroke="rgba(233,185,73,.5)" stroke-width="3"/>
+    <rect x="24" y="202" width="160" height="10" rx="3" fill="rgba(242,243,246,.55)"/>
+    <rect x="46" y="222" width="116" height="6" rx="3" fill="rgba(242,243,246,.25)"/>
+    <rect x="10" y="258" width="188" height="4" fill="rgba(255,255,255,.3)"/>
+  </g>
+
+  <g transform="translate(496,614)">
+    <rect width="208" height="272" rx="6" fill="url(#pA)" stroke="rgba(233,185,73,.22)"/>
+    <rect x="10" y="10" width="188" height="4" fill="rgba(255,255,255,.5)"/>
+    <circle cx="104" cy="118" r="44" fill="none" stroke="rgba(233,185,73,.45)" stroke-width="3"/>
+    <circle cx="104" cy="118" r="9" fill="rgba(233,185,73,.55)"/>
+    <g stroke="rgba(233,185,73,.35)" stroke-width="3">
+      <line x1="104" y1="74" x2="104" y2="88"/><line x1="104" y1="148" x2="104" y2="162"/>
+      <line x1="60" y1="118" x2="74" y2="118"/><line x1="134" y1="118" x2="148" y2="118"/>
+    </g>
+    <rect x="24" y="200" width="160" height="10" rx="3" fill="rgba(242,243,246,.5)"/>
+    <rect x="46" y="220" width="116" height="6" rx="3" fill="rgba(242,243,246,.22)"/>
+    <rect x="10" y="258" width="188" height="4" fill="rgba(255,255,255,.3)"/>
+  </g>
+</svg>
