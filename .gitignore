@@ -8,3 +8,4 @@ functions/.env.*
 *.log
 .cache
 .firebase/
+.claude/settings.local.json
