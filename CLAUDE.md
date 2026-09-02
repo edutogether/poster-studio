@@ -6,7 +6,7 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 - **위치**: `D:\Projects\inky-festival\poster-studio`
 - **스택(2026-08-26 재설계)**: 정적 프론트엔드(`public/`, GitHub Pages 배포) + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 API 전담). 예전 Node/Express 로컬 서버(`server.js`)는 제거됨 — 행사장 교육청 MDM 노트북이 설치를 못 받을 수 있고 방화벽 문제도 있어서, 나머지 5개 앱과 동일하게 "주소만 열면 되는" 방식으로 전환.
 - **기능**: 웹캠 촬영(브라우저) → Firebase Functions가 AI 그림 생성 → 브라우저 캔버스가 타이포·크레딧 합성해 4종 완성 → 4×6 현장 인쇄
-- **상태**: **실운영 모드(2026-09-03~2026-09-30 정기감사 전까지, 아래 "실운영 모드" 섹션 참고) — 7차 종합감사 100/100 확정, `poster-studio-freeze-20260903` 태그(커밋 `dcc3de7`) 완료.** Firebase 프로젝트는 **2026-08-27부로 `inky-poster` → `inky-poster-studio`로 이전 완료**(구 프로젝트의 IAM 권한 문제 때문 — 아래 "Firebase 프로젝트 이전" 참고). Cloud Functions `posterStudio`(asia-northeast3, `https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio`) 배포됨. **2026-09-01부로 프론트엔드를 GitHub Pages → Firebase Hosting으로 이전** — 새 주소: `https://poster-studio.web.app`(아래 "GitHub Pages → Firebase Hosting 이전" 참고), 포털 카드도 이 주소로 갱신·확인 완료. 실제 웹캠 촬영→AI 포스터 생성까지 실사용 확인 완료. 행사장 와이파이는 이 앱 요구 스펙(공인 IP 3개, 노트북 20대를 7/7/6대 분산)에 맞춰 신규 구매 예정(아래 "7차 종합감사" 참고). `poster-studio-freeze-20260826` 태그는 구 프로젝트(`inky-poster`) 기준 정밀감사 "이전" 스냅샷, `poster-studio-freeze-20260903`이 최신 프리즈다.
+- **상태**: **실운영 모드(2026-09-03~2026-09-30 정기감사 전까지, 아래 "실운영 모드" 섹션 참고) — 7차 종합감사 100/100 확정, `poster-studio-freeze-20260903` 태그(커밋 `dcc3de7`) 완료. 2026-09-03 대표 직접 지시로 화면 디자인 전면 개편(배경·타이포·레이아웃 6건, 커밋 `326ee8b`) 완료, 라이브 반영됨.** Firebase 프로젝트는 **2026-08-27부로 `inky-poster` → `inky-poster-studio`로 이전 완료**(구 프로젝트의 IAM 권한 문제 때문 — 아래 "Firebase 프로젝트 이전" 참고). Cloud Functions `posterStudio`(asia-northeast3, `https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio`) 배포됨. **2026-09-01부로 프론트엔드를 GitHub Pages → Firebase Hosting으로 이전** — 새 주소: `https://poster-studio.web.app`(아래 "GitHub Pages → Firebase Hosting 이전" 참고), 포털 카드도 이 주소로 갱신·확인 완료. 실제 웹캠 촬영→AI 포스터 생성까지 실사용 확인 완료. 행사장 와이파이는 이 앱 요구 스펙(공인 IP 3개, 노트북 20대를 7/7/6대 분산)에 맞춰 신규 구매 예정(아래 "7차 종합감사" 참고). `poster-studio-freeze-20260826` 태그는 구 프로젝트(`inky-poster`) 기준 정밀감사 "이전" 스냅샷, `poster-studio-freeze-20260903`이 최신 프리즈다.
 
 ## Firebase 프로젝트 이전: inky-poster → inky-poster-studio (2026-08-27)
 구 프로젝트(`inky-poster`)에서 배포 계정 IAM이 꼬여(아래 "Firebase 계정 접근 이슈" 참고) 대표가 아예 새 프로젝트를 만들기로 결정. 데이터가 전혀 없는 앱이라(Firestore/Storage 미사용, 사진은 처리 직후 삭제) 마이그레이션은 순수 재배포뿐이었다:
@@ -342,6 +342,23 @@ Portal이 6개 앱을 `edutogether.kr/<앱이름>` 리버스 프록시로 통일
 - 레거시 설치형 버전(`server.js` 등) 잔존 여부 확인 — 저장소에 전혀 없음(해당 없음, 이미 이전 리팩터링 때 삭제됨).
 
 **프리즈**: `poster-studio-freeze-20260903` 태그를 커밋 `dcc3de7`(7차 감사 100/100 + IP_RATE_LIMIT_MAX=50 반영 시점)에 생성·push함.
+
+## 화면 디자인 전면 개편 (2026-09-03, 대표 직접 지시 — "실운영 모드" 중 예외로 진행)
+프리즈 이후지만 대표가 라이브 화면을 직접 보고 지시한 건이라 "실운영 모드"(팀장/대표 요청은 정상 응답) 원칙대로 그 자리에서 진행했다.
+
+1차 지시("배경 포함 전체적인 디자인 업")로 `public/style.css` 전면 개편(다층 스포트라이트 배경, 필름스트립 퍼포레이션 라인, 골드 그라디언트 디스플레이 타이포, 뷰파인더 코너 카메라 프레임, 패널/버튼/입력창 톤 정리) — 기능 코드는 전혀 안 건드림(ID/클래스 그대로 유지).
+
+곧이어 라이브 스크린샷을 보고 온 2차 지시 6건도 같은 라운드에서 전부 반영:
+1. 화면 상단의 긴 개인정보 안내문을 `public/privacy.html`(신설)로 분리, 헤더엔 짧은 링크만 남김.
+2. 촬영 박스 4:3 → 16:9.
+3. "홍보 문구" 입력란 완전 삭제 — `constants.js`의 `val()`이 `#tagline` 요소가 없으면 빈 문자열을 반환하는 기존 로직 덕분에(`$(id)?.value`) `api.js`의 `getMeta()`가 자동으로 항상 장르별 추천 문구를 쓰게 됨, JS 변경 불필요.
+4. 장르 select 절반 폭 + `AI 포스터 만들기` 버튼을 같은 줄에 배치(`.genreRow` flex, 480px 이하 모바일에서는 세로 스택).
+5. `@media (max-height:...)` 2단계 압축으로 1024×768(4:3)·1366×768(16:9)·1280×800(16:10) 세 해상도 전부 스크롤 없이 들어맞는 것을 Browser 패널로 직접 재서 확인(문서 높이=뷰포트 높이 일치).
+6. 완성 패널(`#posterCanvas`)이 컬럼 폭과 남은 뷰포트 높이 둘 다에 맞춰(`max-width`+`max-height` 동시 적용) 스스로 축소되도록 변경 — 낮은 화면에서 포스터 캔버스가 잘리지 않음.
+
+**검증**: `npm test`(public/, 47/47, JS 무변경이라 회귀 없음) · `npm run lint` 클린 · Browser 패널로 데스크탑 3해상도+모바일(375×812) 직접 확인, 콘솔 에러 0건. 커밋 `326ee8b`, CI 성공, 라이브(`https://poster-studio.web.app`, `/privacy.html`) 재확인 완료.
+
+**스크린샷 첨부 한계**: 팀장 세션과의 통신(`SendMessage`)이 텍스트만 지원해 이미지 첨부가 안 됨 — 대표가 이 세션 창을 직접 열면 그 자리에서 라이브 화면을 보여줄 수 있고, 그 외엔 라이브 주소로 직접 확인해야 함.
 
 ## 실운영 모드 (2026-09-03 대표 지시, Portal과 동일 방침)
 **2026-09-30 정기감사 전까지 이 세션은 스스로 재감사나 추가 작업을 먼저 제안하지 않는다.** 100/100이 확정된 시점부터는 실제 운영 중 발생하는 이슈 대응, 팀장이 명시적으로 요청하는 작업(기능 추가, 버그 수정, 스펙 산출 등)만 처리하고, "다시 감사해볼까요" "이 부분 더 개선할까요" 같은 세션 주도 제안은 하지 않는다. 이 방침은 §12(팀장 위임범위 확대)와는 다른 축이다 — §12는 "누가 결정하는가"를, 이 방침은 "이 세션이 먼저 일을 만들어내지 않는다"는 것을 다룬다. 팀장이나 대표가 요청하면 그 즉시 정상적으로 응답·작업한다.
