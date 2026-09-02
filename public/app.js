@@ -51,7 +51,7 @@ import './favicon.js';
 
 /* ── 초기 플레이스홀더 ── */
 (function placeholder(){
-  pctx.fillStyle='#0b1020'; pctx.fillRect(0,0,W,H);
+  pctx.fillStyle='#0d0f14'; pctx.fillRect(0,0,W,H);
   pctx.fillStyle='#e9b949'; pctx.textAlign='center'; pctx.font="900 84px 'Black Han Sans', sans-serif";
   pctx.fillText('🎬', W/2, 760); pctx.fillStyle='#f4f6fb';
   pctx.font="900 56px 'Black Han Sans', sans-serif"; pctx.fillText('AI 영화 포스터', W/2, 880);
