@@ -20,12 +20,15 @@
        것이다. 배경은 앱과 같은 --bg(#0d0f14)라 앱으로 넘어갈 때 색이 안 튄다.
        app.js가 초기 플레이스홀더 포스터를 그리고 나면(첫 의미있는 화면) 페이드아웃한다.
        2026-09-03 3라운드: 그라디언트 글로우를 걷어내고 단색 배경 + 절제된 배지로 정리. -->
-  <div id="bootSplash" style="position:fixed;inset:0;z-index:9999;overflow:hidden;background:transparent;transition:opacity .45s ease;will-change:opacity">
-    <!-- 배경 포스터월은 여기서 다시 그리지 않는다 — style.css의 body::before가
-         이미 같은 패턴을 z-index:0으로 깔아두므로, 스플래시는 반투명 스크림만
-         얹어 그 위에 겹쳐 보이게 한다. 두 레이어가 동시에 무거운 SVG 타일을
-         회전+반복 렌더링하던 게 페이드아웃 순간 렉처럼 보이는 원인이었다
-         (대표 피드백, 2026-09-03) — 하나만 그리는 걸로 그 이중 비용을 없앤다. -->
+  <div id="bootSplash" style="position:fixed;inset:0;z-index:9999;overflow:hidden;background:#0d0f14;transition:opacity .45s ease;will-change:opacity">
+    <!-- 5라운드(2026-09-03) — 대표 재지적: "스플래시일 때 뒤가 다 보여, 검은
+         배경에 로딩이 되어야" + 버벅임/덜컹거림. 4라운드에서 스플래시를
+         투명하게 만들어 body::before(포스터월)가 비쳐 보이게 했었는데, 그게
+         오히려 "로딩 중에 배경이 산만하게 다 비쳐 보인다"는 새 불만과
+         무거운 이미지 디코딩이 로딩 임계경로에 끼어드는 버벅임 둘 다의
+         원인이었다. 다시 완전 불투명(#0d0f14)으로 되돌려 로딩 중엔 순수
+         검은 화면 + 로고/문구만 뜨게 하고, 배경 이미지는 스플래시가 걷힌
+         뒤(app.js가 첫 화면을 그린 다음)에만 보이게 한다. -->
     <div style="position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 20%,rgba(13,15,20,.35),transparent 60%),linear-gradient(180deg,rgba(13,15,20,.15) 0%,rgba(13,15,20,.7) 60%,#0d0f14 92%)"></div>
     <div style="position:relative;z-index:1;height:100%;display:grid;place-items:center;align-content:center;gap:22px">
       <span style="display:grid;place-items:center;width:64px;height:64px;border-radius:16px;background:#16181f;border:1px solid rgba(255,255,255,.1);font-size:32px">
