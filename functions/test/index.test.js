@@ -40,7 +40,8 @@ import {
   _resetOpenAIHealthCacheForTesting,
   COUNTER_COLLECTIONS,
   COUNTER_TTL_MS,
-  cleanupOldCounters
+  cleanupOldCounters,
+  ALLOWED_ORIGINS
 } from '../index.js';
 
 // 레이트리밋/사진별 생성한도는 이제 Firestore 트랜잭션으로 전역 강제되는데(5차
@@ -782,6 +783,23 @@ test('cleanupOldCounters: 30일 지난 문서만 지우고, 30일 안쪽 문서�
   assert.deepEqual(fakeDb._remainingIds('ipRateLimitBuckets'), []);
   assert.deepEqual(fakeDb._remainingIds('photoGenCounts'), ['recentHash']);
   assert.deepEqual(fakeDb._remainingIds('dailyBudgetBuckets'), []);
+});
+
+// ── ALLOWED_ORIGINS (2026-09-01, 팀장 세션 경유 발견 공유: Portal 리버스 프록시가
+// edutogether.kr/poster-studio로 정적 콘텐츠는 프록시해도 /generate 같은 API 호출은
+// 브라우저가 원래 Cloud Functions 주소로 직접 나가고 그때 Origin은 https://edutogether.kr다)
+test('ALLOWED_ORIGINS: https://edutogether.kr을 허용하고, 서브도메인/http/다른 도메인은 거부한다', () => {
+  const matches = (origin) => ALLOWED_ORIGINS.some((re) => re.test(origin));
+  assert.equal(matches('https://edutogether.kr'), true);
+  assert.equal(matches('http://edutogether.kr'), false, 'http는 허용하면 안 된다');
+  assert.equal(matches('https://evil-edutogether.kr'), false, '서브스트링만 같은 다른 도메인은 거부해야 한다');
+  assert.equal(matches('https://edutogether.kr.evil.com'), false, '접미사 붙은 가짜 도메인은 거부해야 한다');
+});
+
+test('ALLOWED_ORIGINS: 기존 Firebase Hosting 주소도 여전히 허용된다(edutogether.kr 추가가 기존 걸 안 깬다)', () => {
+  const matches = (origin) => ALLOWED_ORIGINS.some((re) => re.test(origin));
+  assert.equal(matches('https://poster-studio.web.app'), true);
+  assert.equal(matches('https://poster-studio.firebaseapp.com'), true);
 });
 
 test('cleanupOldCounters: 지울 문서가 하나도 없으면 아무 것도 지우지 않고 0을 반환한다', async () => {

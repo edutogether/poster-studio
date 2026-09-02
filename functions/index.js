@@ -527,9 +527,17 @@ app.use((err, req, res, _next) => {
 // 로컬 개발 시에는 5500(Live Server)·8080(firebase serve) 포트도 허용.
 // 프로젝트를 옮기거나 배포 도메인이 바뀌면 public/constants.js의 API_BASE와 이 목록을
 // 반드시 같이 고칠 것 — 한쪽만 고치면 CORS가 막히거나 엉뚱한 프로젝트를 호출한다.
+//
+// 2026-09-01 추가(팀장 세션 경유, Voice Cinema 발견 공유): 6개 앱을 edutogether.kr/앱이름
+// 아래로 통일하는 Portal 리버스 프록시는 정적 콘텐츠(HTML/JS)만 프록시하고, 브라우저의
+// /generate 같은 API 호출은 여전히 원래 Cloud Functions 주소로 직접 나간다 — 그때 Origin
+// 헤더는 프록시된 페이지 주소인 https://edutogether.kr가 된다(경로는 CORS Origin에
+// 포함되지 않으므로 /poster-studio 서브경로 여부와 무관하게 이 한 줄이면 충분하다).
+// 이 줄이 없으면 edutogether.kr/poster-studio 경유 접속에서만 CORS가 조용히 막힌다.
 const ALLOWED_ORIGINS = [
   /^https:\/\/poster-studio\.web\.app$/,
   /^https:\/\/poster-studio\.firebaseapp\.com$/,
+  /^https:\/\/edutogether\.kr$/,
   /^http:\/\/localhost:(5500|8080)$/,
   /^http:\/\/127\.0\.0\.1:(5500|8080)$/
 ];
@@ -563,7 +571,8 @@ export {
   _resetOpenAIHealthCacheForTesting,
   COUNTER_COLLECTIONS,
   COUNTER_TTL_MS,
-  cleanupOldCounters
+  cleanupOldCounters,
+  ALLOWED_ORIGINS
 };
 
 export const posterStudio = onRequest(
