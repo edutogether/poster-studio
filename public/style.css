@@ -15,27 +15,39 @@
 html,body{margin:0; min-height:100%; background:var(--navy); color:var(--ink);
   font-family:var(--font); -webkit-font-smoothing:antialiased; position:relative}
 
-/* ── 배경: 다층 스포트라이트 + 은은한 필름 그레인 + 상하단 필름스트립 퍼포레이션 ── */
+/* ── 배경: 극장 조명 빔(코너에서 뻗는 conic-gradient) + 필름릴 워터마크 + 파티클
+   캔버스(particles.js) + 상단 필름스트립 퍼포레이션 (2026-09-03, 대표 지시로
+   포털/클래스케이드 수준의 시각적 밀도를 목표로 재작업 — 배경이 단색에 가깝던
+   1차 개편의 밋밋함을 지적받아, 무대 조명·입자·워터마크 3겹을 추가했다). ── */
 body{
   background:
-    radial-gradient(900px 480px at 82% -6%, rgba(233,185,73,.16), transparent 60%),
-    radial-gradient(760px 460px at -8% 14%, rgba(91,124,250,.13), transparent 58%),
-    radial-gradient(1000px 620px at 50% 118%, rgba(233,185,73,.09), transparent 62%),
+    conic-gradient(from 200deg at 14% 0%, rgba(233,185,73,.20), transparent 16%),
+    conic-gradient(from 345deg at 86% 0%, rgba(110,140,255,.16), transparent 16%),
+    radial-gradient(1000px 620px at 50% 118%, rgba(233,185,73,.10), transparent 62%),
     linear-gradient(180deg, var(--navy) 0%, #0a0f22 55%, var(--navy) 100%);
   background-attachment:fixed;
 }
+#bgParticles{position:fixed; inset:0; z-index:0; pointer-events:none}
 body::after{
   /* 화면 맨 위 가장자리의 필름스트립 퍼포레이션 라인(장식용) — 뷰포트 기준 고정이라
      스크롤해도 항상 맨 위에만 보인다. */
-  content:''; position:fixed; left:0; right:0; top:0; height:3px; z-index:0; pointer-events:none;
+  content:''; position:fixed; left:0; right:0; top:0; height:3px; z-index:2; pointer-events:none;
   background:repeating-linear-gradient(90deg, rgba(233,185,73,.35) 0 8px, transparent 8px 22px);
 }
 .topbar, .app{position:relative; z-index:1}
 
 /* ── 헤더 ── */
 .topbar{display:flex; align-items:center; justify-content:space-between; gap:18px;
-  padding:16px 30px; border-bottom:1px solid var(--line);
+  padding:16px 30px 19px; border-bottom:1px solid var(--line); position:relative;
   background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0) 70%), var(--navy2);}
+.topbar::after{
+  /* 극장 마퀴(전구 줄) 느낌의 반짝이는 점 띠 — 배경 위치를 애니메이션시켜
+     "쫓아가는 불빛" 효과를 낸다. */
+  content:''; position:absolute; left:0; right:0; bottom:-1px; height:3px;
+  background-image:radial-gradient(circle, var(--gold2) 0 1.6px, transparent 1.7px);
+  background-size:16px 3px; background-repeat:repeat-x;
+  opacity:.7; animation:marquee-chase 1.6s linear infinite}
+@keyframes marquee-chase{to{background-position:16px 0}}
 .brand{display:flex; align-items:center; gap:16px}
 .reel{display:grid; place-items:center; width:52px; height:52px; font-size:30px; border-radius:16px;
   background:linear-gradient(155deg, rgba(233,185,73,.22), rgba(233,185,73,.05));
@@ -46,7 +58,8 @@ body::after{
   text-transform:uppercase}
 .topbar h1{margin:3px 0 0; font-size:26px; letter-spacing:-.01em; font-family:var(--font-display);
   font-weight:400; background:linear-gradient(135deg, var(--ink) 30%, var(--gold2) 90%);
-  -webkit-background-clip:text; background-clip:text; color:transparent}
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 0 16px rgba(233,185,73,.3))}
 .tagWrap{display:flex; flex-direction:column; align-items:flex-end; gap:4px}
 .tagline{margin:0; color:var(--mut); font-size:15px; text-align:right; font-family:var(--font-serif);
   font-style:italic; letter-spacing:.01em}
@@ -59,7 +72,12 @@ body::after{
 .left{display:flex; flex-direction:column; gap:18px}
 
 /* ── 패널: 유리질감 카드 ── */
-.panel{background:linear-gradient(165deg, rgba(255,255,255,.06), rgba(255,255,255,0) 40%), var(--panel-solid);
+.panel{
+  /* 표면에 아주 옅은 점 텍스처를 깔아 밋밋한 단색 대신 은은한 질감을 준다
+     (2026-09-03, 포털/클래스케이드 대비 밀도가 낮다는 지적 반영). */
+  background:
+    radial-gradient(rgba(255,255,255,.05) 1px, transparent 1.4px) 0 0/14px 14px,
+    linear-gradient(165deg, rgba(255,255,255,.06), rgba(255,255,255,0) 40%), var(--panel-solid);
   border:1px solid var(--line); border-radius:var(--rad); padding:18px;
   box-shadow:var(--shadow); position:relative; overflow:hidden}
 .panel::before{
@@ -73,7 +91,13 @@ body::after{
 
 /* ── 촬영 프레임: 뷰파인더 코너 ── */
 .cameraBox{position:relative; aspect-ratio:16/9; border-radius:16px; overflow:hidden;
-  background:#04060d; border:1px solid var(--line); box-shadow:inset 0 0 0 1px rgba(0,0,0,.4), var(--shadow-sm)}
+  border:1px solid var(--line); box-shadow:inset 0 0 0 1px rgba(0,0,0,.4), var(--shadow-sm);
+  /* 카메라를 켜기 전(대기 화면)엔 이 박스 대부분이 그냥 빈 검정이었다 — 필름릴
+     워터마크를 은은하게 넣어 대기 화면도 밋밋하지 않게 한다. 순수 SVG data-uri. */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='none' stroke='rgba(233,185,73,0.22)' stroke-width='3'%3E%3Ccircle cx='100' cy='100' r='92'/%3E%3Ccircle cx='100' cy='100' r='30'/%3E%3Ccircle cx='100' cy='40' r='16'/%3E%3Ccircle cx='149' cy='70' r='16'/%3E%3Ccircle cx='149' cy='130' r='16'/%3E%3Ccircle cx='100' cy='160' r='16'/%3E%3Ccircle cx='51' cy='130' r='16'/%3E%3Ccircle cx='51' cy='70' r='16'/%3E%3C/g%3E%3C/svg%3E") center / 46% no-repeat,
+    #04060d;
+}
 .cameraBox video, .cameraBox img{width:100%; height:100%; object-fit:cover; display:block}
 .cameraBox::before{
   /* 뷰파인더 느낌의 네 모서리 코너 마크 — 8개의 짧은 막대(가로바+세로바 ×4모서리)를

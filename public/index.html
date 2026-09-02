@@ -15,6 +15,9 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- 배경 파티클(금빛 먼지·조명 입자) — particles.js가 그린다. 콘텐츠보다 아래(z-index)에
+       고정 배치, 클릭/터치를 가로채지 않도록 pointer-events:none. -->
+  <canvas id="bgParticles" aria-hidden="true"></canvas>
   <!-- 부트 스플래시. 스타일을 인라인으로 적는 이유: 외부 스타일시트가 도착해
        화면이 처음 그려지는 그 순간, 이미 완성된 브랜드 화면이 보이게 하려는
        것이다. 배경은 앱과 같은 --navy(#0b1020)라 앱으로 넘어갈 때 색이 안 튄다.
@@ -33,6 +36,7 @@
     <style>@keyframes poster-studio-boot-bar{0%{margin-left:-40%}100%{margin-left:100%}}</style>
   </div>
   <script src="boot-splash.js"></script>
+  <script src="particles.js"></script>
   <header class="topbar">
     <div class="brand">
       <span class="reel">🎬</span>
