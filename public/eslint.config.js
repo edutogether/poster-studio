@@ -27,7 +27,8 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         queueMicrotask: 'readonly',
-        Uint8ClampedArray: 'readonly'
+        Uint8ClampedArray: 'readonly',
+        ResizeObserver: 'readonly'
       }
     },
     rules: {

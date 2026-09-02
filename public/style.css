@@ -65,7 +65,14 @@ body::after{
 
 .app{display:grid; grid-template-columns:minmax(360px,1.1fr) minmax(420px,1.05fr);
   gap:18px; max-width:1320px; margin:18px auto; padding:0 24px 40px}
-.left{display:flex; flex-direction:column; gap:18px}
+/* align-self:start — 왼쪽이 그리드 기본 stretch로 오른쪽 크기에 맞춰 같이
+   늘어나면, JS(layout-match.js)가 왼쪽 높이를 재서 오른쪽에 꽂아줄 때
+   "오른쪽이 커지면 그리드가 왼쪽도 늘리고 → 그 늘어난 왼쪽을 다시 재서
+   오른쪽에 꽂고 → 또 늘어나고"가 무한 반복되는 피드백 루프가 생긴다(직접
+   겪음 — 몇 프레임 만에 화면이 1000px 넘게 걷잡을 수 없이 커졌다). 왼쪽을
+   stretch 대상에서 빼서 항상 자기 콘텐츠 크기만으로 고정시켜야 이 루프가
+   원천적으로 안 생긴다. */
+.left{display:flex; flex-direction:column; gap:18px; align-self:start}
 
 /* ── 패널: 단색 카드, 얕은 그림자, 1px 보더 — 화려한 효과 없음 ── */
 .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--rad);
@@ -119,16 +126,23 @@ input::placeholder{color:var(--mut-dim)}
 .status{margin:10px 0 0; padding:10px 13px; border-radius:var(--rad-sm); background:var(--field);
   border:1px solid var(--line); color:var(--mut); font-size:13.5px; min-height:18px; line-height:1.5}
 
-.right{position:sticky; top:20px; align-self:start}
+/* ── 좌우 컬럼 높이 맞춤 — 몇 라운드째 vh/calc 매직넘버로 시도했지만 실패했다.
+   오른쪽(완성·출력)의 실제 콘텐츠 높이는 갤러리가 비었을 때(~420px)와 4장
+   채워졌을 때(~780px+) 350px 이상 차이나는데 왼쪽(촬영+정보)은 거의 고정이라,
+   어느 한쪽 상태에 CSS 값을 맞추면 반드시 다른 상태에서 다시 어긋났다(대표가
+   "왼쪽이 짧다"→"오른쪽이 짧다"를 번갈아 지적한 이유). CSS 그리드 stretch로도
+   풀어보려 했으나 캔버스의 height:100%가 아직 크기가 안 정해진 조상을 기준으로
+   계산되며 순환 참조로 오히려 더 커지는 버그가 났다 — `layout-match.js`가
+   왼쪽의 실제 렌더링 높이를 재서 `.right`에 `min-height` 인라인 스타일로
+   그대로 꽂아준다(ResizeObserver로 왼쪽 높이가 바뀔 때마다 자동 재계산 —
+   화면 크기·갤러리 상태 어떤 조합이든 따로 튜닝할 필요 없음). 아래 `.stage`는
+   그렇게 정해진 오른쪽 높이의 남은 공간을 그냥 flex:1로 채우기만 하면 된다. */
+.right{position:sticky; top:20px}
+.right .panel{display:flex; flex-direction:column}
 .stage{position:relative; border-radius:var(--rad-sm); overflow:hidden; background:var(--field);
-  border:1px solid var(--line); display:flex; align-items:center; justify-content:center}
-/* 캔버스는 세로 2:3 포스터라 항상 크다 — 화면(특히 낮은 4:3/16:9 노트북 화면)에서
-   컬럼 폭만 기준으로 채우면 세로로 잘릴 수 있어, 폭(max-width)과 세로 여유
-   (max-height, 뷰포트 높이에서 헤더·패널·아래 버튼줄 등 나머지 UI가 쓰는 공간을
-   뺀 값)를 둘 다 넉넉히 주고 실제 크기는 둘 중 더 작은 쪽에 맞춰 캔버스가
-   스스로 축소되게 한다(img/canvas는 width/height 둘 다 auto면 두 max 제약을
-   동시에 만족하는 가장 큰 크기로 비율을 유지하며 그려진다). */
-#posterCanvas{width:auto; height:auto; max-width:100%; max-height:min(52vh, calc(100vh - 440px)); display:block}
+  border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+  flex:1; min-height:0}
+#posterCanvas{width:auto; height:auto; max-width:100%; max-height:100%; display:block}
 .spinner{position:absolute; inset:0; display:grid; place-items:center; gap:14px;
   background:rgba(13,15,20,.9); color:var(--mut); font-weight:600; font-size:14px}
 .ring{width:44px; height:44px; border-radius:50%; border:3px solid var(--line);
@@ -171,7 +185,6 @@ input::placeholder{color:var(--mut-dim)}
   .buttons{margin-top:7px; gap:8px}
   .status{margin-top:6px; padding:8px 12px; min-height:16px}
   .seg-btn{padding:8px}
-  #posterCanvas{max-height:min(39vh, calc(100vh - 340px))}
   .gallery{margin-top:8px}
   .buttons.out{margin-top:10px}
 }
@@ -182,7 +195,6 @@ input::placeholder{color:var(--mut-dim)}
   .topbar{padding:7px 22px}
   .panel{padding:9px}
   .cameraBox{aspect-ratio:16/7; max-height:20vh}
-  #posterCanvas{max-height:min(46vh, calc(100vh - 220px))}
   .gallery{margin-top:6px}
 }
 
