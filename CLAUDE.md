@@ -6,7 +6,7 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 - **위치**: `D:\Projects\inky-festival\poster-studio`
 - **스택(2026-08-26 재설계)**: 정적 프론트엔드(`public/`, GitHub Pages 배포) + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 API 전담). 예전 Node/Express 로컬 서버(`server.js`)는 제거됨 — 행사장 교육청 MDM 노트북이 설치를 못 받을 수 있고 방화벽 문제도 있어서, 나머지 5개 앱과 동일하게 "주소만 열면 되는" 방식으로 전환.
 - **기능**: 웹캠 촬영(브라우저) → Firebase Functions가 AI 그림 생성 → 브라우저 캔버스가 타이포·크레딧 합성해 4종 완성 → 4×6 현장 인쇄
-- **상태**: **정상 운영중**. Firebase 프로젝트는 **2026-08-27부로 `inky-poster` → `inky-poster-studio`로 이전 완료**(구 프로젝트의 IAM 권한 문제 때문 — 아래 "Firebase 프로젝트 이전" 참고). Cloud Functions `posterStudio`(asia-northeast3, `https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio`) 배포됨. **2026-09-01부로 프론트엔드를 GitHub Pages → Firebase Hosting으로 이전** — 새 주소: `https://poster-studio.web.app`(아래 "GitHub Pages → Firebase Hosting 이전" 참고). 실제 웹캠 촬영→AI 포스터 생성까지 실사용 확인 완료. **⚠️ 포털 카드가 구 주소(`https://edutogether.github.io/poster-studio/`)로 연결돼 있던 기록이 있음 — Firebase Hosting 이전 후 포털 쪽 링크도 새 주소로 갱신해야 함(Portal 세션 담당 영역, 이 세션이 직접 수정하지 않음).** `poster-studio-freeze-20260826` 태그는 구 프로젝트(`inky-poster`) 기준 정밀감사 "이전" 스냅샷이며, 프로젝트 이전 후에도 여전히 유효한 코드 이력 참고용이다.
+- **상태**: **실운영 모드(2026-09-03~2026-09-30 정기감사 전까지, 아래 "실운영 모드" 섹션 참고) — 7차 종합감사 100/100 확정, `poster-studio-freeze-20260903` 태그(커밋 `dcc3de7`) 완료.** Firebase 프로젝트는 **2026-08-27부로 `inky-poster` → `inky-poster-studio`로 이전 완료**(구 프로젝트의 IAM 권한 문제 때문 — 아래 "Firebase 프로젝트 이전" 참고). Cloud Functions `posterStudio`(asia-northeast3, `https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio`) 배포됨. **2026-09-01부로 프론트엔드를 GitHub Pages → Firebase Hosting으로 이전** — 새 주소: `https://poster-studio.web.app`(아래 "GitHub Pages → Firebase Hosting 이전" 참고), 포털 카드도 이 주소로 갱신·확인 완료. 실제 웹캠 촬영→AI 포스터 생성까지 실사용 확인 완료. 행사장 와이파이는 이 앱 요구 스펙(공인 IP 3개, 노트북 20대를 7/7/6대 분산)에 맞춰 신규 구매 예정(아래 "7차 종합감사" 참고). `poster-studio-freeze-20260826` 태그는 구 프로젝트(`inky-poster`) 기준 정밀감사 "이전" 스냅샷, `poster-studio-freeze-20260903`이 최신 프리즈다.
 
 ## Firebase 프로젝트 이전: inky-poster → inky-poster-studio (2026-08-27)
 구 프로젝트(`inky-poster`)에서 배포 계정 IAM이 꼬여(아래 "Firebase 계정 접근 이슈" 참고) 대표가 아예 새 프로젝트를 만들기로 결정. 데이터가 전혀 없는 앱이라(Firestore/Storage 미사용, 사진은 처리 직후 삭제) 마이그레이션은 순수 재배포뿐이었다:
@@ -318,3 +318,30 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 
 ## 대표와의 소통 경로 (2026-08-26 확정 — 반드시 지킬 것)
 이 세션은 대표와 직접 대화를 시작하지 않는다. 진행상황 공유·질문·의사결정 요청은 전부 **팀장(D:\Projects 최상위 세션, "Project Engineering")을 거쳐서만** 한다 — 대표가 이 세션 창을 직접 열어서 먼저 말을 걸어온 경우에만 그 건에 한해 답한다(최상위 CLAUDE.md "조직 구조" 섹션 참고). 팀장에게서 온 메시지("Project Engineering의 메시지")는 곧 대표의 지시가 전달된 것이므로 별도로 대표에게 재확인하지 말고 그대로 실행한다.
+
+## 6차 종합감사 — CORS 통일 대응 (2026-09-01)
+Portal이 6개 앱을 `edutogether.kr/<앱이름>` 리버스 프록시로 통일하면서 나온 두 지시를 처리:
+- **6개 항목 독립감사(§7, Opus 6개+Sonnet 4개 실제 2회 호출)** — 97.5/100. 발견한 위험한 리스크 2건 + 나중에 해도 되는 것 5건(당시엔 이렇게 분류했으나, 이후 대표가 "리스크는 순서만 정하는 것이지 미루는 기준이 아니다"라고 정정해 같은 라운드에서 전부 처리 완료) 전부 수정: 웹캠이 촬영 후에도 계속 켜져있던 문제(`public/camera.js`, `getTracks().stop()` 추가), 진짜 일일 지출 상한 부재(`dailyBudgetCap` Firestore 카운터 신설, `DAILY_BUDGET_MAX=4000`=$160 하드캡), README/SECURITY_NOTES의 "TTL 정책 적용됨" 거짓 서술(`cleanupOldCountersSchedule` 매일 04시 30일지난 카운터 자동삭제로 실제 구현), RUNBOOK 롤백 절차 공백(Hosting/Functions 구분 문서화), `firebase.json` hosting ignore 보강(dev 전용 파일 배포 제외).
+- **CORS 허용목록에 `https://edutogether.kr` 추가** — Voice Cinema 세션이 먼저 발견해 팀장 경유로 공유: 프록시는 정적 콘텐츠만 다루고 `/generate` 같은 API 호출은 여전히 원래 Cloud Functions 주소로 직접 나가 그때 Origin이 `https://edutogether.kr`가 됨. `ALLOWED_ORIGINS`에 정규식 한 줄 추가로 해결, 라이브 curl로 신규 origin 허용·기존 origin 유지·스푸핑 거부 3종 확인.
+- 커밋 `d926154`(6개 항목 수정), `a13a3a3`(CORS).
+
+## 7차 종합감사 — 최종 100/100, 프리즈 (2026-09-02~03)
+§7 방식(Opus 6개 항목 Agent 실제 독립호출 + 이 세션이 Sonnet 4개 항목 직접) 재감사, §4-2에 따라 재채점.
+
+**발견한 진짜 결함 3건, 전부 이 라운드에서 수정·배포·라이브 실측 검증 완료**:
+1. **429 응답 경로에서 학생 사진이 `/tmp`에 안 지워짐** — `rateLimit`·`ipRateLimit`·`dailyBudgetCap`(6차 감사 이후 새로 추가된 미들웨어들)이 429로 요청을 끊을 때 `parseMultipart`가 이미 써둔 임시사진을 안 지웠음(2차 감사 때 고친 것과 같은 종류 버그가 새 미들웨어에서 재발). README의 "임시 파일은 정상/오류 경로 모두에서 삭제됩니다" 약속 위반이자, Cloud Run `/tmp`가 메모리를 쓰므로 429 폭주 시 OOM 위험이기도 했음. `denyWithCleanup()` 헬퍼로 4개 미들웨어 전부 응답 전 `await fs.promises.unlink()` 통일.
+2. **실지출 $0인 요청이 하루 예산 카운터를 소모** — `dailyBudgetCap`이 `checkPhotoGenerationLimit`보다 먼저라, 같은 사진 3번째 요청(=OpenAI를 절대 안 부름)도 `DAILY_BUDGET_MAX`를 소모. 부스토큰은 공개 소스에서 복사 가능하므로 사진 한 장 반복 전송만으로 실지출 없이 하루 한도를 태워 행사 전체를 셧다운시킬 수 있었음. 미들웨어 순서를 `requirePhoto→rateLimit→ipRateLimit→checkPhotoGenerationLimit→dailyBudgetCap`로 변경.
+3. **`public/favicon.js`(탭 비활성 시 흑백 파비콘 전환, 6차 이후 신설) 테스트 0개** — 실제 로직(휘도공식 흑백변환, 가시성/포커스 분기)이 있는데 미테스트. `load-app.js` document mock에 `head`/`visibilityState`/`hasFocus` 추가 + `favicon.test.js` 3개 신설로 해소.
+
+**최종 점수 평균 100.0/100**(테스트커버리지만 98 — OpenAI 실호출 미테스트라는 기존부터 인정된 구조적 한계, 이번 라운드와 무관). 커밋 `f93991d`(결함1+2), `b1421d3`(결함3), `1926ebb`(openai 마이너 업그레이드).
+
+**부수 작업(같은 기간, 팀장 경유 지시)**:
+- `.claude/settings.json`의 `bypassPermissions`를 gitignore된 `settings.local.json`으로 이전(공개 저장소에 팀 편의설정 노출 방지, 커밋 `f65ccbd`).
+- COMMON_STANDARDS.md §9~§12 신설 확인·적용(권한파일은 대표 직접 확인 필요, push/배포는 팀장 경유로 충분, 브라우저 테스트는 실제 Chrome 우선, 팀장 위임범위 확대로 기술적 판단은 팀장 선에서 결정).
+- **행사장 와이파이 스펙 산출·확정(대표가 기존 망을 재는 대신 이 앱 스펙에 맞춰 장비를 새로 구매하기로 방향 전환)**: AI 생성 이미지 실측 2건(개인 2.69MB/39.6초, 단체 3인+복잡배경 3.25MB/48.2초, 실비용 약 $0.08) 기반으로 다운로드 18Mbps/업로드 5Mbps 권장, **공인 IP 3개에 노트북 20대를 7/7/6대로 분산**하기로 확정하고 `IP_RATE_LIMIT_MAX`를 100→**50**(=전역한도 150÷IP 3개, 어떤 IP도 전역예산의 1/3을 못 넘도록 공정배분)으로 코드에 반영·테스트 재설계·배포·검증(커밋 `dcc3de7`).
+- 레거시 설치형 버전(`server.js` 등) 잔존 여부 확인 — 저장소에 전혀 없음(해당 없음, 이미 이전 리팩터링 때 삭제됨).
+
+**프리즈**: `poster-studio-freeze-20260903` 태그를 커밋 `dcc3de7`(7차 감사 100/100 + IP_RATE_LIMIT_MAX=50 반영 시점)에 생성·push함.
+
+## 실운영 모드 (2026-09-03 대표 지시, Portal과 동일 방침)
+**2026-09-30 정기감사 전까지 이 세션은 스스로 재감사나 추가 작업을 먼저 제안하지 않는다.** 100/100이 확정된 시점부터는 실제 운영 중 발생하는 이슈 대응, 팀장이 명시적으로 요청하는 작업(기능 추가, 버그 수정, 스펙 산출 등)만 처리하고, "다시 감사해볼까요" "이 부분 더 개선할까요" 같은 세션 주도 제안은 하지 않는다. 이 방침은 §12(팀장 위임범위 확대)와는 다른 축이다 — §12는 "누가 결정하는가"를, 이 방침은 "이 세션이 먼저 일을 만들어내지 않는다"는 것을 다룬다. 팀장이나 대표가 요청하면 그 즉시 정상적으로 응답·작업한다.
