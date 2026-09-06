@@ -134,7 +134,12 @@ function getClient() {
   if (!_client)
     _client = new OpenAI({
       apiKey: OPENAI_API_KEY.value(),
-      timeout: 90_000,
+      // 2026-09-06: 90초 → 120초. scripts/loadtest.mjs 실측 결과 동시성 5에서
+      // p95가 59.4초까지 나와(요구 여유 30초 기준으로 딱 0.6초 차이) 행사 당일
+      // 노트북 최대 20대가 몰릴 때의 여유를 넉넉히 두려고 올림. 이 값을 올릴 때는
+      // 아래 posterStudio의 timeoutSeconds(이 값보다 커야 함)와 public/api.js의
+      // 프론트 fetch abort 시간(150_000, 이 값보다 커야 함)도 같이 확인할 것.
+      timeout: 120_000,
       maxRetries: 0
     });
   return _client;
@@ -605,11 +610,17 @@ export const posterStudio = onRequest(
   {
     region: 'asia-northeast3',
     memory: '512MiB',
-    timeoutSeconds: 120,
+    // 2026-09-06: 120초 → 140초. OpenAI 클라이언트 타임아웃을 90→120초로 올리면서
+    // 같이 조정 — 이 값이 클라이언트 타임아웃(120초)과 같거나 작으면, OpenAI 응답을
+    // 기다리는 도중 Cloud Functions 자체가 먼저 강제 종료시켜 우리 쪽의 정상적인
+    // JSON 에러 응답(mapGenerateError) 대신 플랫폼의 원시 타임아웃으로 끊길 수 있다.
+    // 120초(클라이언트) < 140초(여기) < 150_000ms(public/api.js의 프론트 fetch abort)
+    // 순서로 각 단계에 여유를 둔다.
+    timeoutSeconds: 140,
     concurrency: 1,
     // 2026-08-29: 노트북 대수 확장 논의(최대 20대 검토) 때문에 5 → 25로 미리 상향.
     // concurrency:1이라 동시 처리 가능 요청 수 = maxInstances 그 자체 — 노트북 수보다
-    // 낮으면 나머지는 대기열에 걸리다 timeoutSeconds(120초) 넘어 실패한다. 인스턴스
+    // 낮으면 나머지는 대기열에 걸리다 timeoutSeconds(140초) 넘어 실패한다. 인스턴스
     // 상한 자체는 비용이 붙지 않는다(실제 생성 건수만 과금) — 진짜 비용 상한은
     // OpenAI 대시보드 월 지출 한도($200)가 맡는다.
     maxInstances: 25,
