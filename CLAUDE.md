@@ -458,5 +458,19 @@ Portal이 6개 앱을 `edutogether.kr/<앱이름>` 리버스 프록시로 통일
 
 콘솔 에러 0건(무관한 404 하나는 이 세션이 사전 점검용으로 두드린 `/favicon.ico` 요청). 총 실비용 약 $0.04(항목 4의 실제 생성 1건).
 
+## vitest 이전 (2026-09-07, 대표 지시, 팀장 경유 승인)
+`functions/`(node:test)·`public/`(직접 만든 vm.SourceTextModule 하네스) 두 테스트 스위트를 vitest로 통일. 사전에 `poster-studio-freeze-20260907-pre-vitest` 프리즈 태그를 찍어두고 진행, 커밋 `bff4f21`로 완료(배포는 불필요한 변경이었으나 CI가 push마다 항상 `test→deploy-functions→deploy-hosting`을 도는 구조라 자동으로 재배포됨 — 코드 변경은 없어 동일 내용 재배포, 워크플로 자체는 안 건드림). 기존 테스트 전부(functions 51개 + public 47개 = 98개) 그대로 통과, `npm run lint` 양쪽 다 클린, CI 전체 성공.
+
+**진행 내용**:
+1. 양쪽에 `vitest` devDependency 설치 + `vitest.config.js` 신설.
+2. `functions/test/index.test.js`: `assert.equal/deepEqual/ok/match/notEqual/rejects` 총 103건을 `expect()`로 치환(자동 변환 스크립트로 처리 후 직접 검산 — 특히 템플릿 리터럴 메시지가 섞인 경우까지 정확히 옮겨졌는지 확인함). `--test-concurrency=1`(공유 상태 의존 테스트들의 실행 순서 보존용)은 테스트 파일이 하나뿐이라 vitest의 파일 내부 기본 순차 실행으로 그대로 대체됨 — 여러 번 재실행해 순서 안정성 확인.
+3. `public/test/load-app.js` 재설계(가장 리스크가 컸던 부분) — Node의 `vm.SourceTextModule`로 직접 모듈 그래프를 링크·평가하던 손수 구현을, `vi.stubGlobal`로 `document`/`window`/`navigator`/`fetch`/`Image`/`FormData`를 흉내낸 뒤 `vi.resetModules()`로 모듈 캐시를 비우고 실제 `public/*.js`를 동적 import하는 방식으로 교체. **조사 결과가 제안했던 jsdom은 의도적으로 안 씀** — 손수 만든 가짜 document가 이미 필요한 만큼만 정확히 흉내내고 있고, `@napi-rs/canvas`(캔버스 픽셀 테스트용) 연결은 jsdom을 쓰든 안 쓰든 어차피 별도로 해줘야 해서 무거운 의존성을 더할 이점이 없다고 판단함. `state.js`가 내보내는 `state` 객체는 여전히 모듈 그래프 전체가 공유하는 라이브 바인딩이라 예전처럼 `app.state.genCount` 형태로 직접 읽고 쓸 수 있고, `app.fetch = mock` 같은 기존 테스트 패턴이 실제 전역 `fetch`(api.js가 호출을 읽는 그 fetch)를 바꾸도록 getter/setter로 연결했다.
+4. `public/test/*.test.js` 4개 파일(favicon/layout/regen-limit/templates-canvas/templates, 실제로는 5개 파일) 치환 — 같은 자동 변환 스크립트로 처리, `assert.doesNotThrow`까지 포함해 총 41건 치환.
+5. 전체 회귀 확인 — 여러 번 재실행 및 `--no-file-parallelism`(파일 간 병렬성을 끈 모드)으로도 격리·순서가 안정적인지 확인, 양쪽 `npm run lint` 클린.
+
+**막혔던 것 1건(바로 해결)**: `vi.stubGlobal('URL', {...})`로 URL 전체를 갈아치웠더니 vite/vitest 내부가 모듈 해석에 쓰는 진짜 `new URL()` 생성자가 깨져 `"URL is not a constructor"` 오류가 났다 — 진짜 URL 클래스는 그대로 두고, `camera.js`가 쓰는 `createObjectURL`/`revokeObjectURL` 정적 메서드만 그 위에 patch하는 방식으로 해결.
+
+`functions/test/index.test.js`의 `_setClientForTesting` 등 OpenAI/Firestore 테스트 훅은 사전 조사대로 전혀 손댈 필요 없이 그대로 재사용됨.
+
 ## 실운영 모드 (2026-09-03 대표 지시, Portal과 동일 방침)
 **2026-09-30 정기감사 전까지 이 세션은 스스로 재감사나 추가 작업을 먼저 제안하지 않는다.** 100/100이 확정된 시점부터는 실제 운영 중 발생하는 이슈 대응, 팀장이 명시적으로 요청하는 작업(기능 추가, 버그 수정, 스펙 산출 등)만 처리하고, "다시 감사해볼까요" "이 부분 더 개선할까요" 같은 세션 주도 제안은 하지 않는다. 이 방침은 §12(팀장 위임범위 확대)와는 다른 축이다 — §12는 "누가 결정하는가"를, 이 방침은 "이 세션이 먼저 일을 만들어내지 않는다"는 것을 다룬다. 팀장이나 대표가 요청하면 그 즉시 정상적으로 응답·작업한다.
