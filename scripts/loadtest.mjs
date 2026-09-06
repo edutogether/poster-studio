@@ -25,7 +25,10 @@ const DRY = process.argv.includes('--dry');
 const SAMPLE_PHOTO_PATH = path.join(__dirname, 'sample-photo.jpg');
 const CONCURRENCY_LEVELS = [1, 2, 3, 5];
 const REPEATS_PER_LEVEL = 5;
-const SERVER_TIMEOUT_MS = 90_000; // functions/index.js의 OpenAI 클라이언트 timeout(90_000)과 동일해야 결론이 유효함
+// functions/index.js의 OpenAI 클라이언트 timeout(OPENAI_TIMEOUT_MS)과 같아야 아래 결론이 유효하다.
+// 2026-09-06에 90초 → 120초로 올렸는데 이 스크립트가 90_000으로 남아 있어서(8차 감사 발견)
+// 다시 돌렸다면 여유폭을 30초 과소평가할 뻔했다 — 서버 값을 바꿀 때 여기도 같이 고칠 것.
+const SERVER_TIMEOUT_MS = 120_000;
 const REQUIRED_MARGIN_SEC = 30; // Bumm님이 요구한 여유 기준
 
 // 서버 내부 재시도(editWithRetry, OpenAI 429/5xx 시 최대 4회 backoff)는
@@ -178,8 +181,8 @@ async function main() {
   const marginSec = (SERVER_TIMEOUT_MS - overallP95Ms) / 1000;
   const verdict =
     marginSec >= REQUIRED_MARGIN_SEC
-      ? `✅ 결론: 서버 타임아웃(90초)이 실측 전체 p95(${(overallP95Ms / 1000).toFixed(1)}초)보다 ${marginSec.toFixed(1)}초 여유가 있어, 요구 기준(30초 이상)을 충족합니다.`
-      : `⚠️ 결론: 서버 타임아웃(90초)과 실측 전체 p95(${(overallP95Ms / 1000).toFixed(1)}초)의 여유가 ${marginSec.toFixed(1)}초로, 요구 기준(30초 이상)에 못 미칩니다.`;
+      ? `✅ 결론: 서버 타임아웃(${SERVER_TIMEOUT_MS / 1000}초)이 실측 전체 p95(${(overallP95Ms / 1000).toFixed(1)}초)보다 ${marginSec.toFixed(1)}초 여유가 있어, 요구 기준(${REQUIRED_MARGIN_SEC}초 이상)을 충족합니다.`
+      : `⚠️ 결론: 서버 타임아웃(${SERVER_TIMEOUT_MS / 1000}초)과 실측 전체 p95(${(overallP95Ms / 1000).toFixed(1)}초)의 여유가 ${marginSec.toFixed(1)}초로, 요구 기준(${REQUIRED_MARGIN_SEC}초 이상)에 못 미칩니다.`;
   console.log(`\n${verdict}`);
 
   const output = {

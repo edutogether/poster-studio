@@ -17,7 +17,8 @@
       "test/**",
       "package.json",
       "package-lock.json",
-      "eslint.config.js"
+      "eslint.config.js",
+      "vitest.config.js"
     ],
     "headers": [
       {

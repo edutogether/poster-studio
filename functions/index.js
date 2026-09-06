@@ -127,6 +127,24 @@ function parseMultipart(req, res, next) {
   busboy.end(req.rawBody);
 }
 
+/* 타임아웃 3단 체인(2026-09-06 확정, 2026-09-07 8차 감사에서 예산 개념 추가):
+     OPENAI_TIMEOUT_MS(120초, 한 번의 OpenAI 호출)
+       < GENERATE_BUDGET_MS(125초, 재시도·파라미터폴백까지 포함한 한 요청 전체)
+       < posterStudio의 timeoutSeconds(140초, 플랫폼 강제종료)
+       < public/api.js의 프론트 fetch abort(150초)
+   GENERATE_BUDGET_MS가 왜 필요한가(8차 감사 발견): editWithRetry는 429/5xx에
+   최대 4번 재시도하고 사이사이 최대 8초씩 기다리며, generateArt는 파라미터가
+   거부되면 조합을 바꿔 최대 3번 더 시도한다 — 각 시도가 120초까지 걸릴 수 있으므로
+   재시도가 한 번만 일어나도 총 소요가 플랫폼 한도(140초)를 쉽게 넘었다. 그렇게
+   플랫폼이 요청을 강제 종료하면 (a) mapGenerateError의 정상 JSON 응답 대신 원시
+   타임아웃이 나가고, (b) 무엇보다 /generate 핸들러의 finally(임시 사진 삭제)가
+   아예 실행되지 못해 학생 사진이 인스턴스 /tmp(Cloud Run에선 메모리)에 그대로
+   남는다 — 7차 감사에서 429 경로에 대해 고친 것과 정확히 같은 종류의 누수다.
+   그래서 매 시도의 타임아웃을 "남은 예산"으로 좁혀, 우리가 항상 플랫폼보다
+   먼저 정상적으로 포기하도록 만든다. */
+const OPENAI_TIMEOUT_MS = 120_000;
+const GENERATE_BUDGET_MS = 125_000;
+
 let _client = null;
 let _clientOverride = null;
 function getClient() {
@@ -139,7 +157,7 @@ function getClient() {
       // 노트북 최대 20대가 몰릴 때의 여유를 넉넉히 두려고 올림. 이 값을 올릴 때는
       // 아래 posterStudio의 timeoutSeconds(이 값보다 커야 함)와 public/api.js의
       // 프론트 fetch abort 시간(150_000, 이 값보다 커야 함)도 같이 확인할 것.
-      timeout: 120_000,
+      timeout: OPENAI_TIMEOUT_MS,
       maxRetries: 0
     });
   return _client;
@@ -155,9 +173,41 @@ function _setClientForTesting(fake) {
 
 const app = express();
 // Cloud Run(Functions v2가 그 위에서 돎)은 항상 Google Front End 한 홉을 거쳐
-// X-Forwarded-For를 신뢰할 수 있게 채워준다 — 이걸 켜야 req.ip가 실제 클라이언트
-// IP를 준다(안 켜면 모든 요청이 같은 내부 주소로 보여 아래 ipRateLimit이 무의미해짐).
+// X-Forwarded-For를 채워준다 — 이걸 켜야 req.ip가 내부 프록시 주소가 아닌 값을 준다.
+// 단, req.ip 자체를 레이트리밋 키로 쓰면 안 된다(아래 clientIpForRateLimit 참고).
 app.set('trust proxy', true);
+
+/* 8차 감사 발견(2026-09-07, 라이브 실측으로 확인한 진짜 우회 경로).
+   Express의 `trust proxy: true`는 req.ip를 X-Forwarded-For의 **맨 왼쪽** 값으로
+   정한다. 그런데 Cloud Run/GFE는 클라이언트가 보낸 XFF를 지우지 않고 그 뒤에
+   자기가 본 클라이언트 IP를 덧붙이므로, 맨 왼쪽 값은 요청자가 헤더 한 줄로
+   마음대로 정할 수 있는 값이다 — 즉 ipRateLimit(IP_RATE_LIMIT_MAX=50)이
+   `x-forwarded-for: 203.0.113.7` 한 줄만 붙이면 매 요청 새 버킷을 만들어
+   완전히 무력화됐다.
+   실측(2026-09-07, 라이브 /generate): 같은 회선에서 51번째 요청이 정상적으로
+   "이 네트워크에서 요청이 너무 많이 몰렸습니다"(IP 한도 429)를 받은 직후,
+   임의의 x-forwarded-for 한 줄만 붙여 보낸 요청은 그 한도를 그냥 통과해
+   다음 미들웨어까지 도달했다(사진별 한도 429가 대신 떴다).
+   영향: 부스토큰은 공개 소스에서 복사 가능하므로, 한 명이 IP별 공정배분
+   (전역 예산의 1/3)을 무시하고 전역 예산(RATE_LIMIT_MAX=150/10분)과 하루
+   예산(DAILY_BUDGET_MAX)을 혼자 다 태워 행사 전체를 멈출 수 있었다.
+   (비용 상한 자체는 전역/일일 카운터가 여전히 막고 있어 과금 폭탄은 아니다.)
+   해결: 체인의 **맨 오른쪽** 값만 쓴다 — 그 값은 Cloud Run/GFE가 직접 붙인,
+   클라이언트가 조작할 수 없는 유일한 항목이다.
+   ⚠ 전제: 이 앱의 /generate는 항상 cloudfunctions.net 주소로 **직접** 호출된다
+   (public/constants.js의 API_BASE — edutogether.kr Portal 리버스 프록시는 정적
+   파일만 다루고 API 호출은 프록시하지 않는다, 아래 ALLOWED_ORIGINS 주석 참고).
+   만약 나중에 이 API를 CDN/Hosting 뒤로 옮기면 맨 오른쪽 값이 그 CDN 주소가 되어
+   모든 부스가 한 버킷을 공유하게 되므로, 그때는 이 함수를 반드시 같이 고칠 것. */
+function clientIpForRateLimit(req) {
+  const raw = req.headers?.['x-forwarded-for'];
+  const chain = (Array.isArray(raw) ? raw.join(',') : String(raw || ''))
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (chain.length) return chain[chain.length - 1];
+  return req.ip || 'unknown';
+}
 
 /* 장르별 '그림 컨셉' 프롬프트.
    공통 규칙: 글자/문자 절대 금지(한글은 브라우저 캔버스가 입힘), 세로 영화 포스터,
@@ -229,16 +279,29 @@ function _setSleepForTesting(fake) {
   _sleepImpl = fake || sleep;
 }
 
-async function editWithRetry(params) {
+// 예산이 다 떨어졌을 때 던지는 오류. 메시지에 "timed out"이 들어가야
+// mapGenerateError가 504로 매핑한다(사용자에겐 "시간이 오래 걸려 중단" 안내).
+function budgetExhaustedError() {
+  return new Error('이미지 생성이 제한 시간을 초과했습니다 (timed out).');
+}
+
+async function editWithRetry(params, deadlineAt = Date.now() + GENERATE_BUDGET_MS) {
   const maxRetries = 4;
   for (let attempt = 0; ; attempt++) {
+    const remaining = deadlineAt - Date.now();
+    if (remaining <= 0) throw budgetExhaustedError();
     try {
-      return await getClient().images.edit(params);
+      // 한 번의 시도는 최대 OPENAI_TIMEOUT_MS이되, 남은 예산이 그보다 적으면
+      // 그만큼만 기다린다 — 이래야 전체가 항상 플랫폼 한도 안에서 끝난다.
+      return await getClient().images.edit(params, { timeout: Math.min(remaining, OPENAI_TIMEOUT_MS) });
     } catch (err) {
       const status = err?.status || err?.response?.status;
       const retryable = status === 429 || (status >= 500 && status < 600);
       if (retryable && attempt < maxRetries) {
         const waitMs = Math.min(1000 * 2 ** attempt, 8000) + Math.floor(Math.random() * 600);
+        // 기다렸다 재시도해봐야 예산 안에 끝낼 수 없으면, 플랫폼이 우리를 죽이기 전에
+        // 지금 바로 포기해서 정상 JSON 응답 + 임시파일 삭제가 실행되게 한다.
+        if (Date.now() + waitMs >= deadlineAt) throw err;
         console.warn(`[retry] ${status} → ${waitMs}ms 후 재시도 (${attempt + 1}/${maxRetries})`);
         await _sleepImpl(waitMs);
         continue;
@@ -248,7 +311,7 @@ async function editWithRetry(params) {
   }
 }
 
-async function generateArt(filePath, mimetype, prompt) {
+async function generateArt(filePath, mimetype, prompt, deadlineAt = Date.now() + GENERATE_BUDGET_MS) {
   const mime = /^image\/(png|jpe?g|webp)$/i.test(mimetype || '') ? mimetype : 'image/png';
   const ext = /jpe?g/i.test(mime) ? 'jpg' : /webp/i.test(mime) ? 'webp' : 'png';
   const image = await toFile(fs.createReadStream(filePath), 'photo.' + ext, { type: mime });
@@ -264,7 +327,7 @@ async function generateArt(filePath, mimetype, prompt) {
   //  인스턴스가 매번 새로 뜨므로 이 최적화 자체가 무의미해 제거했다.)
   for (let i = 0; i < tries.length; i++) {
     try {
-      const result = await editWithRetry(tries[i]);
+      const result = await editWithRetry(tries[i], deadlineAt);
       const imgs = (result.data || []).map((d) => `data:image/png;base64,${d.b64_json}`).filter(Boolean);
       if (imgs.length) return imgs;
       throw new Error('이미지 생성 결과가 비어 있습니다.');
@@ -273,7 +336,8 @@ async function generateArt(filePath, mimetype, prompt) {
       const msg = String(err?.message || '');
       const paramRejected =
         err?.status === 400 && /unknown|unsupported|invalid|not (allowed|supported)|input_fidelity|quality/i.test(msg);
-      if (paramRejected && i < tries.length - 1) continue;
+      // 파라미터 폴백 재시도도 남은 예산 안에서만 한다(위 editWithRetry와 같은 이유).
+      if (paramRejected && i < tries.length - 1 && Date.now() < deadlineAt) continue;
       throw err;
     }
   }
@@ -434,7 +498,7 @@ async function rateLimit(req, res, next) {
 
 async function ipRateLimit(req, res, next) {
   const bucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
-  const ip = req.ip || 'unknown';
+  const ip = clientIpForRateLimit(req);
   try {
     const { allowed } = await _incrementAndCheck('ipRateLimitBuckets', `${bucket}:${ip}`, IP_RATE_LIMIT_MAX);
     if (!allowed) {
@@ -530,7 +594,7 @@ app.post(
 
     try {
       const t0 = Date.now();
-      const images = await generateArt(req.file.path, req.file.mimetype, prompt);
+      const images = await generateArt(req.file.path, req.file.mimetype, prompt, t0 + GENERATE_BUDGET_MS);
       const sec = ((Date.now() - t0) / 1000).toFixed(1);
       console.log(`[generate] 완료 ${sec}초  (모델=${MODEL} · 화질=${QUALITY} · 얼굴보존=${INPUT_FIDELITY})`);
       res.json({ images, meta: { genre, mode, seconds: Number(sec) } });
@@ -593,6 +657,9 @@ export {
   dailyBudgetCap,
   checkPhotoGenerationLimit,
   PHOTO_GENERATION_LIMIT,
+  clientIpForRateLimit,
+  OPENAI_TIMEOUT_MS,
+  GENERATE_BUDGET_MS,
   _setCounterImplForTesting,
   editWithRetry,
   generateArt,

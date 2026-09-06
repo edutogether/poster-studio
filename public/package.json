@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "@napi-rs/canvas": "^1.0.8",
-    "eslint": "^10.9.1",
+    "eslint": "^10.10.0",
     "vitest": "^5.0.0"
   }
 }

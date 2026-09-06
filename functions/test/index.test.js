@@ -25,6 +25,9 @@ import {
   kstDateKey,
   checkPhotoGenerationLimit,
   PHOTO_GENERATION_LIMIT,
+  clientIpForRateLimit,
+  OPENAI_TIMEOUT_MS,
+  GENERATE_BUDGET_MS,
   parseMultipart,
   UPLOAD_DIR,
   mapGenerateError,
@@ -63,6 +66,25 @@ function makeInMemoryCounterImpl() {
     counters.set(key, current + 1);
     return { allowed: true, count: current + 1 };
   };
+}
+
+/* 8차 감사(2026-09-07) 발견 — 진짜 플래키 테스트였다.
+   레이트리밋 카운터의 문서 ID는 `Math.floor(Date.now() / 10분)` 버킷 번호를 포함한다
+   (functions/index.js의 RATE_LIMIT_WINDOW_MS). 아래의 "정확히 한도까지 채운 뒤 다음
+   요청이 429인지" 계열 테스트는 수십~150건을 순차로 보내는 데 몇 초가 걸리는데, 그
+   도중 10분 경계(매시 00분/10분/20분…)를 넘으면 버킷 번호가 바뀌어 카운터가 통째로
+   리셋되고 마지막 429 단언이 실패한다. 실제로 06:39:56에 시작한 실행이 06:40:00
+   경계를 넘어 실패하는 것을 이 감사 중에 관측했다(그 전까지는 그냥 "가끔 CI가
+   빨간불"로 보였을 것). 경계를 넘었으면 카운터를 새로 만들어 그대로 다시 돌린다. */
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+async function runInSingleRateLimitBucket(body) {
+  for (let attempt = 0; ; attempt++) {
+    _setCounterImplForTesting(makeInMemoryCounterImpl());
+    const startBucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
+    const result = await body();
+    if (Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS) === startBucket) return result;
+    if (attempt >= 2) throw new Error('레이트리밋 10분 버킷 경계를 3번 연속으로 넘었습니다(테스트 환경 이상).');
+  }
 }
 
 const _fakeCounters = new Map();
@@ -466,9 +488,8 @@ test('POST /generate: 사진 없는 요청은 몇 번을 보내도 레이트리�
 // 오직 미들웨어 체인이 429를 내는지 여부다. 사진마다 서로 다른 바이트를 써서
 // checkPhotoGenerationLimit(사진별 한도)이 끼어들지 않게 한다.
 test('POST /generate: 같은 IP에서 사진 있는 요청을 IP_RATE_LIMIT_MAX+1번 보내면 IP별 한도로 429다', async () => {
-  // 이 테스트만의 격리된 카운터 — 대량 요청을 보내는 테스트라 파일 전체가 공유하는
-  // _fakeCounters와 섞이면 다른 테스트 순서에 따라 결과가 흔들릴 수 있다.
-  _setCounterImplForTesting(makeInMemoryCounterImpl());
+  // 격리된 카운터(파일 전체가 공유하는 _fakeCounters와 안 섞이게) + 10분 버킷 경계를
+  // 넘으면 재실행 — runInSingleRateLimitBucket이 둘 다 처리한다.
   _setClientForTesting(
     makeFakeClient(async () => {
       const e = new Error('테스트용 즉시 실패(재시도 안 함)');
@@ -479,18 +500,21 @@ test('POST /generate: 같은 IP에서 사진 있는 요청을 IP_RATE_LIMIT_MAX+
   const server = await startTestServer();
   const port = server.address().port;
   try {
-    const statuses = [];
-    for (let i = 0; i < IP_RATE_LIMIT_MAX + 1; i++) {
-      const { headers, rawBody } = await buildMultipartRequest([
-        ['photo', { blob: new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xdb, ...crypto.randomBytes(8)])], { type: 'image/jpeg' }), filename: `p${i}.jpg` }]
-      ]);
-      const r = await fetch(`http://127.0.0.1:${port}/generate`, {
-        method: 'POST',
-        headers: { ...headers, 'x-booth-token': 'test-booth-token' },
-        body: rawBody
-      });
-      statuses.push(r.status);
-    }
+    const statuses = await runInSingleRateLimitBucket(async () => {
+      const out = [];
+      for (let i = 0; i < IP_RATE_LIMIT_MAX + 1; i++) {
+        const { headers, rawBody } = await buildMultipartRequest([
+          ['photo', { blob: new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xdb, ...crypto.randomBytes(8)])], { type: 'image/jpeg' }), filename: `p${i}.jpg` }]
+        ]);
+        const r = await fetch(`http://127.0.0.1:${port}/generate`, {
+          method: 'POST',
+          headers: { ...headers, 'x-booth-token': 'test-booth-token' },
+          body: rawBody
+        });
+        out.push(r.status);
+      }
+      return out;
+    });
     expect(statuses[IP_RATE_LIMIT_MAX - 1], 'IP 한도 안에서는 429가 나오면 안 된다').not.toBe(429);
     expect(statuses[IP_RATE_LIMIT_MAX], 'IP 한도를 넘긴 마지막 요청은 429여야 한다').toBe(429);
   } finally {
@@ -509,8 +533,8 @@ test('POST /generate: 같은 IP에서 사진 있는 요청을 IP_RATE_LIMIT_MAX+
 // 그래서 IP 3개로 정확히 150을 채운 뒤, 자기 몫을 전혀 안 쓴 4번째 IP로 검증한다.
 test('POST /generate: 서로 다른 IP 3개가 각자 자기 한도만큼 채워 전역 한도를 소진하면, 자기 몫이 0인 4번째 IP의 첫 요청도 전역 레이트리밋으로 429다', async () => {
   // 이 테스트도 자기만의 격리된 카운터를 쓴다 — 아래 산수가 정확히 맞아떨어지려면
-  // 전역/IP 카운터 둘 다 0에서 시작해야 한다.
-  _setCounterImplForTesting(makeInMemoryCounterImpl());
+  // 전역/IP 카운터 둘 다 0에서 시작하고, 실행 도중 10분 버킷 경계를 안 넘어야 한다
+  // (runInSingleRateLimitBucket이 둘 다 보장한다).
   _setClientForTesting(
     makeFakeClient(async () => {
       const e = new Error('테스트용 즉시 실패(재시도 안 함)');
@@ -536,16 +560,80 @@ test('POST /generate: 서로 다른 IP 3개가 각자 자기 한도만큼 채워
       }
       return statuses;
     }
-    // IP-A/B/C가 각자 자기 한도(50)만큼 정확히 보낸다 — 셋 다 자기 한도 안이라
-    // 하나도 막히지 않고, 그 합(150)이 전역 한도를 정확히 소진시킨다.
-    for (const ip of ['203.0.113.10', '203.0.113.20', '203.0.113.30']) {
-      const statuses = await sendFrom(ip, IP_RATE_LIMIT_MAX);
+    const { perIp, ipD } = await runInSingleRateLimitBucket(async () => {
+      // IP-A/B/C가 각자 자기 한도(50)만큼 정확히 보낸다 — 셋 다 자기 한도 안이라
+      // 하나도 막히지 않고, 그 합(150)이 전역 한도를 정확히 소진시킨다.
+      const collected = [];
+      for (const ip of ['203.0.113.10', '203.0.113.20', '203.0.113.30']) {
+        collected.push([ip, await sendFrom(ip, IP_RATE_LIMIT_MAX)]);
+      }
+      // IP-D는 자기 몫을 전혀 안 썼다(자기 한도 50에서 한참 남음) — 그런데도 전역
+      // 예산이 이미 0이라 첫 요청부터 막혀야 한다.
+      return { perIp: collected, ipD: await sendFrom('203.0.113.40', 1) };
+    });
+    for (const [ip, statuses] of perIp) {
       expect(statuses.every((s) => s !== 429), `${ip}의 ${IP_RATE_LIMIT_MAX}건은 자기 한도 안이라 전부 통과해야 한다`).toBeTruthy();
     }
-    // IP-D는 자기 몫을 전혀 안 썼다(자기 한도 50에서 한참 남음) — 그런데도 전역
-    // 예산이 이미 0이라 첫 요청부터 막혀야 한다.
-    const ipD = await sendFrom('203.0.113.40', 1);
     expect(ipD[0], '자기 몫이 0인 IP도 전역 한도가 소진됐으면 첫 요청부터 막혀야 한다').toBe(429);
+  } finally {
+    server.close();
+    _setClientForTesting(null);
+    useSharedCounterImpl();
+  }
+});
+
+// 8차 감사 발견(2026-09-07, 라이브 실측) 회귀 테스트 — trust proxy:true의 req.ip는
+// X-Forwarded-For의 맨 왼쪽(= 클라이언트가 직접 써 보낼 수 있는) 값이라, 헤더 한 줄로
+// IP별 한도를 무한히 우회할 수 있었다. 이제는 Cloud Run/GFE가 직접 붙이는 맨 오른쪽
+// 값만 쓴다.
+test('clientIpForRateLimit: X-Forwarded-For 체인의 맨 오른쪽(프록시가 붙인) 값만 쓴다', () => {
+  expect(
+    clientIpForRateLimit({ headers: { 'x-forwarded-for': '203.0.113.7, 198.51.100.9' }, ip: '203.0.113.7' }),
+    '클라이언트가 앞에 끼워넣은 값이 아니라 마지막 값을 써야 한다'
+  ).toBe('198.51.100.9');
+  expect(clientIpForRateLimit({ headers: { 'x-forwarded-for': ' 198.51.100.9 ' }, ip: 'x' })).toBe('198.51.100.9');
+  expect(
+    clientIpForRateLimit({ headers: { 'x-forwarded-for': ['a, b', 'c'] }, ip: 'x' }),
+    '헤더가 배열로 들어와도 마지막 값을 써야 한다'
+  ).toBe('c');
+  expect(clientIpForRateLimit({ headers: {}, ip: '203.0.113.1' }), 'XFF가 없으면 req.ip로 폴백').toBe('203.0.113.1');
+  expect(clientIpForRateLimit({ headers: {} }), 'IP를 전혀 모르면 unknown').toBe('unknown');
+});
+
+test('POST /generate: X-Forwarded-For 앞에 가짜 IP를 끼워넣어도 IP별 한도를 우회할 수 없다', async () => {
+  _setClientForTesting(
+    makeFakeClient(async () => {
+      const e = new Error('테스트용 즉시 실패(재시도 안 함)');
+      e.status = 400;
+      throw e;
+    })
+  );
+  const server = await startTestServer();
+  const port = server.address().port;
+  try {
+    const statuses = await runInSingleRateLimitBucket(async () => {
+      const out = [];
+      for (let i = 0; i < IP_RATE_LIMIT_MAX + 1; i++) {
+        const { headers, rawBody } = await buildMultipartRequest([
+          ['photo', { blob: new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xdb, ...crypto.randomBytes(8)])], { type: 'image/jpeg' }), filename: `s${i}.jpg` }]
+        ]);
+        const r = await fetch(`http://127.0.0.1:${port}/generate`, {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'x-booth-token': 'test-booth-token',
+            // 매 요청 다른 가짜 IP를 맨 앞에 끼워넣는다(실제 공격 형태). 맨 뒤의
+            // 198.51.100.9만 "프록시가 붙인" 진짜 값이라고 가정한다.
+            'x-forwarded-for': `203.0.113.${i % 250}, 198.51.100.9`
+          },
+          body: rawBody
+        });
+        out.push(r.status);
+      }
+      return out;
+    });
+    expect(statuses[IP_RATE_LIMIT_MAX - 1], '한도 안에서는 통과해야 한다').not.toBe(429);
+    expect(statuses[IP_RATE_LIMIT_MAX], '가짜 IP를 앞에 끼워넣어도 한도를 넘기면 429여야 한다').toBe(429);
   } finally {
     server.close();
     _setClientForTesting(null);
@@ -631,6 +719,62 @@ test('editWithRetry: 429가 재시도 한도(4회)를 넘기면 결국 그 오�
   } finally {
     _setClientForTesting(null);
     _setSleepForTesting(null);
+  }
+});
+
+// 8차 감사(2026-09-07) 회귀 테스트 — 재시도 예산(GENERATE_BUDGET_MS)이 없으면
+// 재시도 체인이 플랫폼 타임아웃(timeoutSeconds:140)을 넘겨 함수가 강제 종료되고,
+// 그러면 /generate의 finally(임시 사진 삭제)가 아예 실행되지 못해 학생 사진이
+// /tmp에 남는다. 이미 마감시간이 지난 deadline을 주면 단 한 번도 호출하지 않고
+// 즉시 포기해야 한다.
+test('editWithRetry: 남은 예산이 없으면 OpenAI를 호출조차 하지 않고 timed out으로 포기한다', async () => {
+  let calls = 0;
+  _setClientForTesting(makeFakeClient(async () => { calls++; return { data: [{ b64_json: 'X' }] }; }));
+  try {
+    await expect(editWithRetry({}, Date.now() - 1)).rejects.toThrow(/timed out/);
+    expect(calls, '예산이 없으면 호출 자체를 하면 안 된다').toBe(0);
+  } finally {
+    _setClientForTesting(null);
+  }
+});
+
+test('editWithRetry: 재시도 대기가 남은 예산을 넘기면 더 재시도하지 않고 원래 오류를 던진다', async () => {
+  let calls = 0;
+  _setClientForTesting(
+    makeFakeClient(async () => {
+      calls++;
+      const e = new Error('rate limited');
+      e.status = 429;
+      throw e;
+    })
+  );
+  _setSleepForTesting(async () => {});
+  try {
+    // 예산 50ms — 첫 재시도 대기(약 1000ms 이상)조차 못 들어간다.
+    await expect(editWithRetry({}, Date.now() + 50)).rejects.toThrow(/rate limited/);
+    expect(calls, '예산이 짧으면 최초 1회만 호출하고 재시도하지 않아야 한다').toBe(1);
+  } finally {
+    _setClientForTesting(null);
+    _setSleepForTesting(null);
+  }
+});
+
+test('editWithRetry: 각 시도의 타임아웃은 OPENAI_TIMEOUT_MS를 넘지 않고 남은 예산 이하다', async () => {
+  const seenOptions = [];
+  _setClientForTesting(
+    makeFakeClient(async (_params, options) => {
+      seenOptions.push(options);
+      return { data: [{ b64_json: 'X' }] };
+    })
+  );
+  try {
+    await editWithRetry({}, Date.now() + GENERATE_BUDGET_MS);
+    expect(typeof seenOptions[0]?.timeout, '요청별 타임아웃이 실제로 전달돼야 한다').toBe('number');
+    expect(seenOptions[0].timeout <= OPENAI_TIMEOUT_MS, 'OPENAI_TIMEOUT_MS를 넘으면 안 된다').toBeTruthy();
+    // 예산(125초)이 한 번의 호출 타임아웃(120초)보다 커야 재시도 여유가 생긴다.
+    expect(GENERATE_BUDGET_MS > OPENAI_TIMEOUT_MS).toBeTruthy();
+  } finally {
+    _setClientForTesting(null);
   }
 });
 

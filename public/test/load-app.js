@@ -79,8 +79,10 @@ function makeElement() {
     value: '',
     src: '',
     disabled: false,
+    removed: false,
     appendChild() {},
-    remove() {},
+    remove() { this.removed = true; },
+    click() {},
     querySelectorAll: () => [],
     addEventListener() {}
   };
@@ -92,6 +94,10 @@ function makeCanvasElement() {
   el.height = 0;
   el.getContext = () => new FakeCtx();
   el.toDataURL = () => 'data:image/png;base64,FAKE';
+  // camera.js의 shotBtn 캡처 흐름(cap.toBlob(...))을 테스트하려면 실제
+  // 인코딩 없이도 콜백에 뭔가 넘겨줘야 한다 — 실제 Blob 인스턴스면 충분하다
+  // (내용이 무엇인지는 카메라 캡처 로직이 신경 쓰지 않음).
+  el.toBlob = (cb, type) => cb(new Blob(['FAKE'], { type: type || 'image/png' }));
   return el;
 }
 
@@ -132,7 +138,9 @@ function makeFakeDocument(createRealCanvas) {
     addEventListener() {},
     querySelector: () => null,
     head: { appendChild() {} },
-    body: { appendChild() {} },
+    // print.js가 여기 붙이는 #printArea를 테스트가 나중에 들여다볼 수 있도록
+    // (실제로 인쇄가 열리는지·정리되는지 확인하려면) 없애지 않고 기록해둔다.
+    body: { appended: [], appendChild(el) { this.appended.push(el); } },
     visibilityState: 'visible',
     hasFocus: () => true
   };
@@ -148,13 +156,15 @@ function makeFakeDocument(createRealCanvas) {
 export async function loadApp({ createRealCanvas } = {}) {
   const document = makeFakeDocument(createRealCanvas);
   const windowStub = {
-    addEventListener() {},
+    _listeners: {},
+    addEventListener(type, fn) { (this._listeners[type] ||= []).push(fn); },
     print() {}
   };
+  const navigatorStub = { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [] }) } };
 
   vi.stubGlobal('document', document);
   vi.stubGlobal('window', windowStub);
-  vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [] }) } });
+  vi.stubGlobal('navigator', navigatorStub);
   vi.stubGlobal('fetch', async () => { throw new Error('네트워크 사용 안 함(테스트 환경)'); });
   vi.stubGlobal('Image', FakeImage);
   vi.stubGlobal('FormData', FakeFormData);
@@ -166,19 +176,20 @@ export async function loadApp({ createRealCanvas } = {}) {
 
   vi.resetModules();
 
-  const [appMod, stateMod, constantsMod, domMod, layoutMod, templatesMod, apiMod, faviconMod] = await Promise.all([
+  const [appMod, stateMod, constantsMod, domMod, layoutMod, templatesMod, cameraMod, apiMod, faviconMod] = await Promise.all([
     import('../app.js'),
     import('../state.js'),
     import('../constants.js'),
     import('../dom.js'),
     import('../layout.js'),
     import('../templates.js'),
+    import('../camera.js'),
     import('../api.js'),
     import('../favicon.js')
   ]);
 
-  const flat = { document };
-  Object.assign(flat, stateMod, constantsMod, domMod, layoutMod, templatesMod, apiMod, faviconMod, appMod);
+  const flat = { document, window: windowStub, navigator: navigatorStub };
+  Object.assign(flat, stateMod, constantsMod, domMod, layoutMod, templatesMod, cameraMod, apiMod, faviconMod, appMod);
 
   // app.fetch = mockFn 같은 기존 테스트 패턴이 실제 전역 fetch(=api.js가 호출을
   // 읽어들이는 그 fetch)를 바꾸도록, 단순 값 복사가 아니라 getter/setter로
