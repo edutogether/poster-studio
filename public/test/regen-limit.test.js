@@ -6,8 +6,7 @@
 // 모듈 그래프 전체에서 공유되는 라이브 바인딩이라, app.state.capturedBlob/
 // genCount에 직접 접근해 실제 generateBtn/regenBtn 클릭 핸들러를 그대로
 // 실행시켜 검증한다(예전의 vm __eval 우회가 더는 필요 없다).
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import { loadApp } from './load-app.js';
 
 const TINY_PNG_DATA_URL =
@@ -25,8 +24,8 @@ test('genCount: 1차 생성 성공 후 재생성 버튼이 활성 상태를 유�
 
   await app.document.getElementById('generateBtn').onclick();
 
-  assert.equal(app.state.genCount, 1);
-  assert.equal(app.document.getElementById('regenBtn').disabled, false);
+  expect(app.state.genCount).toBe(1);
+  expect(app.document.getElementById('regenBtn').disabled).toBe(false);
 });
 
 test('genCount: 2차(재생성) 후에는 재생성 버튼이 비활성화된다', async () => {
@@ -42,8 +41,8 @@ test('genCount: 2차(재생성) 후에는 재생성 버튼이 비활성화된다
   await app.document.getElementById('generateBtn').onclick(); // 1차
   await app.document.getElementById('generateBtn').onclick(); // 2차(재생성)
 
-  assert.equal(app.state.genCount, 2);
-  assert.equal(app.document.getElementById('regenBtn').disabled, true);
+  expect(app.state.genCount).toBe(2);
+  expect(app.document.getElementById('regenBtn').disabled).toBe(true);
 });
 
 test('genCount: 한도(2회)를 넘긴 3차 시도는 서버에 요청조차 안 보내고 즉시 차단된다', async () => {
@@ -61,9 +60,9 @@ test('genCount: 한도(2회)를 넘긴 3차 시도는 서버에 요청조차 안
   await app.document.getElementById('generateBtn').onclick(); // 2차
   await app.document.getElementById('generateBtn').onclick(); // 3차 — 차단돼야 함
 
-  assert.equal(fetchCallCount, 2, '3번째는 fetch 자체가 호출되면 안 된다');
-  assert.equal(app.state.genCount, 2);
-  assert.match(app.document.getElementById('status').textContent, /재생성 횟수를 모두 사용/);
+  expect(fetchCallCount, '3번째는 fetch 자체가 호출되면 안 된다').toBe(2);
+  expect(app.state.genCount).toBe(2);
+  expect(app.document.getElementById('status').textContent).toMatch(/재생성 횟수를 모두 사용/);
 });
 
 test('genCount: 다시 촬영하면(retakeBtn) 카운트가 초기화되고 재생성 버튼이 다시 활성화된다', async () => {
@@ -81,8 +80,8 @@ test('genCount: 다시 촬영하면(retakeBtn) 카운트가 초기화되고 재�
 
   app.document.getElementById('retakeBtn').onclick();
 
-  assert.equal(app.state.genCount, 0);
-  assert.equal(app.document.getElementById('regenBtn').disabled, false);
+  expect(app.state.genCount).toBe(0);
+  expect(app.document.getElementById('regenBtn').disabled).toBe(false);
 });
 
 test('genCount: regenBtn은 결과가 없으면(posters 비어있음) 아무 동작도 안 한다', async () => {
@@ -92,5 +91,5 @@ test('genCount: regenBtn은 결과가 없으면(posters 비어있음) 아무 동
 
   app.document.getElementById('regenBtn').onclick();
 
-  assert.equal(fetchCalled, false);
+  expect(fetchCalled).toBe(false);
 });

@@ -7,8 +7,7 @@
 // 출연진 등)으로 4가지 템플릿을 실제로 호출해서 "예외 없이 끝나는가"는 검증한다 —
 // 이게 실제로 부스에서 발생 가능한 리스크(글자 겹침/삐져나감으로 렌더가 죽는 것)를
 // 잡아준다.
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import { loadApp, FakeCtx } from './load-app.js';
 
 const app = await loadApp();
@@ -48,17 +47,17 @@ for (const template of app.TEMPLATES) {
   for (const [metaName, meta] of Object.entries(METAS)) {
     test(`TEMPLATES[${template.label}].render(): "${metaName}" 입력에서도 예외 없이 끝난다`, () => {
       const ctx = new FakeCtx();
-      assert.doesNotThrow(() => {
+      expect(() => {
         template.render(ctx, FAKE_ART, meta, GENRE_STUB);
-      });
+      }).not.toThrow();
     });
   }
 }
 
 test('TEMPLATES: 정확히 4종(클래식/임팩트/시네마/포토카드)이다', () => {
-  assert.equal(app.TEMPLATES.length, 4);
+  expect(app.TEMPLATES.length).toBe(4);
   // vm 샌드박스의 배열은 이 realm의 Array.prototype과 달라 deepEqual이 realm
   // 불일치로 실패할 수 있다 — Array.from으로 이 realm의 평범한 배열로 옮겨 비교.
   const labels = Array.from(app.TEMPLATES, (t) => t.label);
-  assert.deepEqual(labels, ['클래식', '임팩트', '시네마', '포토카드']);
+  expect(labels).toEqual(['클래식', '임팩트', '시네마', '포토카드']);
 });

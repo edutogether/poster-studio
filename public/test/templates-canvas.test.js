@@ -3,8 +3,7 @@
 // templates.test.js(FakeCtx)는 "예외 없이 끝나는가"만 봤고 실제 그림이 나오는지는
 // 못 봤다 — 이 파일은 그 빈틈을 메운다: 완성된 PNG가 실제로 텍스트/이미지 픽셀을
 // 담고 있는지(완전히 빈 캔버스로 끝나지 않는지)를 픽셀 샘플링으로 확인한다.
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
+import { test, expect } from 'vitest';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
@@ -62,17 +61,14 @@ for (const template of app.TEMPLATES) {
     const ctx = canvas.getContext('2d');
     const art = makeFakeArt();
 
-    assert.doesNotThrow(() => {
+    expect(() => {
       template.render(ctx, art, META, GENRE_STUB);
-    });
+    }).not.toThrow();
 
     const diffPixels = countNonBackgroundPixels(canvas);
     // 배경색 한 가지로만 끝났다면(diffPixels===0) 사진/텍스트가 전혀 안 그려진
     // 것 — 최소한 캔버스 크기(1200×1800=2,160,000px)의 1%는 배경과 달라야
     // "실제로 뭔가 그려졌다"고 볼 수 있다.
-    assert.ok(
-      diffPixels > W * H * 0.01,
-      `배경과 다른 픽셀이 너무 적음(${diffPixels}px) — 사진/텍스트가 안 그려졌을 가능성`
-    );
+    expect(diffPixels > W * H * 0.01, `배경과 다른 픽셀이 너무 적음(${diffPixels}px) — 사진/텍스트가 안 그려졌을 가능성`).toBeTruthy();
   });
 }

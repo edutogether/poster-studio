@@ -3,11 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --experimental-vm-modules --test test/*.test.js",
+    "test": "vitest run",
     "lint": "eslint ."
   },
   "devDependencies": {
     "@napi-rs/canvas": "^1.0.8",
-    "eslint": "^10.9.1"
+    "eslint": "^10.9.1",
+    "vitest": "^5.0.0"
   }
 }
