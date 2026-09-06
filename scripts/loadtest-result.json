@@ -1,0 +1,463 @@
+{
+  "generatedAt": "2026-09-06T12:21:37.096Z",
+  "apiBase": "https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio",
+  "concurrencyLevels": [
+    1,
+    2,
+    3,
+    5
+  ],
+  "repeatsPerLevel": 5,
+  "serverTimeoutMs": 90000,
+  "requiredMarginSec": 30,
+  "overallP95Ms": 59354,
+  "marginSec": 30.6,
+  "verdict": "✅ 결론: 서버 타임아웃(90초)이 실측 전체 p95(59.4초)보다 30.6초 여유가 있어, 요구 기준(30초 이상)을 충족합니다.",
+  "summary": [
+    {
+      "concurrency": 1,
+      "totalRequests": 5,
+      "successCount": 5,
+      "failCount": 0,
+      "failRatePct": 0,
+      "count429": 0,
+      "count5xx": 0,
+      "suspectedServerRetries": 0,
+      "p50Ms": 41281,
+      "p95Ms": 43126,
+      "avgImageBytes": 1915027,
+      "raw": [
+        {
+          "status": 200,
+          "ms": 41106,
+          "imageBytes": 2044648,
+          "error": null,
+          "seconds": 40.3
+        },
+        {
+          "status": 200,
+          "ms": 41536,
+          "imageBytes": 1746629,
+          "error": null,
+          "seconds": 40.4
+        },
+        {
+          "status": 200,
+          "ms": 43126,
+          "imageBytes": 1824902,
+          "error": null,
+          "seconds": 42.2
+        },
+        {
+          "status": 200,
+          "ms": 41281,
+          "imageBytes": 2019815,
+          "error": null,
+          "seconds": 40.4
+        },
+        {
+          "status": 200,
+          "ms": 40875,
+          "imageBytes": 1939142,
+          "error": null,
+          "seconds": 39.9
+        }
+      ]
+    },
+    {
+      "concurrency": 2,
+      "totalRequests": 10,
+      "successCount": 10,
+      "failCount": 0,
+      "failRatePct": 0,
+      "count429": 0,
+      "count5xx": 0,
+      "suspectedServerRetries": 0,
+      "p50Ms": 40452,
+      "p95Ms": 45502,
+      "avgImageBytes": 2095737,
+      "raw": [
+        {
+          "status": 200,
+          "ms": 40883,
+          "imageBytes": 2140852,
+          "error": null,
+          "seconds": 39
+        },
+        {
+          "status": 200,
+          "ms": 37709,
+          "imageBytes": 1940681,
+          "error": null,
+          "seconds": 36.6
+        },
+        {
+          "status": 200,
+          "ms": 43751,
+          "imageBytes": 1996205,
+          "error": null,
+          "seconds": 42.7
+        },
+        {
+          "status": 200,
+          "ms": 45502,
+          "imageBytes": 2117421,
+          "error": null,
+          "seconds": 44.1
+        },
+        {
+          "status": 200,
+          "ms": 38581,
+          "imageBytes": 2080983,
+          "error": null,
+          "seconds": 37.8
+        },
+        {
+          "status": 200,
+          "ms": 37719,
+          "imageBytes": 2220257,
+          "error": null,
+          "seconds": 36.8
+        },
+        {
+          "status": 200,
+          "ms": 41370,
+          "imageBytes": 2078027,
+          "error": null,
+          "seconds": 40.6
+        },
+        {
+          "status": 200,
+          "ms": 41314,
+          "imageBytes": 2151342,
+          "error": null,
+          "seconds": 40.4
+        },
+        {
+          "status": 200,
+          "ms": 40452,
+          "imageBytes": 2074601,
+          "error": null,
+          "seconds": 39.5
+        },
+        {
+          "status": 200,
+          "ms": 36807,
+          "imageBytes": 2157005,
+          "error": null,
+          "seconds": 36.3
+        }
+      ]
+    },
+    {
+      "concurrency": 3,
+      "totalRequests": 15,
+      "successCount": 15,
+      "failCount": 0,
+      "failRatePct": 0,
+      "count429": 0,
+      "count5xx": 0,
+      "suspectedServerRetries": 0,
+      "p50Ms": 39956,
+      "p95Ms": 42512,
+      "avgImageBytes": 2069290,
+      "raw": [
+        {
+          "status": 200,
+          "ms": 42354,
+          "imageBytes": 2185648,
+          "error": null,
+          "seconds": 40
+        },
+        {
+          "status": 200,
+          "ms": 40474,
+          "imageBytes": 1948581,
+          "error": null,
+          "seconds": 40
+        },
+        {
+          "status": 200,
+          "ms": 41125,
+          "imageBytes": 1944758,
+          "error": null,
+          "seconds": 40.2
+        },
+        {
+          "status": 200,
+          "ms": 37147,
+          "imageBytes": 2022613,
+          "error": null,
+          "seconds": 36.1
+        },
+        {
+          "status": 200,
+          "ms": 41865,
+          "imageBytes": 2210411,
+          "error": null,
+          "seconds": 41.2
+        },
+        {
+          "status": 200,
+          "ms": 39410,
+          "imageBytes": 2101277,
+          "error": null,
+          "seconds": 37.6
+        },
+        {
+          "status": 200,
+          "ms": 37449,
+          "imageBytes": 2102629,
+          "error": null,
+          "seconds": 36.5
+        },
+        {
+          "status": 200,
+          "ms": 38841,
+          "imageBytes": 2076480,
+          "error": null,
+          "seconds": 37.9
+        },
+        {
+          "status": 200,
+          "ms": 36845,
+          "imageBytes": 2172462,
+          "error": null,
+          "seconds": 36
+        },
+        {
+          "status": 200,
+          "ms": 39961,
+          "imageBytes": 2166566,
+          "error": null,
+          "seconds": 39.1
+        },
+        {
+          "status": 200,
+          "ms": 38416,
+          "imageBytes": 1838694,
+          "error": null,
+          "seconds": 37.6
+        },
+        {
+          "status": 200,
+          "ms": 38245,
+          "imageBytes": 1972613,
+          "error": null,
+          "seconds": 37.8
+        },
+        {
+          "status": 200,
+          "ms": 39956,
+          "imageBytes": 2080052,
+          "error": null,
+          "seconds": 37.8
+        },
+        {
+          "status": 200,
+          "ms": 42512,
+          "imageBytes": 2055356,
+          "error": null,
+          "seconds": 41.1
+        },
+        {
+          "status": 200,
+          "ms": 40260,
+          "imageBytes": 2161217,
+          "error": null,
+          "seconds": 39.6
+        }
+      ]
+    },
+    {
+      "concurrency": 5,
+      "totalRequests": 25,
+      "successCount": 22,
+      "failCount": 3,
+      "failRatePct": 12,
+      "count429": 3,
+      "count5xx": 0,
+      "suspectedServerRetries": 2,
+      "p50Ms": 39782,
+      "p95Ms": 59354,
+      "avgImageBytes": 2097210,
+      "raw": [
+        {
+          "status": 200,
+          "ms": 42376,
+          "imageBytes": 1978988,
+          "error": null,
+          "seconds": 38.7
+        },
+        {
+          "status": 200,
+          "ms": 40759,
+          "imageBytes": 2032521,
+          "error": null,
+          "seconds": 40
+        },
+        {
+          "status": 200,
+          "ms": 46111,
+          "imageBytes": 1924723,
+          "error": null,
+          "seconds": 45.6
+        },
+        {
+          "status": 200,
+          "ms": 39782,
+          "imageBytes": 2102573,
+          "error": null,
+          "seconds": 38.8
+        },
+        {
+          "status": 200,
+          "ms": 40279,
+          "imageBytes": 2021935,
+          "error": null,
+          "seconds": 38
+        },
+        {
+          "status": 200,
+          "ms": 40360,
+          "imageBytes": 2032911,
+          "error": null,
+          "seconds": 39.6
+        },
+        {
+          "status": 200,
+          "ms": 39654,
+          "imageBytes": 2220980,
+          "error": null,
+          "seconds": 36.5
+        },
+        {
+          "status": 200,
+          "ms": 41700,
+          "imageBytes": 1952254,
+          "error": null,
+          "seconds": 39.3
+        },
+        {
+          "status": 200,
+          "ms": 42040,
+          "imageBytes": 2231392,
+          "error": null,
+          "seconds": 41.1
+        },
+        {
+          "status": 200,
+          "ms": 38327,
+          "imageBytes": 2260344,
+          "error": null,
+          "seconds": 34.8
+        },
+        {
+          "status": 200,
+          "ms": 37878,
+          "imageBytes": 1877515,
+          "error": null,
+          "seconds": 37.1
+        },
+        {
+          "status": 200,
+          "ms": 40060,
+          "imageBytes": 2192367,
+          "error": null,
+          "seconds": 39.3
+        },
+        {
+          "status": 200,
+          "ms": 59354,
+          "imageBytes": 2177234,
+          "error": null,
+          "seconds": 57.6
+        },
+        {
+          "status": 200,
+          "ms": 39125,
+          "imageBytes": 2443228,
+          "error": null,
+          "seconds": 38.2
+        },
+        {
+          "status": 200,
+          "ms": 62131,
+          "imageBytes": 2257235,
+          "error": null,
+          "seconds": 59.9
+        },
+        {
+          "status": 200,
+          "ms": 36749,
+          "imageBytes": 1962543,
+          "error": null,
+          "seconds": 35.2
+        },
+        {
+          "status": 200,
+          "ms": 37597,
+          "imageBytes": 2184247,
+          "error": null,
+          "seconds": 36.7
+        },
+        {
+          "status": 200,
+          "ms": 39900,
+          "imageBytes": 1945846,
+          "error": null,
+          "seconds": 38.8
+        },
+        {
+          "status": 200,
+          "ms": 36670,
+          "imageBytes": 2170372,
+          "error": null,
+          "seconds": 35.7
+        },
+        {
+          "status": 200,
+          "ms": 38161,
+          "imageBytes": 2176514,
+          "error": null,
+          "seconds": 37.1
+        },
+        {
+          "status": 429,
+          "ms": 20676,
+          "imageBytes": 0,
+          "error": "지금 요청이 몰려 잠시 대기가 필요합니다. 10~20초 후 다시 시도해 주세요.",
+          "seconds": null
+        },
+        {
+          "status": 429,
+          "ms": 19918,
+          "imageBytes": 0,
+          "error": "지금 요청이 몰려 잠시 대기가 필요합니다. 10~20초 후 다시 시도해 주세요.",
+          "seconds": null
+        },
+        {
+          "status": 429,
+          "ms": 20483,
+          "imageBytes": 0,
+          "error": "지금 요청이 몰려 잠시 대기가 필요합니다. 10~20초 후 다시 시도해 주세요.",
+          "seconds": null
+        },
+        {
+          "status": 200,
+          "ms": 41889,
+          "imageBytes": 1979625,
+          "error": null,
+          "seconds": 41.2
+        },
+        {
+          "status": 200,
+          "ms": 39352,
+          "imageBytes": 2013270,
+          "error": null,
+          "seconds": 38.6
+        }
+      ]
+    }
+  ]
+}
