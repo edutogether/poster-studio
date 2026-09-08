@@ -45,6 +45,11 @@
 - **테스트에서 실제 OpenAI·Firestore를 호출하지 않는다.** 주입 지점이 이미 있다(`_setClientForTesting` 등).
 - **촬영 후 카메라 스트림을 켜둔 채 두지 않는다.** 최소수집 원칙 위반이고 아동 대상이라 더 중요하다
   (`camera.js`의 `getTracks().stop()` — 6차 감사에서 고친 것).
+- **`ALLOWED_ORIGINS`의 앵커(`^…$`)를 풀지 않는다.** 서브도메인을 허용해야 하면 규칙을 완화하지 말고
+  **항목을 하나 더 추가**한다. `edutogether.kr`이 목록에 있다고 `poster.edutogether.kr`이 되는 게 아니다
+  (앵커 때문에 매치 안 됨 — 2026-09-09 실측 확인, Voice Cinema도 같은 함정을 겪었다). 앵커를 풀면
+  `evil-poster.edutogether.kr` 같은 접두사 위조가 통과한다. 점(`.`)의 이스케이프도 같은 이유로 유지한다.
+  이 두 성질은 개별 주소가 아니라 **목록 전체를 검사하는 테스트**로 고정돼 있다(`functions/test/index.test.js`).
 
 ## 명령
 - 테스트: `cd functions && npm test`(56개) / `cd public && npm test`(57개) — 둘 다 vitest
