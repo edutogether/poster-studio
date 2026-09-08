@@ -3,30 +3,37 @@
     {
       "source": "functions",
       "codebase": "default",
-      "ignore": ["node_modules", ".git", "*.log"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.log"
+      ]
     }
   ],
   "hosting": {
     "target": "poster-studio",
-    "public": "public",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**",
-      "functions/**",
-      "test/**",
-      "package.json",
-      "package-lock.json",
-      "eslint.config.js",
-      "vitest.config.js"
+      "**/node_modules/**"
     ],
     "headers": [
       {
         "source": "**",
         "headers": [
-          { "key": "X-Frame-Options", "value": "DENY" },
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
           {
             "key": "Permissions-Policy",
             "value": "camera=(self), microphone=(), geolocation=()"

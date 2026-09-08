@@ -177,15 +177,15 @@ export async function loadApp({ createRealCanvas } = {}) {
   vi.resetModules();
 
   const [appMod, stateMod, constantsMod, domMod, layoutMod, templatesMod, cameraMod, apiMod, faviconMod] = await Promise.all([
-    import('../app.js'),
-    import('../state.js'),
-    import('../constants.js'),
-    import('../dom.js'),
-    import('../layout.js'),
-    import('../templates.js'),
-    import('../camera.js'),
-    import('../api.js'),
-    import('../favicon.js')
+    import('../src/app.js'),
+    import('../src/state.js'),
+    import('../src/constants.js'),
+    import('../src/dom.js'),
+    import('../src/layout.js'),
+    import('../src/templates.js'),
+    import('../src/camera.js'),
+    import('../src/api.js'),
+    import('../src/favicon.js')
   ]);
 
   const flat = { document, window: windowStub, navigator: navigatorStub };

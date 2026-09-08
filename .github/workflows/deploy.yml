@@ -38,12 +38,15 @@ jobs:
         working-directory: functions
       - run: npm test
         working-directory: functions
+      # 프론트엔드는 2026-09-09 리액트+TS 전환으로 저장소 루트가 프로젝트 루트다
+      # (예전엔 public/이 소스이자 배포 폴더였다). public/은 이제 정적 자산만 담는다.
       - run: npm ci
-        working-directory: public
       - run: npm run lint
-        working-directory: public
+      - run: npm run typecheck
       - run: npm test
-        working-directory: public
+      # 전환 검증 도구가 "빈 게이트"가 아닌지 매번 확인한다(CONVENTIONS §5.4).
+      # 이게 통과해야 대조 결과의 "차이 0건"을 신뢰할 수 있다.
+      - run: npm run verify:selftest
 
   deploy-functions:
     needs: test
@@ -68,11 +71,13 @@ jobs:
       # 하나만 어긋나도 부스 전체가 조용히 401로 죽을 수 있다. 배포 직후 실제로
       # 클라이언트에 박힌 부스토큰으로 라이브 /generate를 호출해 401이 아닌지
       # (사진이 없으니 400이 정상) 확인한다 — 이게 실패하면 deploy-hosting도 안 나간다.
-      # ES모듈 전환(2026-08-30)으로 BOOTH_TOKEN이 public/app.js에서 public/constants.js로
-      # 옮겨졌다 — 이 스크립트도 같이 옮겨야 했는데 처음엔 놓쳐서 배포가 한 번 실패했음.
+      # ES모듈 전환(2026-08-30)으로 BOOTH_TOKEN이 public/app.js에서 public/constants.js로,
+      # 리액트+TS 전환(2026-09-09)으로 다시 src/constants.js로 옮겨졌다 — 파일을 옮길
+      # 때마다 이 경로를 같이 안 고쳐 배포가 실패한 적이 있다. 소스를 문자열로 읽는
+      # 지점이라 번들러가 개입하지 않는 원본 파일을 가리켜야 한다.
       - name: 부스토큰 스모크테스트 (배포 직후 실제 인증 확인)
         run: |
-          TOKEN=$(node -pe "require('fs').readFileSync('public/constants.js','utf8').match(/const BOOTH_TOKEN = '([^']+)'/)[1]")
+          TOKEN=$(node -pe "require('fs').readFileSync('src/constants.js','utf8').match(/const BOOTH_TOKEN = '([^']+)'/)[1]")
           STATUS=$(curl -s -o /tmp/smoke.json -w "%{http_code}" \
             -X POST -H "x-booth-token: $TOKEN" -H "content-type: application/json" -d '{}' \
             "https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/generate")
@@ -87,6 +92,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 2026-09-09 리액트+TS 전환으로 빌드 단계가 처음 생겼다. 배포되는 것은
+      # 소스(public/)가 아니라 산출물(dist/)이다 — firebase.json의 hosting.public 참고.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'

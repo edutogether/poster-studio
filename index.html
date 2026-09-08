@@ -12,7 +12,7 @@
        커버하려면 자체 호스팅 시 폰트 용량이 수십 MB로 불어나 Google Fonts CDN(자체 서브셋팅)을
        그대로 쓰는 게 낫다고 판단함 — CLAUDE.md 참고. -->
   <link rel="stylesheet" href="fonts/pretendard.css" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
   <!-- 부트 스플래시. 스타일을 인라인으로 적는 이유: 외부 스타일시트가 도착해
@@ -44,7 +44,7 @@
     </div>
     <style>@keyframes poster-studio-boot-bar{0%{margin-left:-40%}100%{margin-left:100%}}</style>
   </div>
-  <script src="boot-splash.js"></script>
+  <script src="/boot-splash.js"></script>
   <header class="topbar">
     <div class="brand">
       <span class="reel">🎬</span>
@@ -151,8 +151,8 @@
   <!-- ES모듈 전환(2026-08-30) — app.js 하나만 로드하면 나머지는 import 그래프로
        자동 로드된다. 로드 순서는 이제 <script> 태그 순서가 아니라 import 의존관계가
        결정한다(브라우저가 알아서 처리). -->
-  <script type="module" src="app.js"></script>
+  <script type="module" src="/src/app.js"></script>
   <!-- 좌우 컬럼 높이 맞춤(순수 레이아웃, 기능 로직과 무관) — layout-match.js 참고. -->
-  <script src="layout-match.js"></script>
+  <script src="/layout-match.js"></script>
 </body>
 </html>

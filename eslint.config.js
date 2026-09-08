@@ -63,5 +63,42 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
       'no-undef': 'error'
     }
+  },
+  {
+    /* scripts/verify/ — 전환 검증 도구. 두 세계가 섞여 있다:
+       *.js는 브라우저 페이지 안에서 평가되고(snapshot/timing/scenario),
+       *.mjs는 Node에서 돈다(compare/selftest/capture-server). */
+    files: ['scripts/verify/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: {
+        window: 'readonly', document: 'readonly', navigator: 'readonly',
+        location: 'readonly', innerWidth: 'readonly', innerHeight: 'readonly',
+        getComputedStyle: 'readonly', performance: 'readonly',
+        fetch: 'readonly', Response: 'readonly', setTimeout: 'readonly',
+        setInterval: 'readonly', clearInterval: 'readonly', console: 'readonly'
+      }
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
+      'no-undef': 'error'
+    }
+  },
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: { console: 'readonly', process: 'readonly', Buffer: 'readonly', fetch: 'readonly', Blob: 'readonly', FormData: 'readonly', URL: 'readonly' }
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
+      'no-undef': 'error'
+    }
+  },
+  {
+    // 빌드 산출물과 워크트리는 검사 대상이 아니다.
+    ignores: ['dist/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**']
   }
 ];

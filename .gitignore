@@ -9,3 +9,5 @@ functions/.env.*
 .cache
 .firebase/
 .claude/settings.local.json
+.claude/worktrees/
+dist/

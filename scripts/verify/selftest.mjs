@@ -145,6 +145,43 @@ check('클래스 변경을 잡는다', () => {
   assert.ok(diffSnapshots(base(), after).some((x) => x.kind === 'classes'));
 });
 
+/* 8) 비결정 값 정규화 — 느슨하게 만든 만큼, 진짜 회귀까지 놓치면 안 된다.
+      완화가 과하면 게이트가 비는 것이므로 양쪽을 다 확인한다. */
+check('blob: URL이 달라도 통과시킨다(매 실행 새로 발급되는 값)', () => {
+  const before = clone(base()), after = clone(base());
+  const k = Object.keys(before.elements)[1];
+  before.elements[k].attrs.src = 'blob:http://localhost:5500/aaaa-1111';
+  after.elements[k].attrs.src = 'blob:http://localhost:5500/bbbb-2222';
+  assert.equal(diffSnapshots(before, after).filter((x) => x.kind === 'attr').length, 0);
+});
+check('data: 이미지 바이트가 1% 안팎 흔들리면 통과시킨다(grain()이 Math.random을 쓴다)', () => {
+  const before = clone(base()), after = clone(base());
+  const k = Object.keys(before.elements)[1];
+  before.elements[k].attrs.src = 'data:image/png;bytes=4433806';
+  after.elements[k].attrs.src = 'data:image/png;bytes=4435294';
+  assert.equal(diffSnapshots(before, after).filter((x) => x.kind === 'attr').length, 0);
+});
+check('data: 이미지가 사실상 비면(수십 KB로 급감) 반드시 잡는다', () => {
+  const before = clone(base()), after = clone(base());
+  const k = Object.keys(before.elements)[1];
+  before.elements[k].attrs.src = 'data:image/png;bytes=4433806';
+  after.elements[k].attrs.src = 'data:image/png;bytes=52000';
+  assert.ok(diffSnapshots(before, after).some((x) => x.kind === 'attr' && x.prop === 'src'));
+});
+check('data: 이미지가 10% 이상 달라지면 잡는다', () => {
+  const before = clone(base()), after = clone(base());
+  const k = Object.keys(before.elements)[1];
+  before.elements[k].attrs.src = 'data:image/png;bytes=4400000';
+  after.elements[k].attrs.src = 'data:image/png;bytes=4900000';
+  assert.ok(diffSnapshots(before, after).some((x) => x.kind === 'attr' && x.prop === 'src'));
+});
+check('일반 src(파일 경로)는 정규화 대상이 아니라 그대로 잡는다', () => {
+  const before = clone(base()), after = clone(base());
+  const k = Object.keys(before.elements)[1];
+  after.elements[k].attrs.src = '/poster-wall-2.webp';
+  assert.ok(diffSnapshots(before, after).some((x) => x.kind === 'attr' && x.prop === 'src'));
+});
+
 // 7) high가 하나라도 있으면 CLI가 실패(exit 1)해야 게이트로서 의미가 있다
 check('high가 있으면 summarize가 high>0을 보고한다', () => {
   const after = clone(base());

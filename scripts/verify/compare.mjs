@@ -23,6 +23,28 @@ const RECT_TOLERANCE_PX = 0.5;
 
 const load = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 
+/* 실행마다 반드시 달라지는 값을 비교 전에 정규화한다. 스냅샷 파일에는 원본을
+   그대로 남기고(나중에 따져볼 수 있게) 비교할 때만 느슨하게 본다.
+
+   왜 필요한가 — 실측으로 확인한 두 가지:
+   ① blob: URL은 매 실행 새로 발급된다(#snapshot의 src).
+   ② 포스터 PNG의 바이트 수가 매번 다르다. layout.js의 grain()이 128×128 노이즈
+      타일을 Math.random()으로 그리기 때문이다. 즉 **설계상 비결정적**이라
+      전환과 무관하게 항상 다르다. 실측 차이는 0.03~1.2% 수준이었다.
+      그래서 유효숫자 2자리로 뭉뚱그린다 — 그림이 비거나(수십 KB) 크기가
+      확 달라지는 진짜 회귀는 여전히 잡히고, 노이즈는 통과한다. */
+const normalizeAttr = (v) => {
+  if (typeof v !== 'string') return v;
+  if (v.startsWith('blob:')) return 'blob:<실행마다 다름>';
+  const m = /^data:([^;]*);bytes=(\d+)$/.exec(v);
+  if (m) {
+    const n = Number(m[2]);
+    const mag = Math.pow(10, Math.max(0, String(n).length - 2));
+    return `data:${m[1]};bytes≈${Math.round(n / mag) * mag}`;
+  }
+  return v;
+};
+
 /** 두 스냅샷의 차이 목록을 만든다. 반환값은 { severity, kind, key, prop, before, after }[] */
 export function diffSnapshots(before, after) {
   const out = [];
@@ -64,9 +86,8 @@ export function diffSnapshots(before, after) {
     // 속성 — §5.5의 핵심. 화면에 안 보이므로 픽셀 대조로는 절대 안 잡힌다.
     const attrKeys = new Set([...Object.keys(b.attrs), ...Object.keys(a.attrs)]);
     for (const at of attrKeys) {
-      if (b.attrs[at] !== a.attrs[at]) {
-        add('high', 'attr', k, at, b.attrs[at] ?? null, a.attrs[at] ?? null);
-      }
+      const bv = normalizeAttr(b.attrs[at]), av = normalizeAttr(a.attrs[at]);
+      if (bv !== av) add('high', 'attr', k, at, b.attrs[at] ?? null, a.attrs[at] ?? null);
     }
 
     // computed style

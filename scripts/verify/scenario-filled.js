@@ -7,14 +7,16 @@
    왜 이 상태가 중요한가: 오른쪽 패널의 실제 높이가 빈 상태(약 423px)와
    4장 채운 상태(약 780px+)에서 350px 이상 차이 난다. 6·7라운드에서 좌우 높이
    "핑퐁"이 계속 뒤집힌 게 정확히 이 두 상태를 같이 안 봐서였다.
-   빈 상태만 대조하면 그때와 같은 실수를 반복하게 된다.
 
-   실제 카메라와 실제 OpenAI 호출은 쓰지 않는다 —
-   카메라는 사람이 있어야 하고 AI 호출은 건당 실비용($0.04)이 나가며,
-   무엇보다 매번 다른 그림이 나와 대조가 불가능하다. 대신
-     - state.capturedBlob에 결정적으로 만든 사진을 직접 넣고
-     - /generate 응답만 가로채 **고정된 그라디언트 그림**을 돌려준다.
-   그 뒤의 캔버스 합성·갤러리 렌더는 전부 진짜 프로덕션 코드가 수행한다.
+   ── 구동 방식: 실제 UI 경로 ──
+   앱 모듈의 내부 상태(state.capturedBlob)를 직접 건드리지 않는다.
+   빌드하면 모듈이 번들로 합쳐져 `/state.js` 같은 URL이 사라지고(실제로 겪음),
+   무엇보다 그 방식은 프로덕션 코드에 테스트용 훅을 요구하게 된다.
+   대신 **브라우저 API 두 개만 갈아끼우고 나머지는 전부 진짜 버튼 클릭으로 간다**:
+     - navigator.mediaDevices.getUserMedia → 캔버스 captureStream(가짜 카메라)
+     - fetch의 /generate 응답 → 고정된 그라디언트 그림
+   촬영·블롭 생성·프롬프트 구성·캔버스 합성·갤러리 렌더는 전부 프로덕션 코드가 한다.
+   이 방식은 전환 전(ES모듈 직접 서빙)과 전환 후(번들)에서 똑같이 동작한다.
 
    사용법(페이지 안에서):
      await fetch('http://localhost:5501/scripts/verify/scenario-filled.js')
@@ -22,30 +24,33 @@
      await window.__posterScenarioFilled();
    ──────────────────────────────────────────────────────────────────── */
 window.__posterScenarioFilled = async () => {
-  // ES모듈 그래프가 이미 로드돼 있으므로, 같은 경로를 다시 import하면
-  // 브라우저 모듈 캐시가 **같은 살아있는 인스턴스**를 돌려준다.
-  const { state } = await import('/state.js');
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const $ = (id) => document.getElementById(id);
 
-  const solid = (w, h, draw) => {
+  const mkCanvas = (w, h, draw) => {
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
     draw(c.getContext('2d'), c);
     return c;
   };
 
-  // 1) 촬영 결과 대신 넣을 결정적 사진 (내용이 매번 같아야 한다)
-  const photo = solid(640, 480, (x) => {
-    x.fillStyle = '#3b4a63'; x.fillRect(0, 0, 640, 480);
-    x.fillStyle = '#e9b949'; x.beginPath(); x.arc(320, 200, 90, 0, Math.PI * 2); x.fill();
+  /* 1) 가짜 카메라 — 실제 장치 없이도 앱의 촬영 경로를 그대로 태운다.
+        내용이 매 실행 같아야 하므로 정지 화면을 그린다(움직이면 촬영 결과가
+        매번 달라져 대조가 깨진다). */
+  const camCanvas = mkCanvas(1280, 960, (x) => {
+    x.fillStyle = '#3b4a63'; x.fillRect(0, 0, 1280, 960);
+    x.fillStyle = '#e9b949'; x.beginPath(); x.arc(640, 400, 150, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#1b2233'; x.fillRect(0, 700, 1280, 260);
   });
-  state.capturedBlob = await new Promise((r) => photo.toBlob(r, 'image/jpeg', 0.85));
-  state.genCount = 0;
+  const fakeStream = camCanvas.captureStream(30);
+  const realGUM = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  navigator.mediaDevices.getUserMedia = async () => fakeStream;
 
-  // 2) /generate 응답만 가로챈다. 그 외 요청(폰트 등)은 원래대로 통과시킨다.
+  /* 2) /generate 응답만 가로챈다. 폰트 등 나머지 요청은 원래대로 통과시킨다. */
   const realFetch = window.fetch;
   window.fetch = async (u, o) => {
     if (String(u).includes('/generate')) {
-      const art = solid(1024, 1536, (x, c) => {
+      const art = mkCanvas(1024, 1536, (x, c) => {
         const g = x.createLinearGradient(0, 0, 0, c.height);
         g.addColorStop(0, '#e9b949'); g.addColorStop(1, '#0b1020');
         x.fillStyle = g; x.fillRect(0, 0, c.width, c.height);
@@ -60,31 +65,42 @@ window.__posterScenarioFilled = async () => {
     return realFetch(u, o);
   };
 
-  // 3) 입력값도 고정한다 — 글자 수가 다르면 타이포 레이아웃이 달라진다.
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  /* 3) 입력값 고정 — 글자 수가 다르면 타이포 레이아웃이 달라진다. */
+  const set = (id, v) => { const el = $(id); if (el) el.value = v; };
   set('studentName', '김인키');
   set('movieTitle', '우주를 달리는 인키');
-  const genre = document.getElementById('genre');
+  const genre = $('genre');
   if (genre) genre.value = 'animation';
 
-  // 4) 진짜 클릭 핸들러를 그대로 호출한다(로직을 베껴 재현하지 않는다)
-  document.getElementById('generateBtn').click();
+  /* 4) 진짜 버튼을 순서대로 누른다. */
+  $('startBtn').click();                       // 카메라 켜기
+  const video = document.querySelector('#video');
+  for (let i = 0; i < 60 && !(video && video.videoWidth); i++) await wait(100);
 
-  // 5) 갤러리 4장이 실제로 렌더될 때까지 기다린다
-  const gallery = document.getElementById('gallery');
-  const deadline = Date.now() + 20000;
-  while (Date.now() < deadline) {
-    if (gallery && gallery.children.length >= 4) break;
-    await new Promise((r) => setTimeout(r, 100));
+  $('shotBtn').click();                        // 3·2·1 촬영 (약 2.65초)
+  const snapshot = $('snapshot');
+  for (let i = 0; i < 80; i++) {
+    if (snapshot && !snapshot.classList.contains('hidden') && snapshot.src) break;
+    await wait(100);
   }
+
+  $('generateBtn').click();                    // AI 포스터 만들기
+  const gallery = $('gallery');
+  for (let i = 0; i < 200; i++) {
+    if (gallery && gallery.children.length >= 4) break;
+    await wait(100);
+  }
+
   // 캔버스 드로잉이 끝나고 레이아웃이 안정될 시간을 준다
   // (layout-match.js의 ResizeObserver가 오른쪽 패널 높이를 다시 잡는다)
-  await new Promise((r) => setTimeout(r, 600));
+  await wait(800);
 
   window.fetch = realFetch;
+  navigator.mediaDevices.getUserMedia = realGUM;
+
   return {
     갤러리: gallery ? gallery.children.length : 0,
-    포스터: state.posters.length,
-    상태문구: (document.getElementById('status') || {}).textContent
+    촬영됨: !!(snapshot && snapshot.src),
+    상태문구: ($('status') || {}).textContent
   };
 };

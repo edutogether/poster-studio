@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["vite/client", "node"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+
+    /* 전환 1단계에서는 기존 .js를 그대로 두고 빌드만 도입한다 —
+       "빌드 때문에 깨진 것"과 "언어를 바꿔서 깨진 것"을 분리해서 보기 위함이다.
+       2단계에서 .ts로 옮기고 나면 allowJs를 끈다. */
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src", "test", "vite.config.ts"]
+}

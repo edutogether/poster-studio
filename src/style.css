@@ -29,7 +29,10 @@ html,body{margin:0; min-height:100%; background:var(--bg); color:var(--ink);
    추가로 회전(rotate)시키지 않고, cover로 한 장 그대로 화면 전체에 채운다. */
 body::before{
   content:""; position:fixed; inset:0; z-index:0;
-  background-image:url("poster-wall.webp");
+  /* 절대경로여야 한다 — 빌드하면 이 CSS가 dist/assets/ 아래로 가므로 상대경로는
+     dist/assets/poster-wall.webp를 찾아 404가 난다(실제 파일은 dist/poster-wall.webp).
+     public/의 정적 자산은 항상 루트 기준으로 참조한다. */
+  background-image:url("/poster-wall.webp");
   background-repeat:no-repeat; background-size:cover; background-position:center;
   filter:blur(1.5px) saturate(.9); opacity:1;
 }
