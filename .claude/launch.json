@@ -6,6 +6,13 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["http-server", "public", "-p", "5500", "-c-1"],
       "port": 5500
+    },
+    {
+      "//": "검증 도구(scripts/verify/*)를 페이지 안에서 fetch해 쓰기 위한 저장소 루트 서버. 앱 자체는 위 5500을 쓴다.",
+      "name": "poster-studio-tools",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", ".", "-p", "5501", "-c-1", "--cors"],
+      "port": 5501
     }
   ]
 }
