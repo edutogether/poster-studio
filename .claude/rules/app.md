@@ -1,0 +1,71 @@
+# Poster Studio 개별 규칙
+헌법(D:\Projects\CLAUDE.md → _shared/CONVENTIONS.md)에 없는 것만.
+
+## 앱
+- 무엇: 웹캠으로 찍은 사진을 AI가 영화 포스터로 바꿔 4종을 만들고 4×6 인화지로 즉석 인쇄하는 행사 체험부스 웹앱.
+- 사용자: 제4회 인천어린이청소년영화제 참가 아동·교사. **행사 1회성(2026-11-14, 인천 CGV, 10:30~15:00)**.
+  교육청이 사전에 서면 참여동의를 받고 명단을 제출한 인원만 참여하는 폐쇄형 행사 —
+  **2000명이 명단 기준 하드캡**(늘어날 수 없고 줄어들 수만 있음, 대표 확인).
+- 운영 규모: 노트북 최대 20대, 공인 IP 3개에 7/7/6대로 분산(2026-09-03 확정 — `IP_RATE_LIMIT_MAX=50`이
+  이 배분을 전제로 산정돼 있다). 포토프린터 대수는 `[확인]` — 초기 문서에 "최대 3대"라고 남아 있으나
+  노트북 4대 → 20대로 규모가 바뀐 뒤 갱신되지 않았다.
+- 배포: Firebase Hosting(`poster-studio` 타겟) + Cloud Functions(`posterStudio`, asia-northeast3).
+  Firebase 프로젝트 `inky-poster-studio`.
+
+## 배포 폴더
+- `firebase.json` public = `public`. `_docs/`, `.claude/`, `functions/`, `scripts/`가 여기 포함되지 않음을 확인함 (확인일 9/8)
+- **주의**: `public/`이 통째로 배포 폴더다. `public/` 아래에 설정파일을 새로 만들면 `firebase.json`의
+  hosting `ignore`에 추가하지 않는 한 라이브에 그대로 서빙된다(`vitest.config.js`가 실제로 그랬음, 2026-09-07 발견).
+  파일 추가 후 `curl https://poster-studio.web.app/<파일명>`이 404인지 확인할 것.
+
+## 데이터
+- 개인정보·미성년자 데이터: **있음.** 아동 얼굴 사진(웹캠 촬영)이 OpenAI(미국) 서버로 전송된다.
+  영화 제목·홍보 문구도 프롬프트에 포함돼 함께 전송된다.
+  **이름·단체명·출연진은 전송되지 않는다** — 브라우저 안에서 포스터 자막을 만드는 데만 쓰인다. 이 설계를 깨지 말 것.
+- 서버 보관: **없음.** 업로드된 사진은 Functions 인스턴스 `/tmp`에 잠깐 썼다가 정상·오류·429 모든 경로에서 삭제된다
+  (`denyWithCleanup`, 핸들러의 `finally`). Cloud Run의 `/tmp`는 메모리라 누수가 곧 가용성 문제이기도 하다.
+- Firestore 보관: 정수 카운터 4종(`rateLimitBuckets`, `ipRateLimitBuckets`, `photoGenCounts`, `dailyBudgetBuckets`)과
+  사진의 SHA-256 해시뿐. 사진 원본·이름은 없다. `cleanupOldCountersSchedule`(매일 04시 KST)이 30일 지난 것을 자동 삭제.
+- 노트북에 남는 것: **`PNG 저장` 버튼을 누른 경우에만** 아동 얼굴+이름이 담긴 파일이 다운로드 폴더에 남는다.
+  이 파일은 **2026-12-31까지 보관 후 삭제**하며, 앱이 자동화하지 않고 **교육청 장학사가 직접 처리**한다(2026-08-29 대표 결정).
+- rules: `firestore.rules` **의도적 생략** — 클라이언트가 Firestore에 접근하는 경로가 전혀 없고 서버 Admin SDK
+  전용이라 보안 규칙(클라이언트 접근 통제용)이 이 구조에선 무의미하다. Storage는 사용하지 않는다.
+
+## 이 앱에서 절대 하면 안 되는 것
+- **행사 당일(2026-11-14) 라이브 부하테스트 금지.** `/generate` 한 번이 실제 OpenAI 과금(약 $0.04)이고,
+  레이트리밋 카운터는 전역 공유라 테스트가 그 10분 동안 전 부스를 429로 막는다(과거에 실제로 발생).
+- **이름·단체명·출연진을 서버로 보내지 않는다.** 화면 고지(`public/privacy.html`)가 "전송되지 않는다"고 약속하고 있다.
+- **Firestore에 개인정보를 추가하지 않는다.** 대표 승인 조건이 "순수 숫자 카운터만"이었다.
+- **타임아웃 4단 체인(120초 < 125초 < 140초 < 150초) 중 하나만 바꾸지 않는다.** 순서가 깨지면 플랫폼이
+  함수를 강제종료해 임시 사진 삭제가 실행되지 못한다. `scripts/loadtest.mjs`의 상수도 같이 물려 있다.
+- **레이트리밋 IP를 `req.ip`(XFF 맨 왼쪽)로 되돌리지 않는다.** 헤더 한 줄로 우회 가능하다 —
+  2026-09-07에 라이브에서 실제로 뚫리는 것을 재현했다. `clientIpForRateLimit()`(맨 오른쪽)만 쓴다.
+- **부스토큰(`public/constants.js`) 변경과 Secret Manager 갱신을 다른 커밋으로 쪼개지 않는다.** 그 사이 전 부스가 401.
+- **`npm audit fix --force`를 `functions/`에서 돌리지 않는다.** firebase-functions 메이저 다운그레이드를 유발한다.
+- **테스트에서 실제 OpenAI·Firestore를 호출하지 않는다.** 주입 지점이 이미 있다(`_setClientForTesting` 등).
+- **촬영 후 카메라 스트림을 켜둔 채 두지 않는다.** 최소수집 원칙 위반이고 아동 대상이라 더 중요하다
+  (`camera.js`의 `getTracks().stop()` — 6차 감사에서 고친 것).
+
+## 명령
+- 테스트: `cd functions && npm test`(56개) / `cd public && npm test`(57개) — 둘 다 vitest
+- 린트: 각 폴더에서 `npm run lint` (eslint)
+- 포맷: `cd functions && npm run format` (prettier — functions에만 있음)
+- 로컬 실행: `public/`을 정적 서버로(포트 5500 또는 8080 — `ALLOWED_ORIGINS`에 이미 허용돼 있음).
+  AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
+- 에뮬레이터: 사용하지 않는다. 헤더(CSP 등) 확인이 필요하면 `firebase emulators:start --only hosting`.
+- 배포: `master`에 push → CI가 test → functions → hosting 순으로 자동 배포. 수동 배포는 하지 않는다
+  (예외: `keepWarm` 스케줄 변경 배포 — `_docs/ops/RUNBOOK.md` 참고).
+
+## 자주 틀리는 것
+- **임시 사진 삭제 누락이 세 번 재발했다.** 2차 감사(오류 경로), 7차 감사(429 경로 3곳), 8차 감사(재시도 예산 초과로
+  플랫폼이 강제종료해 `finally` 자체가 안 도는 경로). **`/generate`에 새 종료 경로를 추가할 때마다
+  "여기서 `req.file.path`가 지워지는가"를 반드시 확인할 것.**
+- **문서가 코드보다 뒤처지는 일이 반복된다.** 지금까지 실제로 발견된 것: RUNBOOK의 `timeoutSeconds:120`(실제 140),
+  README의 고지 방식 서술(배너 → privacy.html 링크로 바뀐 뒤 방치), `loadtest.mjs`의 `SERVER_TIMEOUT_MS=90_000`(실제 120초),
+  README/SECURITY_NOTES의 "TTL 정책 적용됨"(당시 미구현), 화면 고지문의 "이름도 전송된다"(실제로는 미전송).
+  **상수·설정값을 바꿀 때는 그 값을 인용하는 문서를 같이 grep해서 고칠 것.**
+- **`public/`에 파일을 추가하고 hosting `ignore` 갱신을 잊는다.** 6차 감사에서 세운 규약인데 vitest 이전 때 재발했다.
+- **파일을 옮기고 CI 스크립트의 경로를 잊는다.** ES모듈 전환 때 `BOOTH_TOKEN`이 `app.js` → `constants.js`로
+  옮겨졌는데 CI 스모크테스트 스크립트를 안 고쳐 배포가 한 번 실패했다.
+- **레이트리밋 대량요청 테스트가 10분 버킷 경계에서 깨진다.** `runInSingleRateLimitBucket()`으로 감쌀 것.
+- **라이브 확인을 스크린샷으로만 하면 브라우저 캐시에 속는다.** 배포 정확성은 `curl`로 서버에서 직접 받아 대조한다.

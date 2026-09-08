@@ -8,15 +8,26 @@
 - **AI 이미지 생성만 Firebase Functions(서버리스)가 처리** — OpenAI API 키는 노트북이 아니라 Firebase Secret Manager에 보관되고, 웹캠 촬영·포스터 합성(타이포·크레딧·필름그레인)은 이전처럼 전부 브라우저에서 그대로 실행된다.
 - v2 기능(개인/단체 선택, 자동 타이포그래피, 4가지 고퀄 버전, 얼굴 보존 강화)은 그대로 유지.
 
+## 📕 행사 당일 문제가 생기면 → [`_docs/ops/RUNBOOK.md`](_docs/ops/RUNBOOK.md)
+부스 진행자용 장애 대응 런북(콜드스타트, 429 오류 3종, AI 생성 실패, 인쇄 문제, 롤백 절차)입니다.
+**2026-09-08 문서 정비로 저장소 루트에서 `_docs/ops/` 아래로 옮겼습니다** — 예전 위치(루트 `RUNBOOK.md`)를 기억하고 계셨다면 여기로 오시면 됩니다.
+
 ## 구조
 ```
 public/          정적 프론트엔드 (Firebase Hosting으로 배포 — https://poster-studio.web.app)
   index.html
-  app.js         촬영 → 프롬프트 구성 → Functions 호출 → 캔버스 합성
-  style.css
+  app.js         진입점(ES모듈) — 아래 모듈들을 import해 부팅
+  camera.js      웹캠 촬영          api.js       Functions 호출 + 갤러리
+  layout.js      폰트·캔버스 도구    templates.js 포스터 4종 템플릿
+  print.js       PNG 저장·인쇄      constants.js/state.js/dom.js  공용 상수·상태·DOM
+  style.css      privacy.html       poster-wall.webp
 functions/       Firebase Cloud Functions (AI 이미지 생성 API만 담당)
   index.js
   package.json
+_docs/           저장소 문서 (배포 대상 아님 — hosting public은 public/ 뿐)
+  ops/RUNBOOK.md   행사 당일 장애 대응 런북
+  intents/         건별 작업 의도 기록(intent.md)
+AGENTS.md        AI 코딩 도구(Claude Code / Codex 등)가 읽는 저장소 안내
 firebase.json    hosting(poster-studio 타겟) + functions 설정, 보안헤더(CSP 등) 포함
 .github/workflows/deploy.yml   master 푸시 시 test → functions 배포 → hosting(poster-studio) 배포 순서로 자동 진행
 ```

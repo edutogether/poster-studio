@@ -706,7 +706,7 @@ export const posterStudio = onRequest(
    어긋나므로, 행사 당일(2026-11-14) 시간대에만 동작하도록 cron을 제한했다 — 평상시엔
    완전히 비활성.
    URL은 posterStudio 함수 URL과 같은 프로젝트/리전이어야 한다 — 프로젝트 이전 시
-   ALLOWED_ORIGINS·API_BASE와 함께 반드시 같이 고칠 것(RUNBOOK.md 참고).
+   ALLOWED_ORIGINS·API_BASE와 함께 반드시 같이 고칠 것(_docs/ops/RUNBOOK.md 참고).
 
    2026-08-30: 1차 시도는 cloudscheduler.googleapis.com 미활성화로 막혔었고(대표가
    콘솔에서 활성화 완료), 2차 시도에서는 API는 통과했지만 실제 스케줄러 "작업(job)"

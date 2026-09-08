@@ -108,7 +108,7 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 - 알 수 없는 업스트림 오류 원문 노출 — `mapGenerateError()`로 분리, OpenAI raw 메시지는 서버 로그에만 남기고 클라이언트에는 일반 문구만 반환(429→429, 크레딧부족/API키→500, 콘텐츠정책→400, 타임아웃→504, 네트워크→502, 알수없음→500).
 - `/generate` 에러매핑 테스트 0개 — 위 `mapGenerateError`를 export해 6개 케이스 유닛테스트 추가(총 20/20 통과).
 - AI 장애 시 완전 정지(폴백 없음) — `public/app.js`에 `makePlaceholderArt()` + "🎨 AI 없이 기본 버전으로 계속하기" 버튼 추가. 생성 실패 시 AI 그림 없이 단색 그라디언트 배경으로 같은 타이포·크레딧 레이아웃을 만들어 인쇄까지는 계속 가능 — OpenAI 완전 장애에도 부스가 통째로 멈추지 않음. 로컬 브라우저로 실제 4종 포스터 생성까지 확인함.
-- 콜드스타트/장애런북 없음 — [RUNBOOK.md](RUNBOOK.md) 신설(콜드스타트·429·AI장애·업로드오류 등 부스 진행자용 대처법).
+- 콜드스타트/장애런북 없음 — [RUNBOOK.md](_docs/ops/RUNBOOK.md) 신설(콜드스타트·429·AI장애·업로드오류 등 부스 진행자용 대처법). *(2026-09-08 문서 정비로 루트 → `_docs/ops/`로 이동, 이 문서의 아래 이력에 나오는 "RUNBOOK.md"는 전부 이 경로를 가리킨다.)*
 - openai 마이너 업그레이드 — 7.5.0 → 7.8.0.
 - `lastMeta` 죽은코드 — 제거, 이미 존재하던 `posters.length`로 "생성 이력 있음" 판단 대체.
 - ESLint/Prettier 미도입 — `functions/`에 flat config(`eslint.config.js`) + `.prettierrc.json` 도입, `npm run lint`/`npm run format` 스크립트 추가. 기존 코드 lint 통과 확인(0 errors/warnings).
