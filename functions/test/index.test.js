@@ -936,6 +936,32 @@ test('ALLOWED_ORIGINS: https://edutogether.kr을 허용하고, 서브도메인/h
   expect(matches('https://edutogether.kr.evil.com'), '접미사 붙은 가짜 도메인은 거부해야 한다').toBe(false);
 });
 
+/* 2026-09-09: 커스텀 도메인 poster.edutogether.kr 전환 대비.
+   함정 — 목록에 edutogether.kr이 이미 있어서 "서브도메인도 되겠지" 하고 넘어가기
+   쉬운데, 정규식이 앵커돼 있어 **매치하지 않는다**. Voice Cinema가 같은 걸 실측으로
+   발견했고 이 저장소도 같은 형태였다. 그래서 "서브도메인이 부모 규칙으로 통과하지
+   않는다"는 것 자체를 테스트로 고정해, 나중에 누가 앵커를 느슨하게 풀면 잡히게 한다. */
+test('ALLOWED_ORIGINS: poster.edutogether.kr(커스텀 도메인)을 허용한다', () => {
+  const matches = (origin) => ALLOWED_ORIGINS.some((re) => re.test(origin));
+  expect(matches('https://poster.edutogether.kr')).toBe(true);
+});
+
+test('ALLOWED_ORIGINS: 서브도메인은 부모 도메인 규칙으로 통과하지 않는다(앵커 유지 확인)', () => {
+  const parentOnly = ALLOWED_ORIGINS.filter((re) => String(re).includes('edutogether') && !String(re).includes('poster'));
+  expect(parentOnly.length).toBeGreaterThan(0);
+  expect(
+    parentOnly.some((re) => re.test('https://voice.edutogether.kr')),
+    'edutogether.kr 규칙이 임의의 서브도메인을 허용하면 안 된다'
+  ).toBe(false);
+});
+
+test('ALLOWED_ORIGINS: 커스텀 도메인의 접두사·접미사 위조는 거부한다', () => {
+  const matches = (origin) => ALLOWED_ORIGINS.some((re) => re.test(origin));
+  expect(matches('https://poster.edutogether.kr.attacker.com'), '접미사 위조').toBe(false);
+  expect(matches('https://evil-poster.edutogether.kr'), '접두사 위조').toBe(false);
+  expect(matches('http://poster.edutogether.kr'), 'http는 허용하면 안 된다').toBe(false);
+});
+
 test('ALLOWED_ORIGINS: 기존 Firebase Hosting 주소도 여전히 허용된다(edutogether.kr 추가가 기존 걸 안 깬다)', () => {
   const matches = (origin) => ALLOWED_ORIGINS.some((re) => re.test(origin));
   expect(matches('https://poster-studio.web.app')).toBe(true);

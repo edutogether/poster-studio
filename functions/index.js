@@ -629,10 +629,20 @@ app.use((err, req, res, _next) => {
 // 헤더는 프록시된 페이지 주소인 https://edutogether.kr가 된다(경로는 CORS Origin에
 // 포함되지 않으므로 /poster-studio 서브경로 여부와 무관하게 이 한 줄이면 충분하다).
 // 이 줄이 없으면 edutogether.kr/poster-studio 경유 접속에서만 CORS가 조용히 막힌다.
+// 2026-09-09 추가(팀장 세션 경유, Voice Cinema 실측 공유): 이 앱의 주소가
+// poster.edutogether.kr로 바뀐다. 위 edutogether.kr 줄이 이미 있어서 "들어가 있네"로
+// 넘어가기 쉬운데, 정규식이 `^https://edutogether\.kr$`로 앵커돼 있어 **서브도메인은
+// 매치하지 않는다** — 실제로 돌려서 https://poster.edutogether.kr이 거부되는 것을
+// 확인했다. 그래서 별도 줄로 추가한다.
+// 추가형이라 도메인이 실제로 붙기 전에 넣어도 무해하고(존재하지 않는 출처를 허용할
+// 뿐이다), 그래야 "새 주소는 뜨는데 API만 조용히 막히는" 구간이 안 생긴다.
+// 각 줄이 ^...$로 앵커돼 있어 접미사 위조(poster.edutogether.kr.attacker.com)나
+// 접두사 위조(evil-poster.edutogether.kr)는 그대로 거부된다 — 실측으로 확인함.
 const ALLOWED_ORIGINS = [
   /^https:\/\/poster-studio\.web\.app$/,
   /^https:\/\/poster-studio\.firebaseapp\.com$/,
   /^https:\/\/edutogether\.kr$/,
+  /^https:\/\/poster\.edutogether\.kr$/,
   /^http:\/\/localhost:(5500|8080)$/,
   /^http:\/\/127\.0\.0\.1:(5500|8080)$/
 ];
