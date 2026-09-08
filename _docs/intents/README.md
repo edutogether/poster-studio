@@ -5,7 +5,8 @@
 
 **등급 기준·상태 관리 규칙은 헌법에 있다** — `_shared/CONVENTIONS.md` §1.5(등급 0/1/2 판단 기준),
 §1.6(draft → accepted → in-progress → done | dropped, 상태 변경은 Bumm만). 여기 다시 적지 않는다.
-워크플로 원본은 `_shared/intent-kit/intent-workflow.md`(최상위 CLAUDE.md가 자동 로드).
+워크플로 규칙은 이 저장소에도 사본을 뒀다: [`.claude/rules/intent-workflow.md`](../../.claude/rules/intent-workflow.md)
+(원본은 `D:\Projects\_shared\intent-kit\intent-workflow.md`, 최상위 CLAUDE.md가 자동 로드).
 
 이 앱에서 등급 판단이 특히 갈리는 지점: **`functions/` 설정값(타임아웃·레이트리밋·예산 상한) 변경은
 그 자체로 등급 1 이상**이다. 숫자 하나만 바꾸는 것처럼 보여도 행사 당일 부스 전체의 가용성과 실제 지출에
