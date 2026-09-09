@@ -135,6 +135,19 @@ if (invokedDirectly) {
     process.exit(2);
   }
   const before = load(beforePath), after = load(afterPath);
+
+  /* 🔴 빈 게이트 방지(COMMON_STANDARDS §21-1). 스냅샷이 요소를 하나도 안 담고 있으면
+     대조는 "차이 0건"을 내놓는데, 그건 같다는 뜻이 아니라 **아무것도 안 봤다**는 뜻이다.
+     페이지가 안 뜬 채로 뜬 스냅샷, 선택자가 깨진 스냅샷이 여기로 들어온다.
+     이 도구의 "차이 0건"에 전환 검증 전체가 걸려 있으므로 여기서 막는다. */
+  for (const [label, snap, p] of [['before', before, beforePath], ['after', after, afterPath]]) {
+    const n = Object.keys(snap.elements || {}).length;
+    if (n === 0) {
+      console.error(`${label} 스냅샷(${p})에 요소가 0개입니다 — 대조가 무의미합니다. 페이지가 제대로 떴는지 확인하고 다시 뜨세요.`);
+      process.exit(2);
+    }
+  }
+
   const diffs = diffSnapshots(before, after);
   const sum = summarize(diffs);
 

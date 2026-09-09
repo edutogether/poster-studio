@@ -956,6 +956,9 @@ test('ALLOWED_ORIGINS: 모든 규칙이 ^…$ 앵커를 갖는다(목록의 성�
 });
 
 test('ALLOWED_ORIGINS: 모든 규칙의 점(.)이 이스케이프돼 있다(임의 문자 매치 방지)', () => {
+  // 목록이 비면 for가 한 번도 안 돌아 조용히 통과한다(COMMON_STANDARDS §21-1).
+  // 바로 위 앵커 테스트에는 이 가드가 있는데 여기만 빠져 있었다.
+  expect(ALLOWED_ORIGINS.length).toBeGreaterThan(0);
   for (const re of ALLOWED_ORIGINS) {
     // 백슬래시+문자 쌍을 지운 뒤에도 남는 .은 이스케이프되지 않은 것 = 임의 문자 매치
     const hasBareDot = re.source.replace(/\\./g, '').includes('.');

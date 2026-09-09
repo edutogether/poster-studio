@@ -23,6 +23,23 @@ if (!fs.existsSync(FILE)) {
   process.exit(1);
 }
 
+/* 🔴 빈 게이트 방지(COMMON_STANDARDS §21-1). 이 검사는 글자 목록(txt)만 대조하므로,
+   **정작 서브셋 폰트 파일이 없어도 통과한다.** 그러면 CSS가 가리키는 파일이 404가 되어
+   화면이 대체 글꼴로 떨어지는데 검사는 초록불이다. 파일이 실제로 있는지 먼저 본다. */
+const SUBSET_DIR = path.join(ROOT, 'public/fonts/subset');
+const WEIGHTS = ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold'];
+const missingFiles = WEIGHTS
+  .map((w) => `Pretendard-${w}.woff2`)
+  .filter((f) => {
+    const p = path.join(SUBSET_DIR, f);
+    return !fs.existsSync(p) || fs.statSync(p).size < 1024;
+  });
+if (missingFiles.length) {
+  console.error(`서브셋 폰트 파일이 없거나 비어 있습니다: ${missingFiles.join(', ')}`);
+  console.error('`npm run fonts:charset` 후 `python scripts/fonts/subset.py`로 다시 만드세요.');
+  process.exit(1);
+}
+
 const have = new Set(fs.readFileSync(FILE, 'utf8'));
 const need = [...charset()];
 const missing = need.filter((c) => !have.has(c));
