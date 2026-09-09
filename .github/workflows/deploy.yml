@@ -11,7 +11,7 @@ name: Test, Deploy Functions, Deploy Hosting
 # 쓰고 클라이언트가 Firestore에 직접 접근하는 경로가 없다(서버 Admin SDK 전용) —
 # 그래서 코디세이의 "Firestore 규칙 에뮬레이터 테스트"에 대응하는 단계가 없다(클라이언트
 # 접근을 통제하는 규칙 자체가 이 구조에선 무의미). Storage는 정말 안 쓴다(사진은 처리
-# 직후 삭제). functions/SECURITY_NOTES.md 참고.
+# 직후 삭제). functions/security-notes.md 참고.
 on:
   push:
     branches: [master]

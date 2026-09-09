@@ -11,10 +11,10 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | **모든 AI 도구(Codex 포함)가 읽는 안내.** 명령·배포·금지사항 + 이 저장소의 함정 9건(XFF 규칙, 타임아웃 체인, hosting ignore 등) |
 | [`.claude/rules/app.md`](.claude/rules/app.md) | 개별법 — 행사 정보, 개인정보 취급·보관 정책, 절대 금지사항, 자주 틀리는 것 |
-| [`_docs/ops/RUNBOOK.md`](_docs/ops/RUNBOOK.md) | **행사 당일 장애 대응**(콜드스타트, 429 4종, AI 실패, 롤백). 부스 진행자가 실제로 펴보는 문서 |
+| [`_docs/ops/runbook.md`](_docs/ops/runbook.md) | **행사 당일 장애 대응**(콜드스타트, 429 4종, AI 실패, 롤백). 부스 진행자가 실제로 펴보는 문서 |
 | [`_docs/CHANGELOG.md`](_docs/CHANGELOG.md) | 날짜별 전체 이력 — 1~8차 감사, 디자인 개편 7라운드, 부하테스트, vitest 이전 등 |
 | [`_docs/intents/`](_docs/intents/) | 건별 작업 의도. 등급 기준은 [`.claude/rules/intent-workflow.md`](.claude/rules/intent-workflow.md) |
-| [`functions/SECURITY_NOTES.md`](functions/SECURITY_NOTES.md) | `npm audit` 경고를 왜 그대로 두는지 |
+| [`functions/security-notes.md`](functions/security-notes.md) | `npm audit` 경고를 왜 그대로 두는지 |
 
 ## 정체성
 - **위치**: `D:\Projects\inky-festival\poster-studio`

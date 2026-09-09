@@ -57,7 +57,7 @@ npm run verify:selftest  # 대조 도구가 빈 게이트가 아닌지
 - `deploy-functions` 뒤에 **부스토큰 스모크테스트**가 붙어 있다 — 라이브 `/generate`가 401이면 파이프라인 실패.
 - `deploy-hosting` 뒤에 라이브 200 확인 + CORS 확인이 붙어 있다.
 - 예외 하나: `keepWarm`(Cloud Scheduler) **스케줄 자체를 바꾸는** 배포는 CI 계정 IAM 이슈 이력이 있어
-  소유자급 계정으로 로컬 배포하는 경우가 있다 — `_docs/ops/RUNBOOK.md` 참고.
+  소유자급 계정으로 로컬 배포하는 경우가 있다 — `_docs/ops/runbook.md` 참고.
 
 ---
 
@@ -72,7 +72,7 @@ npm run verify:selftest  # 대조 도구가 빈 게이트가 아닌지
 3. **테스트에서 진짜 Firestore를 두드리지 않는다.** 같은 이유. 인메모리 가짜를 주입한다.
 4. **`npm audit fix --force`를 `functions/`에서 돌리지 않는다.** 제안되는 "수정"이 firebase-functions 메이저
    다운그레이드라 오히려 퇴행한다. moderate 경고들은 미사용 경로(firebase-admin → storage)라 실위험이 없고
-   `functions/SECURITY_NOTES.md`에 근거가 적혀 있다.
+   `functions/security-notes.md`에 근거가 적혀 있다.
 5. **Firestore에 개인정보를 넣지 않는다.** 저장하는 건 정수 카운터 4종과 사진의 SHA-256 해시뿐이다.
    사진 원본·이름·단체명은 서버 어디에도 저장되지 않는다(README의 개인정보 고지가 이걸 약속하고 있다).
 6. **라이브에 부하를 주지 않는다.** `/generate` 한 번 = 실제 OpenAI 과금(약 $0.04).
@@ -121,7 +121,7 @@ vitest 이전 때 `public/vitest.config.js`가 실제로 라이브에서 200으�
 `src/constants.ts`의 `BOOTH_TOKEN` ↔ Secret Manager의 `BOOTH_TOKEN` ↔ `functions/index.js`의 `ALLOWED_ORIGINS`.
 (CI 스모크테스트가 이 파일을 문자열로 읽는다 — 파일을 옮기면 `.github/workflows/deploy.yml`도 같이 고칠 것.)
 하나만 먼저 배포되면 그 사이에 부스 전체가 401이 된다. **반드시 같은 커밋에** 넣는다.
-교체 절차는 `_docs/ops/RUNBOOK.md` "부스토큰 교체".
+교체 절차는 `_docs/ops/runbook.md` "부스토큰 교체".
 
 ### 5. 같은 사진으로는 2번까지만 생성된다 (테스트·스크립트가 여기 걸린다)
 
@@ -177,7 +177,7 @@ checkBoothToken → parseMultipart → requirePhoto → rateLimit → ipRateLimi
 | `scripts/fonts/` | UI 폰트 서브셋 — `charset.mjs`(글자 뽑기) `check-charset.mjs`(CI 게이트) `subset.py` |
 | `scripts/verify/` | 전환 대조 도구 — `snapshot.js` `compare.mjs` `poster-pixels-ui.js`(포스터 픽셀 지문) |
 | `scripts/loadtest.mjs` | 라이브 부하테스트(`--dry` 필수 확인) |
-| `_docs/ops/RUNBOOK.md` | 행사 당일 장애 대응 |
+| `_docs/ops/runbook.md` | 행사 당일 장애 대응 |
 
 ---
 

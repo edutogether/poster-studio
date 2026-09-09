@@ -16,7 +16,7 @@ export const API_BASE = 'https://asia-northeast3-inky-poster-studio.cloudfunctio
 /* 부스 공유 토큰 — functions/index.js의 BOOTH_TOKEN 시크릿과 같은 값이어야 한다.
    정적 사이트라 이 값은 누구나 소스에서 볼 수 있다(진짜 비밀이 아니다) — 목적은
    자동화 스크립트가 소스를 안 보고 /generate URL만 찔러보는 걸 막는 최소한의
-   문지기이지, 강한 인증이 아니다. 교체 절차는 _docs/ops/RUNBOOK.md "부스토큰 교체" 참고. */
+   문지기이지, 강한 인증이 아니다. 교체 절차는 _docs/ops/runbook.md "부스토큰 교체" 참고. */
 export const BOOTH_TOKEN = 'XQp4tQ97rS_fUPz4zgCEBTYnUEOs48C0';
 
 export const FEST = '제4회 인천어린이청소년영화제';

@@ -6,7 +6,7 @@
 **한 줄도 삭제하지 않고 그대로 옮긴 것**이며, 지금도 유효한 규칙(자율 권한, 실운영 모드, 소통 경로)과
 앱 고유의 금지사항·함정은 각각 `CLAUDE.md`와 `.claude/rules/app.md`, `AGENTS.md`에 남아 있다.
 
-이력에 나오는 `RUNBOOK.md`는 전부 현재 경로 `_docs/ops/RUNBOOK.md`를 가리킨다.
+이력에 나오는 `runbook.md`는 전부 현재 경로 `_docs/ops/runbook.md`를 가리킨다.
 
 ## 리액트+TS 전환 머지 (2026-09-09, 대표 지시, 팀장 경유)
 
@@ -131,7 +131,7 @@
 
 **Sonnet 담당 4개 항목(전부 100)**:
 - **코드 품질/일관성**: `functions/index.js` 725줄, `public/*.js` 전체 재검토 — 새 결함 없음.
-- **기술 부채**: eslint(10.9.1→10.10.0)·openai(7.9.0→7.10.0) 마이너 업그레이드. `RUNBOOK.md`가 2026-09-06 타임아웃 변경(120→140초)을 반영 못 하고 옛 값(`timeoutSeconds:120`)을 그대로 인용하던 문서-실제 불일치 발견·수정(행사 당일 부스 진행자가 실제로 펴보는 문서라 우선순위 높음). `npm audit`의 functions 8건(moderate)은 `SECURITY_NOTES.md`에 이미 문서화된 미사용 경로라 §4-4로 재론의 안 함.
+- **기술 부채**: eslint(10.9.1→10.10.0)·openai(7.9.0→7.10.0) 마이너 업그레이드. `runbook.md`가 2026-09-06 타임아웃 변경(120→140초)을 반영 못 하고 옛 값(`timeoutSeconds:120`)을 그대로 인용하던 문서-실제 불일치 발견·수정(행사 당일 부스 진행자가 실제로 펴보는 문서라 우선순위 높음). `npm audit`의 functions 8건(moderate)은 `security-notes.md`에 이미 문서화된 미사용 경로라 §4-4로 재론의 안 함.
 - **테스트 커버리지**: `camera.js`(웹캠 촬영)·`print.js`(저장/인쇄)가 테스트 0개였던 걸 발견 — `public/test/load-app.js`에 `canvas.toBlob()`/`click()`/`document.body.appendChild` 추적을 추가해 테스트 가능하게 만들고 `camera.test.js`(6개)·`print.test.js`(4개) 신설(public 47→57개). OpenAI 실응답형식 미검증이라는 5차 감사 때부터 인정된 구조적 한계는 재론의 대상 아님(처음부터 옳은 설계로 판정된 부분).
 - **에러 핸들링**: fail-open 패턴, `denyWithCleanup` 통일, `mapGenerateError` 원문 비노출, 프론트 try/catch 전부 재확인 — 새 결함 없음.
 
@@ -352,7 +352,7 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 - **4차 🔴#2(무인증) 해결이 실측으로 재확인됨** — Opus가 라이브에서 토큰없음/틀린토큰/빈토큰/가짜Origin 4종 시도, 전부 401 확인.
 - 테스트 커버리지 58→74로 가장 크게 개선(20+14=34개 전부 실행 확인), 다만 `TEMPLATES.render()`와 프론트 `genCount`(재생성 제한) 로직은 여전히 테스트 0개.
 - **신규 발견(감사 직후 즉시 수정, 커밋 `4f7da1d`)**: 화면 개인정보 고지문(`public/index.html`)이 실제 코드·README와 **정반대로 "이름도 전송된다"고 잘못 고지**하고 있었음 — 실제로는 이름 미전송이 맞는 설계인데 그 좋은 설계를 스스로 부정하는 오탈자성 문서 버그. 발견 즉시 문구 수정+배포 완료.
-- **신규 발견(RUNBOOK 반영, 커밋 `4f7da1d`)**: OpenAI 월 지출 상한이 현재 $10(개발기간용)인데, 11월 행사 전 $200 상향 리마인더가 CLAUDE.md에만 있고 행사 당일 실제로 펼쳐볼 RUNBOOK.md엔 없었음 — RUNBOOK.md에 "행사 전 필수 체크리스트" 섹션 신설해 추가.
+- **신규 발견(RUNBOOK 반영, 커밋 `4f7da1d`)**: OpenAI 월 지출 상한이 현재 $10(개발기간용)인데, 11월 행사 전 $200 상향 리마인더가 CLAUDE.md에만 있고 행사 당일 실제로 펼쳐볼 runbook.md엔 없었음 — runbook.md에 "행사 전 필수 체크리스트" 섹션 신설해 추가.
 - **아직 손 안 댄 신규 발견(우선순위순, 대표/팀장 판단 필요)**:
   1. 🟡 생성횟수 제한(`MAX_GENERATIONS_PER_PHOTO=2`)이 **클라이언트 전용**이라 새로고침하면 초기화됨 — 서버측 강제가 없어 "1인당 1회" 정책이 실제로는 강제되지 않음(공개된 토큰만 있으면 우회 가능). 서버측 강제 구현은 설계 판단이 필요해 보류 (~40분 추정).
   2. 🟡 `/health`가 `hasKey`(시크릿 존재 여부)만 확인하고 OpenAI 실제 도달성은 안 봐서, OpenAI가 완전히 죽어도 `ok:true`를 반환할 수 있음 (~20분 추정).
@@ -366,11 +366,11 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 5차 감사 결과 보고 후 대표가 "감사 돌릴 때마다 새로운 게 계속 나온다"며 10개 항목 전부를 100점 기준 gap 분석표(왜 100이 아닌지/100 만들려면 뭘 해야하는지/리스크/시간)로 압축 없이 정리해달라고 요청, 이후 "큰 구조변경 빼고 안정적으로 가능한 항목 전부 병렬 진행" 승인받아 아래 전부 완료:
 
 1. **ESLint(public/)**: `public/eslint.config.js` 신설. 기존 코드에서 실제 경고 11건(catch 변수 미사용 — `caughtErrors:'none'`으로 처리) + **진짜 죽은코드 1건 발견·제거**(`laurels()` 함수, 호출부 0곳).
-2. **npm audit 문서화**: `functions/SECURITY_NOTES.md` 신설 — moderate 9건이 `uuid`→`firebase-admin`(미사용) 경유 전이의존성이라 실위험 없음을 기록, `npm audit fix --force` 절대 금지(firebase-functions 다운그레이드 유발) 명시.
+2. **npm audit 문서화**: `functions/security-notes.md` 신설 — moderate 9건이 `uuid`→`firebase-admin`(미사용) 경유 전이의존성이라 실위험 없음을 기록, `npm audit fix --force` 절대 금지(firebase-functions 다운그레이드 유발) 명시.
 3. **`/health` OpenAI 도달성 확인**: 기존엔 `hasKey`(시크릿 존재)만 봐서 OpenAI가 완전히 죽어도 `ok:true`였음 — `checkOpenAIReachable()`(models.list(), 60초 캐싱, 토큰 과금 없는 메타데이터 호출) 추가, 프론트도 `openaiReachable:false`를 읽어 별도 경고 문구 표시. `checkBoothToken`의 빈 시크릿 엣지케이스 테스트도 추가.
 4. **테스트 커버리지**: `TEMPLATES`를 `const`→`var`로 바꿔(런타임 동작 동일) 테스트 하네스에서 접근 가능하게 함 — 4개 템플릿 × 5가지 극단 입력(초긴 제목/단체명/출연진, 빈 문자열, 특수문자) 조합 20개 렌더 테스트 신설. `genCount`/재생성 제한 로직도 `load-app.js`에 `__eval()` 이스케이프해치 추가해 fetch 목(mock) 기반 회귀테스트 5개 신설(1차/2차 성공, 3차 서버요청 자체를 안 보냄, 재촬영시 리셋, 결과없을때 regenBtn 무동작). functions 21개, public 40개로 테스트 확대.
 5. **부스토큰 배포 스모크테스트**: `.github/workflows/deploy.yml`에 배포 직후 실제 라이브 `/generate`를 app.js에 박힌 토큰으로 호출해 401이 아닌지 확인하는 단계 추가 — API_BASE/ALLOWED_ORIGINS/BOOTH_TOKEN 3중 수동 동기화 실수를 CI가 자동으로 잡아줌. `public/` 자체도 `npm ci`+`npm run lint`가 CI test job에 포함되도록 확장.
-8·10. **서버측 재생성 제한 강제 + 부스토큰 교체**: "1인당 1회 재생성"이 브라우저 변수(`genCount`)뿐이라 새로고침으로 우회되던 문제를, 사진 SHA-256 해시 기준 인스턴스-로컬 카운터(`checkPhotoGenerationLimit`, TTL 30분)로 서버측에도 최소 강제 추가(완벽한 전역 강제는 DB 도입이 필요해 개인정보 최소화 설계 원칙과 충돌 — 대표 판단 보류 사항으로 남김). 부스토큰도 예측 가능한 값(`inky-poster-booth-2026`)에서 무작위 24바이트 토큰으로 교체, RUNBOOK.md에 교체 절차(순서 포함) 문서화.
+8·10. **서버측 재생성 제한 강제 + 부스토큰 교체**: "1인당 1회 재생성"이 브라우저 변수(`genCount`)뿐이라 새로고침으로 우회되던 문제를, 사진 SHA-256 해시 기준 인스턴스-로컬 카운터(`checkPhotoGenerationLimit`, TTL 30분)로 서버측에도 최소 강제 추가(완벽한 전역 강제는 DB 도입이 필요해 개인정보 최소화 설계 원칙과 충돌 — 대표 판단 보류 사항으로 남김). 부스토큰도 예측 가능한 값(`inky-poster-booth-2026`)에서 무작위 24바이트 토큰으로 교체, runbook.md에 교체 절차(순서 포함) 문서화.
 10(계속). **11월 리마인더 자동화**: claude.ai 루틴 기능으로 2026-11-01 09:00(KST) 1회성 리마인더 예약 — OpenAI 하드리밋 $10→$200 확인 촉구 (`trig_01JqRjC8pwdTkVT6A26sQxCP`).
 6. **실측 부하테스트(대표 승인 하에 실비용 발생)**: 트래픽 없는 시간대에 라이브 `/generate`에 서로 다른 6장(PNG 뒤에 랜덤 바이트를 붙여 해시만 다르게 만듦)을 동시 요청 — **6/6 전부 200 성공, 완료 시각이 38~43초로 거의 동일**(직렬 처리됐다면 몇 배로 벌어졌을 것) → `maxInstances:25`가 최소 6-way 동시성에서 정상 작동함을 실측 확인. 실제 이미지 생성 6장, 비용 약 $0.24 발생.
 7. **Cloud Monitoring 알림 — 완료**: 이 세션에 `gcloud` CLI 미설치·GCP 콘솔 접근 권한 없음이 확인되어 코드/CLI로 불가했으나, 팀장이 직접 GCP 콘솔에서 완료함 — "Poster Studio 5xx Error Rate" 정책 생성(Cloud Run Request Count, `response_code_class=5xx` 필터, 임계값 0.01/s), 알림 채널은 대표 이메일(817beatles@gmail.com)로 연결, 활성화 상태.
@@ -460,7 +460,7 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 1. 1차 시도: CI가 `Error: Permissions denied enabling cloudscheduler.googleapis.com`로 실패 — 새 GCP API 활성화 자체가 이 세션 권한 밖(Firestore API 때와 동일 패턴). 대표가 콘솔에서 직접 활성화(Status: Enabled 확인) → 팀장 세션이 완료 통보.
 2. 2차 시도: API는 활성화됐지만 이번엔 실제 스케줄러 "작업(job)" 생성에 필요한 `cloudscheduler.jobs.update` IAM 권한이 CI 배포 계정(`github-actions-deploy@...`)에 없어서 다시 실패 — Secret Manager 때(secretAccessor만으론 부족, viewer도 필요했던 것)와 같은 "API 활성화 ≠ 리소스 관리 IAM" 패턴.
 3. CI 서비스계정에 새 IAM 역할을 부여하는 건 또 대표 콘솔 작업이 필요한 사안이었지만, 이 저장소를 원래 관리해온 소유자급 계정(`edutogether2015@gmail.com`, Firestore DB 생성 등에도 이미 써온 계정)으로 로컬에서 직접 `firebase deploy`를 실행하는 방법이 있어 그걸로 바로 해결 — 대표의 추가 콘솔 작업 없이 이 세션 안에서 종결.
-`firebase functions:list`로 `keepWarm`이 정상 배포된 것, 라이브 `/health`가 200으로 응답하는 것, 이후 CI가 정상적으로 다시 초록불로 돌아오는 것(코드만 바뀌는 배포는 스케줄러 작업 재수정이 없어 CI 권한 문제와 무관함)까지 전부 확인함. RUNBOOK.md에 "앞으로 keepWarm 설정을 바꿔 재배포할 땐 로컬에서 소유자급 계정으로" 메모 남김.
+`firebase functions:list`로 `keepWarm`이 정상 배포된 것, 라이브 `/health`가 200으로 응답하는 것, 이후 CI가 정상적으로 다시 초록불로 돌아오는 것(코드만 바뀌는 배포는 스케줄러 작업 재수정이 없어 CI 권한 문제와 무관함)까지 전부 확인함. runbook.md에 "앞으로 keepWarm 설정을 바꿔 재배포할 땐 로컬에서 소유자급 계정으로" 메모 남김.
 
 **4. ES모듈 전환(1·5번) — 완료.** `public/`의 6개 classic-script 파일을 진짜 `import`/`export` ES모듈로 전환:
 - `state.js`(신설) — 여러 파일이 재할당하던 값(`capturedBlob`, `currentMode`, `posters`, `selected`, `genCount`, `pendingMeta`, `LOGO_LIGHT/DARK/TRIED`)을 하나의 `state` 객체 속성으로 옮김 — ES모듈의 import 바인딩은 읽기전용 라이브뷰라 다른 모듈이 직접 재할당할 수 없기 때문(예: `camera.js`가 `capturedBlob = ...`을 직접 할 수 없어 `state.capturedBlob = ...`로 변경).
@@ -524,7 +524,7 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 - 알 수 없는 업스트림 오류 원문 노출 — `mapGenerateError()`로 분리, OpenAI raw 메시지는 서버 로그에만 남기고 클라이언트에는 일반 문구만 반환(429→429, 크레딧부족/API키→500, 콘텐츠정책→400, 타임아웃→504, 네트워크→502, 알수없음→500).
 - `/generate` 에러매핑 테스트 0개 — 위 `mapGenerateError`를 export해 6개 케이스 유닛테스트 추가(총 20/20 통과).
 - AI 장애 시 완전 정지(폴백 없음) — `public/app.js`에 `makePlaceholderArt()` + "🎨 AI 없이 기본 버전으로 계속하기" 버튼 추가. 생성 실패 시 AI 그림 없이 단색 그라디언트 배경으로 같은 타이포·크레딧 레이아웃을 만들어 인쇄까지는 계속 가능 — OpenAI 완전 장애에도 부스가 통째로 멈추지 않음. 로컬 브라우저로 실제 4종 포스터 생성까지 확인함.
-- 콜드스타트/장애런북 없음 — [RUNBOOK.md](_docs/ops/RUNBOOK.md) 신설(콜드스타트·429·AI장애·업로드오류 등 부스 진행자용 대처법). *(2026-09-08 문서 정비로 루트 → `_docs/ops/`로 이동, 이 문서의 아래 이력에 나오는 "RUNBOOK.md"는 전부 이 경로를 가리킨다.)*
+- 콜드스타트/장애런북 없음 — [runbook.md](ops/runbook.md) 신설(콜드스타트·429·AI장애·업로드오류 등 부스 진행자용 대처법). *(2026-09-08 문서 정비로 루트 → `_docs/ops/`로 이동, 이 문서의 아래 이력에 나오는 "runbook.md"는 전부 이 경로를 가리킨다.)*
 - openai 마이너 업그레이드 — 7.5.0 → 7.8.0.
 - `lastMeta` 죽은코드 — 제거, 이미 존재하던 `posters.length`로 "생성 이력 있음" 판단 대체.
 - ESLint/Prettier 미도입 — `functions/`에 flat config(`eslint.config.js`) + `.prettierrc.json` 도입, `npm run lint`/`npm run format` 스크립트 추가. 기존 코드 lint 통과 확인(0 errors/warnings).
@@ -569,13 +569,13 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 ## 3차 라운드 — 남은 🔴🟡 전부 처리 (2026-08-27, 대표 지시 "빠지지말고 다 해")
 2차 정밀감사에서 "아직 안 고친 것"으로 남겨뒀던 항목을 전부 처리했다(테스트 커버리지 포함, 실제 버그이력 있는 로직이라 우선순위 최상단):
 
-- **자동화 테스트 신설** — [functions/test/index.test.js](functions/test/index.test.js), Node 내장 테스트러너(`node --test`, `npm test`), 13개 케이스. 실제 OpenAI 호출(=실비용)은 어떤 테스트도 하지 않는다 — `sanitizePromptField`/`buildPrompt`는 순수함수 테스트, `parseMultipart`는 Node 내장 `FormData`/`Request`로 진짜 멀티파트 바이트를 만들어 실제 파싱 로직을 검증한다. 특히 2차 라운드에서 고친 두 버그(파일 2개 동시 업로드 시 경쟁조건, 오류 경로 임시파일 누수)를 그대로 회귀 테스트로 박아뒀고, 레이트리밋도 실제 로컬 HTTP 서버를 띄워 11번째 요청이 429인지 검증한다.
+- **자동화 테스트 신설** — [functions/test/index.test.js](../functions/test/index.test.js), Node 내장 테스트러너(`node --test`, `npm test`), 13개 케이스. 실제 OpenAI 호출(=실비용)은 어떤 테스트도 하지 않는다 — `sanitizePromptField`/`buildPrompt`는 순수함수 테스트, `parseMultipart`는 Node 내장 `FormData`/`Request`로 진짜 멀티파트 바이트를 만들어 실제 파싱 로직을 검증한다. 특히 2차 라운드에서 고친 두 버그(파일 2개 동시 업로드 시 경쟁조건, 오류 경로 임시파일 누수)를 그대로 회귀 테스트로 박아뒀고, 레이트리밋도 실제 로컬 HTTP 서버를 띄워 11번째 요청이 429인지 검증한다.
 - **프롬프트 인젝션 완화** — `functions/index.js`에 `sanitizePromptField` 추가. 학생이 입력한 제목/문구에서 줄바꿈과 큰따옴표를 제거해, 프롬프트 안의 따옴표 경계를 깨고 "글자 넣지 마라" 같은 안전 지시문을 무력화하는 입력을 막는다.
 - **의존성 업그레이드** — `openai` 6.49→7.5.0, `firebase-functions` 6.6→7.3.2(둘 다 최신 major). openai v7의 유일한 breaking change는 "Node 22 요구"인데 이미 Node 22로 올려둔 상태라 영향 없음(공식 CHANGELOG 확인). 업그레이드 후 테스트 13개 전부 통과 + 재배포 후 실제 사진 업로드로 재검증함(아래 "재배포 검증" 참고).
-- **CDN 폰트 단일장애점 — 부분 해결(의도적 판단)** — Pretendard는 [public/fonts/](public/fonts/)에 실제 쓰는 6개 굵기(400/500/600/700/800/900)만 내려받아 자체 호스팅으로 전환(jsDelivr GitHub-raw 의존 제거, `PRETENDARD-LICENSE.txt`로 OFL 라이선스 준수). **Black Han Sans·Noto Serif KR 등 Google Fonts 쪽은 의도적으로 안 옮겼다** — 학생이 입력하는 임의의 한글 텍스트 전부를 커버하려면 CJK 폰트 특성상 서브셋 없이는 굵기당 수 MB~수십 MB가 들어 사이트가 수십 MB로 불어나고, Google Fonts 자체 CDN은 jsDelivr GitHub-raw보다 훨씬 안정적인 인프라라 위험 대비 이득이 낮다고 판단함(`public/index.html`에 이 판단 근거를 주석으로 남겨둠). 학교망이 Google Fonts 도메인 자체를 막는 사례가 실제로 확인되면 그때 재검토.
+- **CDN 폰트 단일장애점 — 부분 해결(의도적 판단)** — Pretendard는 [public/fonts/](../public/fonts/)에 실제 쓰는 6개 굵기(400/500/600/700/800/900)만 내려받아 자체 호스팅으로 전환(jsDelivr GitHub-raw 의존 제거, `PRETENDARD-LICENSE.txt`로 OFL 라이선스 준수). **Black Han Sans·Noto Serif KR 등 Google Fonts 쪽은 의도적으로 안 옮겼다** — 학생이 입력하는 임의의 한글 텍스트 전부를 커버하려면 CJK 폰트 특성상 서브셋 없이는 굵기당 수 MB~수십 MB가 들어 사이트가 수십 MB로 불어나고, Google Fonts 자체 CDN은 jsDelivr GitHub-raw보다 훨씬 안정적인 인프라라 위험 대비 이득이 낮다고 판단함(`public/index.html`에 이 판단 근거를 주석으로 남겨둠). 학교망이 Google Fonts 도메인 자체를 막는 사례가 실제로 확인되면 그때 재검토.
 - **API_BASE / CORS 동기화 지점 문서화** — `public/app.js`의 `API_BASE`와 `functions/index.js`의 `ALLOWED_ORIGINS`가 프로젝트 이전 시 반드시 같이 바뀌어야 한다는 걸 양쪽 코드에 상호 참조 주석으로 남김. (완전한 구조적 제거는 이 앱 규모에서 과잉설계로 판단해 안 함 — 문서화로 대응.)
 - **`/health` 프론트 연동** — `public/app.js`가 페이지 로드 시 `/health`를 호출해 연결 상태를 확인한다. 실패해도 촬영은 막지 않고(fail-open) 경고 문구만 띄운다 — 촬영·정보입력 다 끝낸 뒤에야 실패를 알게 되는 것보다 훨씬 낫다.
-- **functions/ CI 배포 — 스캐폴딩만 완료, 활성화는 대표 작업 필요** — [.github/workflows/functions-deploy.yml](.github/workflows/functions-deploy.yml) 작성해뒀지만 `workflow_dispatch`(수동)로만 열어둠. GCP 서비스 계정 생성은 이 세션(auto mode classifier)이 대신할 수 없는 영역이라, 대표가 콘솔에서 배포 권한을 가진 서비스 계정 키를 만들어 GitHub 저장소 시크릿 `FIREBASE_SERVICE_ACCOUNT`로 등록해야 `push` 트리거를 켤 수 있다(파일 안 주석 참고).
+- **functions/ CI 배포 — 스캐폴딩만 완료, 활성화는 대표 작업 필요** — `.github/workflows/functions-deploy.yml`(이후 `deploy.yml`로 병합돼 지금은 없다 — 위 2026-08-30 항목 참고) 작성해뒀지만 `workflow_dispatch`(수동)로만 열어둠. GCP 서비스 계정 생성은 이 세션(auto mode classifier)이 대신할 수 없는 영역이라, 대표가 콘솔에서 배포 권한을 가진 서비스 계정 키를 만들어 GitHub 저장소 시크릿 `FIREBASE_SERVICE_ACCOUNT`로 등록해야 `push` 트리거를 켤 수 있다(파일 안 주석 참고).
 
 **재배포 검증**: `firebase deploy --only functions --project inky-poster` 재실행 후 `/health`·실제 사진 업로드(`/generate`)로 재확인 완료. GitHub Pages도 재배포되어 폰트 자체호스팅·health체크 반영된 라이브 확인함.
 
@@ -617,7 +617,7 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 | 테스트 커버리지 | 30 | 30 | Sonnet |
 | **평균** | 72.3 | **81.7** | |
 
-**이 라운드에서 실제로 고치고 재배포·재검증까지 끝낸 것**([functions/index.js](functions/index.js)):
+**이 라운드에서 실제로 고치고 재배포·재검증까지 끝낸 것**([functions/index.js](../functions/index.js)):
 - `parseMultipart`가 12MB 초과·잘못된 파일타입·busboy 내부 오류 등 여러 실패 경로에서 학생 사진 임시파일을 `/tmp`에 영구히 남기던 버그 제거(모든 종료 경로가 `finish()` 하나를 거치도록 재구성) + `files:1` 한도 추가(같은 필드에 파일 2개를 보내면 어느 게 채택될지 불확정해지던 경쟁조건도 같이 해소).
 - 서버 측 레이트리밋 신규 추가(인스턴스당 최근 10분에 10건 초과 시 429) — 실제로 11번째 요청에서 429가 뜨는 것까지 라이브에서 확인함(2026-08-26 테스트로 그 부스 인스턴스는 10분간 실사용도 막혔을 수 있음 — 행사 당일에는 이런 식으로 라이브에 직접 부하테스트 하지 말 것).
 - `maxInstances` 10 → 5(노트북 대수에 맞춤, 폭주 시 이론상 과금 상한을 대폭 축소).
@@ -626,5 +626,5 @@ COMMON_STANDARDS.md §7 기준, Agent 도구로 Opus/Sonnet **완전히 분리 �
 - `firebase deploy --only functions --project inky-poster`로 실제 재배포 후 `/health`·실제 사진 업로드(`/generate`) 재확인 완료.
 
 ## 2026-08-26 배포 후 발견·수정한 버그
-Cloud Functions(v2)는 핸들러 실행 전에 요청 본문 전체를 읽어 `req.rawBody`로 채워두고, 원본 `req` 스트림은 이미 끝난 상태로 넘어온다. `multer`는 그 원본 스트림에서 직접 읽으려 해서 이 환경에서는 매번 "Unexpected end of form" 오류로 사진 업로드가 실패했다. `multer`를 제거하고 `req.rawBody`를 `busboy`에 직접 흘려보내는 방식([functions/index.js](functions/index.js))으로 교체해 해결, 실제 업로드로 재확인함.
+Cloud Functions(v2)는 핸들러 실행 전에 요청 본문 전체를 읽어 `req.rawBody`로 채워두고, 원본 `req` 스트림은 이미 끝난 상태로 넘어온다. `multer`는 그 원본 스트림에서 직접 읽으려 해서 이 환경에서는 매번 "Unexpected end of form" 오류로 사진 업로드가 실패했다. `multer`를 제거하고 `req.rawBody`를 `busboy`에 직접 흘려보내는 방식([functions/index.js](../functions/index.js))으로 교체해 해결, 실제 업로드로 재확인함.
 

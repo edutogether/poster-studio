@@ -88,7 +88,7 @@
   AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
 - 에뮬레이터: 사용하지 않는다. 헤더(CSP 등) 확인이 필요하면 `firebase emulators:start --only hosting`.
 - 배포: `master`에 push → CI가 test → functions → hosting 순으로 자동 배포. 수동 배포는 하지 않는다
-  (예외: `keepWarm` 스케줄 변경 배포 — `_docs/ops/RUNBOOK.md` 참고).
+  (예외: `keepWarm` 스케줄 변경 배포 — `_docs/ops/runbook.md` 참고).
 
 ## 자주 틀리는 것
 - **임시 사진 삭제 누락이 세 번 재발했다.** 2차 감사(오류 경로), 7차 감사(429 경로 3곳), 8차 감사(재시도 예산 초과로

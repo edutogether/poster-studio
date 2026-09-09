@@ -729,7 +729,7 @@ export const posterStudio = onRequest(
    어긋나므로, 행사 당일(2026-11-14) 시간대에만 동작하도록 cron을 제한했다 — 평상시엔
    완전히 비활성.
    URL은 posterStudio 함수 URL과 같은 프로젝트/리전이어야 한다 — 프로젝트 이전 시
-   ALLOWED_ORIGINS·API_BASE와 함께 반드시 같이 고칠 것(_docs/ops/RUNBOOK.md 참고).
+   ALLOWED_ORIGINS·API_BASE와 함께 반드시 같이 고칠 것(_docs/ops/runbook.md 참고).
 
    2026-08-30: 1차 시도는 cloudscheduler.googleapis.com 미활성화로 막혔었고(대표가
    콘솔에서 활성화 완료), 2차 시도에서는 API는 통과했지만 실제 스케줄러 "작업(job)"
@@ -743,7 +743,7 @@ export const posterStudio = onRequest(
 /* 6차 감사 발견(2026-09-01): README.md가 "30일 뒤 자동 삭제되도록 Firestore TTL
    정책을 적용합니다"라고 완료형으로 단정했는데, 실제로는 콘솔에서 TTL 정책을
    걸어야만 하는 미완료 상태였고(대표 콘솔 작업 필요, 이 세션은 gcloud가 없어
-   CLI로 설정 불가) 코드에는 삭제 경로가 전혀 없었다 — README와 SECURITY_NOTES.md가
+   CLI로 설정 불가) 코드에는 삭제 경로가 전혀 없었다 — README와 security-notes.md가
    서로 모순되는 상태였다. "콘솔 작업이라 코드로는 불가능"이라는 전제 자체가
    틀렸다는 게 이번에 확인돼(keepWarm과 같은 onSchedule 패턴을 그대로 재사용할 수
    있음), §4-1의 구조적 상한이 아니라 미구현 결함으로 재채점하고 여기서 직접 구현한다.
