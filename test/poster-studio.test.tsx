@@ -33,6 +33,7 @@ beforeEach(() => {
   installFonts();
   installFetch();
   makeAppContainer();
+  document.body.classList.remove('app-ready');   // 테스트 간에 새지 않게 한다
 });
 
 afterEach(() => {
@@ -147,13 +148,20 @@ describe('위험 D: 카메라 스트림 정지', () => {
 /* ───────── 위험 E — StrictMode에서도 플레이스홀더는 한 번만 ───────── */
 describe('위험 E: 초기 캔버스 그리기', () => {
   test('StrictMode에서 효과가 두 번 불려도 플레이스홀더는 정확히 한 번만 그린다', async () => {
-    const hide = vi.fn();
-    (window as any).__posterStudioHideBootSplash = hide;
     await act(async () => { renderApp(true); });
-    // 플레이스홀더를 그렸다는 신호는 스플래시 내림 호출이다 — 두 번 그리면 두 번 불린다.
-    expect(hide).toHaveBeenCalledTimes(1);
+    /* '그렸다'의 증거는 실제 그리기 호출이다. 효과가 두 번 돌면 캔버스 컨텍스트를
+       두 번 집어 각각에 그리므로, fillText가 일어난 컨텍스트가 둘이 된다.
+       (4단계 전에는 스플래시 내림 호출 횟수로 셌는데, 그 다리는 표준 적용으로
+       없어졌다 — 신호를 바꾸고 변형 검증을 다시 돌렸다.) */
     const drawn = canvasContexts.filter((c) => c.__fillTextCalls > 0);
     expect(drawn.length).toBe(1);
+  });
+
+  test('첫 화면을 그리고 나면 body에 app-ready를 붙인다(스플래시 로드 게이트)', async () => {
+    expect(document.body.classList.contains('app-ready')).toBe(false);
+    await act(async () => { renderApp(); });
+    // 이게 빠지면 스플래시가 멈춘 채로 안전판(8초)까지 남는다.
+    expect(document.body.classList.contains('app-ready')).toBe(true);
   });
 });
 

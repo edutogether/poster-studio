@@ -15,34 +15,17 @@
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-  <!-- 부트 스플래시. 스타일을 인라인으로 적는 이유: 외부 스타일시트가 도착해
-       화면이 처음 그려지는 그 순간, 이미 완성된 브랜드 화면이 보이게 하려는
-       것이다. 배경은 앱과 같은 --bg(#0d0f14)라 앱으로 넘어갈 때 색이 안 튄다.
-       app.js가 초기 플레이스홀더 포스터를 그리고 나면(첫 의미있는 화면) 페이드아웃한다.
-       2026-09-03 3라운드: 그라디언트 글로우를 걷어내고 단색 배경 + 절제된 배지로 정리. -->
-  <div id="bootSplash" style="position:fixed;top:0;left:0;right:0;height:100vh;height:100svh;z-index:9999;overflow:hidden;background:#0d0f14;transition:opacity .45s ease;will-change:opacity">
-    <!-- 5라운드(2026-09-03) — 대표 재지적: "스플래시일 때 뒤가 다 보여, 검은
-         배경에 로딩이 되어야" + 버벅임/덜컹거림. 4라운드에서 스플래시를
-         투명하게 만들어 body::before(포스터월)가 비쳐 보이게 했었는데, 그게
-         오히려 "로딩 중에 배경이 산만하게 다 비쳐 보인다"는 새 불만과
-         무거운 이미지 디코딩이 로딩 임계경로에 끼어드는 버벅임 둘 다의
-         원인이었다. 다시 완전 불투명(#0d0f14)으로 되돌려 로딩 중엔 순수
-         검은 화면 + 로고/문구만 뜨게 하고, 배경 이미지는 스플래시가 걷힌
-         뒤(app.js가 첫 화면을 그린 다음)에만 보이게 한다. -->
-    <div style="position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 20%,rgba(13,15,20,.35),transparent 60%),linear-gradient(180deg,rgba(13,15,20,.15) 0%,rgba(13,15,20,.7) 60%,#0d0f14 92%)"></div>
-    <div style="position:relative;z-index:1;height:100%;display:grid;place-items:center;align-content:center;gap:22px">
-      <span style="display:grid;place-items:center;width:64px;height:64px;border-radius:16px;background:#16181f;border:1px solid rgba(255,255,255,.1);font-size:32px">
-        🎬
-      </span>
-      <span style="display:grid;justify-items:center;gap:8px;text-align:center">
-        <span style="color:#e9b949;font-size:13px;font-weight:700;letter-spacing:.3em;padding-left:.3em">POSTER STUDIO</span>
-        <span style="color:#f2f3f6;font-size:20px;font-weight:700;letter-spacing:-.01em">사진 한 장, 내가 영화의 주인공이 된다</span>
-      </span>
-      <span style="display:block;width:160px;height:2px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden">
-        <span style="display:block;width:40%;height:100%;border-radius:99px;background:#e9b949;animation:poster-studio-boot-bar 1.15s ease-in-out infinite"></span>
-      </span>
-    </div>
-    <style>@keyframes poster-studio-boot-bar{0%{margin-left:-40%}100%{margin-left:100%}}</style>
+  <!-- 부트 스플래시 — _shared/standards/splash-standard.md 규격(2026-09-09 4단계).
+       **마크업은 여기 정적으로 둔다.** React가 그리면 번들을 받아 실행할 때까지 빈
+       화면이 보인다(표준 §7: 다른 앱이 실제로 겪은 회귀다).
+       **타이밍은 CSS 애니메이션이 잡는다**(style.css의 splashOut) — JS 타이머로 재면
+       번들 로드 시점부터 재는 셈이라 회선·기기마다 달라진다. 예전 구현이 그랬다.
+       JS(boot-splash.js)는 시간을 재지 않고 **끝났는지만 보고 노드를 치운다.** -->
+  <div id="splash">
+    <div class="logo">🎬</div>
+    <div class="name">InKY <span class="gold">Poster Studio</span></div>
+    <div class="stagline">사진 한 장, 내가 영화의 주인공이 된다</div>
+    <span class="sbar"><i></i></span>
   </div>
   <script src="/boot-splash.js"></script>
   <header class="topbar">

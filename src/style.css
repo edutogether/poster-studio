@@ -210,3 +210,90 @@ input::placeholder{color:var(--mut-dim)}
   #printArea img{width:100%; height:100%; object-fit:contain}
   @page{ size:4in 6in; margin:0 }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   부트 스플래시 — _shared/standards/splash-standard.md 규격(2026-09-09, 전환 4단계)
+
+   핵심 규칙: **CSS가 시간을 재고, JS는 조건만 본다.**
+   예전 구현(boot-splash.js의 MIN_VISIBLE_MS=1600 + 470ms 타이머)은 JS 타이머라
+   번들을 받아 실행한 시점부터 시간을 쟀다 — 회선이 느릴수록 스플래시가 그만큼
+   더 오래 떠 있어서, 같은 코드가 기기마다 다른 시간 보였다. CSS 애니메이션은
+   요소가 그려지는 순간부터 흐르므로 첫 페인트 기준으로 일정하다.
+
+   타이밍: 유지 1800ms → 페이드 500ms → 소멸 2400ms
+     1800 ÷ 2400 = 75%      (여기서 페이드 시작)
+     2300 ÷ 2400 = 95.83%   (여기서 완전 투명)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 로드 게이트 — 표준 개정 2차의 **B(정지형)**를 쓴다.
+   기본이 '멈춤'이고, 앱이 첫 화면을 그린 뒤 body에 .app-ready를 붙이면 그때부터
+   시계가 흐른다. A(연장형)를 안 쓰는 이유: 이 앱의 노출 원인은 무거운 자산이
+   아니라 **번들(React 215KB)이 늦게 붙는 것**인데, 그 경우 연장을 판정해야 할
+   시점에 JS가 아직 실행되지 않아 판정할 주체가 없다 — 통과하는데 아무것도
+   안 지키는 빈 게이트가 된다. B는 JS가 없는 상태에서도 성립한다.
+   번들이 끝내 안 오면 스플래시가 남는데, 그건 갇힌 게 아니라 "로딩 중"을
+   보여주는 것이다(걷어내면 빈 화면이다). 안전판 상한은 boot-splash.js가 맡는다. */
+body:not(.app-ready) #splash{ animation-play-state:paused; }
+
+#splash{
+  animation:splashOut 2400ms ease forwards;
+  position:fixed; inset:0; z-index:999;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px;
+  background:linear-gradient(180deg, var(--bg), var(--panel));
+}
+@keyframes splashOut{
+  0%, 74.99%   { opacity:1; pointer-events:auto; }
+  75%          { opacity:1; pointer-events:none; }
+  95.83%, 100% { opacity:0; pointer-events:none; }
+}
+
+/* 표준 §5의 성능 규칙 ① — 스플래시가 덮고 있는 동안 무거운 배경을 그리지 않는다.
+   이 앱에서 무거운 건 body 배경색이 아니라 body::before의 poster-wall.webp다
+   (2026-09-03 5라운드에 "무거운 이미지 디코딩이 로딩 임계경로에 끼어드는
+   버벅임"으로 실제로 겪은 항목이다). 그래서 대체 대상은 그 의사요소다 —
+   스플래시가 사라지면 :has()가 풀려 자동으로 돌아온다. */
+body:has(#splash)::before,
+body:has(#splash)::after{ display:none; }
+
+#splash .logo{
+  font-size:clamp(48px, 10vw, 72px);
+  filter:drop-shadow(0 10px 24px rgba(233,185,73,.35));
+  animation:splashPop .6s ease;
+}
+#splash .name{
+  font-size:clamp(26px, 5vw, 38px); font-weight:800; letter-spacing:-.01em;
+  color:var(--ink);
+}
+#splash .name .gold{ color:var(--gold); }
+#splash .stagline{ font-size:clamp(13px, 2vw, 16px); color:var(--mut); }
+#splash .sbar{
+  display:block; width:190px; height:3px; border-radius:99px;
+  background:rgba(233,185,73,.2); overflow:hidden; margin-top:4px;
+}
+/* margin이 아니라 transform으로 움직인다 — margin은 매 프레임 레이아웃을 다시
+   계산시켜(리플로우) 저사양 기기에서 버벅임의 원인이 된다. 예전 인라인 스타일의
+   poster-studio-boot-bar 키프레임이 margin-left를 쓰고 있었다. */
+#splash .sbar i{
+  display:block; width:40%; height:100%; border-radius:99px;
+  background:linear-gradient(90deg, var(--gold), #f6d27a);
+  animation:splashBar 1.15s ease-in-out infinite;
+  will-change:transform;
+}
+@keyframes splashPop{
+  0%   { transform:scale(.6); opacity:0; }
+  60%  { transform:scale(1.08); opacity:1; }
+  100% { transform:scale(1); }
+}
+@keyframes splashBar{
+  0%   { transform:translateX(-76px); }
+  100% { transform:translateX(190px); }
+}
+
+/* 표준 개정 2차 — **장식 애니메이션만 끄고 유지·페이드 타이밍은 남긴다.**
+   스플래시의 유지까지 없애면 덜 그려진 화면을 가려주는 역할이 사라져,
+   로드 게이트로 막으려던 문제가 그대로 되돌아온다. */
+@media (prefers-reduced-motion: reduce){
+  #splash .logo{ animation:none; }
+  #splash .sbar i{ animation:none; }
+}

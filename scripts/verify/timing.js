@@ -43,9 +43,22 @@ window.__posterTiming = async () => {
         if (!cur) { out.splash.gone = t(); clearInterval(tick); return resolve(); }
         const cs = getComputedStyle(cur);
         if (fadeAt === null && parseFloat(cs.opacity) < 0.99) { fadeAt = t(); out.splash.fade = fadeAt; }
-        // display:none으로 숨기는 구현(현재 boot-splash.js)도 "사라짐"으로 본다
+        // display:none으로 숨기는 구현(2026-09-09 이전 boot-splash.js)도 "사라짐"으로 본다
         if (cs.display === 'none') { out.splash.gone = t(); clearInterval(tick); return resolve(); }
-        if (t() > 8000) { out.splash.gone = null; clearInterval(tick); return resolve(); }
+        if (t() > 8000) {
+          /* 못 쟀다는 것을 "값이 null"로만 남기면 회귀와 구분이 안 된다 — 이유를 같이 남긴다.
+             가장 흔한 원인: **문서가 보이지 않는 상태**. 4단계에서 타이밍을 JS 타이머에서
+             CSS 애니메이션으로 옮긴 뒤로, 화면이 그려지지 않는 탭에서는 애니메이션 시계가
+             아예 흐르지 않아 스플래시가 영원히 남는다(실제로 겪음 — Browser 패널이 가려져
+             있으면 document.hidden이 true다). 그건 앱의 회귀가 아니라 측정 불가 상태다. */
+          out.splash.gone = null;
+          out.splash.timedOut = true;
+          out.splash.documentHidden = document.hidden;
+          out.splash.note = document.hidden
+            ? '문서가 보이지 않아 CSS 애니메이션이 진행되지 않았다 — 이 값으로 회귀를 판정하지 말 것'
+            : '8초 안에 사라지지 않았다 — 실제 회귀 가능성';
+          clearInterval(tick); return resolve();
+        }
       }, 8);
     });
   } else {

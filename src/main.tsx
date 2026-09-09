@@ -9,19 +9,14 @@
 
    favicon.ts는 React 트리 밖의 document 전역(<link rel=icon>)만 다루므로
    예전처럼 부수효과 import로 둔다 — 컴포넌트로 옮길 이유가 없다.
+
+   스플래시는 여기서 건드리지 않는다(4단계). 마크업은 index.html에 정적으로 있고,
+   타이밍은 style.css가, 노드 제거와 안전판은 public/boot-splash.js가 맡는다.
    ──────────────────────────────────────────────────────────────────── */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import PosterStudio from './PosterStudio.js';
 import './favicon.js';
-
-declare global {
-  interface Window {
-    /* boot-splash.js가 걸어두는 다리. 그 파일은 CSP상 인라인이 안 되고 파싱 중
-       동기 실행돼야 해서 번들 그래프에 넣지 않는 고전 <script src>다. */
-    __posterStudioHideBootSplash?: () => void;
-  }
-}
 
 const container = document.querySelector('main.app');
 if (container) {

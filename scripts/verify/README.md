@@ -146,6 +146,26 @@ node scripts/verify/compare.mjs \
   분포 비교로만 한다. 수치와 근거는 `snapshots/step2-timing.json`,
   기존 기준선은 `snapshots/before-timing.json`(해석 정정 포함)에 있다.
 
+## ⚠ 이 환경에서는 스플래시 벽시계를 잴 수 없다(2026-09-09, 4단계에서 확인)
+
+Browser 패널은 `document.hidden = true` 상태로 돌아 **CSS 애니메이션 시계가 아예
+흐르지 않는다**(`currentTime`이 4초 뒤에도 0). 4단계 전 구현은 JS 타이머라 숨은
+탭에서도 돌았기 때문에 그때는 드러나지 않았던 제약이다.
+
+그래서 두 가지를 해 뒀다:
+
+- `timing.js`는 8초 안에 안 사라지면 `gone: null`과 함께 `timedOut`·`documentHidden`·
+  `note`를 남긴다 — **"못 쟀다"와 "회귀다"가 구분되게** 하기 위함이다.
+- `snapshot.js`는 촬영 직전 `#splash`에 `animationend`(`splashOut`)를 쏴서 결정적으로
+  걷어낸다. 스냅샷은 앱 화면을 찍는 것이지 로딩 화면을 찍는 게 아니고, 안 걷어내면
+  이 환경에서는 스냅샷이 통째로 로딩 화면이 된다.
+
+**타이밍 자체는 벽시계 대신 CSS에서 직접 읽어 판정한다** — Web Animations API로
+`effect.getTiming().duration`과 `getKeyframes()`의 offset을 읽으면 유지·페이드·소멸이
+그대로 나온다. 값이 JS 타이머가 아니라 CSS에서 나온다는 것 자체가 표준의 요구라,
+이 방식이 오히려 그것을 직접 증명한다. **다만 표시 시각(첫 페인트)만은 이렇게
+확인할 수 없으므로, 화면이 실제로 그려지는 브라우저에서 따로 재야 한다.**
+
 ## 스플래시는 예외 — 유일하게 "의도적으로 바뀌는" 항목
 
 `_shared/standards/splash-standard.md`가 2026-09-09 전 앱 표준이 되면서,

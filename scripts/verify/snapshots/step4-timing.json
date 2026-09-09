@@ -1,0 +1,67 @@
+{
+  "설명": "4단계(스플래시 표준 적용) 검증 기록. 스플래시는 전/후 비교 항목이 아니라 표준값 대비로 판정한다.",
+  "측정조건": {
+    "빌드": "dist (React 19 + StrictMode, style.css의 splashOut)",
+    "서빙": "http-server dist -p 5500 -c-1",
+    "측정일": "2026-09-09"
+  },
+
+  "표준값_대비_판정": {
+    "방법": "벽시계가 아니라 CSS에서 직접 읽었다 — Web Animations API로 #splash의 effect.getTiming().duration과 getKeyframes()의 offset을 읽어 계산한다. 값이 JS 타이머가 아니라 CSS 애니메이션에서 나온다는 것 자체가 표준의 요구사항이라, 이 방식이 오히려 그것을 직접 증명한다.",
+    "duration": 2400,
+    "유지ms": 1800,
+    "페이드ms": 500,
+    "소멸ms": 2400,
+    "표준요구": "유지 1800 / 페이드 500 / 소멸 2400",
+    "판정": "일치",
+    "키프레임offset": [0, 0.7499, 0.75, 0.9583, 1]
+  },
+
+  "구조_판정": {
+    "정적마크업": "dist/index.html에 <div id=\"splash\">가 1개 — JS 없이도 첫 페인트에 보인다(표준 §6-①).",
+    "인라인script": "0개 — CSP script-src 'self' 유지.",
+    "인라인style제거": "옛 구현의 @keyframes poster-studio-boot-bar 인라인 <style>이 없어졌다(style.css로 이동).",
+    "번들미포함": "boot-splash.js는 여전히 고전 <script src>이고 번들 그래프에 없다.",
+    "바애니메이션": "margin-left → transform 으로 바뀌었다(표준 §5 성능규칙 ②, margin은 매 프레임 리플로우를 강제한다)."
+  },
+
+  "로드게이트": {
+    "방식": "B(정지형)",
+    "고른이유": "이 앱의 노출 원인은 무거운 자산이 아니라 번들(React 215KB)이 늦게 붙는 것이다. A(연장형)는 소멸 시점에 JS가 판정해야 하는데 그때 JS가 아직 실행되지 않았으면 판정할 주체가 없어 '통과하는데 아무것도 안 지키는 빈 게이트'가 된다. B는 JS 없이도 성립한다.",
+    "실측_app-ready없음": "animation-play-state = paused",
+    "실측_app-ready있음": "animation-play-state = running",
+    "안전판": "boot-splash.js가 8초 뒤 app-ready를 강제로 붙인다. 번들이 실행되기만 하면 첫 화면은 수십 ms 안에 붙으므로, 그보다 오래 신호가 없다는 건 정상 로딩이 아니라 렌더 실패라는 뜻이다."
+  },
+
+  "성능규칙_배경대체": {
+    "이앱의무거운것": "body::before의 poster-wall.webp (2026-09-03 5라운드에 '무거운 이미지 디코딩이 로딩 임계경로에 끼어드는 버벅임'으로 실제로 겪은 항목)",
+    "규칙": "body:has(#splash)::before/::after { display:none }",
+    "실측_스플래시중": "display: none",
+    "실측_제거후": "display: block, background-image: url(poster-wall.webp) — 자동 복귀 확인"
+  },
+
+  "prefers_reduced_motion": {
+    "규칙": "#splash .logo, #splash .sbar i { animation: none }",
+    "확인": "CSSOM에서 reduced-motion 미디어 블록 안의 규칙이 이 둘뿐임을 확인했다.",
+    "판정": "표준 개정 2차 요구대로 **장식만 끄고 유지·페이드 타이밍은 남겼다**. 유지까지 없애면 덜 그려진 화면을 가려주는 역할이 사라져 로드 게이트로 막으려던 문제가 되돌아온다.",
+    "하네스영향": "해당 없음 — 스냅샷 하네스는 reduced-motion에 기대지 않고 촬영 직전 animationend를 쏴서 결정적으로 걷어낸다."
+  },
+
+  "못_잰_것": {
+    "항목": "벽시계 기준 표시/페이드시작/소멸 시각(표준 §6-②의 3회 실측)",
+    "사유": "이 세션의 Browser 패널은 document.hidden = true 상태로 돌아, **CSS 애니메이션 시계가 아예 흐르지 않는다**(currentTime이 4초 뒤에도 0). 4단계 전 구현은 JS 타이머라 숨은 탭에서도 돌았기 때문에 이 제약이 지금 처음 드러났다.",
+    "오판하지않기": "이 환경의 timing.js는 gone=null과 함께 timedOut/documentHidden/note를 남기도록 고쳤다 — '못 쟀다'와 '회귀다'가 구분되게 하기 위함이다.",
+    "남은할일": "**화면이 실제로 그려지는 브라우저에서 3회 이상 재고 편차와 함께 보고할 것.** 합격 기준은 표시 100ms 이내 · 페이드 시작 1800ms 부근 · 소멸 2400ms 부근. 머지·배포 후 부스 노트북 또는 일반 브라우저에서 확인한다."
+  },
+
+  "스냅샷_변화_항목별": {
+    "설명": "3단계 대비 4개 상태 모두 정확히 같은 4건. 전부 스플래시 교체로 '달라지기로 한 것'이고, 앱 화면에는 style/rect/attr/text/link/meta 변화가 하나도 없다.",
+    "항목": [
+      "id-missing bootSplash — 의도됨. #bootSplash → #splash로 바뀌었고, 새 구현은 숨기지 않고 노드를 제거한다.",
+      "element-missing div>div — 의도됨. 옛 스플래시의 내부 노드(rect 0×0로 남아 있던 것).",
+      "element-missing div>div>span — 위와 같음.",
+      "element-missing div>div>span#2 — 위와 같음."
+    ],
+    "새 #splash가 안 잡히는 이유": "스냅샷은 앱 화면을 찍는 것이지 로딩 화면을 찍는 게 아니라, 촬영 직전에 결정적으로 걷어낸다(snapshot.js)."
+  }
+}

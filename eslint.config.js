@@ -77,6 +77,7 @@ export default [
         location: 'readonly', innerWidth: 'readonly', innerHeight: 'readonly',
         getComputedStyle: 'readonly', performance: 'readonly',
         fetch: 'readonly', Response: 'readonly', setTimeout: 'readonly',
+        AnimationEvent: 'readonly',
         setInterval: 'readonly', clearInterval: 'readonly', console: 'readonly'
       }
     },

@@ -136,6 +136,17 @@ window.__posterSnapshot = () => {
     return out;
   };
 
+  /* 스플래시는 대조 대상이 아니다(표준상 유일하게 '의도적으로 달라지는' 항목이고,
+     앱 화면을 찍으려는 것이지 로딩 화면을 찍으려는 게 아니다). 4단계 이후 스플래시는
+     CSS 애니메이션이 끝나야 사라지는데, **문서가 보이지 않는 탭에서는 그 시계가
+     흐르지 않아** 영영 남는다 — 그 상태로 찍으면 스냅샷이 통째로 로딩 화면이 된다.
+     그래서 아직 남아 있으면 여기서 결정적으로 걷어낸다(프로덕션 경로와 같은 신호를
+     쏜다 — 노드를 몰래 지우는 게 아니라 boot-splash.js의 animationend 처리를 태운다). */
+  const splashEl = document.getElementById('splash');
+  if (splashEl) {
+    splashEl.dispatchEvent(new AnimationEvent('animationend', { animationName: 'splashOut', bubbles: true }));
+  }
+
   const elements = {};
   const ids = [];
   for (const el of document.querySelectorAll('body *')) {

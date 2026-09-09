@@ -112,8 +112,12 @@ export default function PosterStudio() {
     pctx.fillStyle = '#aeb7d0';
     pctx.font = '500 30px sans-serif';
     pctx.fillText('촬영 후 이곳에 4가지 버전이 표시됩니다', W / 2, 950);
-    // 첫 의미있는 화면이 그려졌으니 부트 스플래시를 내린다(index.html 참고).
-    window.__posterStudioHideBootSplash?.();
+    /* 첫 의미있는 화면이 그려졌다 — 스플래시의 시계를 흐르게 한다(로드 게이트 B).
+       **여기서 스플래시를 숨기지 않는다.** 숨기는 타이밍은 style.css의 splashOut이
+       잡고, 이 신호는 '언제부터 재기 시작할지'만 정한다. 그래서 번들이 늦게 붙어도
+       사용자는 항상 1800ms 동안 온전한 브랜드 화면을 보고, 걷힌 뒤에는 덜 그려진
+       화면이 아니라 완성된 첫 화면을 본다. */
+    document.body.classList.add('app-ready');
   }, []);
 
   /* 선택된 포스터를 큰 캔버스에 그린다. 원본 select()와 같은 순서(clear → draw). */
