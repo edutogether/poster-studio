@@ -5,12 +5,12 @@
    ──────────────────────────────────────────────────────────────────── */
 import { $, val, pick, GENRES, API_BASE, BOOTH_TOKEN } from './constants.js';
 import { setStatus, pctx } from './dom.js';
-import { state } from './state.js';
+import { state, type Meta } from './state.js';
 import { ensureFonts, ensureGlyphs, ensureLogo, loadImg } from './layout.js';
 import { TEMPLATES } from './templates.js';
 
 /* ── 메타데이터 수집 ── */
-export function getMeta(){
+export function getMeta(): Meta {
   const genre = val('genre') || 'animation';
   let tagline = val('tagline'); if(!tagline) tagline = pick(GENRES[genre].taglines);
   return {
@@ -26,9 +26,9 @@ export function getMeta(){
 /* AI(OpenAI) 자체가 완전히 막힌 상황(네트워크 두절·크레딧 소진·서버 장애 등)에서도
    부스 운영이 통째로 멈추지 않도록, 실패 시 AI 그림 없이(단색/그라디언트 배경)
    같은 타이포·크레딧 레이아웃으로 인쇄 가능한 버전을 만드는 최소한의 폴백. */
-export function makePlaceholderArt(genre){
+export function makePlaceholderArt(genre: string): string {
   const c = document.createElement('canvas'); c.width=1024; c.height=1536;
-  const ctx = c.getContext('2d');
+  const ctx = c.getContext('2d')!;
   const accent = (GENRES[genre] || GENRES.animation).accent;
   const g = ctx.createLinearGradient(0,0,0,c.height);
   g.addColorStop(0, accent); g.addColorStop(1, '#0b1020');
@@ -60,7 +60,7 @@ $('generateBtn').onclick = async () => {
   const meta = getMeta();
   isGenerating = true;
   state.genCount++;
-  $('generateBtn').disabled = true; $('regenBtn').disabled = true;
+  $<HTMLButtonElement>('generateBtn').disabled = true; $<HTMLButtonElement>('regenBtn').disabled = true;
   $('fallbackBtn').classList.add('hidden');
   $('spinner').classList.remove('hidden');
   setStatus('AI가 영화 포스터 그림을 그리는 중입니다… (10~25초)');
@@ -81,7 +81,7 @@ $('generateBtn').onclick = async () => {
     if(!res.ok) throw new Error(data.error || '생성 실패');
     await buildAll(data.images, meta);
     setStatus('완성! 아래에서 마음에 드는 버전을 고르고 인쇄하세요.');
-  }catch(e){
+  }catch(e: any){
     let msg = e.message;
     if(e.name === 'AbortError') msg = '시간이 너무 오래 걸려 중단했어요. 잠시 후 다시 시도해 주세요.';
     else if(e instanceof TypeError) msg = '서버 또는 인터넷 연결을 확인해 주세요. (검은 창이 켜져 있나요? 와이파이는 연결됐나요?)';
@@ -93,12 +93,12 @@ $('generateBtn').onclick = async () => {
     clearInterval(tick);
     if(spinText) spinText.textContent = 'AI가 그리는 중…';
     isGenerating = false;
-    $('generateBtn').disabled = false;
+    $<HTMLButtonElement>('generateBtn').disabled = false;
     if(state.genCount >= MAX_GENERATIONS_PER_PHOTO){
-      $('regenBtn').disabled = true;
+      $<HTMLButtonElement>('regenBtn').disabled = true;
       $('regenBtn').textContent = '🔄 재생성 횟수 소진(다시 촬영 시 초기화)';
     } else {
-      $('regenBtn').disabled = false;
+      $<HTMLButtonElement>('regenBtn').disabled = false;
     }
     $('spinner').classList.add('hidden');
   }
@@ -113,7 +113,7 @@ $('fallbackBtn').onclick = async () => {
 };
 
 /* ── 그림 N장 × 템플릿 4종 = 갤러리 ── */
-export async function buildAll(images, meta){
+export async function buildAll(images: string[], meta: Meta){
   await ensureFonts();
   await ensureGlyphs(meta);
   await ensureLogo();
@@ -122,7 +122,7 @@ export async function buildAll(images, meta){
   for(const art of arts){
     for(const t of TEMPLATES){
       const cv = document.createElement('canvas'); cv.width=1200; cv.height=1800;
-      t.render(cv.getContext('2d'), art, meta, GENRES[meta.genre]);
+      t.render(cv.getContext('2d')!, art, meta, GENRES[meta.genre]);
       state.posters.push({ label:t.label, canvas:cv });
     }
   }
@@ -141,7 +141,7 @@ export function renderGallery(){
     wrap.appendChild(t); wrap.appendChild(lab); g.appendChild(wrap);
   });
 }
-export function select(i){
+export function select(i: number){
   state.selected = i;
   pctx.clearRect(0,0,1200,1800);
   pctx.drawImage(state.posters[i].canvas, 0,0);

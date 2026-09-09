@@ -58,5 +58,14 @@ import './favicon.js';
   pctx.fillStyle='#aeb7d0'; pctx.font="500 30px sans-serif"; pctx.fillText('촬영 후 이곳에 4가지 버전이 표시됩니다', W/2, 950);
 })();
 
+/* boot-splash.js가 window에 걸어두는 다리. 그 파일은 CSP상 인라인이 안 되고
+   파싱 중 동기 실행돼야 해서 번들 그래프에 넣지 않는 고전 <script src>다 —
+   따라서 import가 아니라 전역 선언으로만 타입을 알린다(런타임 동작은 그대로). */
+declare global {
+  interface Window {
+    __posterStudioHideBootSplash?: () => void;
+  }
+}
+
 // 첫 의미있는 화면(플레이스홀더 포스터)이 그려졌으니 부트 스플래시를 내린다(index.html 참고).
 window.__posterStudioHideBootSplash?.();

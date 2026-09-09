@@ -11,7 +11,7 @@ const FAVICON_SIZE = 64;
 function renderColorFavicon() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = FAVICON_SIZE;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d')!;
   ctx.font = `${FAVICON_SIZE * 0.8}px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -21,8 +21,8 @@ function renderColorFavicon() {
 
 // ctx.filter='grayscale()'는 브라우저 지원이 갈릴 수 있어(구형 Safari 등),
 // 픽셀 데이터를 직접 desaturate하는 방식(휘도 공식)으로 확실하게 흑백화한다.
-function toGrayscale(canvas) {
-  const ctx = canvas.getContext('2d');
+function toGrayscale(canvas: HTMLCanvasElement): HTMLCanvasElement {
+  const ctx = canvas.getContext('2d')!;
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const d = imgData.data;
   for (let i = 0; i < d.length; i += 4) {
@@ -37,8 +37,8 @@ const colorCanvas = renderColorFavicon();
 const COLOR_ICON = colorCanvas.toDataURL('image/png');
 const GRAY_ICON = toGrayscale(renderColorFavicon()).toDataURL('image/png');
 
-function setFaviconHref(href) {
-  let link = document.querySelector("link[rel~='icon']");
+function setFaviconHref(href: string) {
+  let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
   if (!link) {
     link = document.createElement('link');
     link.rel = 'icon';

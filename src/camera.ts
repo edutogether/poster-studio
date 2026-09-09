@@ -15,11 +15,13 @@ export async function startCamera(){
 }
 $('startBtn').onclick = async () => { try{ await startCamera(); }catch(e){ setStatus('카메라를 열 수 없습니다. 브라우저 카메라 권한을 허용해 주세요.'); } };
 
-let snapshotURL = null; // 미리보기 Blob URL(누수 방지용 추적)
+let snapshotURL: string | null = null; // 미리보기 Blob URL(누수 방지용 추적)
 $('shotBtn').onclick = async () => {
   if(!state.stream){ try{ await startCamera(); }catch(e){ setStatus('카메라 권한을 허용해 주세요.'); return; } }
   const cd = $('countdown'); cd.classList.remove('hidden');
-  for(let i=3;i>0;i--){ cd.textContent=i; await new Promise(r=>setTimeout(r,800)); }
+  // textContent에 숫자를 넣던 것을 String()으로 감쌌다 — DOM 설정자가 어차피
+  // 문자열로 변환하므로 결과 DOM은 완전히 동일하다(타입만 맞춘 것).
+  for(let i=3;i>0;i--){ cd.textContent=String(i); await new Promise(r=>setTimeout(r,800)); }
   cd.textContent='📸'; await new Promise(r=>setTimeout(r,250)); cd.classList.add('hidden');
 
   if(!video.videoWidth){ setStatus('카메라가 아직 준비 중이에요. 1~2초 후 다시 촬영해 주세요.'); return; }
@@ -27,7 +29,7 @@ $('shotBtn').onclick = async () => {
   const scale = Math.min(1, MAXW / video.videoWidth);
   const cap = document.createElement('canvas');
   cap.width = Math.round(video.videoWidth * scale); cap.height = Math.round(video.videoHeight * scale);
-  const c = cap.getContext('2d');
+  const c = cap.getContext('2d')!;
   c.translate(cap.width,0); c.scale(-1,1);           // 거울 모드(셀카 느낌)
   c.drawImage(video,0,0,cap.width,cap.height);
   cap.toBlob(blob => {
@@ -43,20 +45,21 @@ $('shotBtn').onclick = async () => {
     if(state.stream){ state.stream.getTracks().forEach(t => t.stop()); state.stream = null; }
     video.srcObject = null;
     setStatus('촬영 완료! 정보를 입력하고 ‘AI 포스터 만들기’를 누르세요.');
-    state.genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
+    state.genCount = 0; $<HTMLButtonElement>('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
   }, 'image/jpeg', 0.85);
 };
 $('retakeBtn').onclick = async () => {
   state.capturedBlob = null;
   $('fallbackBtn').classList.add('hidden'); state.pendingMeta = null;
-  state.genCount = 0; $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
+  state.genCount = 0; $<HTMLButtonElement>('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
   try{ await startCamera(); }catch(e){ setStatus('카메라 권한을 허용해 주세요.'); }
 };
 
 /* ── 개인/단체 토글 ── */
-$('modeSeg').querySelectorAll('.seg-btn').forEach(b => b.onclick = () => {
-  state.currentMode = b.dataset.mode;
-  $('modeSeg').querySelectorAll('.seg-btn').forEach(x=>x.classList.toggle('active', x===b));
+$('modeSeg').querySelectorAll<HTMLElement>('.seg-btn').forEach(b => b.onclick = () => {
+  // data-mode는 index.html이 모든 .seg-btn에 붙여 두는 값이라 항상 존재한다.
+  state.currentMode = b.dataset.mode as string;
+  $('modeSeg').querySelectorAll<HTMLElement>('.seg-btn').forEach(x=>x.classList.toggle('active', x===b));
   $('soloFields').classList.toggle('hidden', state.currentMode!=='solo');
   $('groupFields').classList.toggle('hidden', state.currentMode!=='group');
 });

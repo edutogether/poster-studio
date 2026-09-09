@@ -98,7 +98,19 @@ export default [
     }
   },
   {
-    // 빌드 산출물과 워크트리는 검사 대상이 아니다.
-    ignores: ['dist/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**']
+    /* 빌드 산출물과 워크트리는 검사 대상이 아니다.
+
+       src 아래 .ts를 여기 명시적으로 넣은 이유(2026-09-09, TS 전환 2단계):
+       이 설정이 src에 대해 강제하던 건 no-unused-vars와 no-undef 둘뿐인데,
+       tsconfig의 noUnusedLocals·noUnusedParameters와 컴파일러의 식별자 해석이
+       그 둘을 그대로(오히려 더 강하게) 덮는다. 추측이 아니라 변형으로 확인했다 —
+       안 쓰는 지역변수(TS6133), 정의되지 않은 식별자(TS2304), 잘못된 요소 타입
+       사용(TS2339), 인자 타입 불일치(TS2345) 네 가지를 각각 넣어 `npm run typecheck`가
+       전부 실패하는 것을 확인하고 원복했다.
+       즉 src는 검사를 안 받는 게 아니라 **typecheck가 받는다.** 목록에서 빠진 것과
+       일부러 뺀 것을 구분하려고 적어 둔다(5차 감사에서 'public/app.js에 ESLint
+       미적용'이 정확히 이런 식으로 조용히 새어 있었다). typescript-eslint를 들이지
+       않은 것도 같은 이유다 — 새 규칙을 추가할 게 아니라면 얻는 것 없이 의존성만 는다. */
+    ignores: ['dist/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
   }
 ];

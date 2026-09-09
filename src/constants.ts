@@ -25,7 +25,15 @@ export const VENUE = 'CGV 인천';
 export const EN = 'INKY  ·  INCHEON KIDS & YOUTH FILM FESTIVAL';
 
 /* 장르별 컨셉: 제목 폰트(한글 가능)·강조색·자동 추천 홍보문구 */
-export const GENRES = {
+export interface Genre {
+  font: string;
+  accent: string;
+  taglines: string[];
+}
+/* Record<string, Genre>인 이유: genre 값이 <select>에서 오는 임의 문자열이라
+   GENRES[genre] 조회가 성립해야 한다. 목록에 없는 값이 와도 makePlaceholderArt가
+   animation으로 대체하는 기존 동작을 그대로 둔다. */
+export const GENRES: Record<string, Genre> = {
   animation:{ font:"'Black Han Sans'", accent:'#ffd23f', taglines:['상상은 현실이 된다','오늘, 가장 신나는 모험','웃음과 용기가 가득한 이야기'] },
   fantasy:  { font:"'Noto Serif KR'", accent:'#f6d27a', taglines:['전설이 깨어난다','마법의 문이 열린다','운명을 향한 모험의 시작'] },
   sf:       { font:"'Black Han Sans'", accent:'#7fe7ff', taglines:['우주 너머, 미지의 세계로','별을 향한 위대한 도약','내일을 여는 탐험가'] },
@@ -39,6 +47,12 @@ export const GENRES = {
 /* 포스터 캔버스 크기 — templates.js의 TEMPLATES와 app.js의 placeholder()가 함께 쓴다. */
 export const W = 1200, H = 1800;
 
-export const $ = id => document.getElementById(id);
-export const val = id => ($(id)?.value || '').trim();
-export const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+/* $의 반환 타입에 null을 넣지 않는 이유: 이 앱의 대상 요소는 전부 index.html에
+   정적으로 존재하고, 모듈은 파싱이 끝난 뒤 평가된다. 지금 코드도 이미 null이 아님을
+   전제로 `$('status').textContent = m` 같은 식으로 쓰고 있다 — 여기서 런타임 null
+   가드를 넣으면 "없으면 조용히 아무 것도 안 함"으로 **동작이 바뀐다**. 타입만
+   현재 동작에 맞춘다(런타임 코드는 그대로 document.getElementById 한 줄). */
+export const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
+  document.getElementById(id) as T;
+export const val = (id: string): string => ($<HTMLInputElement>(id)?.value || '').trim();
+export const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random()*arr.length)];

@@ -5,15 +5,31 @@
    문법상 불가능), 재할당이 필요한 값은 이 객체의 속성으로 옮겨 각 모듈이
    state.xxx = ... 형태로 값만 바꾼다(객체 참조 자체는 안 바뀌므로 import는 그대로
    유효). 로직/동작은 파일 분리 전과 동일 — 상태를 담는 그릇만 바뀌었다. */
+/* 포스터 한 장(템플릿 1종 × 그림 1장)과 화면 입력값의 형태.
+   api.ts의 getMeta()가 Meta를 만들고 templates.ts/layout.ts가 그대로 받아 쓴다. */
+export interface Poster {
+  label: string;
+  canvas: HTMLCanvasElement;
+}
+export interface Meta {
+  mode: string;
+  name: string;
+  groupName: string;
+  members: string;
+  title: string;
+  genre: string;
+  tagline: string;
+}
+
 export const state = {
-  stream: null,
-  capturedBlob: null,
-  currentMode: 'solo',
-  posters: [],       // [{label, canvas}]
+  stream: null as MediaStream | null,
+  capturedBlob: null as Blob | null,
+  currentMode: 'solo' as string,
+  posters: [] as Poster[],       // [{label, canvas}]
   selected: 0,
   genCount: 0,
-  pendingMeta: null,   // AI 생성 실패 시 폴백 버튼이 재사용할 마지막 입력값(camera.js도 다시 촬영 시 초기화함)
-  LOGO_LIGHT: null,
-  LOGO_DARK: null,
+  pendingMeta: null as Meta | null,   // AI 생성 실패 시 폴백 버튼이 재사용할 마지막 입력값(camera.ts도 다시 촬영 시 초기화함)
+  LOGO_LIGHT: null as HTMLImageElement | null,
+  LOGO_DARK: null as HTMLImageElement | null,
   LOGO_TRIED: false
 };

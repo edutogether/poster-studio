@@ -3,17 +3,22 @@
    layout.js의 그리기 도구를 사용한다. app.js 분리 작업(2026-08-30)으로
    이 파일로 이동, 이어서 ES모듈 전환(2026-08-30) — 로직 변경 없음.
    ──────────────────────────────────────────────────────────────────── */
-import { FEST, DATE, VENUE, EN, W, H } from './constants.js';
+import { FEST, DATE, VENUE, EN, W, H, type Genre } from './constants.js';
+import type { Meta } from './state.js';
 import { coverDraw, vignette, grain, setLS, setFitFont, drawTitle, layoutTitle, roundRect, drawOrgLogo } from './layout.js';
 
 // 테스트(public/test/layout.test.js)가 크레딧 문구 조립 로직을 직접 검증할 수
 // 있도록 export한다 — TEMPLATES 내부에서만 쓰이던 원래 로직/동작은 그대로.
-export function creditMain(m){ return m.mode==='group' ? m.groupName : `주연 · 감독   ${m.name}`; }
-export function creditSub(m){ return (m.mode==='group' && m.members) ? `출연  ${m.members}` : ''; }
+export function creditMain(m: Meta){ return m.mode==='group' ? m.groupName : `주연 · 감독   ${m.name}`; }
+export function creditSub(m: Meta){ return (m.mode==='group' && m.members) ? `출연  ${m.members}` : ''; }
 
 /* ES모듈 전환 전엔 vm 테스트 하네스가 이 값을 꺼내야 해서 var를 썼는데,
    이제 진짜 export이므로 다시 const로 되돌렸다(동작 동일). */
-export const TEMPLATES = [
+export interface Template {
+  label: string;
+  render(ctx: CanvasRenderingContext2D, art: HTMLImageElement, m: Meta, g: Genre): void;
+}
+export const TEMPLATES: Template[] = [
   /* 1) 클래식 시네마 */
   { label:'클래식', render(ctx,art,m,g){
     ctx.fillStyle='#05070f'; ctx.fillRect(0,0,W,H);

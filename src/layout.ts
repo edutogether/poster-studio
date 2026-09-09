@@ -5,7 +5,7 @@
    이동, 이어서 ES모듈 전환(2026-08-30) — 로직 변경 없음.
    ──────────────────────────────────────────────────────────────────── */
 import { FEST, DATE, VENUE, EN } from './constants.js';
-import { state } from './state.js';
+import { state, type Meta } from './state.js';
 
 /* ── 폰트 보장(캔버스는 폰트 로드 후 그려야 깨지지 않음) ── */
 export async function ensureFonts(){
@@ -23,7 +23,7 @@ export async function ensureFonts(){
 }
 /* 실제로 그릴 글자(제목·이름·문구 등)의 글꼴 조각을 미리 모두 로드.
    구글폰트 한글은 subset으로 쪼개 받아서, 안 받은 글자가 기본글꼴로 깨질 수 있음 → 텍스트 인자로 강제 로드 */
-export async function ensureGlyphs(meta){
+export async function ensureGlyphs(meta: Meta){
   const txt = [meta.title, meta.name, meta.groupName, meta.members, meta.tagline, FEST, DATE, VENUE]
     .filter(Boolean).join(' ') + ' 주연감독출연';
   const jobs = [];
@@ -37,36 +37,36 @@ export async function ensureGlyphs(meta){
 }
 
 /* ───────────────────── 그리기 공통 도구 ───────────────────── */
-export function loadImg(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
-export function coverDraw(ctx, img, x,y,w,h, alignY=0.5){
+export function loadImg(src: string): Promise<HTMLImageElement> { return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
+export function coverDraw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number,y: number,w: number,h: number, alignY=0.5){
   const s = Math.max(w/img.width, h/img.height);
   const iw=img.width*s, ih=img.height*s;
   ctx.drawImage(img, x+(w-iw)/2, y+(h-ih)*alignY, iw, ih);
 }
-export function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+export function roundRect(ctx: CanvasRenderingContext2D,x: number,y: number,w: number,h: number,r: number){ ctx.beginPath(); ctx.moveTo(x+r,y);
   ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-export function vignette(ctx,w,h,strength=0.55){
+export function vignette(ctx: CanvasRenderingContext2D,w: number,h: number,strength=0.55){
   const g=ctx.createRadialGradient(w/2,h*0.42,h*0.2,w/2,h*0.5,h*0.75);
   g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,`rgba(0,0,0,${strength})`);
   ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
 }
-let grainTile=null;
-export function grain(ctx,w,h,alpha=0.06){
-  if(!grainTile){ const t=document.createElement('canvas'); t.width=t.height=128; const tc=t.getContext('2d');
+let grainTile: HTMLCanvasElement | null = null;
+export function grain(ctx: CanvasRenderingContext2D,w: number,h: number,alpha=0.06){
+  if(!grainTile){ const t=document.createElement('canvas'); t.width=t.height=128; const tc=t.getContext('2d')!;
     const id=tc.createImageData(128,128); for(let i=0;i<id.data.length;i+=4){ const v=Math.random()*255; id.data[i]=id.data[i+1]=id.data[i+2]=v; id.data[i+3]=255; } tc.putImageData(id,0,0); grainTile=t; }
   ctx.save(); ctx.globalAlpha=alpha; ctx.globalCompositeOperation='overlay';
-  const p=ctx.createPattern(grainTile,'repeat'); ctx.fillStyle=p; ctx.fillRect(0,0,w,h); ctx.restore();
+  const p=ctx.createPattern(grainTile,'repeat')!; ctx.fillStyle=p; ctx.fillRect(0,0,w,h); ctx.restore();
 }
-export function setLS(ctx,px){ try{ ctx.letterSpacing = px+'px'; }catch(e){} }
+export function setLS(ctx: CanvasRenderingContext2D,px: number){ try{ ctx.letterSpacing = px+'px'; }catch(e){} }
 /* 한 줄 텍스트가 maxW를 넘으면 폰트를 줄여 잘림 방지(긴 단체명·출연진·문구 대비) */
-export function setFitFont(ctx, weight, px, family, text, maxW){
+export function setFitFont(ctx: CanvasRenderingContext2D, weight: number, px: number, family: string, text: string, maxW: number){
   let s = px; ctx.font = `${weight} ${s}px ${family}`;
   while(s > 16 && ctx.measureText(text).width > maxW){ s -= 2; ctx.font = `${weight} ${s}px ${family}`; }
   return s;
 }
 
 /* 제목 레이아웃: 한 줄 시도 → 안 되면 두 줄(균형 분할) */
-export function layoutTitle(ctx, text, font, maxW, maxSize, minSize){
+export function layoutTitle(ctx: CanvasRenderingContext2D, text: string, font: string, maxW: number, maxSize: number, minSize: number): {lines: string[], size: number} {
   for(let s=maxSize;s>=minSize;s-=3){ ctx.font=`900 ${s}px ${font}`; if(ctx.measureText(text).width<=maxW) return {lines:[text], size:s}; }
   // 두 줄: 띄어쓰기 우선, 없으면 가운데 글자에서 분할
   let cut = text.lastIndexOf(' ', Math.ceil(text.length/2));
@@ -77,7 +77,7 @@ export function layoutTitle(ctx, text, font, maxW, maxSize, minSize){
     if(ctx.measureText(a).width<=maxW && ctx.measureText(b).width<=maxW) return {lines:[a,b], size:s}; }
   return {lines:[a,b], size:minSize};
 }
-export function drawTitle(ctx, text, font, cx, cy, maxW, maxSize, minSize, fill, stroke=true){
+export function drawTitle(ctx: CanvasRenderingContext2D, text: string, font: string, cx: number, cy: number, maxW: number, maxSize: number, minSize: number, fill: string, stroke=true){
   const L = layoutTitle(ctx, text, font, maxW, maxSize, minSize);
   ctx.textAlign='center'; ctx.textBaseline='middle';
   const lh = L.size*1.06, startY = cy - (L.lines.length-1)*lh/2;
@@ -97,7 +97,7 @@ export async function ensureLogo(){
   try{ state.LOGO_DARK  = await loadImg('logo-dark.png'); }catch(e){ state.LOGO_DARK = null; }
 }
 /* 로고를 (cx, cy) 중심에 높이 h로 그린다. variant: 'light'(흰글씨) | 'dark'(짙은글씨), 받침 없음 */
-export function drawOrgLogo(ctx, cx, cy, h, variant){
+export function drawOrgLogo(ctx: CanvasRenderingContext2D, cx: number, cy: number, h: number, variant: string){
   const img = variant === 'dark' ? state.LOGO_DARK : state.LOGO_LIGHT;
   if(!img) return;
   const ar = (img.naturalWidth && img.naturalHeight) ? img.naturalWidth/img.naturalHeight : 3.8;
