@@ -101,7 +101,7 @@ body::after{
      구조를 바꾸지 않고 **위 여백만 화면 높이에 따라 늘린다** — 여유가 없는 크기에서는
      max()가 원래 값(18px)으로 되돌려 잘리지 않는다. 실측: 1080은 여유가 없어 18px 그대로,
      1200은 50px, 1440은 60px까지 내려간다. */
-  margin:max(18px, min(90px, calc(100vh - 1115px))) auto 18px; padding:0 24px 40px}
+  margin:clamp(18px, calc(63vh - 637px), 220px) auto 18px; padding:0 24px 40px}
 /* align-self:start — 왼쪽이 그리드 기본 stretch로 오른쪽 크기에 맞춰 같이
    늘어나면, JS(layout-match.js)가 왼쪽 높이를 재서 오른쪽에 꽂아줄 때
    "오른쪽이 커지면 그리드가 왼쪽도 늘리고 → 그 늘어난 왼쪽을 다시 재서
@@ -260,8 +260,15 @@ input::placeholder{color:var(--mut-dim)}
 }
 
 /* ── 낮은 화면(4:3 모니터, 작은 노트북 등)에서 스크롤 없이도 안 잘리게 여백을
-   추가로 압축한다 — 16:9/16:10/4:3 어떤 비율이든 세로 공간이 부족할 수 있다. ── */
-@media (max-height:1000px){
+   추가로 압축한다 — 16:9/16:10/4:3 어떤 비율이든 세로 공간이 부족할 수 있다.
+
+   🔴 경계가 1000이 아니라 1030인 이유(2026-09-09 실측): 압축하지 않은 본문은
+   여백을 최소로 줘도 약 1029px가 필요하다. 경계가 1000이면 **1001~1029px 구간이
+   압축을 못 받아 그대로 넘친다** — 1600x1010에서 19px가 잘려 나가고 맨 아래
+   개인정보처리방침 링크가 화면 밖으로 사라졌다. 이 높이대는 드문 값이 아니라
+   **1920x1080 노트북을 전체화면이 아닌 창으로 열었을 때 나오는 값**이다.
+   ── */
+@media (max-height:1030px){
   .topbar{padding:8px 28px}
   /* 헤더를 키운 만큼(2026-09-09) 세로가 짧은 화면에서는 도로 압축한다 —
      1366x768에서 실측해보니 그냥 두면 아래가 25px 더 잘렸다. 지시가 "세로가 짧은
@@ -272,7 +279,7 @@ input::placeholder{color:var(--mut-dim)}
   .tagline{font-size:14px}
   /* 같은 취지. 963(대표님 화면)에서 위 8px -> 24px가 되고 아래 33px -> 17px로
      줄어 약 58:42가 된다. 768처럼 여유가 없는 크기는 calc가 음수라 8px 그대로다. */
-  .app{gap:10px; margin:max(8px, min(49px, calc(100vh - 918px))) auto 8px; padding:0 24px 14px}
+  .app{gap:10px; margin:max(8px, min(80px, calc(100vh - 883px))) auto 8px; padding:0 24px 14px}
   .left{gap:8px}
   .panel{padding:10px}
   .panel-head{margin-bottom:5px}
@@ -296,7 +303,7 @@ input::placeholder{color:var(--mut-dim)}
    이 크기에도 약 44px 여유가 생겼다 — 그중 일부를 위로 돌린다.
    ≤1000 블록보다 뒤에 와야 이깁니다. */
 @media (max-height:820px){
-  .app{margin-top:max(8px, min(30px, calc(100vh - 733px)))}
+  .app{margin-top:max(8px, min(60px, calc(100vh - 708px)))}
 }
 
 @media (max-height:680px){
