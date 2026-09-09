@@ -18,6 +18,14 @@
    기본 버튼 한 곳에만, 그라디언트 텍스트·글로우·애니메이션 배경 전부 제거. */
 html,body{margin:0; min-height:100%; background:var(--bg); color:var(--ink);
   font-family:var(--font); -webkit-font-smoothing:antialiased}
+/* 위아래 균형(2026-09-09 대표 지시 "위에는 헤더랑 타이트하게 붙어 있는데 아래는
+   엄청 남는다, 밑으로 많이 내려줘"). 고정 여백을 더하면 큰 화면에서는 여전히
+   모자라고 작은 화면에서는 내용이 잘린다 — 실측으로 1920x1080은 아래가 58px
+   남는 반면 1440x900은 이미 122px 넘쳤다. 그래서 값을 정하지 않고 **남는 공간이
+   있을 때만 가운데로 모은다**: body를 세로 flex로 두고 .app이 남은 높이를 다
+   차지하게 한 뒤 align-content로 가운데 정렬한다. 남는 공간이 없으면
+   safe가 위 정렬로 되돌려 내용이 위로 잘리는 일이 없다. */
+body{display:flex; flex-direction:column; min-height:100dvh}
 
 /* ── 4라운드(2026-09-03) — 대표가 넷플릭스 히어로(대각선 포스터 벽지 + 어두운
    그라디언트)를 직접 레퍼런스로 제시, "로딩 걸릴 때부터 바로 저 배경이 떴으면"
@@ -54,12 +62,19 @@ body::after{
 .topbar{display:flex; align-items:center; justify-content:space-between; gap:18px;
   padding:18px 28px; border-bottom:1px solid var(--line)}
 .brand{display:flex; align-items:center; gap:14px}
-.reel{display:grid; place-items:center; width:40px; height:40px; font-size:22px; border-radius:10px;
+.reel{display:grid; place-items:center; width:52px; height:52px; font-size:28px; border-radius:13px;
   background:var(--panel2); border:1px solid var(--line)}
-.eyebrow{margin:0; color:var(--mut); font-weight:600; letter-spacing:.02em; font-size:12.5px}
-.topbar h1{margin:2px 0 0; font-size:20px; font-weight:800; letter-spacing:-.01em; color:var(--ink)}
+.eyebrow{margin:0; color:var(--mut); font-weight:600; letter-spacing:.02em; font-size:14px}
+/* 제목 크기는 AI Ways Incheon 실측값에 맞춘다(2026-09-09 대표 지시):
+   1.5rem(24px) / 640px 이상 1.875rem(30px), 800, letter-spacing -.025em.
+   헤더 안의 나머지(눈썹줄 12.5→14, 부제 13.5→15, 로고칸 40→52px)도 같이 키웠다 —
+   제목만 키우면 그것만 뜬금없이 커 보인다. 개인정보 링크는 예외로 14px를 지킨다:
+   그 값은 Voice Cinema 규격으로 이미 '한 단계 확대'까지 지시된 확정 수치라,
+   비율로 다시 키우면 그 지시를 덮어쓰게 된다. */
+.topbar h1{margin:3px 0 0; font-size:1.5rem; font-weight:800; letter-spacing:-.025em; color:var(--ink)}
+@media (min-width:640px){ .topbar h1{font-size:1.875rem} }
 .tagWrap{display:flex; flex-direction:column; align-items:flex-end; gap:3px}
-.tagline{margin:2px 0 0; color:var(--mut); font-size:13.5px}
+.tagline{margin:4px 0 0; color:var(--mut); font-size:15px}
 /* 개인정보 링크 — Voice Cinema의 .privacylink와 같은 규격으로 맞춘다
    (2026-09-09 대표 지시 "보이스 시네마랑 모든 걸 똑같이"). 크기만 한 단계 키운
    14px이고, 호버 색은 이 앱의 강조색(금색)을 쓴다. 예전엔 12px에 밑줄 대신
@@ -76,7 +91,8 @@ body::after{
 .privacyLink:hover{ color:var(--gold); text-decoration:underline; }
 
 .app{display:grid; grid-template-columns:minmax(360px,1.1fr) minmax(420px,1.05fr);
-  gap:18px; max-width:1320px; margin:18px auto; padding:0 24px 40px}
+  gap:18px; max-width:1320px; margin:0 auto; padding:20px 24px;
+  flex:1; align-content:safe center; width:100%; box-sizing:border-box}
 /* align-self:start — 왼쪽이 그리드 기본 stretch로 오른쪽 크기에 맞춰 같이
    늘어나면, JS(layout-match.js)가 왼쪽 높이를 재서 오른쪽에 꽂아줄 때
    "오른쪽이 커지면 그리드가 왼쪽도 늘리고 → 그 늘어난 왼쪽을 다시 재서
@@ -186,7 +202,14 @@ input::placeholder{color:var(--mut-dim)}
    추가로 압축한다 — 16:9/16:10/4:3 어떤 비율이든 세로 공간이 부족할 수 있다. ── */
 @media (max-height:820px){
   .topbar{padding:8px 28px}
-  .app{gap:10px; margin:8px auto; padding:0 24px 14px}
+  /* 헤더를 키운 만큼(2026-09-09) 세로가 짧은 화면에서는 도로 압축한다 —
+     1366x768에서 실측해보니 그냥 두면 아래가 25px 더 잘렸다. 지시가 "세로가 짧은
+     창에서는 내리는 양이 줄어들게 안전하게"였으므로 크기 쪽도 같이 줄인다. */
+  .topbar h1{font-size:1.5rem}
+  .reel{width:44px; height:44px; font-size:24px; border-radius:11px}
+  .eyebrow{font-size:13px}
+  .tagline{font-size:14px}
+  .app{gap:10px; margin:0 auto; padding:10px 24px}
   .left{gap:8px}
   .panel{padding:10px}
   .panel-head{margin-bottom:5px}

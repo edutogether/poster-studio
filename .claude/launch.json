@@ -4,7 +4,26 @@
     {
       "name": "poster-studio-static",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["http-server", "public", "-p", "5500", "-c-1"],
+      "runtimeArgs": [
+        "http-server",
+        "public",
+        "-p",
+        "5500",
+        "-c-1"
+      ],
+      "port": 5500
+    },
+    {
+      "//": "master(전환 전) 코드를 그대로 띄운다. 라이브와 같은 코드라 디자인 수정을 여기서 실측한다. 포트는 5500 — ALLOWED_ORIGINS에 있어야 /health가 CORS로 안 막힌다.",
+      "name": "poster-studio-master-public",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "http-server",
+        "public",
+        "-p",
+        "5500",
+        "-c-1"
+      ],
       "port": 5500
     }
   ]
