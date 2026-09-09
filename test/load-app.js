@@ -176,20 +176,22 @@ export async function loadApp({ createRealCanvas } = {}) {
 
   vi.resetModules();
 
-  const [appMod, stateMod, constantsMod, domMod, layoutMod, templatesMod, cameraMod, apiMod, faviconMod] = await Promise.all([
-    import('../src/app.js'),
+  /* 3단계 React 전환(2026-09-09) 이후 이 하네스가 다루는 범위가 줄었다.
+     화면에 붙는 부분(촬영·생성·인쇄·상태)은 이제 컴포넌트라 진짜 DOM이 필요하고,
+     test/poster-studio.test.tsx가 jsdom 위에서 검증한다. 여기 남은 것은 화면과
+     무관한 순수 모듈들뿐이다 — 그래서 app/dom/camera/api/print import를 뺐다.
+     그 모듈들을 계속 불러오면 **화면에 연결되지도 않은 코드에 초록불이 켜진다.** */
+  const [stateMod, constantsMod, layoutMod, templatesMod, posterMod, faviconMod] = await Promise.all([
     import('../src/state.js'),
     import('../src/constants.js'),
-    import('../src/dom.js'),
     import('../src/layout.js'),
     import('../src/templates.js'),
-    import('../src/camera.js'),
-    import('../src/api.js'),
+    import('../src/poster.js'),
     import('../src/favicon.js')
   ]);
 
   const flat = { document, window: windowStub, navigator: navigatorStub };
-  Object.assign(flat, stateMod, constantsMod, domMod, layoutMod, templatesMod, cameraMod, apiMod, faviconMod, appMod);
+  Object.assign(flat, stateMod, constantsMod, layoutMod, templatesMod, posterMod, faviconMod);
 
   // app.fetch = mockFn 같은 기존 테스트 패턴이 실제 전역 fetch(=api.js가 호출을
   // 읽어들이는 그 fetch)를 바꾸도록, 단순 값 복사가 아니라 getter/setter로

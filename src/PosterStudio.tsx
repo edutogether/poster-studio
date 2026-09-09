@@ -12,7 +12,7 @@
    ──────────────────────────────────────────────────────────────────── */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { $, val, pick, GENRES, API_BASE, BOOTH_TOKEN, W, H } from './constants.js';
-import { buildPosters } from './poster.js';
+import { buildPosters, makePlaceholderArt } from './poster.js';
 import { useLayoutMatch } from './useLayoutMatch.js';
 import type { Meta, Poster } from './state.js';
 
@@ -20,29 +20,6 @@ import type { Meta, Poster } from './state.js';
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
    아이는 그대로 끝"이 되는 문제가 있어 절충한 값. 다시 촬영하면 초기화된다. */
 const MAX_GENERATIONS_PER_PHOTO = 2;
-
-/* AI가 완전히 막힌 상황(네트워크 두절·크레딧 소진·서버 장애)에서도 부스가 통째로
-   멈추지 않도록, AI 그림 없이 같은 타이포·크레딧 레이아웃으로 인쇄 가능한 버전을
-   만드는 최소한의 폴백. api.ts에 있던 것을 그대로 옮겼다. */
-export function makePlaceholderArt(genre: string): string {
-  const c = document.createElement('canvas');
-  c.width = 1024;
-  c.height = 1536;
-  const ctx = c.getContext('2d')!;
-  const accent = (GENRES[genre] || GENRES.animation).accent;
-  const g = ctx.createLinearGradient(0, 0, 0, c.height);
-  g.addColorStop(0, accent);
-  g.addColorStop(1, '#0b1020');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, c.width, c.height);
-  ctx.fillStyle = 'rgba(255,255,255,.10)';
-  for (let i = 0; i < 50; i++) {
-    ctx.beginPath();
-    ctx.arc(Math.random() * c.width, Math.random() * c.height, Math.random() * 3 + 1, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  return c.toDataURL('image/png');
-}
 
 /** 화면 입력값 수집. 원본 api.ts의 getMeta()와 동일 — id가 그대로라 val()이 그대로 쓰인다. */
 export function getMeta(mode: string): Meta {
