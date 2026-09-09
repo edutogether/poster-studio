@@ -10,7 +10,7 @@ import { ensureFonts, ensureGlyphs, ensureLogo, loadImg } from './layout.js';
 import { TEMPLATES } from './templates.js';
 
 /* ── 메타데이터 수집 ── */
-export function getMeta(): Meta {
+function getMeta(): Meta {
   const genre = val('genre') || 'animation';
   let tagline = val('tagline'); if(!tagline) tagline = pick(GENRES[genre].taglines);
   return {
@@ -113,7 +113,7 @@ $('fallbackBtn').onclick = async () => {
 };
 
 /* ── 그림 N장 × 템플릿 4종 = 갤러리 ── */
-export async function buildAll(images: string[], meta: Meta){
+async function buildAll(images: string[], meta: Meta){
   await ensureFonts();
   await ensureGlyphs(meta);
   await ensureLogo();
@@ -130,7 +130,7 @@ export async function buildAll(images: string[], meta: Meta){
   select(0);
 }
 
-export function renderGallery(){
+function renderGallery(){
   const g = $('gallery'); g.innerHTML = '';
   state.posters.forEach((p,i) => {
     const wrap = document.createElement('div');
@@ -141,7 +141,7 @@ export function renderGallery(){
     wrap.appendChild(t); wrap.appendChild(lab); g.appendChild(wrap);
   });
 }
-export function select(i: number){
+function select(i: number){
   state.selected = i;
   pctx.clearRect(0,0,1200,1800);
   pctx.drawImage(state.posters[i].canvas, 0,0);

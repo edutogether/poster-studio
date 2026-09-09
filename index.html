@@ -103,8 +103,8 @@
         <label>영화 제목 <input id="movieTitle" placeholder="예: 우주를 달리는 인키" maxlength="40" /></label>
 
         <!-- 홍보 문구 입력란은 삭제(2026-09-03 대표 지시) — 항상 장르별 자동 추천
-             문구를 쓴다. api.js의 getMeta()가 val('tagline')로 읽던 걸 그대로 두되,
-             #tagline 요소 자체가 없으면 val()이 빈 문자열을 반환해(constants.js
+             문구를 쓴다. api.ts의 getMeta()(모듈 내부 함수)가 val('tagline')로 읽던 걸 그대로 두되,
+             #tagline 요소 자체가 없으면 val()이 빈 문자열을 반환해(constants.ts
              `$(id)?.value`) 자동으로 GENRES[genre].taglines 중 하나를 고르므로
              JS는 손대지 않아도 된다. -->
         <div class="genreRow">

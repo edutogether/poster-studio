@@ -52,7 +52,8 @@ window.__posterTiming = async () => {
     out.splash.note = '스플래시 요소 없음(이미 제거된 뒤 주입된 것으로 보임)';
   }
 
-  /* 2) 캔버스 합성 — 진짜 프로덕션 경로(buildAll)를 그대로 태워 잰다.
+  /* 2) 캔버스 합성 — 진짜 프로덕션 경로(api.ts의 buildAll)를 그대로 태워 잰다.
+        buildAll은 모듈 내부 함수라 import하지 않고 버튼으로 도달한다.
         scenario-filled.js와 **같은 구동 방식**을 쓴다: 앱 내부 상태를 직접
         건드리지 않고 브라우저 API 두 개(getUserMedia, fetch)만 갈아끼운 뒤
         진짜 버튼을 누른다.
