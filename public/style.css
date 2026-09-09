@@ -91,7 +91,12 @@ body::after{
 .privacyLink:hover{ color:var(--gold); text-decoration:underline; }
 
 .app{display:grid; grid-template-columns:minmax(360px,1.1fr) minmax(420px,1.05fr);
-  gap:18px; max-width:1320px; margin:18px auto; padding:0 24px 40px}
+  gap:18px; max-width:1320px;
+  /* 위아래 균형(2026-09-09 대표 지시 "위아래 균형감 안정감 있게, 애매할 경우 살짝 아래").
+     구조를 바꾸지 않고 **위 여백만 화면 높이에 따라 늘린다** — 여유가 없는 크기에서는
+     max()가 원래 값(18px)으로 되돌려 잘리지 않는다. 실측: 1080은 여유가 없어 18px 그대로,
+     1200은 50px, 1440은 60px까지 내려간다. */
+  margin:max(18px, min(60px, calc(100vh - 1150px))) auto 18px; padding:0 24px 40px}
 /* align-self:start — 왼쪽이 그리드 기본 stretch로 오른쪽 크기에 맞춰 같이
    늘어나면, JS(layout-match.js)가 왼쪽 높이를 재서 오른쪽에 꽂아줄 때
    "오른쪽이 커지면 그리드가 왼쪽도 늘리고 → 그 늘어난 왼쪽을 다시 재서
@@ -207,7 +212,9 @@ input::placeholder{color:var(--mut-dim)}
   .reel{width:44px; height:44px; font-size:24px; border-radius:11px}
   .eyebrow{font-size:13px}
   .tagline{font-size:14px}
-  .app{gap:10px; margin:8px auto; padding:0 24px 14px}
+  /* 같은 취지. 963(대표님 화면)에서 위 8px -> 24px가 되고 아래 33px -> 17px로
+     줄어 약 58:42가 된다. 768처럼 여유가 없는 크기는 calc가 음수라 8px 그대로다. */
+  .app{gap:10px; margin:max(8px, min(28px, calc(100vh - 939px))) auto 8px; padding:0 24px 14px}
   .left{gap:8px}
   .panel{padding:10px}
   .panel-head{margin-bottom:5px}
