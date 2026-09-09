@@ -40,9 +40,29 @@ export function getMeta(mode: string): Meta {
 const REGEN_LABEL = '🔄 다른 그림으로';
 const REGEN_LABEL_SPENT = '🔄 재생성 횟수 소진(다시 촬영 시 초기화)';
 
+/* 초기 플레이스홀더 그림 — 처음 마운트할 때와 `초기화` 버튼이 되돌릴 때 둘 다 쓴다.
+   두 벌로 두면 한쪽만 고치는 사고가 난다(master도 같은 이유로 api.js에 한 벌로 뒀다). */
+function drawPlaceholder(pctx: CanvasRenderingContext2D) {
+  pctx.fillStyle = '#0d0f14';
+  pctx.fillRect(0, 0, W, H);
+  pctx.fillStyle = '#e9b949';
+  pctx.textAlign = 'center';
+  pctx.font = "900 84px 'Black Han Sans', sans-serif";
+  pctx.fillText('🎬', W / 2, 760);
+  pctx.fillStyle = '#f4f6fb';
+  pctx.font = "900 56px 'Black Han Sans', sans-serif";
+  pctx.fillText('AI 영화 포스터', W / 2, 880);
+  pctx.fillStyle = '#aeb7d0';
+  pctx.font = '500 30px sans-serif';
+  pctx.fillText('촬영 후 이곳에 4가지 버전이 표시됩니다', W / 2, 950);
+}
+
 export default function PosterStudio() {
   const [mode, setMode] = useState('solo');
-  const [status, setStatus] = useState('카메라를 켜고 사진을 촬영해 주세요.');
+  /* 초기 문구("카메라를 켜고 사진을 촬영해 주세요.")는 페이지 맨 아래 ※ 영역으로
+     옮겼다(2026-09-09 대표 지시). **요소는 남긴다** — 오류·진행 상황이 뜨는 자리다.
+     비어 있을 때는 CSS(.status:empty)가 줄을 통째로 접는다. */
+  const [status, setStatus] = useState('');
   /* 촬영 영역의 3상태. 원본의 classList 조작을 그대로 옮긴 것이다:
        idle — video 보임(빈 화면) · snapshot 숨김 · camHint 보임 (초기)
        live — video 보임(스트림)  · snapshot 숨김 · camHint 숨김 (startCamera)
@@ -100,18 +120,7 @@ export default function PosterStudio() {
     placeholderDrawnRef.current = true;
     const pctx = canvasRef.current?.getContext('2d');
     if (!pctx) return;
-    pctx.fillStyle = '#0d0f14';
-    pctx.fillRect(0, 0, W, H);
-    pctx.fillStyle = '#e9b949';
-    pctx.textAlign = 'center';
-    pctx.font = "900 84px 'Black Han Sans', sans-serif";
-    pctx.fillText('🎬', W / 2, 760);
-    pctx.fillStyle = '#f4f6fb';
-    pctx.font = "900 56px 'Black Han Sans', sans-serif";
-    pctx.fillText('AI 영화 포스터', W / 2, 880);
-    pctx.fillStyle = '#aeb7d0';
-    pctx.font = '500 30px sans-serif';
-    pctx.fillText('촬영 후 이곳에 4가지 버전이 표시됩니다', W / 2, 950);
+    drawPlaceholder(pctx);
     /* 첫 의미있는 화면이 그려졌다 — 스플래시의 시계를 흐르게 한다(로드 게이트 B).
        **여기서 스플래시를 숨기지 않는다.** 숨기는 타이밍은 style.css의 splashOut이
        잡고, 이 신호는 '언제부터 재기 시작할지'만 정한다. 그래서 번들이 늦게 붙어도
@@ -232,6 +241,32 @@ export default function PosterStudio() {
   };
 
   const applyPosters = (built: Poster[]) => { setPosters(built); setSelected(0); };
+
+  /* 초기화 — 입력한 것을 다 지우되 **촬영한 사진은 남긴다**(2026-09-09 대표 지시).
+     `다시 촬영`과 정반대다: 그건 사진만 다시 찍고 입력은 남기고, 이쪽은 사진만 남기고
+     입력을 지운다. 확인창은 두지 않는다(부스에서 아이가 쓰는 화면).
+     🔴 capturedBlobRef · snapshotURL · phase는 일부러 건드리지 않는다 — 이 셋이
+     사진이 남아 있다는 상태 그 자체다.
+     입력칸이 비제어(uncontrolled)라 값은 DOM에서 직접 지운다(원본과 같은 방식). */
+  const onReset = () => {
+    if (isGeneratingRef.current) return;
+    for (const id of ['studentName', 'groupName', 'members', 'movieTitle']) {
+      const el = document.getElementById(id) as HTMLInputElement | null;
+      if (el) el.value = '';
+    }
+    const genre = document.getElementById('genre') as HTMLSelectElement | null;
+    if (genre) genre.selectedIndex = 0;
+    setMode('solo');
+    setPosters([]);
+    setSelected(0);
+    genCountRef.current = 0;
+    setGenCount(0);
+    pendingMetaRef.current = null;
+    setFallbackShown(false);
+    setStatus('');
+    const pctx = canvasRef.current?.getContext('2d');
+    if (pctx) drawPlaceholder(pctx);
+  };
 
   const onGenerate = async () => {
     if (isGeneratingRef.current) return;
@@ -357,23 +392,25 @@ export default function PosterStudio() {
           </div>
 
           <div id="soloFields" className={mode !== 'solo' ? 'hidden' : undefined}>
-            <label>이름 <input id="studentName" placeholder="예: 김인키" maxLength={20} /></label>
+            <label><span className="lbl">이름</span><input id="studentName" placeholder="예: 김인키" maxLength={20} /></label>
           </div>
 
           <div id="groupFields" className={cls('', mode !== 'group').trim() || undefined}>
-            <label>단체명 <input id="groupName" placeholder="예: 햇살초 5학년 2반 영화동아리" maxLength={40} /></label>
-            <label>출연진 <span className="hint">(선택 · 쉼표로 구분)</span>
-              <input id="members" placeholder="예: 김인키, 이영화, 박감독" maxLength={120} />
-            </label>
+            <label><span className="lbl">단체명</span><input id="groupName" placeholder="예: 햇살초 5학년 2반 영화동아리" maxLength={40} /></label>
+            {/* "(선택 · 쉼표로 구분)"은 항상 같은 안내문이라 페이지 맨 아래 ※ 영역으로 옮겼다. */}
+            <label><span className="lbl">출연진</span><input id="members" placeholder="예: 김인키, 이영화, 박감독" maxLength={120} /></label>
           </div>
 
-          <label>영화 제목 <input id="movieTitle" placeholder="예: 우주를 달리는 인키" maxLength={40} /></label>
+          <label><span className="lbl">영화 제목</span><input id="movieTitle" placeholder="예: 우주를 달리는 인키" maxLength={40} /></label>
 
           {/* 홍보 문구 입력란은 삭제(2026-09-03 대표 지시) — 항상 장르별 자동 추천 문구를 쓴다.
               getMeta()가 val('tagline')로 읽던 걸 그대로 두되, #tagline 요소가 없으면 val()이
               빈 문자열을 반환해 자동으로 GENRES[genre].taglines 중 하나를 고른다. */}
-          <div className="genreRow">
-            <label className="genreField">장르
+          {/* 만들기 줄을 가로로 쪼갠다(2026-09-09 대표 지시). 장르를 이 줄에 그대로
+              둔 이유는 master와 같다 — 자기 줄로 올리면 왼쪽 기둥이 51px 길어지고,
+              오른쪽 패널 높이는 useLayoutMatch가 왼쪽을 따라가므로 ③ 패널이 오히려 커진다. */}
+          <div className="makeRow">
+            <label className="genreField"><span className="lbl">장르</span>
               <select id="genre" defaultValue="animation">
                 <option value="animation">🎨 애니메이션</option>
                 <option value="fantasy">🐉 판타지</option>
@@ -385,7 +422,8 @@ export default function PosterStudio() {
                 <option value="music">🎵 음악</option>
               </select>
             </label>
-            <button id="generateBtn" className="btn primary big genreRowBtn" disabled={generating} onClick={onGenerate}>✨ AI 포스터 만들기</button>
+            <button id="resetBtn" className="btn ghost" onClick={onReset}>초기화</button>
+            <button id="generateBtn" className="btn primary big" disabled={generating} onClick={onGenerate}>✨ AI 포스터 만들기</button>
           </div>
           <button id="fallbackBtn" className={cls('btn ghost', !fallbackShown)} onClick={onFallback}>🎨 AI 없이 기본 버전으로 계속하기</button>
           <p id="status" className="status">{status}</p>

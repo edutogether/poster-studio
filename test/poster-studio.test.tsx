@@ -250,6 +250,56 @@ describe('재생성 한도', () => {
 });
 
 /* ───────────────── 저장·인쇄 (예전 print.test.js) ───────────────── */
+/* ───────────────────── 초기화 (2026-09-09 대표 지시) ─────────────────────
+   🔴 이 묶음의 핵심은 **사진이 남는지**다 — 그게 `다시 촬영`과 초기화를 가르는
+   유일한 차이라서, 여기가 무너지면 아이가 다시 찍어야 한다. */
+describe('초기화', () => {
+  /** 촬영까지 끝내고 입력을 다 채운 뒤 포스터까지 만들어 둔다. */
+  async function 채워놓기() {
+    await act(async () => { renderApp(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('modeSeg').querySelector<HTMLButtonElement>('[data-mode="group"]')!.click(); });
+    el<HTMLInputElement>('groupName').value = '햇살초 5학년 2반';
+    el<HTMLInputElement>('members').value = '김인키, 이영화';
+    el<HTMLInputElement>('movieTitle').value = '사라진 급식의 비밀';
+    el<HTMLSelectElement>('genre').value = 'mystery';
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { await Promise.resolve(); });
+  }
+
+  test('입력·장르·개인단체·포스터를 지운다', async () => {
+    await 채워놓기();
+    expect(document.querySelectorAll('.gallery .thumb').length).toBeGreaterThan(0);
+    await act(async () => { el<HTMLButtonElement>('resetBtn').click(); });
+    for (const id of ['studentName', 'groupName', 'members', 'movieTitle']) {
+      expect(el<HTMLInputElement>(id).value).toBe('');
+    }
+    expect(el<HTMLSelectElement>('genre').selectedIndex).toBe(0);
+    expect(document.querySelectorAll('.gallery .thumb').length).toBe(0);
+    expect(el('modeSeg').querySelector('[data-mode="solo"]')!.className).toContain('active');
+    expect(el('status').textContent).toBe('');
+  });
+
+  test('🔴 촬영한 사진은 남긴다 — `다시 촬영`과 정반대다', async () => {
+    await 채워놓기();
+    const 사진 = el<HTMLImageElement>('snapshot').getAttribute('src');
+    expect(사진).toBeTruthy();
+    await act(async () => { el<HTMLButtonElement>('resetBtn').click(); });
+    expect(el<HTMLImageElement>('snapshot').getAttribute('src')).toBe(사진);
+    expect(el('snapshot').className).not.toContain('hidden');
+  });
+
+  test('초기화 뒤 곧바로 다시 만들 수 있다(사진이 남아 있으므로)', async () => {
+    await 채워놓기();
+    await act(async () => { el<HTMLButtonElement>('resetBtn').click(); });
+    el<HTMLInputElement>('studentName').value = '김인키';
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(el('status').textContent).not.toContain('먼저 사진을 촬영');
+    expect(document.querySelectorAll('.gallery .thumb').length).toBeGreaterThan(0);
+  });
+});
+
 describe('저장·인쇄', () => {
   test('PNG 저장: 포스터가 없으면 안내만 하고 아무 것도 만들지 않는다', async () => {
     await act(async () => { renderApp(); });

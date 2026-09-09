@@ -78,6 +78,8 @@ export default [
         getComputedStyle: 'readonly', performance: 'readonly',
         fetch: 'readonly', Response: 'readonly', setTimeout: 'readonly',
         AnimationEvent: 'readonly',
+        /* poster-pixels-ui.js가 지문(SHA-256)을 뜨는 데 쓴다. */
+        crypto: 'readonly', TextEncoder: 'readonly',
         setInterval: 'readonly', clearInterval: 'readonly', console: 'readonly'
       }
     },
