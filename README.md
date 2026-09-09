@@ -14,7 +14,7 @@
 
 ## 구조
 ```
-public/          정적 프론트엔드 (Firebase Hosting으로 배포 — https://poster-studio.web.app)
+public/          정적 자산 (빌드 산출물 dist/가 Firebase Hosting으로 배포 — https://poster.edutogether.kr)
   index.html
   app.js         진입점(ES모듈) — 아래 모듈들을 import해 부팅
   camera.js      웹캠 촬영          api.js       Functions 호출 + 갤러리
@@ -33,7 +33,8 @@ firebase.json    hosting(poster-studio 타겟) + functions 설정, 보안헤더(
 ```
 
 ## 운영 순서 (행사 당일)
-1. 부스 노트북에서 https://poster-studio.web.app 을 연다 (즐겨찾기 권장).
+1. 부스 노트북에서 **https://poster.edutogether.kr** 을 연다 (즐겨찾기 권장).
+   *(예전 주소 `https://poster-studio.web.app`도 그대로 열린다 — 이미 인쇄된 QR이 있으면 그걸 써도 된다.)*
 2. 카메라 켜기 → 3·2·1 촬영
 3. 개인/단체 선택, 이름(또는 단체명·출연진), 영화 제목, 장르 입력
 4. AI 포스터 만들기 → 4가지 버전 자동 생성

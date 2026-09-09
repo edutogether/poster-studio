@@ -4,7 +4,7 @@
 
 ## 준비
 
-1. `https://poster-studio.web.app` 접속.
+1. `https://poster.edutogether.kr` 접속.
 2. 크롬 개발자도구(F12) → **Network** 탭 → 상단 "No throttling" 드롭다운 → **Add custom profile...**
 3. 아래 값으로 커스텀 프로필 생성:
    - **Download**: 5 Mbps (5,000 Kbps)

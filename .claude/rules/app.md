@@ -23,6 +23,17 @@
     150이 아니라 50으로 떨어진다.** 그때는 `functions/index.js`의 근거 주석과 함께 다시 산정한다.
 - 배포: Firebase Hosting(`poster-studio` 타겟) + Cloud Functions(`posterStudio`, asia-northeast3).
   Firebase 프로젝트 `inky-poster-studio`.
+- **주소는 두 개이고 둘 다 살아 있다**(2026-09-10 대표 지시로 정식 주소가 붙었다).
+  - **`https://poster.edutogether.kr` — 정식 주소.** 사람에게 주는 주소, 안내문·QR을 **새로 만들 때**
+    쓰는 주소는 전부 이것이다. `http`로 들어와도 301로 `https`로 넘어간다(실측).
+  - **`https://poster-studio.web.app` — 없애지 않는다.** 이미 나간 QR·링크가 죽으면 안 된다.
+    두 주소는 같은 것을 서빙한다(번들 해시까지 같은 것을 확인).
+  - 🔴 **이미 뽑은 인쇄물은 바꾸지 않는다.** 옛 주소가 계속 살아 있으므로 그대로 쓰면 된다.
+    **아직 안 뽑았으면 새 주소로 만든다.**
+  - ⚠ **`deploy.yml`·`firebase.json`·`.firebaserc`의 `poster-studio`는 주소가 아니라 배포 대상
+    식별자다.** 주소를 바꿨다고 여기를 따라 고치면 배포가 깨진다.
+  - ⚠ `functions/index.js`의 `ALLOWED_ORIGINS`에는 **두 주소가 다 들어 있어야 한다**(한쪽만 두면
+    다른 쪽에서 CORS로 막힌다). 목록의 앵커 규칙은 아래 "절대 하면 안 되는 것" 참고.
 
 ## 배포 폴더
 - `firebase.json` public = **`dist`**(2026-09-09 리액트+TS 전환 머지로 바뀜). 배포되는 것은
@@ -30,7 +41,7 @@
 - **주의**: `public/`은 이제 소스가 아니라 **정적 자산 폴더**지만, Vite가 그 내용을 `dist/` 루트로
   **그대로 복사**하므로 **함정은 그대로 남아 있다.** `public/` 아래에 설정파일을 새로 만들면
   라이브에 그대로 서빙된다(`vitest.config.js`가 실제로 그랬음, 2026-09-07 발견).
-  파일 추가 후 `curl https://poster-studio.web.app/<파일명>`이 404인지 확인할 것.
+  파일 추가 후 `curl https://poster.edutogether.kr/<파일명>`이 404인지 확인할 것.
 
 ## 데이터
 - 개인정보·미성년자 데이터: **있음.** 아동 얼굴 사진(웹캠 촬영)이 OpenAI(미국) 서버로 전송된다.

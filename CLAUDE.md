@@ -20,7 +20,11 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 - **위치**: `D:\Projects\inky-festival\poster-studio`
 - **스택**: 정적 프론트엔드(`public/`, ES모듈, 번들러 없음) + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 전담).
   교육청 MDM 노트북이 설치를 못 받을 수 있어 "주소만 열면 되는" 방식이다 — 설치형 서버는 없다.
-- **배포처**: Firebase Hosting `https://poster-studio.web.app` + Cloud Functions `posterStudio`(asia-northeast3).
+- **주소**: **`https://poster.edutogether.kr`** — 2026-09-10부로 정식 주소다. 사람에게 주는 주소,
+  안내문·QR을 새로 만들 때 쓰는 주소는 전부 이것이다.
+  **`https://poster-studio.web.app`도 계속 살아 있다** — 이미 나간 QR·링크가 죽으면 안 되므로
+  없애지 않는다. 두 주소는 같은 것을 서빙한다(번들 해시까지 동일함을 확인).
+- **배포처**: Firebase Hosting + Cloud Functions `posterStudio`(asia-northeast3).
   Firebase 프로젝트는 `inky-poster-studio` 하나뿐이다.
 - **상태**: **실운영 모드**(아래 섹션 참고). 8차 종합감사 100/100(2026-09-07). 최신 프리즈 태그는
   `poster-studio-freeze-20260907-pre-vitest` — 그 뒤로 8차 감사 수정과 문서 정비가 들어갔으므로,

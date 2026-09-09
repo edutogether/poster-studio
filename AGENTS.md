@@ -11,7 +11,8 @@
 AI가 영화 포스터 그림을 만들고, 브라우저 캔버스가 제목·크레딧을 합성해 4종을 만든 뒤 4×6 인화지로 즉석 인쇄한다.
 
 - **프론트엔드** TypeScript + React 19 + Vite. 소스는 `src/`, 배포되는 것은 빌드 산출물 `dist/`
-  → Firebase Hosting (`https://poster-studio.web.app`). `public/`은 이제 정적 자산만 담는다.
+  → Firebase Hosting. 주소는 **`https://poster.edutogether.kr`**(2026-09-10부로 정식),
+  `https://poster-studio.web.app`도 계속 살아 있다(이미 나간 QR·링크용). `public/`은 이제 정적 자산만 담는다.
 - **백엔드** `functions/` → Firebase Cloud Functions v2, `posterStudio` (asia-northeast3)
   — 하는 일은 OpenAI 이미지 생성 중계 하나뿐이다.
 - Firebase 프로젝트: `inky-poster-studio`
@@ -113,7 +114,7 @@ Cloud Run/GFE는 클라이언트가 보낸 XFF를 지우지 않고 뒤에 덧붙
 전환(2026-09-09) 전에는 `public/`이 통째로 배포 폴더였다. 지금은 `dist/`가 배포 폴더지만
 **Vite가 `public/`의 내용을 `dist/` 루트로 그대로 복사하므로 결과는 같다.**
 vitest 이전 때 `public/vitest.config.js`가 실제로 라이브에서 200으로 응답하고 있었다(2026-09-07 발견).
-`public/`에 파일을 추가할 때마다 배포 후 `curl https://poster-studio.web.app/<파일명>`이
+`public/`에 파일을 추가할 때마다 배포 후 `curl https://poster.edutogether.kr/<파일명>`이
 404인지 확인한다.
 
 ### 4. 부스토큰은 3곳이 동시에 맞아야 한다
