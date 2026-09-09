@@ -1,5 +1,5 @@
 <!-- 원본 최종 수정: 2026-09-08 · 원본 위치: D:\Projects\_shared\intent-kit\README-template.md
-     원본 버전: 4ba3836d6f82
+     원본 버전: eb0eda204b4e
      사본의 "원본 버전"이 위와 다르면 원본이 갱신된 것이다. 다만 이 파일은 통째로 덮어쓰지 않는다 —
      아래 인덱스 표는 저장소마다 내용이 다르므로 반드시 보존하고, 등급표·설명 등 나머지만 원본에 맞춘다.
      (intent-workflow.md·TEMPLATE.md는 순수 사본이라 통째로 재복사하면 된다.)
@@ -33,8 +33,13 @@
 
 - 새 intent: `_docs/intents/YYYY-MM-DD-슬러그/intent.md` (`TEMPLATE.md` 복사해서 시작)
 - 등급 2는 `intent.md` → `spec.md` → `plan.md` 순으로 이어 쓴다(헌법 §1.5).
+- 초기 개발 단계(기능이 아직 잡히는 중)라 건별 intent보다 전체 방향 문서가 더
+  맞으면, 건별 대신 `_docs/intents/00-charter.md` 하나로 시작해도 된다.
 - 상태는 `draft` → `accepted` → `in-progress` → `done` | `dropped` 이고, 파일 맨 위
   frontmatter 의 `status` 로만 관리한다(폴더를 옮겨서 표시하지 않는다).
   상태를 바꾸는 것은 Bumm님이고, 바뀔 때마다 별도 커밋으로 남긴다.
+  단, **팀장이 지시한 작업은 그 지시 자체가 승인**이므로(헌법 §1), 세션이 `accepted`로
+  쓰고 바로 `in-progress`로 진행한다 — 기다리지 않는다. 위 규칙은 **세션이 스스로
+  제안한 건**에 적용된다. 자세한 것은 `intent-workflow.md`의 "상태" 절을 본다.
 - `done`/`dropped` 상태가 된 intent도 지우지 않는다 — 나중에 "왜 그때 이렇게
   안 했는지"를 다시 확인할 수 있는 유일한 기록이다.
