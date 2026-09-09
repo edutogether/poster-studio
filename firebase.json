@@ -73,6 +73,16 @@
             "value": "public, max-age=31536000, immutable"
           }
         ]
+      },
+      {
+        "//": "폰트는 dist/fonts/ 아래로 그대로 복사되어 /assets/** 규칙에 안 걸린다 — 별도로 잡지 않으면 기본 max-age=3600으로 떨어져 한 시간마다 다시 받는다(굵기당 서브셋 약 39KB + 캔버스용 전체 약 750KB×6). master에서 2026-09-09에 넣은 규칙인데 이 브랜치로 옮기며 빠져 있던 것을 머지 직전에 잡았다. **immutable은 일부러 쓰지 않는다**: 파일명이 고정이라 내용이 바뀌면 옛 파일이 캐시에 갇힌다.",
+        "source": "**/*.woff2",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=2592000"
+          }
+        ]
       }
     ]
   }
