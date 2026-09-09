@@ -141,14 +141,35 @@ input::placeholder{color:var(--mut-dim)}
 .seg-btn:hover{color:var(--ink)}
 .seg-btn.active{background:var(--gold); color:var(--gold-ink)}
 
-/* 제목 줄 안의 작은 좌우 스위치(2026-09-09 대표 지시 "스위치 켜듯이 좌우로 움직이는
-   버튼, 우측정렬, 작게"). 금색 손잡이가 왼쪽(개인) ↔ 오른쪽(단체)으로 움직이고
-   무엇이 선택됐는지 글자로 보인다 — 켬/끔이 아니라 둘 중 하나를 고르는 것으로 읽혀야
-   해서 라벨을 남긴다(아이 손님도 쓰는 화면이다). 색은 기존 선택 색(--gold) 그대로다.
-   제목 줄 높이를 키우지 않도록 세로 패딩을 작게 잡는다. */
-.panel-head .seg{ margin-left:auto; flex:none; padding:3px; gap:2px; border-radius:999px }
-.panel-head .seg .seg-btn{ flex:none; padding:4px 10px; font-size:12px; border-radius:999px;
-  white-space:nowrap }
+/* 제목 줄의 개인↔단체 스위치(2026-09-09 대표 지시 "글씨랑 버튼 너무 작아 좀 키우고,
+   슬라이드 느낌이 너무 안 나").
+
+   **진짜로 미끄러지게** 만든다: 금색 알약을 ::before로 하나 깔고 transform으로
+   좌우로 옮긴다. 어느 쪽인지는 :has()로 CSS가 직접 본다 — 그래서 **JS를 안 고쳐도**
+   된다(camera.js가 .active를 옮기는 것은 그대로다).
+   컨테이너 폭을 고정하고 버튼을 flex:1로 둬야 알약 이동거리가 정확히 한 칸이 된다. */
+.panel-head .seg{
+  position:relative; margin-left:auto; flex:none;
+  /* 이동거리를 변수로 못박는다 — translateX(100%)는 이 브라우저에서 0으로
+     해석돼 손잡이가 안 움직였다(실측으로 확인). 퍼센트 대신 px로 고정한다. */
+  --seg-w:94px;
+  width:196px; padding:4px; gap:0; border-radius:999px;
+}
+.panel-head .seg::before{
+  content:""; position:absolute; top:4px; bottom:4px; left:4px;
+  width:var(--seg-w); border-radius:999px; background:var(--gold);
+  transition:transform .18s ease;
+}
+.panel-head .seg:has(.seg-btn:nth-child(2).active)::before{ transform:translateX(var(--seg-w)); }
+.panel-head .seg .seg-btn{
+  position:relative; z-index:1; flex:1; padding:8px 6px; font-size:14px;
+  border-radius:999px; background:transparent; white-space:nowrap;
+}
+.panel-head .seg .seg-btn.active{ background:transparent; color:var(--gold-ink); }
+@media (prefers-reduced-motion: reduce){
+  /* 움직임에 민감한 사용자에게는 이동을 즉시. 상태 표시 자체는 그대로 남는다. */
+  .panel-head .seg::before{ transition:none; }
+}
 
 .buttons{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px}
 .buttons.out{margin-top:14px}
