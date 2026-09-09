@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "fonts:charset": "node ../scripts/fonts/charset.mjs",
+    "fonts:check": "node ../scripts/fonts/check-charset.mjs"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^1.0.8",

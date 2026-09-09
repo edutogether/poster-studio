@@ -42,6 +42,10 @@ jobs:
         working-directory: public
       - run: npm run lint
         working-directory: public
+      # 폰트 서브셋에 빠진 글자가 없는지(2026-09-09). 문구가 바뀌었는데 서브셋을
+      # 다시 안 만들면 그 글자가 화면에 □ 로 나온다 — 배포 전에 막는다.
+      - run: npm run fonts:check
+        working-directory: public
       - run: npm test
         working-directory: public
 

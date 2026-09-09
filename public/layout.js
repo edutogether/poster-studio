@@ -15,8 +15,8 @@ export async function ensureFonts(){
       document.fonts.load("900 120px 'Noto Serif KR'"),
       document.fonts.load("700 60px 'Noto Serif KR'"),
       document.fonts.load("400 80px 'Bebas Neue'"),
-      document.fonts.load("800 40px 'Pretendard'"),
-      document.fonts.load("900 40px 'Pretendard'"),
+      document.fonts.load("800 40px 'PretendardFull'"),
+      document.fonts.load("900 40px 'PretendardFull'"),
     ]);
     await document.fonts.ready;
   }catch(e){ /* 폰트 못 받아도 기본글꼴로 진행 */ }
@@ -27,8 +27,13 @@ export async function ensureGlyphs(meta){
   const txt = [meta.title, meta.name, meta.groupName, meta.members, meta.tagline, FEST, DATE, VENUE]
     .filter(Boolean).join(' ') + ' 주연감독출연';
   const jobs = [];
-  for(const fam of ["Black Han Sans","Noto Serif KR","Pretendard"]){
-    for(const w of [400,500,700,800,900]){
+  for(const fam of ["Black Han Sans","Noto Serif KR","PretendardFull"]){
+    /* 600(SemiBold)이 빠져 있었다 — templates.js의 클래식 판이 출연진 줄을
+       600으로 그린다. 폰트 서브셋 전에는 화면 UI가 이미 Pretendard 600을
+       받아둔 덕에 우연히 문제가 안 났는데, 캔버스를 별도 패밀리
+       (PretendardFull)로 가르자 **그 줄만 대체 글꼴로 그려졌다** —
+       포스터 픽셀 대조에서 20건 중 1건 불일치로 잡혔다(2026-09-09). */
+    for(const w of [400,500,600,700,800,900]){
       try{ jobs.push(document.fonts.load(`${w} 80px '${fam}'`, txt)); }catch(e){}
     }
   }

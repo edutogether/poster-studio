@@ -18,40 +18,91 @@
   font-weight: 400;
   font-style: normal;
   font-display: optional;
-  src: url('Pretendard-Regular.woff2') format('woff2');
+  src: url('subset/Pretendard-Regular.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 500;
   font-style: normal;
   font-display: optional;
-  src: url('Pretendard-Medium.woff2') format('woff2');
+  src: url('subset/Pretendard-Medium.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 600;
   font-style: normal;
   font-display: optional;
-  src: url('Pretendard-SemiBold.woff2') format('woff2');
+  src: url('subset/Pretendard-SemiBold.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 700;
   font-style: normal;
   font-display: optional;
-  src: url('Pretendard-Bold.woff2') format('woff2');
+  src: url('subset/Pretendard-Bold.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 800;
   font-style: normal;
   font-display: optional;
-  src: url('Pretendard-ExtraBold.woff2') format('woff2');
+  src: url('subset/Pretendard-ExtraBold.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 900;
   font-style: normal;
   font-display: optional;
+  src: url('subset/Pretendard-Black.woff2') format('woff2');
+}
+
+/* ── 캔버스(인쇄되는 포스터) 전용 전체 폰트 ──────────────────────────
+   아이가 입력하는 임의의 한글을 그리므로 서브셋으로는 안 되고 전체 커버리지가
+   필요하다. 대신 **첫 로드에는 안 받는다** — layout.js가 생성 버튼을 누른 뒤
+   document.fonts.load()로 명시적으로 받아온다. 그 구간은 어차피 AI를 10~25초
+   기다리므로 체감 지연이 없다.
+   font-display를 block으로 두는 이유: 이 패밀리는 화면 UI에 안 쓰이고 캔버스에
+   그릴 때만 쓰이는데, optional이면 늦게 온 경우 **포스터가 대체 글꼴로 그려질 수**
+   있다. 인쇄물이 달라지면 안 되므로 여기서는 기다린다. */
+@font-face {
+  font-family: 'PretendardFull';
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  src: url('Pretendard-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'PretendardFull';
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+  src: url('Pretendard-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'PretendardFull';
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+  src: url('Pretendard-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'PretendardFull';
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+  src: url('Pretendard-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'PretendardFull';
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+  src: url('Pretendard-ExtraBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'PretendardFull';
+  font-weight: 900;
+  font-style: normal;
+  font-display: block;
   src: url('Pretendard-Black.woff2') format('woff2');
 }
