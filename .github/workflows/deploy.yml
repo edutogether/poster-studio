@@ -72,12 +72,12 @@ jobs:
       # 클라이언트에 박힌 부스토큰으로 라이브 /generate를 호출해 401이 아닌지
       # (사진이 없으니 400이 정상) 확인한다 — 이게 실패하면 deploy-hosting도 안 나간다.
       # ES모듈 전환(2026-08-30)으로 BOOTH_TOKEN이 public/app.js에서 public/constants.js로,
-      # 리액트+TS 전환(2026-09-09)으로 다시 src/constants.js로 옮겨졌다 — 파일을 옮길
+      # 리액트+TS 전환(2026-09-09)으로 src/constants.js를 거쳐 src/constants.ts가 됐다 — 파일을 옮길
       # 때마다 이 경로를 같이 안 고쳐 배포가 실패한 적이 있다. 소스를 문자열로 읽는
       # 지점이라 번들러가 개입하지 않는 원본 파일을 가리켜야 한다.
       - name: 부스토큰 스모크테스트 (배포 직후 실제 인증 확인)
         run: |
-          TOKEN=$(node -pe "require('fs').readFileSync('src/constants.js','utf8').match(/const BOOTH_TOKEN = '([^']+)'/)[1]")
+          TOKEN=$(node -pe "require('fs').readFileSync('src/constants.ts','utf8').match(/const BOOTH_TOKEN = '([^']+)'/)[1]")
           STATUS=$(curl -s -o /tmp/smoke.json -w "%{http_code}" \
             -X POST -H "x-booth-token: $TOKEN" -H "content-type: application/json" -d '{}' \
             "https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/generate")

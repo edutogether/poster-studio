@@ -2,8 +2,7 @@
 /* ────────────────────────────────────────────────────────────────────
    포스터 스튜디오 부하테스트 — 라이브 `/generate` 엔드포인트에 실제
    요청을 보내 동시성별 응답시간/실패율/재시도 의심 빈도를 측정한다.
-   Bumm님 지시(2026-09-06): 서버 타임아웃(90초, functions/index.js의
-   `timeout: 90_000`)이 실제 p95 응답시간보다 30초 이상 여유가 있는지
+   Bumm님 지시(2026-09-06): 서버 타임아웃이 실제 p95 응답시간보다 30초 이상 여유가 있는지
    판정하기 위한 실측 자료를 만드는 게 목적이다.
 
    주의: --dry 없이 돌리면 실제 OpenAI 이미지 생성 비용이 나간다
@@ -15,7 +14,12 @@
      node scripts/loadtest.mjs --dry   # 헬스체크만, 비용 없음
      node scripts/loadtest.mjs         # 실제 생성 부하테스트, 실비용 발생
    ──────────────────────────────────────────────────────────────────── */
-import { API_BASE, BOOTH_TOKEN } from '../public/constants.js';
+/* 전환 1단계(2026-09-09) 재구조화로 public/constants.js -> src/constants.ts로 옮겨졌다.
+   .ts를 그대로 import하는 건 Node의 타입 스트리핑에 기댄다(Node 22.6+ 플래그, 23+ 기본).
+   이 스크립트는 CI가 아니라 사람이 로컬에서 돌리는 도구라 이 전제로 충분하다.
+   ※ 1단계 때 이 경로를 안 고쳐서 스크립트가 계속 깨져 있었다 — app.md의
+     '파일을 옮기고 스크립트의 경로를 잊는다'가 또 재발한 것이다. */
+import { API_BASE, BOOTH_TOKEN } from '../src/constants.ts';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
