@@ -12,7 +12,8 @@
     "verify:selftest": "node scripts/verify/selftest.mjs",
     "verify:capture": "node scripts/verify/capture-server.mjs",
     "fonts:charset": "node scripts/fonts/charset.mjs",
-    "fonts:check": "node scripts/fonts/check-charset.mjs"
+    "fonts:check": "node scripts/fonts/check-charset.mjs",
+    "verify:pixels": "node scripts/verify/poster-pixels-compare.mjs"
   },
   "devDependencies": {
     "@napi-rs/canvas": "^1.0.8",
