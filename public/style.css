@@ -76,7 +76,12 @@ body::after{
    14px이고, 호버 색은 이 앱의 강조색(금색)을 쓴다. 예전엔 12px에 밑줄 대신
    border-bottom을 색만 바꿔 쓰고 있었는데, 규격은 text-decoration:underline이다. */
 /* 2026-09-09 대표 지시로 오른쪽 위 → 페이지 맨 아래 가운데(Voice Cinema와 같은 자리). */
+/* 패널 바깥 안내(※)와 개인정보 링크가 같은 영역에 있되 구분되게 — 안내는
+   흐린 작은 글씨, 링크는 흰 글씨로 한 칸 띄운다. */
 .pagefoot{ text-align:center; padding:0 24px 12px }
+.notes{ list-style:none; margin:0 0 8px; padding:0; display:flex; flex-wrap:wrap;
+  justify-content:center; gap:4px 16px; color:var(--mut-dim); font-size:12.5px }
+.notes li::before{ content:"B "; }
 .privacyLink{
   display:inline-block;
   margin:6px auto 0;
@@ -122,7 +127,13 @@ body::after{
 .countdown{position:absolute; inset:0; display:grid; place-items:center; z-index:3;
   font-family:"Anton"; font-size:140px; color:#fff; background:rgba(0,0,0,.4)}
 
-label{display:block; margin:12px 0; font-size:13px; color:var(--mut); font-weight:600}
+/* 라벨을 입력칸 왼쪽에 둔다(2026-09-09 대표 지시 "이름 옆에 칸을 두면 되잖아").
+   한 항목이 한 줄이 되어 세로가 크게 줄어든다. 라벨 폭을 변수로 고정해야
+   여러 label이 서로 다른 그리드인데도 입력칸 왼쪽 끝이 세로로 가지런해진다. */
+:root{ --lbl-w:78px }
+label{display:grid; grid-template-columns:var(--lbl-w) 1fr; align-items:center; gap:10px;
+  margin:8px 0; font-size:13px; color:var(--mut); font-weight:600}
+.lbl{ white-space:nowrap }
 .hint{color:var(--mut-dim); font-weight:500; font-size:12px}
 input, select{width:100%; margin-top:6px; padding:11px 13px; border-radius:var(--rad-sm);
   border:1px solid var(--line); background:var(--field); color:var(--ink); font-size:15px;
@@ -185,6 +196,9 @@ input::placeholder{color:var(--mut-dim)}
 .btn.ghost:hover{background:var(--panel2)}
 .btn.big{font-size:15.5px; padding:14px}
 
+/* 비어 있으면 줄을 통째로 접는다 — 초기 안내문을 ※ 영역으로 옮기면서 이 자리가
+   평소엔 비게 됐다. 요소는 남겨야 오류·진행 상황이 뜰 자리가 있다. */
+.status:empty{ display:none }
 .status{margin:10px 0 0; padding:10px 13px; border-radius:var(--rad-sm); background:var(--field);
   border:1px solid var(--line); color:var(--mut); font-size:13.5px; min-height:18px; line-height:1.5}
 
@@ -227,6 +241,9 @@ input::placeholder{color:var(--mut-dim)}
   .right{position:static}
   .panel{padding:16px}
 }
+/* 좁은 화면에서는 라벨을 다시 입력칸 위로 — 78px을 떼면 입력칸이 너무 좁아진다. */
+@media (max-width:600px){ label{grid-template-columns:1fr; gap:4px} }
+
 @media (max-width:480px){
   .genreRow{flex-direction:column; align-items:stretch}
 }

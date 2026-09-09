@@ -91,17 +91,17 @@
         </div>
 
         <div id="soloFields">
-          <label>이름 <input id="studentName" placeholder="예: 김인키" maxlength="20" /></label>
+          <label><span class="lbl">이름</span><input id="studentName" placeholder="예: 김인키" maxlength="20" /></label>
         </div>
 
         <div id="groupFields" class="hidden">
-          <label>단체명 <input id="groupName" placeholder="예: 햇살초 5학년 2반 영화동아리" maxlength="40" /></label>
-          <label>출연진 <span class="hint">(선택 · 쉼표로 구분)</span>
-            <input id="members" placeholder="예: 김인키, 이영화, 박감독" maxlength="120" />
-          </label>
+          <label><span class="lbl">단체명</span><input id="groupName" placeholder="예: 햇살초 5학년 2반 영화동아리" maxlength="40" /></label>
+          <!-- "(선택 · 쉼표로 구분)"은 항상 같은 안내문이라 페이지 맨 아래 ※ 영역으로
+               옮겼다(2026-09-09 대표 지시). 여기서는 라벨과 입력칸만 남는다. -->
+          <label><span class="lbl">출연진</span><input id="members" placeholder="예: 김인키, 이영화, 박감독" maxlength="120" /></label>
         </div>
 
-        <label>영화 제목 <input id="movieTitle" placeholder="예: 우주를 달리는 인키" maxlength="40" /></label>
+        <label><span class="lbl">영화 제목</span><input id="movieTitle" placeholder="예: 우주를 달리는 인키" maxlength="40" /></label>
 
         <!-- 홍보 문구 입력란은 삭제(2026-09-03 대표 지시) — 항상 장르별 자동 추천
              문구를 쓴다. api.js의 getMeta()가 val('tagline')로 읽던 걸 그대로 두되,
@@ -109,7 +109,7 @@
              `$(id)?.value`) 자동으로 GENRES[genre].taglines 중 하나를 고르므로
              JS는 손대지 않아도 된다. -->
         <div class="genreRow">
-          <label class="genreField">장르
+          <label class="genreField"><span class="lbl">장르</span>
             <select id="genre">
               <option value="animation">🎨 애니메이션</option>
               <option value="fantasy">🐉 판타지</option>
@@ -124,7 +124,11 @@
           <button id="generateBtn" class="btn primary big genreRowBtn">✨ AI 포스터 만들기</button>
         </div>
         <button id="fallbackBtn" class="btn ghost hidden">🎨 AI 없이 기본 버전으로 계속하기</button>
-        <p id="status" class="status">카메라를 켜고 사진을 촬영해 주세요.</p>
+        <!-- 초기 안내문("카메라를 켜고 사진을 촬영해 주세요.")은 페이지 맨 아래 ※ 영역으로
+             옮겼다(2026-09-09 대표 지시 "그 줄은 아예 없애버려").
+             **요소 자체는 남긴다** — 여기는 오류·진행 상황이 뜨는 자리라 없애면 안 된다.
+             비어 있을 때는 CSS(.status:empty)가 줄을 통째로 접어 자리를 안 차지한다. -->
+        <p id="status" class="status"></p>
       </div>
     </section>
 
@@ -156,7 +160,15 @@
        target="_blank"는 그대로 둔다 — 같은 탭에서 열면 촬영해둔 사진이 든
        세션이 통째로 날아간다. 아이가 촬영 후 이 링크를 눌렀을 때 실제로
        일어나는 일이라 문구보다 우선한다. -->
+  <!-- 항상 같은 안내문을 패널 바깥 맨 아래에 모은다(2026-09-09 대표 지시
+       "맨 마지막에 박스 바깥에 당구장 붙여서 말하면 되잖아").
+       **오류·상태 표시는 여기 오지 않는다** — 그건 #status 자리에 그대로 있어야 한다.
+       여기 오는 것은 화면이 켜져 있는 내내 똑같은 문장뿐이다. -->
   <footer class="pagefoot">
+    <ul class="notes">
+      <li>카메라를 켜고 사진을 촬영해 주세요.</li>
+      <li>출연진은 선택 항목이며 쉼표로 구분해 적어 주세요.</li>
+    </ul>
     <a class="privacyLink" href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>
   </footer>
 
