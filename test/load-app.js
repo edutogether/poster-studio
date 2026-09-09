@@ -94,7 +94,7 @@ function makeCanvasElement() {
   el.height = 0;
   el.getContext = () => new FakeCtx();
   el.toDataURL = () => 'data:image/png;base64,FAKE';
-  // camera.js의 shotBtn 캡처 흐름(cap.toBlob(...))을 테스트하려면 실제
+  // 촬영 흐름(cap.toBlob(...))을 테스트하려면 실제
   // 인코딩 없이도 콜백에 뭔가 넘겨줘야 한다 — 실제 Blob 인스턴스면 충분하다
   // (내용이 무엇인지는 카메라 캡처 로직이 신경 쓰지 않음).
   el.toBlob = (cb, type) => cb(new Blob(['FAKE'], { type: type || 'image/png' }));
@@ -138,7 +138,7 @@ function makeFakeDocument(createRealCanvas) {
     addEventListener() {},
     querySelector: () => null,
     head: { appendChild() {} },
-    // print.js가 여기 붙이는 #printArea를 테스트가 나중에 들여다볼 수 있도록
+    // 인쇄 경로가 붙이는 #printArea를 테스트가 나중에 들여다볼 수 있도록
     // (실제로 인쇄가 열리는지·정리되는지 확인하려면) 없애지 않고 기록해둔다.
     body: { appended: [], appendChild(el) { this.appended.push(el); } },
     visibilityState: 'visible',
@@ -170,7 +170,7 @@ export async function loadApp({ createRealCanvas } = {}) {
   vi.stubGlobal('FormData', FakeFormData);
   // URL 자체를 통째로 갈아치우면 vite/vitest 내부(모듈 해석 등)가 쓰는 진짜
   // `new URL(...)` 생성자가 깨진다(실제로 겪음: "URL is not a constructor") —
-  // 진짜 URL 클래스는 그대로 두고, camera.js가 쓰는 두 정적 메서드만 흉내낸다.
+  // 진짜 URL 클래스는 그대로 두고, 촬영 경로가 쓰는 두 정적 메서드만 흉내낸다.
   URL.createObjectURL = () => 'blob:fake';
   URL.revokeObjectURL = () => {};
 
@@ -193,7 +193,7 @@ export async function loadApp({ createRealCanvas } = {}) {
   const flat = { document, window: windowStub, navigator: navigatorStub };
   Object.assign(flat, stateMod, constantsMod, layoutMod, templatesMod, posterMod, faviconMod);
 
-  // app.fetch = mockFn 같은 기존 테스트 패턴이 실제 전역 fetch(=api.js가 호출을
+  // app.fetch = mockFn 같은 기존 테스트 패턴이 실제 전역 fetch(=앱이 호출을
   // 읽어들이는 그 fetch)를 바꾸도록, 단순 값 복사가 아니라 getter/setter로
   // globalThis.fetch에 그대로 연결한다.
   Object.defineProperty(flat, 'fetch', {

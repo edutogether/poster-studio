@@ -69,7 +69,7 @@ body::after{
 .app{display:grid; grid-template-columns:minmax(360px,1.1fr) minmax(420px,1.05fr);
   gap:18px; max-width:1320px; margin:18px auto; padding:0 24px 40px}
 /* align-self:start — 왼쪽이 그리드 기본 stretch로 오른쪽 크기에 맞춰 같이
-   늘어나면, JS(layout-match.js)가 왼쪽 높이를 재서 오른쪽에 꽂아줄 때
+   늘어나면, JS(src/useLayoutMatch.ts)가 왼쪽 높이를 재서 오른쪽에 꽂아줄 때
    "오른쪽이 커지면 그리드가 왼쪽도 늘리고 → 그 늘어난 왼쪽을 다시 재서
    오른쪽에 꽂고 → 또 늘어나고"가 무한 반복되는 피드백 루프가 생긴다(직접
    겪음 — 몇 프레임 만에 화면이 1000px 넘게 걷잡을 수 없이 커졌다). 왼쪽을
@@ -135,7 +135,7 @@ input::placeholder{color:var(--mut-dim)}
    어느 한쪽 상태에 CSS 값을 맞추면 반드시 다른 상태에서 다시 어긋났다(대표가
    "왼쪽이 짧다"→"오른쪽이 짧다"를 번갈아 지적한 이유). CSS 그리드 stretch로도
    풀어보려 했으나 캔버스의 height:100%가 아직 크기가 안 정해진 조상을 기준으로
-   계산되며 순환 참조로 오히려 더 커지는 버그가 났다 — `layout-match.js`가
+   계산되며 순환 참조로 오히려 더 커지는 버그가 났다 — `useLayoutMatch`가
    왼쪽의 실제 렌더링 높이를 재서 `.right`에 `min-height` 인라인 스타일로
    그대로 꽂아준다(ResizeObserver로 왼쪽 높이가 바뀔 때마다 자동 재계산 —
    화면 크기·갤러리 상태 어떤 조합이든 따로 튜닝할 필요 없음). 아래 `.stage`는

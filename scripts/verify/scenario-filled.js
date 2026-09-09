@@ -92,7 +92,7 @@ window.__posterScenarioFilled = async () => {
   }
 
   // 캔버스 드로잉이 끝나고 레이아웃이 안정될 시간을 준다
-  // (layout-match.js의 ResizeObserver가 오른쪽 패널 높이를 다시 잡는다)
+  // (useLayoutMatch의 ResizeObserver가 오른쪽 패널 높이를 다시 잡는다)
   await wait(800);
 
   window.fetch = realFetch;
