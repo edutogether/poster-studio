@@ -96,7 +96,7 @@ body::after{
      구조를 바꾸지 않고 **위 여백만 화면 높이에 따라 늘린다** — 여유가 없는 크기에서는
      max()가 원래 값(18px)으로 되돌려 잘리지 않는다. 실측: 1080은 여유가 없어 18px 그대로,
      1200은 50px, 1440은 60px까지 내려간다. */
-  margin:max(18px, min(60px, calc(100vh - 1150px))) auto 18px; padding:0 24px 40px}
+  margin:max(18px, min(90px, calc(100vh - 1115px))) auto 18px; padding:0 24px 40px}
 /* align-self:start — 왼쪽이 그리드 기본 stretch로 오른쪽 크기에 맞춰 같이
    늘어나면, JS(layout-match.js)가 왼쪽 높이를 재서 오른쪽에 꽂아줄 때
    "오른쪽이 커지면 그리드가 왼쪽도 늘리고 → 그 늘어난 왼쪽을 다시 재서
@@ -140,6 +140,15 @@ input::placeholder{color:var(--mut-dim)}
   color:var(--mut); font-weight:700; font-size:14px; cursor:pointer; font-family:var(--font)}
 .seg-btn:hover{color:var(--ink)}
 .seg-btn.active{background:var(--gold); color:var(--gold-ink)}
+
+/* 제목 줄 안의 작은 좌우 스위치(2026-09-09 대표 지시 "스위치 켜듯이 좌우로 움직이는
+   버튼, 우측정렬, 작게"). 금색 손잡이가 왼쪽(개인) ↔ 오른쪽(단체)으로 움직이고
+   무엇이 선택됐는지 글자로 보인다 — 켬/끔이 아니라 둘 중 하나를 고르는 것으로 읽혀야
+   해서 라벨을 남긴다(아이 손님도 쓰는 화면이다). 색은 기존 선택 색(--gold) 그대로다.
+   제목 줄 높이를 키우지 않도록 세로 패딩을 작게 잡는다. */
+.panel-head .seg{ margin-left:auto; flex:none; padding:3px; gap:2px; border-radius:999px }
+.panel-head .seg .seg-btn{ flex:none; padding:4px 10px; font-size:12px; border-radius:999px;
+  white-space:nowrap }
 
 .buttons{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px}
 .buttons.out{margin-top:14px}
@@ -214,7 +223,7 @@ input::placeholder{color:var(--mut-dim)}
   .tagline{font-size:14px}
   /* 같은 취지. 963(대표님 화면)에서 위 8px -> 24px가 되고 아래 33px -> 17px로
      줄어 약 58:42가 된다. 768처럼 여유가 없는 크기는 calc가 음수라 8px 그대로다. */
-  .app{gap:10px; margin:max(8px, min(28px, calc(100vh - 939px))) auto 8px; padding:0 24px 14px}
+  .app{gap:10px; margin:max(8px, min(49px, calc(100vh - 918px))) auto 8px; padding:0 24px 14px}
   .left{gap:8px}
   .panel{padding:10px}
   .panel-head{margin-bottom:5px}
@@ -234,6 +243,13 @@ input::placeholder{color:var(--mut-dim)}
   .gallery{margin-top:8px}
   .buttons.out{margin-top:10px}
 }
+/* 세로가 아주 짧은 화면. 개인/단체를 제목 줄 스위치로 옮기면서(2026-09-09)
+   이 크기에도 약 44px 여유가 생겼다 — 그중 일부를 위로 돌린다.
+   ≤1000 블록보다 뒤에 와야 이깁니다. */
+@media (max-height:820px){
+  .app{margin-top:max(8px, min(30px, calc(100vh - 733px)))}
+}
+
 @media (max-height:680px){
   .reel{width:32px; height:32px; font-size:18px}
   .topbar h1{font-size:17px}

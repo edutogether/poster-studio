@@ -78,11 +78,16 @@
       </div>
 
       <div class="panel">
-        <div class="panel-head"><span class="num">2</span><h2>포스터 정보</h2></div>
-
-        <div class="seg" id="modeSeg">
-          <button class="seg-btn active" data-mode="solo">👤 개인</button>
-          <button class="seg-btn" data-mode="group">👥 단체</button>
+        <!-- 개인/단체 선택은 2026-09-09 대표 지시로 제목 줄 오른쪽 끝의 작은
+             좌우 스위치가 됐다. 예전엔 제목 아래에서 가로 한 줄을 통째로 썼다.
+             **마크업 구조(#modeSeg, .seg-btn, data-mode)는 그대로 둔다** —
+             camera.js가 그것으로 상태를 바꾸고 입력칸을 전환하므로, 자리와
+             모양만 바꾸고 동작은 손대지 않는다. -->
+        <div class="panel-head"><span class="num">2</span><h2>포스터 정보</h2>
+          <div class="seg" id="modeSeg">
+            <button class="seg-btn active" data-mode="solo">👤 개인</button>
+            <button class="seg-btn" data-mode="group">👥 단체</button>
+          </div>
         </div>
 
         <div id="soloFields">
