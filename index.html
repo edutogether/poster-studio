@@ -4,6 +4,28 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>InKY Poster Studio</title>
+
+  <!-- 카카오톡·SNS 공유 카드(2026-09-10 대표 지시). 이 태그가 없으면 주소만 덩그러니 뜬다.
+       값은 포털(`apps.ts`)이 확정한 6개 앱 공통 규칙이다 — `og:title`은 `{앱 이름} | {hook}`
+       형식이라 임의로 바꾸지 않는다.
+
+       🔴 그림은 **이 도메인에서 직접 배포한다**(`public/og.jpg` → `dist/og.jpg` → `/og.jpg`).
+       포털 주소(`edutogether.kr/assets/og/poster.jpg`)를 그대로 가리키면 **다른 저장소의
+       배포가 막힐 때 여섯 앱의 공유 카드가 같이 멈춘다** — 2026-09-10에 포털 CI가 40분 넘게
+       막힌 일이 실제로 있었다. 대신 포털이 그림을 바꾸면 여기도 같이 바꿔야 한다(app.md 참고).
+
+       🔴 카카오톡은 한 번 잡은 카드를 오래 캐시한다. **한 번에 맞는 값으로 나가야 하고**,
+       확인은 이미 공유해 본 주소가 아니라 **새 링크**로 한다. -->
+  <meta property="og:title" content="Poster Studio | 사진 한 장이면 나도 영화 주인공 !" />
+  <meta property="og:description" content="AI가 뚝딱 만들어주는 나만의 특별한 영화 포스터를 지금 만나보세요 🎬✨" />
+  <meta property="og:url" content="https://poster.edutogether.kr/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:image" content="https://poster.edutogether.kr/og.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Serif+KR:wght@500;700;900&family=Anton&family=Bebas+Neue&display=swap" rel="stylesheet" />
