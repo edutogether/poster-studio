@@ -53,13 +53,29 @@ window.__posterTiming = async () => {
   }
 
   /* 2) 캔버스 합성 — 진짜 프로덕션 경로(buildAll)를 그대로 태워 잰다.
-        scenario-filled.js와 같은 방식으로 /generate만 가로챈다. */
+        scenario-filled.js와 **같은 구동 방식**을 쓴다: 앱 내부 상태를 직접
+        건드리지 않고 브라우저 API 두 개(getUserMedia, fetch)만 갈아끼운 뒤
+        진짜 버튼을 누른다.
+
+        예전엔 `import('/state.js')`로 state.capturedBlob을 직접 주입했는데,
+        빌드하면 모듈이 번들로 합쳐져 그 URL이 사라진다 — 그런데 이 블록은
+        try/catch에 감싸여 있어서 **터지지 않고 out.canvas.error에 조용히
+        담긴 채 타이밍 값만 비어버린다.** 검증 도구가 조용히 아무것도 재지
+        않는 게 가장 나쁜 실패 방식이라 구동 방식을 바꿨다.
+        측정 구간(t0 → 갤러리 4장)은 그대로라 기존 기준선과 그대로 비교된다. */
   try {
-    const { state } = await import('/state.js');
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const mk = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), c); return c; };
-    const photo = mk(640, 480, (x) => { x.fillStyle = '#3b4a63'; x.fillRect(0, 0, 640, 480); });
-    state.capturedBlob = await new Promise((r) => photo.toBlob(r, 'image/jpeg', 0.85));
-    state.genCount = 0;
+
+    // 가짜 카메라(정지 화면 — 움직이면 촬영 결과가 매번 달라져 대조가 깨진다)
+    const camCanvas = mk(1280, 960, (x) => {
+      x.fillStyle = '#3b4a63'; x.fillRect(0, 0, 1280, 960);
+      x.fillStyle = '#e9b949'; x.beginPath(); x.arc(640, 400, 150, 0, Math.PI * 2); x.fill();
+      x.fillStyle = '#1b2233'; x.fillRect(0, 700, 1280, 260);
+    });
+    const fakeStream = camCanvas.captureStream(30);
+    const realGUM = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = async () => fakeStream;
 
     const realFetch = window.fetch;
     window.fetch = async (u, o) => {
@@ -79,6 +95,17 @@ window.__posterTiming = async () => {
     set('studentName', '김인키');
     set('movieTitle', '우주를 달리는 인키');
 
+    // 촬영까지는 진짜 버튼으로 간다(측정 구간 밖 — 3·2·1 카운트다운 약 2.65초 포함).
+    document.getElementById('startBtn').click();
+    const video = document.querySelector('#video');
+    for (let i = 0; i < 60 && !(video && video.videoWidth); i++) await wait(100);
+    document.getElementById('shotBtn').click();
+    const snapshot = document.getElementById('snapshot');
+    for (let i = 0; i < 80; i++) {
+      if (snapshot && !snapshot.classList.contains('hidden') && snapshot.src) break;
+      await wait(100);
+    }
+
     const gallery = document.getElementById('gallery');
     const t0 = performance.now();
     document.getElementById('generateBtn').click();
@@ -88,8 +115,10 @@ window.__posterTiming = async () => {
       await new Promise((r) => setTimeout(r, 8));
     }
     out.canvas.composeMs = Math.round(performance.now() - t0);
-    out.canvas.posters = state.posters.length;
+    // 포스터 수는 앱 내부(state.posters)가 아니라 화면에서 센다 — 번들 후에도 동일하게 읽힌다.
+    out.canvas.posters = gallery ? gallery.children.length : 0;
     window.fetch = realFetch;
+    navigator.mediaDevices.getUserMedia = realGUM;
   } catch (e) {
     out.canvas.error = String(e && e.message || e);
   }

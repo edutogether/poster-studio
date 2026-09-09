@@ -40,6 +40,19 @@
         "-c-1"
       ],
       "port": 5500
+    },
+    {
+      "//": "1단계(빌드만 도입, 언어 변경 없음) 커밋 9cb3651을 워크트리에서 빌드해 띄운다. 포트는 5500이어야 한다 — 다른 포트로 띄우면 /health가 CORS로 막혀 상태문구가 달라지고 그 자체가 가짜 대조 차이를 만든다(실제로 겪음). 위 5500 서버들과 동시에 켜지 않는다.",
+      "name": "poster-studio-step1-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "http-server",
+        ".claude/worktrees/step1/dist",
+        "-p",
+        "5500",
+        "-c-1"
+      ],
+      "port": 5500
     }
   ]
 }
