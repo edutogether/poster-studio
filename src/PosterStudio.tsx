@@ -344,11 +344,16 @@ export default function PosterStudio() {
         </div>
 
         <div className="panel">
-          <div className="panel-head"><span className="num">2</span><h2>포스터 정보</h2></div>
-
-          <div className="seg" id="modeSeg">
-            <button className={mode === 'solo' ? 'seg-btn active' : 'seg-btn'} data-mode="solo" onClick={() => setMode('solo')}>👤 개인</button>
-            <button className={mode === 'group' ? 'seg-btn active' : 'seg-btn'} data-mode="group" onClick={() => setMode('group')}>👥 단체</button>
+          {/* 개인/단체 선택은 2026-09-09 대표 지시로 제목 줄 오른쪽 끝의 작은
+              좌우 스위치가 됐다. 예전엔 제목 아래에서 가로 한 줄을 통째로 썼고,
+              그 한 줄이 없어지면서 약 44px이 여백으로 돌아갔다.
+              id·클래스·data-mode를 그대로 두는 이유는 대조 스냅샷과 라이브(master)
+              쪽 구조를 같게 유지하기 위해서다. */}
+          <div className="panel-head"><span className="num">2</span><h2>포스터 정보</h2>
+            <div className="seg" id="modeSeg">
+              <button className={mode === 'solo' ? 'seg-btn active' : 'seg-btn'} data-mode="solo" onClick={() => setMode('solo')}>👤 개인</button>
+              <button className={mode === 'group' ? 'seg-btn active' : 'seg-btn'} data-mode="group" onClick={() => setMode('group')}>👥 단체</button>
+            </div>
           </div>
 
           <div id="soloFields" className={mode !== 'solo' ? 'hidden' : undefined}>
