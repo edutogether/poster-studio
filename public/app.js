@@ -19,11 +19,9 @@
    속성으로 옮겼다(state.capturedBlob = ... 형태). 동작/로직 자체는 이번에도
    변경 없음, 상태를 담는 그릇과 로드 방식만 바뀌었다. */
 import { API_BASE } from './constants.js';
-import { pctx } from './dom.js';
 import { setStatus } from './dom.js';
-import { W, H } from './constants.js';
 import './camera.js';
-import './api.js';
+import { drawPlaceholder } from './api.js';
 import './print.js';
 import './favicon.js';
 
@@ -49,14 +47,10 @@ import './favicon.js';
   }
 })();
 
-/* ── 초기 플레이스홀더 ── */
-(function placeholder(){
-  pctx.fillStyle='#0d0f14'; pctx.fillRect(0,0,W,H);
-  pctx.fillStyle='#e9b949'; pctx.textAlign='center'; pctx.font="900 84px 'Black Han Sans', sans-serif";
-  pctx.fillText('🎬', W/2, 760); pctx.fillStyle='#f4f6fb';
-  pctx.font="900 56px 'Black Han Sans', sans-serif"; pctx.fillText('AI 영화 포스터', W/2, 880);
-  pctx.fillStyle='#aeb7d0'; pctx.font="500 30px sans-serif"; pctx.fillText('촬영 후 이곳에 4가지 버전이 표시됩니다', W/2, 950);
-})();
+/* ── 초기 플레이스홀더 ── 그리는 코드 자체는 api.js로 옮겼다.
+   초기화 버튼(2026-09-09)이 포스터를 지운 뒤 같은 그림으로 되돌려야 하는데,
+   두 벌로 두면 한쪽만 고치는 사고가 난다. */
+drawPlaceholder();
 
 // 첫 의미있는 화면(플레이스홀더 포스터)이 그려졌으니 부트 스플래시를 내린다(index.html 참고).
 window.__posterStudioHideBootSplash?.();

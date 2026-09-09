@@ -3,7 +3,7 @@
    빌드. app.js 분리 작업(2026-08-30)으로 이 파일로 이동, 이어서 ES모듈
    전환(2026-08-30) — 로직 변경 없음.
    ──────────────────────────────────────────────────────────────────── */
-import { $, val, pick, GENRES, API_BASE, BOOTH_TOKEN } from './constants.js';
+import { $, val, pick, GENRES, API_BASE, BOOTH_TOKEN, W, H } from './constants.js';
 import { setStatus, pctx } from './dom.js';
 import { state } from './state.js';
 import { ensureFonts, ensureGlyphs, ensureLogo, loadImg } from './layout.js';
@@ -110,6 +110,34 @@ $('fallbackBtn').onclick = async () => {
   setStatus('AI 없이 기본 버전을 만드는 중…');
   await buildAll([makePlaceholderArt(state.pendingMeta.genre)], state.pendingMeta);
   setStatus('AI 그림 없이 만든 기본 버전이에요(얼굴 그림은 안 들어갑니다). 인쇄는 그대로 가능해요.');
+};
+
+/* ── 초기 플레이스홀더 그림 ── app.js가 부팅 때, 초기화 버튼이 되돌릴 때 쓴다. */
+export function drawPlaceholder(){
+  pctx.fillStyle='#0d0f14'; pctx.fillRect(0,0,W,H);
+  pctx.fillStyle='#e9b949'; pctx.textAlign='center'; pctx.font="900 84px 'Black Han Sans', sans-serif";
+  pctx.fillText('🎬', W/2, 760); pctx.fillStyle='#f4f6fb';
+  pctx.font="900 56px 'Black Han Sans', sans-serif"; pctx.fillText('AI 영화 포스터', W/2, 880);
+  pctx.fillStyle='#aeb7d0'; pctx.font="500 30px sans-serif"; pctx.fillText('촬영 후 이곳에 4가지 버전이 표시됩니다', W/2, 950);
+}
+
+/* ── 초기화 ── 입력한 것을 다 지우되 **촬영한 사진은 남긴다**(2026-09-09 대표 지시).
+   `다시 촬영`과 정반대다 — 그건 사진만 다시 찍고 입력은 남기고, 이쪽은 사진만 남기고
+   입력을 지운다. 확인창은 두지 않는다(부스에서 아이가 쓰는 화면).
+   state.capturedBlob과 #snapshot은 일부러 건드리지 않는다. */
+$('resetBtn').onclick = () => {
+  if(isGenerating) return;
+  for(const id of ['studentName','groupName','members','movieTitle']) $(id).value = '';
+  $('genre').selectedIndex = 0;
+  // 개인/단체는 camera.js의 기존 핸들러를 그대로 태운다 — 여기서 클래스를
+  // 직접 토글하면 같은 로직이 두 벌이 된다. 탐색 방식도 camera.js와 맞춘다.
+  $('modeSeg').querySelectorAll('.seg-btn').forEach(b => { if(b.dataset.mode === 'solo') b.click(); });
+  state.posters = []; state.selected = 0; state.pendingMeta = null; state.genCount = 0;
+  renderGallery();
+  drawPlaceholder();
+  $('fallbackBtn').classList.add('hidden');
+  $('regenBtn').disabled = false; $('regenBtn').textContent = '🔄 다른 그림으로';
+  setStatus('');
 };
 
 /* ── 그림 N장 × 템플릿 4종 = 갤러리 ── */

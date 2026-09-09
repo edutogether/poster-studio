@@ -142,9 +142,20 @@ input:hover, select:hover{border-color:rgba(255,255,255,.2)}
 input:focus, select:focus{outline:none; border-color:var(--gold)}
 input::placeholder{color:var(--mut-dim)}
 
-.genreRow{display:flex; gap:10px; align-items:flex-end; margin:12px 0}
-.genreRow .genreField{flex:1; margin:0; min-width:0}
-.genreRowBtn{flex:1; margin:0; min-width:0}
+/* 만들기 줄: 왼쪽 1/3 초기화, 오른쪽 2/3 AI 포스터 만들기.
+   초기화는 ghost라 이미 약하지만, `다시 촬영`(사진을 다시 찍는 것)과 헷갈리면
+   안 되는 버튼이라 한 단계 더 죽여 둔다. */
+/* 장르 | 초기화 1 | 만들기 2 — 두 버튼의 1 : 2가 대표님이 지정한 비율이다.
+   장르 칸을 minmax(0,auto)로 두고 select에 min-width:0을 줘서, 폭이 모자랄 때
+   **장르 쪽이 먼저 좁아지고 만들기 버튼 글자는 끝까지 안 잘리게** 한다
+   (1366x768에서 그냥 auto로 두면 여유가 2px밖에 안 남았다 — 실측). */
+.makeRow{display:grid; grid-template-columns:minmax(0,auto) minmax(0,1fr) minmax(230px,2fr);
+  gap:8px; margin:12px 0}
+.makeRow .btn{white-space:nowrap}
+.makeRow .btn{margin:0; min-width:0}
+.makeRow .genreField{margin:0; min-width:0}
+.makeRow .genreField select{min-width:0}
+#resetBtn{color:var(--mut); font-weight:600}
 
 .seg{display:flex; gap:4px; background:var(--field); padding:4px; border-radius:var(--rad-sm); border:1px solid var(--line)}
 .seg-btn{flex:1; padding:9px; border:0; border-radius:8px; background:transparent;
@@ -245,7 +256,7 @@ input::placeholder{color:var(--mut-dim)}
 @media (max-width:600px){ label{grid-template-columns:1fr; gap:4px} }
 
 @media (max-width:480px){
-  .genreRow{flex-direction:column; align-items:stretch}
+  .makeRow{grid-template-columns:1fr}
 }
 
 /* ── 낮은 화면(4:3 모니터, 작은 노트북 등)에서 스크롤 없이도 안 잘리게 여백을
@@ -274,7 +285,7 @@ input::placeholder{color:var(--mut-dim)}
   .privacyLink{margin:2px auto 0}
   label{margin:5px 0}
   input, select{padding:9px 11px}
-  .genreRow{margin:6px 0}
+  .makeRow{margin:6px 0}
   .buttons{margin-top:7px; gap:8px}
   .status{margin-top:6px; padding:8px 12px; min-height:16px}
   .seg-btn{padding:8px}
