@@ -10,7 +10,8 @@
 제4회 인천어린이청소년영화제(**2026-11-14, 인천 CGV**) 체험부스 웹앱. 아이가 웹캠으로 사진을 찍으면
 AI가 영화 포스터 그림을 만들고, 브라우저 캔버스가 제목·크레딧을 합성해 4종을 만든 뒤 4×6 인화지로 즉석 인쇄한다.
 
-- **정적 프론트엔드** `public/` → Firebase Hosting (`https://poster-studio.web.app`)
+- **프론트엔드** TypeScript + React 19 + Vite. 소스는 `src/`, 배포되는 것은 빌드 산출물 `dist/`
+  → Firebase Hosting (`https://poster-studio.web.app`). `public/`은 이제 정적 자산만 담는다.
 - **백엔드** `functions/` → Firebase Cloud Functions v2, `posterStudio` (asia-northeast3)
   — 하는 일은 OpenAI 이미지 생성 중계 하나뿐이다.
 - Firebase 프로젝트: `inky-poster-studio`
@@ -29,13 +30,18 @@ npm test          # vitest run — 56개, OpenAI/Firestore 실호출 0건
 npm run lint      # eslint
 npm run format    # prettier
 
-# 프론트엔드
-cd public && npm ci
-npm test          # vitest run — 57개
-npm run lint      # eslint
+# 프론트엔드 (저장소 루트)
+npm ci
+npm test              # vitest run — 66개 (화면 전체를 실제로 렌더한다)
+npm run lint          # eslint
+npm run typecheck     # TS strict
+npm run build         # -> dist/ (배포되는 것)
+npm run fonts:check   # 서브셋 폰트에 빠진 글자가 없는지 — 없으면 화면에 □가 나온다
+npm run verify:selftest  # 대조 도구가 빈 게이트가 아닌지
 ```
 
-로컬 미리보기는 `public/`을 정적 서버로 열면 된다(예: VS Code Live Server, 포트 5500).
+로컬 미리보기는 `npm run dev`(Vite). 라이브와 같은 형태로 보려면 `npm run build` 후 `dist/`를
+정적 서버로 연다(포트 5500).
 `localhost:5500`·`localhost:8080`은 `functions/index.js`의 `ALLOWED_ORIGINS`에 이미 들어 있다.
 단, AI 생성은 로컬에서도 **라이브 Functions를 호출**한다 — 즉 진짜 돈이 나간다(아래 참고).
 
@@ -58,7 +64,7 @@ npm run lint      # eslint
 ## 절대 하면 안 되는 것
 
 1. **API 키·시크릿을 코드에 쓰지 않는다.** `OPENAI_API_KEY`·`BOOTH_TOKEN`은 Firebase Secret Manager에 있다.
-   (`public/constants.js`의 `BOOTH_TOKEN`은 예외처럼 보이지만 "정적 사이트라 어차피 공개되는 문지기 값"이라고
+   (`src/constants.ts`의 `BOOTH_TOKEN`은 예외처럼 보이지만 "정적 사이트라 어차피 공개되는 문지기 값"이라고
    합의된 것이다 — 진짜 비밀을 여기 추가하지 말 것.)
 2. **테스트에서 진짜 OpenAI를 호출하지 않는다.** 매 실행마다 돈이 나가고 인터넷이 필요해진다.
    주입 지점이 이미 있다: `_setClientForTesting` / `_setSleepForTesting` / `_setCounterImplForTesting` /
@@ -94,7 +100,7 @@ Cloud Run/GFE는 클라이언트가 보낸 XFF를 지우지 않고 뒤에 덧붙
 120초  OPENAI_TIMEOUT_MS      한 번의 OpenAI 호출
 125초  GENERATE_BUDGET_MS     재시도·파라미터 폴백까지 포함한 요청 전체 예산
 140초  timeoutSeconds         Cloud Functions 플랫폼 강제종료
-150초  public/api.js의 abort  프론트 fetch 중단
+150초  src/PosterStudio.tsx의 abort  프론트 fetch 중단
 ```
 
 이 순서가 깨지면(예: OpenAI 타임아웃만 올리면) 플랫폼이 함수를 **강제종료**하고, 그러면
@@ -102,16 +108,18 @@ Cloud Run/GFE는 클라이언트가 보낸 XFF를 지우지 않고 뒤에 덧붙
 사진이 그대로 남고, README가 명시한 "임시 파일은 정상/오류 경로 모두에서 삭제됩니다" 약속이 깨진다.
 한 값을 바꾸면 네 개를 같이 확인할 것. `scripts/loadtest.mjs`의 `SERVER_TIMEOUT_MS`도 같은 값을 물고 있다.
 
-### 3. `public/` 밑 설정파일은 `firebase.json` hosting `ignore`에 넣어야 한다
+### 3. `public/`에 파일을 추가하면 그대로 라이브에 서빙된다
 
-`public/`이 통째로 배포 폴더라, 여기에 새 설정파일을 만들면 **그대로 라이브에 서빙된다.**
+전환(2026-09-09) 전에는 `public/`이 통째로 배포 폴더였다. 지금은 `dist/`가 배포 폴더지만
+**Vite가 `public/`의 내용을 `dist/` 루트로 그대로 복사하므로 결과는 같다.**
 vitest 이전 때 `public/vitest.config.js`가 실제로 라이브에서 200으로 응답하고 있었다(2026-09-07 발견).
-`public/`에 파일을 추가할 때마다 `firebase.json`의 `ignore` 목록을 확인하고, 배포 후
-`curl https://poster-studio.web.app/<파일명>`이 404인지 확인한다.
+`public/`에 파일을 추가할 때마다 배포 후 `curl https://poster-studio.web.app/<파일명>`이
+404인지 확인한다.
 
 ### 4. 부스토큰은 3곳이 동시에 맞아야 한다
 
-`public/constants.js`의 `BOOTH_TOKEN` ↔ Secret Manager의 `BOOTH_TOKEN` ↔ `functions/index.js`의 `ALLOWED_ORIGINS`.
+`src/constants.ts`의 `BOOTH_TOKEN` ↔ Secret Manager의 `BOOTH_TOKEN` ↔ `functions/index.js`의 `ALLOWED_ORIGINS`.
+(CI 스모크테스트가 이 파일을 문자열로 읽는다 — 파일을 옮기면 `.github/workflows/deploy.yml`도 같이 고칠 것.)
 하나만 먼저 배포되면 그 사이에 부스 전체가 401이 된다. **반드시 같은 커밋에** 넣는다.
 교체 절차는 `_docs/ops/RUNBOOK.md` "부스토큰 교체".
 
@@ -160,13 +168,14 @@ checkBoothToken → parseMultipart → requirePhoto → rateLimit → ipRateLimi
 |---|---|
 | `functions/index.js` | 전부 여기 있다 — 미들웨어 체인, 프롬프트 구성, OpenAI 호출, Firestore 카운터, 스케줄러 2종 |
 | `functions/test/index.test.js` | 백엔드 테스트 전부 |
-| `public/app.js` | 진입점(ES모듈). 나머지 모듈을 import해 부팅 |
-| `public/camera.js` | 웹캠·촬영·개인/단체 토글 |
-| `public/api.js` | `/generate` 호출, 실패 시 폴백 버튼, 갤러리 |
-| `public/layout.js` · `templates.js` | 캔버스 타이포·포스터 4종 |
-| `public/print.js` | PNG 저장·인쇄 |
-| `public/state.js` | 모듈 간 공유 상태(ES모듈 import 바인딩이 읽기전용이라 객체 하나로 모아둠) |
-| `public/test/load-app.js` | 프론트 테스트 하네스 — 가짜 document/canvas를 만들고 실제 모듈을 동적 import |
+| `src/main.tsx` | 진입점. 기존 `main.app` 요소 **안에** 마운트한다(래퍼 div를 만들지 않는다) |
+| `src/PosterStudio.tsx` | 화면과 로직 전부 — 촬영, `/generate` 호출, 폴백, 갤러리, 초기화, 인쇄 |
+| `src/layout.ts` · `templates.ts` · `poster.ts` | 캔버스 타이포·포스터 4종 |
+| `src/useLayoutMatch.ts` | 왼쪽 기둥 높이를 재서 오른쪽에 꽂아준다(ResizeObserver). 방향을 뒤집으면 폭주한다 |
+| `src/constants.ts` | 부스토큰·장르·상수 |
+| `test/react-setup.ts` | 프론트 테스트 하네스 — 가짜 카메라/캔버스/폰트를 깔고 진짜 컴포넌트를 렌더 |
+| `scripts/fonts/` | UI 폰트 서브셋 — `charset.mjs`(글자 뽑기) `check-charset.mjs`(CI 게이트) `subset.py` |
+| `scripts/verify/` | 전환 대조 도구 — `snapshot.js` `compare.mjs` `poster-pixels-ui.js`(포스터 픽셀 지문) |
 | `scripts/loadtest.mjs` | 라이브 부하테스트(`--dry` 필수 확인) |
 | `_docs/ops/RUNBOOK.md` | 행사 당일 장애 대응 |
 

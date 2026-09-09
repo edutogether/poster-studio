@@ -6,7 +6,35 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": [
         "http-server",
-        "public",
+        ".claude/worktrees/before/public",
+        "-p",
+        "5500",
+        "-c-1"
+      ],
+      "port": 5500,
+      "//": "전환 전 코드를 freeze 태그 워크트리에서 그대로 띄운다(.claude/worktrees/before). 포트는 기준선·dist와 같은 5500이어야 /health CORS가 통과하고 오리진 차이로 인한 가짜 대조 차이가 안 생긴다 — dist 서버와 동시에 켜지 않는다."
+    },
+    {
+      "//": "검증 도구(scripts/verify/*)를 페이지 안에서 fetch해 쓰기 위한 저장소 루트 서버. 앱 자체는 위 5500을 쓴다.",
+      "name": "poster-studio-tools",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "http-server",
+        ".",
+        "-p",
+        "5501",
+        "-c-1",
+        "--cors"
+      ],
+      "port": 5501
+    },
+    {
+      "//": "빌드 산출물(dist/)을 라이브와 같은 형태로 띄운다. 포트는 기준선과 같은 5500 — ALLOWED_ORIGINS에 있어야 /health CORS가 통과하고, 오리진이 다르면 대조에 가짜 차이가 생긴다.",
+      "name": "poster-studio-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "http-server",
+        "dist",
         "-p",
         "5500",
         "-c-1"
@@ -14,12 +42,25 @@
       "port": 5500
     },
     {
-      "//": "master(전환 전) 코드를 그대로 띄운다. 라이브와 같은 코드라 디자인 수정을 여기서 실측한다. 포트는 5500 — ALLOWED_ORIGINS에 있어야 /health가 CORS로 안 막힌다.",
-      "name": "poster-studio-master-public",
+      "//": "1단계(빌드만 도입, 언어 변경 없음) 커밋 9cb3651을 워크트리에서 빌드해 띄운다. 포트는 5500이어야 한다 — 다른 포트로 띄우면 /health가 CORS로 막혀 상태문구가 달라지고 그 자체가 가짜 대조 차이를 만든다(실제로 겪음). 위 5500 서버들과 동시에 켜지 않는다.",
+      "name": "poster-studio-step1-dist",
       "runtimeExecutable": "npx",
       "runtimeArgs": [
         "http-server",
-        "public",
+        ".claude/worktrees/step1/dist",
+        "-p",
+        "5500",
+        "-c-1"
+      ],
+      "port": 5500
+    },
+    {
+      "//": "master(라이브와 같은 코드)를 워크트리에서 그대로 띄운다. 전환본과 직접 대조하기 위한 것 — 기준선을 새로 뜨기 전에 '지금 라이브와 같은가'를 먼저 본다. 포트는 5500.",
+      "name": "poster-studio-master-live",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "http-server",
+        ".claude/worktrees/master-live/public",
         "-p",
         "5500",
         "-c-1"

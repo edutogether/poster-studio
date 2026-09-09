@@ -32,10 +32,15 @@ cd functions && npm ci && npm test    # vitest 56개
 cd functions && npm run lint          # eslint
 cd functions && npm run format        # prettier (functions에만 있음)
 
-cd public && npm ci && npm test       # vitest 57개
-cd public && npm run lint             # eslint
+npm ci && npm test                    # vitest 66개 (저장소 루트 = 프론트엔드 루트)
+npm run lint                          # eslint
+npm run typecheck                     # TS strict
+npm run build                         # -> dist/ (배포되는 것)
+npm run fonts:check                   # 서브셋에 빠진 글자가 없는지
+npm run verify:selftest               # 대조 도구가 빈 게이트가 아닌지
 ```
-- **로컬 실행**: `public/`을 정적 서버로 연다(포트 5500 또는 8080 — `ALLOWED_ORIGINS`에 이미 허용됨).
+- **로컬 실행**: `npm run dev`(Vite). 라이브와 같은 형태로 보려면 `npm run build` 후 `dist/`를
+  정적 서버로 연다(포트 5500 또는 8080 — `ALLOWED_ORIGINS`에 이미 허용됨).
   AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
 - **배포**: `master`에 push하면 CI가 `test` → `deploy-functions` → `deploy-hosting` 순으로 자동 배포한다.
   수동 `firebase deploy`는 하지 않는다(예외: `keepWarm` 스케줄 변경 — RUNBOOK 참고).
@@ -43,17 +48,23 @@ cd public && npm run lint             # eslint
 
 ## 폴더 구조
 ```
-public/       정적 프론트엔드(배포 폴더 = firebase.json의 public)
-              app.js(진입점) camera.js api.js layout.js templates.js print.js
-              constants.js state.js dom.js favicon.js layout-match.js boot-splash.js
-              index.html privacy.html style.css poster-wall.webp fonts/ test/
+index.html    Vite 진입 HTML(저장소 루트). privacy.html도 루트에 있다
+src/          프론트엔드 소스(TypeScript + React 19)
+              main.tsx(마운트) PosterStudio.tsx(화면·로직 전부)
+              constants.ts state.ts layout.ts templates.ts poster.ts
+              favicon.ts useLayoutMatch.ts style.css
+public/       정적 자산. Vite가 dist/ 루트로 그대로 복사한다
+              boot-splash.js fonts/ poster-wall.webp logo-*.png
+dist/         빌드 산출물 = 배포 폴더(firebase.json의 public). 커밋하지 않는다
+test/         vitest 66개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/    Cloud Functions — index.js 하나에 전부(미들웨어 체인·프롬프트·OpenAI·Firestore 카운터·스케줄러)
-scripts/      loadtest.mjs(부하테스트, --dry 먼저) badnet.md(나쁜 네트워크 체크리스트)
+scripts/      loadtest.mjs(부하테스트, --dry 먼저) fonts/(서브셋) verify/(전환 대조 도구)
 _docs/        저장소 문서(배포 대상 아님) — ops/ intents/ CHANGELOG.md
 .claude/rules/  app.md(개별법) intent-workflow.md
 ```
-**`public/`이 통째로 배포 폴더다** — 여기 설정파일을 추가하면 `firebase.json`의 hosting `ignore`에도 넣어야
-라이브에 노출되지 않는다(`vitest.config.js`가 실제로 그랬음). 자세한 함정은 `AGENTS.md`.
+**배포되는 것은 `dist/`다**(2026-09-09 리액트+TS 전환 머지). 다만 `public/`의 내용이 `dist/` 루트로
+그대로 복사되므로 **"여기 설정파일을 만들면 라이브에 그대로 서빙된다"는 함정은 남아 있다**
+(`vitest.config.js`가 실제로 그랬음). 자세한 함정은 `AGENTS.md`.
 
 ## 알아야 할 것
 - **실비용 발생**: OpenAI 이미지 생성 API가 장당 약 $0.04(medium 화질). API 키는 Firebase Secret Manager 보관 — 절대 코드/커밋에 직접 작성 금지.

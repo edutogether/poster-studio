@@ -9,7 +9,8 @@ functions/.env.*
 .cache
 .firebase/
 .claude/settings.local.json
-
-# 빌드 산출물. master는 아직 빌드를 쓰지 않지만, 전환 브랜치를 오가며 작업하면
-# dist/가 작업 폴더에 남아 있어 master에서 `git add -A`에 딸려 들어간다(2026-09-09 실제로 겪음).
+# 전환 브랜치를 오가며 작업하면 빌드 산출물이 작업 폴더에 남아 master에서
+# `git add -A`에 딸려 들어간다(2026-09-09 실제로 겪음). 리액트+TS 전환 머지로
+# dist/가 정식 배포 폴더가 된 뒤에도 산출물 자체는 커밋하지 않는다.
+.claude/worktrees/
 dist/

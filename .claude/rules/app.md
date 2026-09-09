@@ -25,9 +25,11 @@
   Firebase 프로젝트 `inky-poster-studio`.
 
 ## 배포 폴더
-- `firebase.json` public = `public`. `_docs/`, `.claude/`, `functions/`, `scripts/`가 여기 포함되지 않음을 확인함 (확인일 9/8)
-- **주의**: `public/`이 통째로 배포 폴더다. `public/` 아래에 설정파일을 새로 만들면 `firebase.json`의
-  hosting `ignore`에 추가하지 않는 한 라이브에 그대로 서빙된다(`vitest.config.js`가 실제로 그랬음, 2026-09-07 발견).
+- `firebase.json` public = **`dist`**(2026-09-09 리액트+TS 전환 머지로 바뀜). 배포되는 것은
+  소스가 아니라 **빌드 산출물**이다 — CI가 `npm run build`로 만든다. `dist/`는 커밋하지 않는다.
+- **주의**: `public/`은 이제 소스가 아니라 **정적 자산 폴더**지만, Vite가 그 내용을 `dist/` 루트로
+  **그대로 복사**하므로 **함정은 그대로 남아 있다.** `public/` 아래에 설정파일을 새로 만들면
+  라이브에 그대로 서빙된다(`vitest.config.js`가 실제로 그랬음, 2026-09-07 발견).
   파일 추가 후 `curl https://poster-studio.web.app/<파일명>`이 404인지 확인할 것.
 
 ## 데이터
@@ -61,7 +63,7 @@
   함수를 강제종료해 임시 사진 삭제가 실행되지 못한다. `scripts/loadtest.mjs`의 상수도 같이 물려 있다.
 - **레이트리밋 IP를 `req.ip`(XFF 맨 왼쪽)로 되돌리지 않는다.** 헤더 한 줄로 우회 가능하다 —
   2026-09-07에 라이브에서 실제로 뚫리는 것을 재현했다. `clientIpForRateLimit()`(맨 오른쪽)만 쓴다.
-- **부스토큰(`public/constants.js`) 변경과 Secret Manager 갱신을 다른 커밋으로 쪼개지 않는다.** 그 사이 전 부스가 401.
+- **부스토큰(`src/constants.ts`) 변경과 Secret Manager 갱신을 다른 커밋으로 쪼개지 않는다.** 그 사이 전 부스가 401.
 - **`npm audit fix --force`를 `functions/`에서 돌리지 않는다.** firebase-functions 메이저 다운그레이드를 유발한다.
 - **테스트에서 실제 OpenAI·Firestore를 호출하지 않는다.** 주입 지점이 이미 있다(`_setClientForTesting` 등).
 - **촬영 후 카메라 스트림을 켜둔 채 두지 않는다.** 최소수집 원칙 위반이고 아동 대상이라 더 중요하다
@@ -73,10 +75,16 @@
   이 두 성질은 개별 주소가 아니라 **목록 전체를 검사하는 테스트**로 고정돼 있다(`functions/test/index.test.js`).
 
 ## 명령
-- 테스트: `cd functions && npm test`(56개) / `cd public && npm test`(57개) — 둘 다 vitest
-- 린트: 각 폴더에서 `npm run lint` (eslint)
+- 테스트: `cd functions && npm test`(56개) / 저장소 루트에서 `npm test`(66개) — 둘 다 vitest
+- 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
+- 타입: 루트에서 `npm run typecheck` (TS strict)
+- 빌드: 루트에서 `npm run build` → `dist/`
+- 폰트 글자 검사: 루트에서 `npm run fonts:check` — 서브셋에 없는 글자가 문구에 들어가면 실패한다.
+  새 글자가 필요하면 `npm run fonts:charset` 후 `python scripts/fonts/subset.py`로 다시 자른다.
+- 검증 도구 자기검사: 루트에서 `npm run verify:selftest`
 - 포맷: `cd functions && npm run format` (prettier — functions에만 있음)
-- 로컬 실행: `public/`을 정적 서버로(포트 5500 또는 8080 — `ALLOWED_ORIGINS`에 이미 허용돼 있음).
+- 로컬 실행: `npm run dev`(Vite). 라이브와 같은 형태로 보려면 `npm run build` 후 `dist/`를
+  정적 서버로 연다(포트 5500 또는 8080 — `ALLOWED_ORIGINS`에 이미 허용돼 있음).
   AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
 - 에뮬레이터: 사용하지 않는다. 헤더(CSP 등) 확인이 필요하면 `firebase emulators:start --only hosting`.
 - 배포: `master`에 push → CI가 test → functions → hosting 순으로 자동 배포. 수동 배포는 하지 않는다
@@ -106,8 +114,11 @@
   정작 사람이 여는 주소는 `/`다. 2026-09-09에 HTML 캐시를 끄면서 실제로 겪었다 — `privacy.html`만
   `no-cache`가 되고 `/`는 `max-age=3600`인 채로 남아, **배포 후 `curl -I`로 확인하지 않았으면
   "고쳤다"고 보고하고 넘어갔을 자리였다.** `"source": "/"` 규칙을 따로 둔다.
-- **이 사이트의 js·css에는 파일명 해시가 없다**(번들러 없이 `public/`을 그대로 배포). 그래서
-  "해시가 붙으니 긴 캐시를 둬도 안전하다"는 통상의 전제가 **여기서는 성립하지 않는다** —
-  `style.css`를 고쳐 배포해도 기본 `max-age=3600` 때문에 한 시간 동안 옛 화면이 보였다.
-  현재는 js·css도 `no-cache`이며, **리액트+TS 전환이 머지돼 Vite가 해시 붙인 파일명을 내면
-  그때 긴 캐시로 되돌린다**(행사장 성능에 그게 맞다).
+- **캐시 전제가 2026-09-09 머지로 바뀌었다.** 전환 전에는 번들러 없이 `public/`을 그대로 배포해
+  js·css에 파일명 해시가 없었고, 그래서 `style.css`를 고쳐도 기본 `max-age=3600` 때문에 한 시간
+  동안 옛 화면이 보였다(실제로 "안 바뀐다"는 지적을 받았다). 지금은 Vite가 `dist/assets/`에
+  해시 붙인 이름을 내므로 **`/assets/**`는 1년 immutable**이다 — 내용이 바뀌면 이름이 바뀐다.
+  **한시적이던 js·css `no-cache` 규칙은 머지와 함께 제거했다.**
+  ⚠ 해시가 붙는 것은 `/assets/**`뿐이다. `public/`에서 복사되는 것들(`boot-splash.js`,
+  폰트, 이미지)은 **이름이 고정**이라 여기에 긴 캐시를 걸면 갇힌다. 폰트만 30일로 잡아 뒀고
+  `immutable`은 일부러 안 쓴다. HTML과 `/`는 계속 `no-cache`다.

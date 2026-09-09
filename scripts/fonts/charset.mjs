@@ -23,7 +23,11 @@ export function collectStrings() {
   const out = [];
   const push = (s) => { if (s) out.push(s); };
 
-  for (const f of ['public/index.html', 'public/privacy.html']) {
+  /* 🔴 전환 브랜치는 파일 배치가 master와 다르다 — html이 저장소 루트에 있고
+     화면 문구는 public/*.js가 아니라 src/*.ts(x) 안에 있다. master 경로를 그대로
+     쓰면 **읽을 파일이 없어 글자 집합이 조용히 비어버리고**, 검사는 통과하는데
+     화면에는 두부(□)가 나온다. 그래서 경로를 여기서 갈라 둔다. */
+  for (const f of ['index.html', 'privacy.html']) {
     let t = fs.readFileSync(path.join(ROOT, f), 'utf8');
     t = t.replace(/<!--[\s\S]*?-->/g, '').replace(/<style[\s\S]*?<\/style>/g, '');
     for (const m of t.matchAll(/>([^<>]+)</g)) push(m[1]);
@@ -32,8 +36,11 @@ export function collectStrings() {
     }
   }
 
-  for (const f of fs.readdirSync(path.join(ROOT, 'public')).filter((x) => x.endsWith('.js'))) {
-    let t = fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
+  const SRC = path.join(ROOT, 'src');
+  const srcFiles = fs.readdirSync(SRC).filter((x) => x.endsWith('.ts') || x.endsWith('.tsx'));
+  if (!srcFiles.length) throw new Error('src/에서 소스를 하나도 못 찾았습니다 — 경로가 틀리면 글자 집합이 비어 검사가 무의미해집니다.');
+  for (const f of srcFiles) {
+    let t = fs.readFileSync(path.join(SRC, f), 'utf8');
     t = t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
     // 따옴표 3종 모두 — 템플릿 리터럴 안의 고정 문구도 화면에 나온다.
     for (const m of t.matchAll(/'([^'\n\\]*)'|"([^"\n\\]*)"|`([^`\\]*)`/g)) {

@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client", "node"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+
+    /* 2단계(2026-09-09)에서 src/*.js를 전부 .ts로 옮겼으므로 allowJs를 껐다.
+       이제 src/ 아래 .js가 새로 들어오면 타입 검사를 통과하는 게 아니라
+       아예 컴파일 대상에서 빠지므로, 조용히 검사망 밖으로 새는 일이 없다.
+       test/*.js는 여전히 JS다(테스트 재구성은 5단계) — allowJs를 끈 지금은
+       include 대상이 아니고, 린트와 vitest가 계속 책임진다. */
+    "allowJs": false,
+    "checkJs": false
+  },
+  "include": ["src", "vite.config.ts"]
+}

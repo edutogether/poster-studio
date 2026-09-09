@@ -1,0 +1,417 @@
+:root{
+  --bg:#0d0f14; --panel:#16181f; --panel2:#1c1f28; --field:#111319;
+  --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.06);
+  --gold:#e9b949; --gold-ink:#20180a;
+  --ink:#f2f3f6; --mut:#9a9fac; --mut-dim:#6b7080;
+  --rad:14px; --rad-sm:10px;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+*{box-sizing:border-box}
+
+/* 2026-09-03 3라운드 — 대표가 mobbin.com(실제 출시 앱 UI 레퍼런스)을 보고 다시
+   만들라고 지시. 파티클/마퀴/워터마크/그라디언트 글로우 같은 "장식 이펙트"를
+   더하는 방향이 문제였다는 지적이라, 이번 라운드는 정반대 방향으로 간다 —
+   장식을 걷어내고 실제 프로덕트들(Figma, Behance, Cosmos, Procreate 등,
+   Mobbin에서 직접 확인)의 공통점인 "단색에 가까운 중립 배경 + 타이포 위계 +
+   여백 + 절제된 카드/버튼"에 맞춘다. 배경은 거의 단일 톤, 강조색(gold)은
+   기본 버튼 한 곳에만, 그라디언트 텍스트·글로우·애니메이션 배경 전부 제거. */
+html,body{margin:0; min-height:100%; background:var(--bg); color:var(--ink);
+  font-family:var(--font); -webkit-font-smoothing:antialiased}
+
+/* ── 4라운드(2026-09-03) — 대표가 넷플릭스 히어로(대각선 포스터 벽지 + 어두운
+   그라디언트)를 직접 레퍼런스로 제시, "로딩 걸릴 때부터 바로 저 배경이 떴으면"
+   이라고 명시. 처음엔 자체 제작 SVG(poster-wall.svg, 9개 타일)로 만들었으나
+   대표가 "실제 포스터 느낌이 약하다"고 재지적해, 완전히 창작된 가상 영화/드라마
+   포스터(실제 로고·배우·프랜차이즈 없음, ChatGPT/Gemini로 생성)로 교체했다 —
+   poster-wall.webp. 이 이미지는 완성된 한 장의 모자이크라 그 안에 이미
+   대각선 기울기가 그려져 있다 — SVG 타일 때와 달리 CSS에서 반복(repeat)하거나
+   추가로 회전(rotate)시키지 않고, cover로 한 장 그대로 화면 전체에 채운다. */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0;
+  /* 절대경로여야 한다 — 빌드하면 이 CSS가 dist/assets/ 아래로 가므로 상대경로는
+     dist/assets/poster-wall.webp를 찾아 404가 난다(실제 파일은 dist/poster-wall.webp).
+     public/의 정적 자산은 항상 루트 기준으로 참조한다. */
+  background-image:url("/poster-wall.webp");
+  background-repeat:no-repeat; background-size:cover; background-position:center;
+  filter:blur(1.5px) saturate(.9); opacity:1;
+}
+/* 대표 재지적(2026-09-03, 5라운드) — "뒤가 너무 돋보이고 앞은 지저분해보인다":
+   벽지가 선명한 사진이다 보니 UI 패널과 채도·선명도를 두고 경쟁하고 있었다.
+   살짝 블러(1.5px)+채도를 낮추고, 오버레이를 전체적으로 더 어둡게 눌러서
+   벽지는 "분위기"로만 남고 패널/헤더가 명확히 앞으로 나오게 한다. */
+body::after{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(65% 55% at 50% 15%, rgba(13,15,20,.6), transparent 60%),
+    linear-gradient(180deg, rgba(13,15,20,.5) 0%, rgba(13,15,20,.72) 55%, var(--bg) 90%);
+}
+/* body::before/::after가 position:fixed; z-index:0인 고정 오버레이라, **z-index를 안 준
+   요소는 전부 그 아래로 깔린다**(static 요소는 z-index:0인 위치지정 요소보다 먼저
+   그려지기 때문). 하단 개인정보 링크를 footer로 옮겼을 때 실제로 오버레이에 덮여
+   글씨가 안 보였다 — 색을 바꿔도 소용없었고 이 한 줄이 원인이었다.
+   앞으로 footer에 무엇을 더 붙이든 이 규칙에 함께 넣어야 한다. */
+.topbar, .app, .pagefoot{position:relative; z-index:1}
+/* 헤더 글씨가 안 읽힌다는 지적 — 배경 이미지가 바로 밑을 지나가는 자리라
+   전용 스크림(반투명 카드 + blur)을 깔아 어떤 배경이 와도 항상 읽히게 한다. */
+.topbar{
+  background:rgba(13,15,20,.55); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+
+.topbar{display:flex; align-items:center; justify-content:space-between; gap:18px;
+  padding:18px 28px; border-bottom:1px solid var(--line)}
+.brand{display:flex; align-items:center; gap:14px}
+.reel{display:grid; place-items:center; width:52px; height:52px; font-size:28px; border-radius:13px;
+  background:var(--panel2); border:1px solid var(--line)}
+.eyebrow{margin:0; color:var(--mut); font-weight:600; letter-spacing:.02em; font-size:14px}
+/* 제목 크기는 AI Ways Incheon 실측값에 맞춘다(2026-09-09 대표 지시):
+   1.5rem(24px) / 640px 이상 1.875rem(30px), 800, letter-spacing -.025em.
+   헤더 안의 나머지(눈썹줄 12.5→14, 부제 13.5→15, 로고칸 40→52px)도 같이 키웠다 —
+   제목만 키우면 그것만 뜬금없이 커 보인다. 개인정보 링크는 예외로 14px를 지킨다:
+   그 값은 Voice Cinema 규격으로 이미 '한 단계 확대'까지 지시된 확정 수치라,
+   비율로 다시 키우면 그 지시를 덮어쓰게 된다. */
+.topbar h1{margin:3px 0 0; font-size:1.5rem; font-weight:800; letter-spacing:-.025em; color:var(--ink)}
+@media (min-width:640px){ .topbar h1{font-size:1.875rem} }
+.tagline{margin:4px 0 0; color:var(--mut); font-size:15px}
+/* 개인정보 링크 — Voice Cinema의 .privacylink와 같은 규격으로 맞춘다
+   (2026-09-09 대표 지시 "보이스 시네마랑 모든 걸 똑같이"). 크기만 한 단계 키운
+   14px이고, 호버 색은 이 앱의 강조색(금색)을 쓴다. 예전엔 12px에 밑줄 대신
+   border-bottom을 색만 바꿔 쓰고 있었는데, 규격은 text-decoration:underline이다. */
+/* 2026-09-09 대표 지시로 오른쪽 위 → 페이지 맨 아래 가운데(Voice Cinema와 같은 자리). */
+/* 패널 바깥 안내(※)와 개인정보 링크가 같은 영역에 있되 구분되게 — 안내는
+   흐린 작은 글씨, 링크는 흰 글씨로 한 칸 띄운다. */
+.pagefoot{ text-align:center; padding:0 24px 12px }
+.notes{ list-style:none; margin:0 0 8px; padding:0; display:flex; flex-wrap:wrap;
+  justify-content:center; gap:4px 16px; color:var(--mut-dim); font-size:12.5px }
+.notes li::before{ content:"B "; }
+.privacyLink{
+  display:inline-block;
+  margin:6px auto 0;
+  position:relative;
+  color:#fff;   /* 대표 지시(2026-09-09): 배경 위에서 읽히도록 흰 글씨 */
+  font-family:var(--font);
+  font-size:14px;
+  font-weight:600;
+  text-decoration:none;
+  transition:color .2s;
+}
+.privacyLink:hover{ color:var(--gold); text-decoration:underline; }
+
+.app{display:grid; grid-template-columns:minmax(360px,1.1fr) minmax(420px,1.05fr);
+  gap:18px; max-width:1320px;
+  /* 위아래 균형(2026-09-09 대표 지시 "위아래 균형감 안정감 있게, 애매할 경우 살짝 아래").
+     구조를 바꾸지 않고 **위 여백만 화면 높이에 따라 늘린다** — 여유가 없는 크기에서는
+     max()가 원래 값(18px)으로 되돌려 잘리지 않는다. 실측: 1080은 여유가 없어 18px 그대로,
+     1200은 50px, 1440은 60px까지 내려간다. */
+  margin:clamp(18px, calc(63vh - 637px), 220px) auto 18px; padding:0 24px 40px}
+/* align-self:start — 왼쪽이 그리드 기본 stretch로 오른쪽 크기에 맞춰 같이
+   늘어나면, JS(src/useLayoutMatch.ts)가 왼쪽 높이를 재서 오른쪽에 꽂아줄 때
+   "오른쪽이 커지면 그리드가 왼쪽도 늘리고 → 그 늘어난 왼쪽을 다시 재서
+   오른쪽에 꽂고 → 또 늘어나고"가 무한 반복되는 피드백 루프가 생긴다(직접
+   겪음 — 몇 프레임 만에 화면이 1000px 넘게 걷잡을 수 없이 커졌다). 왼쪽을
+   stretch 대상에서 빼서 항상 자기 콘텐츠 크기만으로 고정시켜야 이 루프가
+   원천적으로 안 생긴다. */
+.left{display:flex; flex-direction:column; gap:18px; align-self:start}
+
+/* ── 패널: 단색 카드, 얕은 그림자, 1px 보더 — 화려한 효과 없음 ── */
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--rad);
+  padding:18px; box-shadow:var(--shadow)}
+.panel-head{display:flex; align-items:center; gap:11px; margin-bottom:12px}
+.panel-head h2{margin:0; font-size:16px; font-weight:700; letter-spacing:-.01em}
+.num{display:grid; place-items:center; width:26px; height:26px; border-radius:50%; flex:none;
+  background:var(--gold); color:var(--gold-ink); font-weight:800; font-size:13px}
+
+.cameraBox{position:relative; aspect-ratio:16/9; border-radius:var(--rad-sm); overflow:hidden;
+  background:var(--field); border:1px solid var(--line);
+  max-height:min(40vh, calc(100vh - 470px))}
+.cameraBox video, .cameraBox img{width:100%; height:100%; object-fit:cover; display:block}
+.camHint{position:absolute; inset:0; display:grid; place-items:center; color:var(--mut-dim); font-size:14px}
+.countdown{position:absolute; inset:0; display:grid; place-items:center; z-index:3;
+  font-family:"Anton"; font-size:140px; color:#fff; background:rgba(0,0,0,.4)}
+
+/* 라벨을 입력칸 왼쪽에 둔다(2026-09-09 대표 지시 "이름 옆에 칸을 두면 되잖아").
+   한 항목이 한 줄이 되어 세로가 크게 줄어든다. 라벨 폭을 변수로 고정해야
+   여러 label이 서로 다른 그리드인데도 입력칸 왼쪽 끝이 세로로 가지런해진다. */
+:root{ --lbl-w:78px }
+label{display:grid; grid-template-columns:var(--lbl-w) 1fr; align-items:center; gap:10px;
+  margin:8px 0; font-size:13px; color:var(--mut); font-weight:600}
+.lbl{ white-space:nowrap }
+.hint{color:var(--mut-dim); font-weight:500; font-size:12px}
+input, select{width:100%; margin-top:6px; padding:11px 13px; border-radius:var(--rad-sm);
+  border:1px solid var(--line); background:var(--field); color:var(--ink); font-size:15px;
+  font-family:var(--font); transition:border-color .15s ease}
+input:hover, select:hover{border-color:rgba(255,255,255,.2)}
+input:focus, select:focus{outline:none; border-color:var(--gold)}
+input::placeholder{color:var(--mut-dim)}
+
+/* 만들기 줄: 왼쪽 1/3 초기화, 오른쪽 2/3 AI 포스터 만들기.
+   초기화는 ghost라 이미 약하지만, `다시 촬영`(사진을 다시 찍는 것)과 헷갈리면
+   안 되는 버튼이라 한 단계 더 죽여 둔다. */
+/* 장르 | 초기화 1 | 만들기 2 — 두 버튼의 1 : 2가 대표님이 지정한 비율이다.
+   장르 칸을 minmax(0,auto)로 두고 select에 min-width:0을 줘서, 폭이 모자랄 때
+   **장르 쪽이 먼저 좁아지고 만들기 버튼 글자는 끝까지 안 잘리게** 한다
+   (1366x768에서 그냥 auto로 두면 여유가 2px밖에 안 남았다 — 실측). */
+.makeRow{display:grid; grid-template-columns:minmax(0,auto) minmax(0,1fr) minmax(230px,2fr);
+  gap:8px; margin:12px 0}
+.makeRow .btn{white-space:nowrap}
+.makeRow .btn{margin:0; min-width:0}
+.makeRow .genreField{margin:0; min-width:0}
+.makeRow .genreField select{min-width:0}
+#resetBtn{color:var(--mut); font-weight:600}
+
+.seg{display:flex; gap:4px; background:var(--field); padding:4px; border-radius:var(--rad-sm); border:1px solid var(--line)}
+.seg-btn{flex:1; padding:9px; border:0; border-radius:8px; background:transparent;
+  color:var(--mut); font-weight:700; font-size:14px; cursor:pointer; font-family:var(--font)}
+.seg-btn:hover{color:var(--ink)}
+.seg-btn.active{background:var(--gold); color:var(--gold-ink)}
+
+/* 제목 줄의 개인↔단체 스위치(2026-09-09 대표 지시 "글씨랑 버튼 너무 작아 좀 키우고,
+   슬라이드 느낌이 너무 안 나").
+
+   **진짜로 미끄러지게** 만든다: 금색 알약을 ::before로 하나 깔고 transform으로
+   좌우로 옮긴다. 어느 쪽인지는 :has()로 CSS가 직접 본다 — 그래서 **JS를 안 고쳐도**
+   된다(camera.js가 .active를 옮기는 것은 그대로다).
+   컨테이너 폭을 고정하고 버튼을 flex:1로 둬야 알약 이동거리가 정확히 한 칸이 된다. */
+.panel-head .seg{
+  position:relative; margin-left:auto; flex:none;
+  /* 이동거리를 변수로 못박는다 — translateX(100%)는 이 브라우저에서 0으로
+     해석돼 손잡이가 안 움직였다(실측으로 확인). 퍼센트 대신 px로 고정한다. */
+  --seg-w:94px;
+  width:196px; padding:4px; gap:0; border-radius:999px;
+}
+.panel-head .seg::before{
+  content:""; position:absolute; top:4px; bottom:4px; left:4px;
+  width:var(--seg-w); border-radius:999px; background:var(--gold);
+  transition:transform .18s ease;
+}
+.panel-head .seg:has(.seg-btn:nth-child(2).active)::before{ transform:translateX(var(--seg-w)); }
+.panel-head .seg .seg-btn{
+  position:relative; z-index:1; flex:1; padding:8px 6px; font-size:14px;
+  border-radius:999px; background:transparent; white-space:nowrap;
+}
+.panel-head .seg .seg-btn.active{ background:transparent; color:var(--gold-ink); }
+@media (prefers-reduced-motion: reduce){
+  /* 움직임에 민감한 사용자에게는 이동을 즉시. 상태 표시 자체는 그대로 남는다. */
+  .panel-head .seg::before{ transition:none; }
+}
+
+.buttons{display:flex; flex-wrap:wrap; gap:10px; margin-top:12px}
+.buttons.out{margin-top:14px}
+.btn{flex:1; min-width:120px; padding:12px 14px; border-radius:var(--rad-sm); border:1px solid var(--line);
+  background:var(--field); color:var(--ink); font-weight:700; font-size:14.5px; cursor:pointer;
+  font-family:var(--font); transition:background .15s ease, border-color .15s ease, transform .05s ease}
+.btn:hover{background:var(--panel2); border-color:rgba(255,255,255,.2)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.4; cursor:not-allowed; transform:none}
+.btn.primary{background:var(--gold); color:var(--gold-ink); border-color:var(--gold)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent}
+.btn.ghost:hover{background:var(--panel2)}
+.btn.big{font-size:15.5px; padding:14px}
+
+/* 비어 있으면 줄을 통째로 접는다 — 초기 안내문을 ※ 영역으로 옮기면서 이 자리가
+   평소엔 비게 됐다. 요소는 남겨야 오류·진행 상황이 뜰 자리가 있다. */
+.status:empty{ display:none }
+.status{margin:10px 0 0; padding:10px 13px; border-radius:var(--rad-sm); background:var(--field);
+  border:1px solid var(--line); color:var(--mut); font-size:13.5px; min-height:18px; line-height:1.5}
+
+/* ── 좌우 컬럼 높이 맞춤 — 몇 라운드째 vh/calc 매직넘버로 시도했지만 실패했다.
+   오른쪽(완성·출력)의 실제 콘텐츠 높이는 갤러리가 비었을 때(~420px)와 4장
+   채워졌을 때(~780px+) 350px 이상 차이나는데 왼쪽(촬영+정보)은 거의 고정이라,
+   어느 한쪽 상태에 CSS 값을 맞추면 반드시 다른 상태에서 다시 어긋났다(대표가
+   "왼쪽이 짧다"→"오른쪽이 짧다"를 번갈아 지적한 이유). CSS 그리드 stretch로도
+   풀어보려 했으나 캔버스의 height:100%가 아직 크기가 안 정해진 조상을 기준으로
+   계산되며 순환 참조로 오히려 더 커지는 버그가 났다 — `layout-match.js`가
+   왼쪽의 실제 렌더링 높이를 재서 `.right`에 `min-height` 인라인 스타일로
+   그대로 꽂아준다(ResizeObserver로 왼쪽 높이가 바뀔 때마다 자동 재계산 —
+   화면 크기·갤러리 상태 어떤 조합이든 따로 튜닝할 필요 없음). 아래 `.stage`는
+   그렇게 정해진 오른쪽 높이의 남은 공간을 그냥 flex:1로 채우기만 하면 된다. */
+.right{position:sticky; top:20px}
+.right .panel{display:flex; flex-direction:column}
+.stage{position:relative; border-radius:var(--rad-sm); overflow:hidden; background:var(--field);
+  border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+  flex:1; min-height:0}
+#posterCanvas{width:auto; height:auto; max-width:100%; max-height:100%; display:block}
+.spinner{position:absolute; inset:0; display:grid; place-items:center; gap:14px;
+  background:rgba(13,15,20,.9); color:var(--mut); font-weight:600; font-size:14px}
+.ring{width:44px; height:44px; border-radius:50%; border:3px solid var(--line);
+  border-top-color:var(--gold); animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.gallery{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px}
+.gallery .thumb{aspect-ratio:2/3; border-radius:8px; overflow:hidden; cursor:pointer;
+  border:2px solid transparent; background:var(--field); transition:border-color .15s ease}
+.gallery .thumb img{width:100%; height:100%; object-fit:cover; display:block}
+.gallery .thumb.active{border-color:var(--gold)}
+.gallery .label{text-align:center; font-size:11px; color:var(--mut); margin-top:4px}
+
+.hidden{display:none !important}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .topbar{padding:14px 20px}
+  .tagline{display:none}
+  .right{position:static}
+  .panel{padding:16px}
+}
+/* 좁은 화면에서는 라벨을 다시 입력칸 위로 — 78px을 떼면 입력칸이 너무 좁아진다. */
+@media (max-width:600px){ label{grid-template-columns:1fr; gap:4px} }
+
+@media (max-width:480px){
+  .makeRow{grid-template-columns:1fr}
+}
+
+/* ── 낮은 화면(4:3 모니터, 작은 노트북 등)에서 스크롤 없이도 안 잘리게 여백을
+   추가로 압축한다 — 16:9/16:10/4:3 어떤 비율이든 세로 공간이 부족할 수 있다.
+
+   🔴 경계가 1000이 아니라 1030인 이유(2026-09-09 실측): 압축하지 않은 본문은
+   여백을 최소로 줘도 약 1029px가 필요하다. 경계가 1000이면 **1001~1029px 구간이
+   압축을 못 받아 그대로 넘친다** — 1600x1010에서 19px가 잘려 나가고 맨 아래
+   개인정보처리방침 링크가 화면 밖으로 사라졌다. 이 높이대는 드문 값이 아니라
+   **1920x1080 노트북을 전체화면이 아닌 창으로 열었을 때 나오는 값**이다.
+   ── */
+@media (max-height:1030px){
+  .topbar{padding:8px 28px}
+  /* 헤더를 키운 만큼(2026-09-09) 세로가 짧은 화면에서는 도로 압축한다 —
+     1366x768에서 실측해보니 그냥 두면 아래가 25px 더 잘렸다. 지시가 "세로가 짧은
+     창에서는 내리는 양이 줄어들게 안전하게"였으므로 크기 쪽도 같이 줄인다. */
+  .topbar h1{font-size:1.5rem}
+  .reel{width:44px; height:44px; font-size:24px; border-radius:11px}
+  .eyebrow{font-size:13px}
+  .tagline{font-size:14px}
+  /* 같은 취지. 963(대표님 화면)에서 위 8px -> 24px가 되고 아래 33px -> 17px로
+     줄어 약 58:42가 된다. 768처럼 여유가 없는 크기는 calc가 음수라 8px 그대로다. */
+  .app{gap:10px; margin:max(8px, min(80px, calc(100vh - 883px))) auto 8px; padding:0 24px 14px}
+  .left{gap:8px}
+  .panel{padding:10px}
+  .panel-head{margin-bottom:5px}
+  /* 하단 개인정보 링크가 생기면서(2026-09-09) 세로가 짧은 화면에서 인쇄·저장
+     버튼이 화면 밖으로 밀렸다 — 1366x768에서 실측 72px. 부스 앱에서 그 버튼이
+     안 보이는 건 치명적이라 미리보기 상자를 그만큼 줄인다. 540 -> 610은 세로가
+     짧을 때만 물리고(34vh가 더 작으면 그쪽이 이긴다) 큰 화면에는 영향이 없다. */
+  .cameraBox{aspect-ratio:16/9; max-height:min(34vh, calc(100vh - 610px))}
+  .pagefoot{padding:0 24px 6px}
+  .privacyLink{margin:2px auto 0}
+  label{margin:5px 0}
+  input, select{padding:9px 11px}
+  .makeRow{margin:6px 0}
+  .buttons{margin-top:7px; gap:8px}
+  .status{margin-top:6px; padding:8px 12px; min-height:16px}
+  .seg-btn{padding:8px}
+  .gallery{margin-top:8px}
+  .buttons.out{margin-top:10px}
+}
+/* 세로가 아주 짧은 화면. 개인/단체를 제목 줄 스위치로 옮기면서(2026-09-09)
+   이 크기에도 약 44px 여유가 생겼다 — 그중 일부를 위로 돌린다.
+   ≤1000 블록보다 뒤에 와야 이깁니다. */
+@media (max-height:820px){
+  .app{margin-top:max(8px, min(60px, calc(100vh - 708px)))}
+}
+
+@media (max-height:680px){
+  .reel{width:32px; height:32px; font-size:18px}
+  .topbar h1{font-size:17px}
+  .eyebrow{font-size:11px}
+  .topbar{padding:7px 22px}
+  .panel{padding:9px}
+  .cameraBox{aspect-ratio:16/7; max-height:20vh}
+  .gallery{margin-top:6px}
+}
+
+/* ── 인쇄: 4x6 인화지(SELPHY 등) 여백 없이 포스터만 ── */
+@media print{
+  body *{visibility:hidden !important}
+  body::before, body::after{display:none !important}
+  #printArea, #printArea *{visibility:visible !important}
+  #printArea{position:fixed; inset:0; margin:0; display:grid; place-items:center; background:#fff}
+  #printArea img{width:100%; height:100%; object-fit:contain}
+  @page{ size:4in 6in; margin:0 }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   부트 스플래시 — _shared/standards/splash-standard.md 규격(2026-09-09, 전환 4단계)
+
+   핵심 규칙: **CSS가 시간을 재고, JS는 조건만 본다.**
+   예전 구현(boot-splash.js의 MIN_VISIBLE_MS=1600 + 470ms 타이머)은 JS 타이머라
+   번들을 받아 실행한 시점부터 시간을 쟀다 — 회선이 느릴수록 스플래시가 그만큼
+   더 오래 떠 있어서, 같은 코드가 기기마다 다른 시간 보였다. CSS 애니메이션은
+   요소가 그려지는 순간부터 흐르므로 첫 페인트 기준으로 일정하다.
+
+   타이밍: 유지 1800ms → 페이드 500ms → 소멸 2400ms
+     1800 ÷ 2400 = 75%      (여기서 페이드 시작)
+     2300 ÷ 2400 = 95.83%   (여기서 완전 투명)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 로드 게이트 — 표준 개정 2차의 **B(정지형)**를 쓴다.
+   기본이 '멈춤'이고, 앱이 첫 화면을 그린 뒤 body에 .app-ready를 붙이면 그때부터
+   시계가 흐른다. A(연장형)를 안 쓰는 이유: 이 앱의 노출 원인은 무거운 자산이
+   아니라 **번들(React 215KB)이 늦게 붙는 것**인데, 그 경우 연장을 판정해야 할
+   시점에 JS가 아직 실행되지 않아 판정할 주체가 없다 — 통과하는데 아무것도
+   안 지키는 빈 게이트가 된다. B는 JS가 없는 상태에서도 성립한다.
+   번들이 끝내 안 오면 스플래시가 남는데, 그건 갇힌 게 아니라 "로딩 중"을
+   보여주는 것이다(걷어내면 빈 화면이다). 안전판 상한은 boot-splash.js가 맡는다. */
+body:not(.app-ready) #splash{ animation-play-state:paused; }
+
+#splash{
+  animation:splashOut 2400ms ease forwards;
+  position:fixed; inset:0; z-index:999;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px;
+  background:linear-gradient(180deg, var(--bg), var(--panel));
+}
+@keyframes splashOut{
+  0%, 74.99%   { opacity:1; pointer-events:auto; }
+  75%          { opacity:1; pointer-events:none; }
+  95.83%, 100% { opacity:0; pointer-events:none; }
+}
+
+/* 표준 §5의 성능 규칙 ① — 스플래시가 덮고 있는 동안 무거운 배경을 그리지 않는다.
+   이 앱에서 무거운 건 body 배경색이 아니라 body::before의 poster-wall.webp다
+   (2026-09-03 5라운드에 "무거운 이미지 디코딩이 로딩 임계경로에 끼어드는
+   버벅임"으로 실제로 겪은 항목이다). 그래서 대체 대상은 그 의사요소다 —
+   스플래시가 사라지면 :has()가 풀려 자동으로 돌아온다. */
+body:has(#splash)::before,
+body:has(#splash)::after{ display:none; }
+
+#splash .logo{
+  font-size:clamp(48px, 10vw, 72px);
+  filter:drop-shadow(0 10px 24px rgba(233,185,73,.35));
+  animation:splashPop .6s ease;
+}
+#splash .name{
+  font-size:clamp(26px, 5vw, 38px); font-weight:800; letter-spacing:-.01em;
+  color:var(--ink);
+}
+#splash .name .gold{ color:var(--gold); }
+#splash .stagline{ font-size:clamp(13px, 2vw, 16px); color:var(--mut); }
+#splash .sbar{
+  display:block; width:190px; height:3px; border-radius:99px;
+  background:rgba(233,185,73,.2); overflow:hidden; margin-top:4px;
+}
+/* margin이 아니라 transform으로 움직인다 — margin은 매 프레임 레이아웃을 다시
+   계산시켜(리플로우) 저사양 기기에서 버벅임의 원인이 된다. 예전 인라인 스타일의
+   poster-studio-boot-bar 키프레임이 margin-left를 쓰고 있었다. */
+#splash .sbar i{
+  display:block; width:40%; height:100%; border-radius:99px;
+  background:linear-gradient(90deg, var(--gold), #f6d27a);
+  animation:splashBar 1.15s ease-in-out infinite;
+  will-change:transform;
+}
+@keyframes splashPop{
+  0%   { transform:scale(.6); opacity:0; }
+  60%  { transform:scale(1.08); opacity:1; }
+  100% { transform:scale(1); }
+}
+@keyframes splashBar{
+  0%   { transform:translateX(-76px); }
+  100% { transform:translateX(190px); }
+}
+
+/* 표준 개정 2차 — **장식 애니메이션만 끄고 유지·페이드 타이밍은 남긴다.**
+   스플래시의 유지까지 없애면 덜 그려진 화면을 가려주는 역할이 사라져,
+   로드 게이트로 막으려던 문제가 그대로 되돌아온다. */
+@media (prefers-reduced-motion: reduce){
+  #splash .logo{ animation:none; }
+  #splash .sbar i{ animation:none; }
+}

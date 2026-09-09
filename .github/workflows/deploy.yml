@@ -38,16 +38,19 @@ jobs:
         working-directory: functions
       - run: npm test
         working-directory: functions
+      # 프론트엔드는 2026-09-09 리액트+TS 전환으로 저장소 루트가 프로젝트 루트다
+      # (예전엔 public/이 소스이자 배포 폴더였다). public/은 이제 정적 자산만 담는다.
       - run: npm ci
-        working-directory: public
       - run: npm run lint
-        working-directory: public
+      - run: npm run typecheck
       # 폰트 서브셋에 빠진 글자가 없는지(2026-09-09). 문구가 바뀌었는데 서브셋을
       # 다시 안 만들면 그 글자가 화면에 □ 로 나온다 — 배포 전에 막는다.
+      # master의 CI에는 있었는데 전환 브랜치로 옮기며 빠져 있었다.
       - run: npm run fonts:check
-        working-directory: public
       - run: npm test
-        working-directory: public
+      # 전환 검증 도구가 "빈 게이트"가 아닌지 매번 확인한다(CONVENTIONS §5.4).
+      # 이게 통과해야 대조 결과의 "차이 0건"을 신뢰할 수 있다.
+      - run: npm run verify:selftest
 
   deploy-functions:
     needs: test
@@ -72,11 +75,13 @@ jobs:
       # 하나만 어긋나도 부스 전체가 조용히 401로 죽을 수 있다. 배포 직후 실제로
       # 클라이언트에 박힌 부스토큰으로 라이브 /generate를 호출해 401이 아닌지
       # (사진이 없으니 400이 정상) 확인한다 — 이게 실패하면 deploy-hosting도 안 나간다.
-      # ES모듈 전환(2026-08-30)으로 BOOTH_TOKEN이 public/app.js에서 public/constants.js로
-      # 옮겨졌다 — 이 스크립트도 같이 옮겨야 했는데 처음엔 놓쳐서 배포가 한 번 실패했음.
+      # ES모듈 전환(2026-08-30)으로 BOOTH_TOKEN이 public/app.js에서 public/constants.js로,
+      # 리액트+TS 전환(2026-09-09)으로 src/constants.js를 거쳐 src/constants.ts가 됐다 — 파일을 옮길
+      # 때마다 이 경로를 같이 안 고쳐 배포가 실패한 적이 있다. 소스를 문자열로 읽는
+      # 지점이라 번들러가 개입하지 않는 원본 파일을 가리켜야 한다.
       - name: 부스토큰 스모크테스트 (배포 직후 실제 인증 확인)
         run: |
-          TOKEN=$(node -pe "require('fs').readFileSync('public/constants.js','utf8').match(/const BOOTH_TOKEN = '([^']+)'/)[1]")
+          TOKEN=$(node -pe "require('fs').readFileSync('src/constants.ts','utf8').match(/const BOOTH_TOKEN = '([^']+)'/)[1]")
           STATUS=$(curl -s -o /tmp/smoke.json -w "%{http_code}" \
             -X POST -H "x-booth-token: $TOKEN" -H "content-type: application/json" -d '{}' \
             "https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/generate")
@@ -91,6 +96,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 2026-09-09 리액트+TS 전환으로 빌드 단계가 처음 생겼다. 배포되는 것은
+      # 소스(public/)가 아니라 산출물(dist/)이다 — firebase.json의 hosting.public 참고.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build
+      # public/의 내용은 dist/ 루트로 그대로 복사된다 — 거기에 있으면 안 될 것이
+      # 섞여 들어가면 그대로 라이브에 서빙된다. 머지 직전에 실제로 겪었다:
+      # 옛 배치가 남긴 public/node_modules(vitest 캐시)가 dist/node_modules로
+      # 복사돼 있었다. 이 저장소는 같은 함정(public/vitest.config.js)을 이미
+      # 한 번 겪은 곳이라 검사로 고정한다.
+      - name: dist에 나가면 안 되는 것이 없는지
+        run: |
+          for p in node_modules package.json package-lock.json vitest.config.js eslint.config.js tsconfig.json; do
+            if [ -e "dist/$p" ]; then
+              echo "::error::dist/$p 가 배포 대상에 들어 있습니다. public/ 아래에 있는지 확인하세요."
+              exit 1
+            fi
+          done
+          echo "dist 점검 통과"
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
