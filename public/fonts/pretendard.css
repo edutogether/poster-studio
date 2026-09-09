@@ -1,3 +1,15 @@
+/* font-display: optional (2026-09-09 대표 지시 "첨에 뭔 글씨가 확 줄어드는 느낌").
+   원인은 스플래시가 둘이어서가 아니라 **웹폰트 교체(FOUT)**였다. 실측하면 같은
+   글자·같은 크기에서 대체 글꼴(맑은 고딕) 대비 Pretendard가 한글 기준 **13~16% 좁다** —
+   스플래시 문구 20px/700에서 347.4px -> 292.0px(-15.9%). 그래서 폰트가 도착하는
+   순간 글씨가 눈에 띄게 '줄어든다'.
+   swap은 늦게 온 폰트로 반드시 바꾸므로 그 순간이 항상 보인다. optional은 아주 짧은
+   대기 안에 못 받으면 **그 로드에서는 아예 바꾸지 않는다** — 깜빡임이 사라진다.
+   대신 캐시가 없는 첫 로드 한 번은 대체 글꼴로 보인다(그 뒤로는 캐시돼 정상).
+   preload는 하지 않는다: 이 폰트는 서브셋 없이 **한 굵기당 약 750KB**라, 미리 받게
+   하면 첫 화면이 그만큼 늦어져 스플래시 규격이 지키려는 것과 정면으로 충돌한다.
+   ⚠ 인쇄되는 포스터는 영향 없다 — layout.ts가 document.fonts.load()로 캔버스에
+   쓸 글꼴을 명시적으로 받아오고, 그 API는 font-display와 무관하게 동작한다. */
 /* Pretendard — 자체 호스팅(SIL OFL 1.1, PRETENDARD-LICENSE.txt 참고).
    jsDelivr(GitHub raw) CDN 단일장애점을 없애기 위해 앱이 실제로 쓰는
    6개 굵기만 내려받아 여기서 서빙한다. */
@@ -5,41 +17,41 @@
   font-family: 'Pretendard';
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   src: url('Pretendard-Regular.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 500;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   src: url('Pretendard-Medium.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 600;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   src: url('Pretendard-SemiBold.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   src: url('Pretendard-Bold.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 800;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   src: url('Pretendard-ExtraBold.woff2') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 900;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   src: url('Pretendard-Black.woff2') format('woff2');
 }
