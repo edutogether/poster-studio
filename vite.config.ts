@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
 /* ────────────────────────────────────────────────────────────────────
@@ -13,6 +14,11 @@ import { resolve } from 'node:path';
    폴리필 자체가 필요 없다.
    ──────────────────────────────────────────────────────────────────── */
 export default defineConfig({
+  /* @vitejs/plugin-react는 5.x를 쓴다 — 최신 6.x는 vite 8을 peer로 요구하는데
+     이 저장소는 vite 7이다. --force/--legacy-peer-deps로 눌러 넣지 않는다(우회로 금지).
+     vite를 8로 올리는 건 '빌드 변경'이라 '언어/프레임워크 변경'과 섞이면 안 되므로
+     전환이 끝난 뒤에 따로 판단한다. */
+  plugins: [react()],
   // public/ = 정적 자산(폰트·로고·배경 이미지·클래식 스크립트). 그대로 dist/로 복사된다.
   publicDir: 'public',
   build: {

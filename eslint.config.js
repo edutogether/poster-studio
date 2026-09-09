@@ -100,7 +100,7 @@ export default [
   {
     /* 빌드 산출물과 워크트리는 검사 대상이 아니다.
 
-       src 아래 .ts를 여기 명시적으로 넣은 이유(2026-09-09, TS 전환 2단계):
+       src 아래 .ts / .tsx 를 검사하지 않는 이유(2026-09-09, TS 전환 2·3단계):
        이 설정이 src에 대해 강제하던 건 no-unused-vars와 no-undef 둘뿐인데,
        tsconfig의 noUnusedLocals·noUnusedParameters와 컴파일러의 식별자 해석이
        그 둘을 그대로(오히려 더 강하게) 덮는다. 추측이 아니라 변형으로 확인했다 —
@@ -110,7 +110,10 @@ export default [
        즉 src는 검사를 안 받는 게 아니라 **typecheck가 받는다.** 목록에서 빠진 것과
        일부러 뺀 것을 구분하려고 적어 둔다(5차 감사에서 'public/app.js에 ESLint
        미적용'이 정확히 이런 식으로 조용히 새어 있었다). typescript-eslint를 들이지
-       않은 것도 같은 이유다 — 새 규칙을 추가할 게 아니라면 얻는 것 없이 의존성만 는다. */
+       않은 것도 같은 이유다 — 새 규칙을 추가할 게 아니라면 얻는 것 없이 의존성만 는다.
+       3단계에서 들어온 .tsx는 아래 ignores에 없지만, 이 설정의 어떤 블록도
+       .tsx를 files로 잡지 않아 애초에 검사 대상이 아니다(eslint -f json으로 확인함).
+       역시 typecheck가 받는다. */
     ignores: ['dist/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
   }
 ];

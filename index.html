@@ -63,96 +63,15 @@
     </div>
   </header>
 
-  <main class="app">
-    <!-- 좌측: 입력 -->
-    <section class="left">
-      <div class="panel">
-        <div class="panel-head"><span class="num">1</span><h2>촬영</h2></div>
-        <div class="cameraBox">
-          <video id="video" autoplay playsinline muted></video>
-          <img id="snapshot" class="hidden" alt="촬영 사진" />
-          <div id="countdown" class="countdown hidden"></div>
-          <div id="camHint" class="camHint">‘카메라 켜기’를 누르세요</div>
-        </div>
-        <div class="buttons">
-          <button id="startBtn" class="btn">📷 카메라 켜기</button>
-          <button id="shotBtn" class="btn primary">3·2·1 촬영</button>
-          <button id="retakeBtn" class="btn ghost">다시 촬영</button>
-        </div>
-      </div>
+  <!-- 앱 화면은 React가 이 main 안에 그린다(src/main.tsx). main 자체를 루트로 삼는 이유는
+       루트용 <div>를 새로 끼우면 body와 main 사이에 없던 요소가 하나 생겨 레이아웃
+       계산이 달라질 수 있어서다 — 결과물은 바뀌면 안 된다. -->
+  <main class="app"></main>
 
-      <div class="panel">
-        <div class="panel-head"><span class="num">2</span><h2>포스터 정보</h2></div>
-
-        <div class="seg" id="modeSeg">
-          <button class="seg-btn active" data-mode="solo">👤 개인</button>
-          <button class="seg-btn" data-mode="group">👥 단체</button>
-        </div>
-
-        <div id="soloFields">
-          <label>이름 <input id="studentName" placeholder="예: 김인키" maxlength="20" /></label>
-        </div>
-
-        <div id="groupFields" class="hidden">
-          <label>단체명 <input id="groupName" placeholder="예: 햇살초 5학년 2반 영화동아리" maxlength="40" /></label>
-          <label>출연진 <span class="hint">(선택 · 쉼표로 구분)</span>
-            <input id="members" placeholder="예: 김인키, 이영화, 박감독" maxlength="120" />
-          </label>
-        </div>
-
-        <label>영화 제목 <input id="movieTitle" placeholder="예: 우주를 달리는 인키" maxlength="40" /></label>
-
-        <!-- 홍보 문구 입력란은 삭제(2026-09-03 대표 지시) — 항상 장르별 자동 추천
-             문구를 쓴다. api.ts의 getMeta()(모듈 내부 함수)가 val('tagline')로 읽던 걸 그대로 두되,
-             #tagline 요소 자체가 없으면 val()이 빈 문자열을 반환해(constants.ts
-             `$(id)?.value`) 자동으로 GENRES[genre].taglines 중 하나를 고르므로
-             JS는 손대지 않아도 된다. -->
-        <div class="genreRow">
-          <label class="genreField">장르
-            <select id="genre">
-              <option value="animation">🎨 애니메이션</option>
-              <option value="fantasy">🐉 판타지</option>
-              <option value="sf">🚀 SF·우주탐험</option>
-              <option value="hero">🦸 슈퍼히어로</option>
-              <option value="mystery">🔍 미스터리</option>
-              <option value="director">🎥 영화감독</option>
-              <option value="sports">🏃 스포츠·성장</option>
-              <option value="music">🎵 음악</option>
-            </select>
-          </label>
-          <button id="generateBtn" class="btn primary big genreRowBtn">✨ AI 포스터 만들기</button>
-        </div>
-        <button id="fallbackBtn" class="btn ghost hidden">🎨 AI 없이 기본 버전으로 계속하기</button>
-        <p id="status" class="status">카메라를 켜고 사진을 촬영해 주세요.</p>
-      </div>
-    </section>
-
-    <!-- 우측: 결과 -->
-    <section class="right">
-      <div class="panel result">
-        <div class="panel-head"><span class="num">3</span><h2>완성 · 버전 선택 · 출력</h2></div>
-
-        <div class="stage">
-          <canvas id="posterCanvas" width="1200" height="1800"></canvas>
-          <div id="spinner" class="spinner hidden"><div class="ring"></div><p>AI가 그리는 중…</p></div>
-        </div>
-
-        <div id="gallery" class="gallery"></div>
-
-        <div class="buttons out">
-          <button id="printBtn" class="btn primary big">🖨️ 인쇄하기</button>
-          <button id="downloadBtn" class="btn ghost">PNG 저장</button>
-          <button id="regenBtn" class="btn ghost">🔄 다른 그림으로</button>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ES모듈 전환(2026-08-30) — app.js 하나만 로드하면 나머지는 import 그래프로
-       자동 로드된다. 로드 순서는 이제 <script> 태그 순서가 아니라 import 의존관계가
-       결정한다(브라우저가 알아서 처리). -->
-  <script type="module" src="/src/app.js"></script>
-  <!-- 좌우 컬럼 높이 맞춤(순수 레이아웃, 기능 로직과 무관) — layout-match.js 참고. -->
-  <script src="/layout-match.js"></script>
+  <!-- 앱 번들 하나만 로드한다. 좌우 컬럼 높이 맞춤(예전 layout-match.js)은
+       React 훅(src/useLayoutMatch.ts)으로 들어갔다 — 고전 <script>로 두면
+       파싱 시점에 돌면서 아직 없는 .left/.right를 찾고 조용히 아무 일도
+       안 하게 된다. -->
+  <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
