@@ -1,9 +1,22 @@
+<!-- 원본 최종 수정: 2026-09-08 · 원본 위치: D:\Projects\_shared\intent-kit\TEMPLATE.md
+     원본 버전: d405a4918786
+     사본의 "원본 버전"이 위와 다르면 원본이 갱신된 것이니 재복사한다. 사본에서 직접 고치지 않는다.
+     이 스탬프 블록은 사본에도 그대로 남긴다 — 지우면 그 저장소만 갱신을 감지할 수 없게 된다. -->
+---
+status: draft
+등급: 0 / 1 / 2
+작성자:
+작성 시각:
+---
+
 <!--
 새 intent를 쓸 때 이 파일을 _docs/intents/YYYY-MM-DD-슬러그/intent.md로 복사해서
+맨 위 frontmatter(--- 사이)의 status·등급·작성자·작성 시각을 먼저 채운다.
+status 값은 draft → accepted → in-progress → done | dropped 이고,
+**바꾸는 것은 Bumm님이다** — 세션이 스스로 draft 를 accepted 로 올리지 않는다.
 채운다. 등급 1이면 문제/원하는 결과/제약만 채우고 나머지는 지워도 된다. 등급
 2면 전부 채운다. 확인 못 한 값은 "[확인]"으로 표시하거나 미결 질문으로 옮긴다 —
-추측해서 채우지 않는다. (규칙 원본: D:\Projects\_shared\intent-kit\intent-workflow.md,
-등급·상태 기준은 _shared/CONVENTIONS.md §1.5·§1.6)
+추측해서 채우지 않는다. (규칙 원본: 이 저장소의 .claude/rules/intent-workflow.md)
 -->
 
 # [작업 제목을 한 줄로]
@@ -35,9 +48,7 @@
 
 - 
 
-## 메타데이터
-
-- **작성자**: 
-- **작성 시각**: 
-- **등급**: 0 / 1 / 2
-- **상태**: draft / active / done / abandoned
+<!--
+작성자·작성 시각·등급·상태는 맨 위 frontmatter 에 적는다. 여기에 따로 두지 않는다
+(헌법 _shared/CONVENTIONS.md §1.6: "파일 frontmatter의 status로만 관리").
+-->
