@@ -43,6 +43,36 @@
             "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.cloudfunctions.net https://*.run.app; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
           }
         ]
+      },
+      {
+        "//": "HTML은 캐시하지 않는다(2026-09-09). Firebase Hosting의 HTML 기본값이 max-age=3600이라 배포해도 브라우저가 한 시간 동안 옛 화면을 보여줬다. **/*.html은 '/'(루트)를 잡지 못하므로 아래에 '/' 규칙을 따로 둔다.",
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "//": "루트 경로. 요청 경로가 '/'라 **/*.html 글롭에 안 걸린다 — 정작 사람이 여는 주소가 이것이라 따로 잡는다(2026-09-09 라이브 curl로 확인).",
+        "source": "/",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "//": "이 브랜치는 Vite가 파일명에 해시를 붙여 dist/assets/로 낸다(main-<해시>.js 등). 내용이 바뀌면 이름이 바뀌므로 오래 캐시해도 옛 파일을 볼 위험이 없고, 행사장에서 매번 다시 받지 않아 빠르다. **master의 한시적 js/css no-cache 규칙은 여기로 가져오지 않는다** — 그 규칙은 '해시가 없어서' 필요했던 것이고, 이 브랜치가 머지되면 그 전제가 사라진다.",
+        "source": "/assets/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
       }
     ]
   }

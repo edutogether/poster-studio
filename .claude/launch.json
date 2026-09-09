@@ -53,6 +53,19 @@
         "-c-1"
       ],
       "port": 5500
+    },
+    {
+      "//": "master(라이브와 같은 코드)를 워크트리에서 그대로 띄운다. 전환본과 직접 대조하기 위한 것 — 기준선을 새로 뜨기 전에 '지금 라이브와 같은가'를 먼저 본다. 포트는 5500.",
+      "name": "poster-studio-master-live",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "http-server",
+        ".claude/worktrees/master-live/public",
+        "-p",
+        "5500",
+        "-c-1"
+      ],
+      "port": 5500
     }
   ]
 }
