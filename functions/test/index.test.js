@@ -941,6 +941,28 @@ test('ALLOWED_ORIGINS: https://edutogether.kr을 허용하고, 서브도메인/h
    쉬운데, 정규식이 앵커돼 있어 **매치하지 않는다**. Voice Cinema가 같은 걸 실측으로
    발견했고 이 저장소도 같은 형태였다. 그래서 "서브도메인이 부모 규칙으로 통과하지
    않는다"는 것 자체를 테스트로 고정해, 나중에 누가 앵커를 느슨하게 풀면 잡히게 한다. */
+/* 개별 주소를 나열하는 테스트만 두면 **앞으로 추가되는 규칙은 그대로 빠져나간다**
+   — 지금 목록에 없는 새 항목을 누가 앵커 없이 넣어도 아무것도 안 걸린다.
+   그래서 "현재 항목"이 아니라 **목록이 지켜야 할 성질**을 검사한다
+   (_shared/CONVENTIONS.md §5.4, Voice Cinema 사례).
+   가장 걱정되는 시나리오는 "그냥 부모 도메인 전체를 허용하면 되잖아"인데,
+   그렇게 완화하면 아래 앵커 검사에 걸린다. */
+test('ALLOWED_ORIGINS: 모든 규칙이 ^…$ 앵커를 갖는다(목록의 성질 검사)', () => {
+  expect(ALLOWED_ORIGINS.length).toBeGreaterThan(0);
+  for (const re of ALLOWED_ORIGINS) {
+    expect(re.source.startsWith('^'), `시작 앵커(^)가 없다: ${re}`).toBe(true);
+    expect(re.source.endsWith('$'), `끝 앵커($)가 없다: ${re}`).toBe(true);
+  }
+});
+
+test('ALLOWED_ORIGINS: 모든 규칙의 점(.)이 이스케이프돼 있다(임의 문자 매치 방지)', () => {
+  for (const re of ALLOWED_ORIGINS) {
+    // 백슬래시+문자 쌍을 지운 뒤에도 남는 .은 이스케이프되지 않은 것 = 임의 문자 매치
+    const hasBareDot = re.source.replace(/\\./g, '').includes('.');
+    expect(hasBareDot, `이스케이프되지 않은 점이 있다(임의 문자와 매치된다): ${re}`).toBe(false);
+  }
+});
+
 test('ALLOWED_ORIGINS: poster.edutogether.kr(커스텀 도메인)을 허용한다', () => {
   const matches = (origin) => ALLOWED_ORIGINS.some((re) => re.test(origin));
   expect(matches('https://poster.edutogether.kr')).toBe(true);
