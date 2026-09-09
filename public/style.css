@@ -73,26 +73,34 @@ body::after{
    비율로 다시 키우면 그 지시를 덮어쓰게 된다. */
 .topbar h1{margin:3px 0 0; font-size:1.5rem; font-weight:800; letter-spacing:-.025em; color:var(--ink)}
 @media (min-width:640px){ .topbar h1{font-size:1.875rem} }
-.tagWrap{display:flex; flex-direction:column; align-items:flex-end; gap:3px}
 .tagline{margin:4px 0 0; color:var(--mut); font-size:15px}
 /* 개인정보 링크 — Voice Cinema의 .privacylink와 같은 규격으로 맞춘다
    (2026-09-09 대표 지시 "보이스 시네마랑 모든 걸 똑같이"). 크기만 한 단계 키운
    14px이고, 호버 색은 이 앱의 강조색(금색)을 쓴다. 예전엔 12px에 밑줄 대신
    border-bottom을 색만 바꿔 쓰고 있었는데, 규격은 text-decoration:underline이다. */
+/* 2026-09-09 대표 지시로 오른쪽 위 → 페이지 맨 아래 가운데(Voice Cinema와 같은 자리). */
+.pagefoot{ text-align:center; padding:0 24px 12px }
 .privacyLink{
+  display:inline-block;
+  margin:6px auto 0;
+  position:relative;
   color:#ffffffd1;
   font-family:var(--font);
   font-size:14px;
   font-weight:600;
   text-decoration:none;
   transition:color .2s;
-  display:inline-block;
 }
 .privacyLink:hover{ color:var(--gold); text-decoration:underline; }
 
 .app{display:grid; grid-template-columns:minmax(360px,1.1fr) minmax(420px,1.05fr);
-  gap:18px; max-width:1320px; margin:0 auto; padding:20px 24px;
+  gap:18px; max-width:1320px; margin:0 auto; padding:10px 24px 30px;
   flex:1; align-content:safe center; width:100%; box-sizing:border-box}
+/* 위아래를 정확히 같게 두니 "살짝 과하다, 10px쯤 위로"라는 지적을 받았다(2026-09-09).
+   위아래 패딩 차이(10 vs 30)가 20px이므로 가운데가 그 절반인 10px만큼 위로 간다.
+   **아래를 더 주는 게 아니라 위를 덜 주는 쪽으로** 만들었다 — 아래를 더 주면 페이지
+   전체 높이가 그만큼 늘어나 세로가 짧은 화면에서 스크롤이 생긴다(실측으로 확인).
+   여백이 모자란 화면에서는 safe가 위 정렬로 되돌리므로 위쪽은 잘리지 않는다. */
 /* align-self:start — 왼쪽이 그리드 기본 stretch로 오른쪽 크기에 맞춰 같이
    늘어나면, JS(layout-match.js)가 왼쪽 높이를 재서 오른쪽에 꽂아줄 때
    "오른쪽이 커지면 그리드가 왼쪽도 늘리고 → 그 늘어난 왼쪽을 다시 재서
@@ -190,7 +198,6 @@ input::placeholder{color:var(--mut-dim)}
   .app{grid-template-columns:1fr}
   .topbar{padding:14px 20px}
   .tagline{display:none}
-  .tagWrap{align-items:flex-end}
   .right{position:static}
   .panel{padding:16px}
 }

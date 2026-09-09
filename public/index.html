@@ -57,13 +57,6 @@
         <p class="tagline">사진 한 장으로 — 내가 영화의 주인공이 된다</p>
       </div>
     </div>
-    <div class="tagWrap">
-      <!-- 4차 정식감사 🔴 항목: 아동 개인정보 처리에 대한 화면 내 고지.
-           예전엔 이 자리에 전체 안내문을 길게 풀어뒀는데(대표 지시, 2026-09-03),
-           본문은 privacy.html로 옮기고 여기엔 짧은 링크만 남긴다 — 고지 내용
-           자체는 그대로 유지, 노출 방식만 바뀜. -->
-      <a class="privacyLink" href="privacy.html" target="_blank" rel="noopener">개인정보 처리방침 보기 ↗</a>
-    </div>
   </header>
 
   <main class="app">
@@ -150,6 +143,17 @@
       </div>
     </section>
   </main>
+
+  <!-- 4차 정식감사 🔴 항목: 아동 개인정보 처리에 대한 화면 내 고지 링크.
+       2026-09-09 대표 지시로 오른쪽 위 → 페이지 맨 아래 가운데로 옮겼다
+       (Voice Cinema와 같은 자리). 문구도 Voice Cinema와 같은 "개인정보처리방침"으로
+       맞추면서 끝의 ↗를 뺐다.
+       target="_blank"는 그대로 둔다 — 같은 탭에서 열면 촬영해둔 사진이 든
+       세션이 통째로 날아간다. 아이가 촬영 후 이 링크를 눌렀을 때 실제로
+       일어나는 일이라 문구보다 우선한다. -->
+  <footer class="pagefoot">
+    <a class="privacyLink" href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>
+  </footer>
 
   <!-- ES모듈 전환(2026-08-30) — app.js 하나만 로드하면 나머지는 import 그래프로
        자동 로드된다. 로드 순서는 이제 <script> 태그 순서가 아니라 import 의존관계가
