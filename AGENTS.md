@@ -27,13 +27,13 @@ AI가 영화 포스터 그림을 만들고, 브라우저 캔버스가 제목·�
 ```bash
 # 백엔드
 cd functions && npm ci
-npm test          # vitest run — 61개, OpenAI/Firestore 실호출 0건
+npm test          # vitest run — 65개, OpenAI/Firestore 실호출 0건
 npm run lint      # eslint
 npm run format    # prettier
 
 # 프론트엔드 (저장소 루트)
 npm ci
-npm test              # vitest run — 66개 (화면 전체를 실제로 렌더한다)
+npm test              # vitest run — 68개 (화면 전체를 실제로 렌더한다)
 npm run lint          # eslint
 npm run typecheck     # TS strict
 npm run build         # -> dist/ (배포되는 것)

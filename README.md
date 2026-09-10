@@ -24,7 +24,7 @@ public/          정적 자산 — Vite가 dist/ 루트로 그대로 복사한�
   boot-splash.js  fonts/  poster-wall.webp  logo-*.png  og.jpg(공유 카드 그림)
 dist/            빌드 산출물 = 배포 폴더 (Firebase Hosting — https://poster.edutogether.kr)
                  커밋하지 않는다
-test/            vitest 66개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
+test/            vitest 68개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/       Firebase Cloud Functions (AI 이미지 생성 API만 담당) — index.js 하나에 전부
 scripts/         loadtest.mjs(부하테스트) fonts/(서브셋) verify/(전환 대조 도구)
 _docs/           저장소 문서 (배포 대상 아님 — hosting public은 dist/ 뿐)
