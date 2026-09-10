@@ -1,0 +1,34 @@
+name: Egress IP check (수동 실행 전용)
+
+# 부하테스트 설계용 사실 확인 도구(2026-09-11).
+#
+# 왜 필요한가: 행사장은 **공인 IP 3개**이고 서버의 IP별 한도(IP_RATE_LIMIT_MAX=50/10분)가
+# 그 전제로 산정돼 있다. 그래서 "노트북 20대"를 흉내 내려면 **서로 다른 공인 IP 3곳**에서
+# 동시에 쏴야 하는데, GitHub Actions 러너가 정말로 서로 다른 egress IP를 쓰는지는
+# **추측하면 안 된다** — 3개인 줄 알았는데 하나면 테스트 전체가 무의미해진다.
+#
+# 이 워크플로는 병렬 잡 3개에서 각자의 공인 IP를 찍는다. 비용도 실요청도 없다
+# (OpenAI를 부르지 않는다 — 우리 서버조차 부르지 않는다).
+#
+# 실행: gh workflow run egress-ip-check.yml   (수동만, push로는 안 돈다)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ip:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [1, 2, 3]
+    steps:
+      - name: 이 러너의 공인 IP
+        run: |
+          # 서로 다른 두 곳에 물어 한쪽이 이상할 때를 대비한다.
+          A=$(curl -s --max-time 10 https://api.ipify.org || echo "?")
+          B=$(curl -s --max-time 10 https://checkip.amazonaws.com || echo "?")
+          echo "runner=${{ matrix.runner }} ipify=$A aws=$(echo $B | tr -d '\n')"
