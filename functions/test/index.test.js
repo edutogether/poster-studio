@@ -43,6 +43,7 @@ import {
   COUNTER_COLLECTIONS,
   COUNTER_TTL_MS,
   cleanupOldCounters,
+  _firestoreIncrementAndCheck,
   ALLOWED_ORIGINS
 } from '../index.js';
 
@@ -899,6 +900,67 @@ function makeFakeFirestoreDb(seedByCollection) {
     }
   };
 }
+
+
+/* ── 🔴 한도를 실제로 강제하는 함수 자체 (2026-09-10 감사에서 뚫린 구멍) ──
+   그동안 한도 테스트는 전부 `_setCounterImplForTesting`으로 **가짜 카운터**를 넣고
+   돌았다. 그래서 미들웨어가 `allowed:false`를 받으면 429를 주는 것은 검증됐지만,
+   **정작 그 `allowed`를 계산하는 `_firestoreIncrementAndCheck`는 아무도 안 봤다** —
+   감사에서 이 함수를 "항상 통과"로 바꿔봤더니 테스트 61개가 전부 그대로 통과했다.
+   행사 당일 과금과 셧다운을 막는 마지막 방어선이 무검증 상태였던 것이다. */
+function makeCounterDb(initial = {}) {
+  const docs = new Map(Object.entries(initial));   // 'coll/doc' -> { count }
+  const db = {
+    collection: (coll) => ({ doc: (id) => ({ _key: `${coll}/${id}` }) }),
+    async runTransaction(fn) {
+      return fn({
+        async get(ref) {
+          const d = docs.get(ref._key);
+          return { exists: d !== undefined, data: () => d };
+        },
+        set(ref, value) { docs.set(ref._key, { count: value.count }); }
+      });
+    },
+    _count: (coll, id) => (docs.get(`${coll}/${id}`) || {}).count
+  };
+  return db;
+}
+
+test('한도 강제: limit까지는 통과하고 limit+1번째가 막힌다(경계는 >=)', async () => {
+  const db = makeCounterDb();
+  const LIMIT = 3;
+  const results = [];
+  for (let i = 0; i < LIMIT + 2; i++) {
+    results.push(await _firestoreIncrementAndCheck('rateLimitBuckets', 'b1', LIMIT, db));
+  }
+  expect(results.slice(0, LIMIT).map((r) => r.allowed), `앞 ${LIMIT}번은 전부 통과해야 한다`)
+    .toEqual([true, true, true]);
+  expect(results[LIMIT].allowed, `${LIMIT + 1}번째는 막혀야 한다`).toBe(false);
+  expect(results[LIMIT + 1].allowed, `그 다음도 계속 막혀야 한다`).toBe(false);
+  expect(results[LIMIT - 1].count, '마지막 통과 시점의 count는 limit과 같아야 한다').toBe(LIMIT);
+});
+
+test('한도 강제: 막힌 요청은 카운터를 더 올리지 않는다(막힌 요청이 한도를 갉아먹으면 안 된다)', async () => {
+  const db = makeCounterDb();
+  for (let i = 0; i < 5; i++) await _firestoreIncrementAndCheck('dailyBudgetBuckets', 'd1', 2, db);
+  expect(db._count('dailyBudgetBuckets', 'd1'), '한도 2에서 멈춰야 한다').toBe(2);
+});
+
+test('한도 강제: 문서(버킷/IP/사진해시)가 다르면 서로 영향을 주지 않는다', async () => {
+  const db = makeCounterDb();
+  await _firestoreIncrementAndCheck('ipRateLimitBuckets', 'bucket:1.1.1.1', 1, db);
+  const other = await _firestoreIncrementAndCheck('ipRateLimitBuckets', 'bucket:2.2.2.2', 1, db);
+  const same = await _firestoreIncrementAndCheck('ipRateLimitBuckets', 'bucket:1.1.1.1', 1, db);
+  expect(other.allowed, '다른 IP는 자기 몫이 남아 있어야 한다').toBe(true);
+  expect(same.allowed, '같은 IP는 자기 한도를 다 썼으므로 막혀야 한다').toBe(false);
+});
+
+test('한도 강제: 이미 카운트가 쌓여 있는 문서도 그 값에서 이어서 판정한다', async () => {
+  const db = makeCounterDb({ 'photoGenCounts/hashA': { count: 2 } });
+  const r = await _firestoreIncrementAndCheck('photoGenCounts', 'hashA', 2, db);
+  expect(r.allowed, '이미 한도만큼 쌓였으면 새 요청은 막혀야 한다').toBe(false);
+  expect(r.count).toBe(2);
+});
 
 test('COUNTER_TTL_MS는 정확히 30일이고, COUNTER_COLLECTIONS는 실제로 쓰이는 4개 컬렉션과 일치한다', () => {
   expect(COUNTER_TTL_MS).toBe(30 * 24 * 60 * 60 * 1000);

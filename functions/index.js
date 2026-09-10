@@ -391,9 +391,21 @@ app.get('/health', async (req, res) => {
    테스트에서는 실제 Firestore 대신 인메모리 가짜 구현을 주입한다(_setCounterImplForTesting) —
    OpenAI 실호출 코드를 테스트 안 하는 것과 같은 이유(실비용은 안 들지만, 매 테스트마다
    진짜 프로젝트의 Firestore를 두드리는 건 zero-dependency 테스트 철학과 안 맞음). */
-async function _firestoreIncrementAndCheck(collectionName, docId, limit) {
-  const ref = db.collection(collectionName).doc(docId);
-  return db.runTransaction(async (tx) => {
+/* 🔴 실제로 한도를 강제하는 자리다. 미들웨어(rateLimit·ipRateLimit·dailyBudgetCap·
+   checkPhotoGenerationLimit)는 여기가 돌려주는 `allowed`를 그대로 따를 뿐이다.
+
+   2026-09-10 감사에서 **이 함수를 무력화해도(항상 allowed) 테스트 61개가 전부
+   통과하는 것**을 확인했다 — 테스트들이 `_setCounterImplForTesting`으로 자기
+   가짜 카운터를 넣고 돌아서, 미들웨어는 덮여 있었지만 **정작 한도를 강제하는
+   이 함수는 아무도 안 보고 있었다.** 그래서 `cleanupOldCounters(db, now)`와 같은
+   방식으로 db를 인자로 열어 직접 테스트한다(기본값은 모듈의 실제 db라 호출부는
+   그대로다).
+
+   경계가 `>=`인 것이 중요하다: limit=2면 **2번째까지 통과하고 3번째가 막힌다.**
+   `>`로 바꾸면 한도가 하나씩 늘어난다. */
+async function _firestoreIncrementAndCheck(collectionName, docId, limit, database = db) {
+  const ref = database.collection(collectionName).doc(docId);
+  return database.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const current = snap.exists ? snap.data().count || 0 : 0;
     if (current >= limit) return { allowed: false, count: current };
@@ -684,6 +696,7 @@ export {
   OPENAI_TIMEOUT_MS,
   GENERATE_BUDGET_MS,
   _setCounterImplForTesting,
+  _firestoreIncrementAndCheck,
   editWithRetry,
   generateArt,
   checkOpenAIReachable,

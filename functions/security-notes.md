@@ -1,42 +1,50 @@
 # 보안 참고사항 (감사마다 반복 질문되지 않도록 기록)
 
-## `npm audit`가 보고하는 moderate 7건은 실위험 없음 — `npm audit fix --force` 절대 금지
+## `npm audit` 취약점 — **2026-09-10에 0건이 됐다** (`overrides`로 해소)
 
-`npm audit`를 돌리면 `uuid`(v3/v5/v6, buffer bounds check 누락)의 취약점이 아래 경로로
-전이 의존성에 걸려 있다고 뜬다(2026-09-01 기준 7건 — 예전엔 9건이었는데 의존성
-업데이트로 줄었다):
+**이 절은 "손쓸 수 없다"에서 "해소됨"으로 뒤집힌 기록이다.** 아래 취소선 부분이 그동안의
+판정이었고, 그 전제를 다시 확인해 보니 사실이 아니었다(COMMON_STANDARDS §4-1-1 —
+"구조적 상한"은 영구 면제가 아니다).
 
+### 지금 상태: `npm audit` **0건**
+
+`package.json`에 `overrides`를 두 줄 넣어 해소했다.
+
+```json
+"overrides": { "uuid": "^11.1.1", "qs": "^6.16.0" }
 ```
-uuid → gaxios/teeny-request/retry-request → @google-cloud/storage
-     → firebase-admin
-     → firebase-functions (우리가 실제로 의존하는 패키지)
-```
 
-**정정(2026-09-01, 6차 감사 발견)**: 이 문서는 예전에 "이 앱은 firebase-admin을
-전혀 import하지 않고 Firestore/Storage를 아예 안 쓴다"고 적혀 있었는데, 이건
-2026-08-30 Firestore 기반 전역 레이트리밋 도입 이후로 **더 이상 사실이 아니다** —
-`functions/index.js`가 `firebase-admin/app`·`firebase-admin/firestore`를 실제로
-import하고, `/generate`·`/health` 요청마다 Firestore 트랜잭션을 실행한다.
+**`npm audit fix --force`는 여전히 절대 금지다** — 그건 `firebase-admin`을 10.3.0으로
+**다운그레이드**하는 제안이라 기능 퇴행을 부른다. `overrides`는 반대로 **전이 의존성만
+위로 올려 고정**하는 것이라 상위 패키지 버전을 건드리지 않는다.
 
-그래도 **실질적 위험은 여전히 낮다** — 단, 이유가 바뀌었다. `npm audit`가 짚어주는
-정확한 취약점 경로를 다시 추적해보면(`npm ls @google-cloud/firestore` +
-`npm audit --json`으로 확인), 문제의 uuid 취약점은 **`@google-cloud/storage`를
-거쳐야만** 도달한다 — `@google-cloud/firestore`(우리가 실제로 쓰는 패키지)는 이
-취약 경로에 아예 등장하지 않는다. 즉:
-- **맞는 이유**: "Firestore/firebase-admin을 안 쓴다" (더 이상 사실 아님)
-- **지금 맞는 이유**: "Firestore는 쓰지만, npm audit이 지목한 정확한 취약 경로는
-  우리가 절대 호출하지 않는 `@google-cloud/storage`(파일 저장소, 이 앱은 사진을
-  즉시 삭제하고 어디에도 영구 저장하지 않으므로 Storage API를 쓸 이유 자체가 없다)를
-  거쳐야만 발동한다."
+**바뀐 것이 정확히 두 개뿐임을 lock 대조로 확인했다**(추가·제거 0건):
 
-`npm audit fix --force`가 제안하는 해결책은 `firebase-admin`을 **10.3.0으로
-다운그레이드**하는 것인데(우리가 실제로 쓰는 Firestore 트랜잭션 API가 그 버전에서도
-동작하는지 검증되지 않았고, 현재 쓰는 v14 계열보다 훨씬 오래된 major다), 오히려
-기능 퇴행·호환성 문제를 일으킬 수 있다. **절대 실행하지 말 것.**
+| 패키지 | 전 | 후 | 이 앱에서 언제 도는가 |
+|---|---|---|---|
+| `qs` | 6.15.3 | 6.16.0 | **매 요청**. express/body-parser가 쿼리·본문을 파싱할 때 |
+| `uuid` | 9.0.1 | 11.1.1 | **안 돈다.** `@google-cloud/storage` 아래에만 있고 이 앱은 Storage를 안 쓴다(코드 참조 0건) |
 
-해소되려면 `firebase-admin`(또는 그 상위 의존성 `@google-cloud/storage`)이 새
-버전에서 이 전이 의존성 자체를 없애야 하는데, 이는 우리가 통제할 수 없는 upstream
-문제다. 주기적으로 `npm outdated`/`npm audit`로 새 버전이 나왔는지만 확인하면 된다.
+`firebase-admin`(14.3.0) · `@google-cloud/firestore`(8.7.1) · `firebase-functions`(7.3.2) ·
+`express`(5.2.1) · `openai`(7.10.0)은 **전부 그대로**다.
+
+⚠ **이 표가 "무엇이 증명됐고 무엇은 아닌지"를 가른다.** 배포 후 라이브가 정상 응답하면
+`qs`는 실제로 검증된 것이다(express가 요청을 파싱해야 응답이 나온다). `uuid`는 런타임
+경로에 없으므로 **동작이 증명된 게 아니라 공급망 위생 조치**다 — 그렇게만 주장한다.
+
+### ~~지난 판정 (2026-09-01 ~ 2026-09-09)~~
+
+~~`uuid` 취약점이 `gaxios/teeny-request/retry-request → @google-cloud/storage →
+firebase-admin → firebase-functions` 경로로 전이돼 moderate 7건이 뜨지만, 취약 경로가
+이 앱이 절대 호출하지 않는 `@google-cloud/storage`를 거쳐야만 발동하므로 실위험이 없다.
+해소되려면 upstream이 고쳐야 하는데 **우리가 통제할 수 없다.**~~
+
+**틀린 부분**: "실위험이 낮다"는 맞았지만 **"우리가 통제할 수 없다"가 틀렸다.** `overrides`로
+전이 의존성을 직접 올릴 수 있었고, 실제로 올려 보니 **8건 → 0건**, 테스트 61개 전부 통과,
+모듈 로드 정상이었다. 3주 가까이 "손쓸 수 없다"로 남아 있던 항목이다.
+
+**교훈**: 구조적 상한으로 처리한 항목은 다음 감사에서 **그 전제부터** 다시 확인한다.
+상류가 고쳤을 수도, 우회로가 생겼을 수도, 애초에 확인이 얕았을 수도 있다.
 
 ## Firestore에 저장하는 값과 보관 기간
 
