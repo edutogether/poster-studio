@@ -1,0 +1,25 @@
+# 줄끝 고정 — 범위를 좁게 잡는다 (2026-09-10, COMMON_STANDARDS §21-13)
+#
+# 저장소 전체(`* text=auto eol=lf`)에는 걸지 않는다. 지금 고칠 빨간불이 없는데
+# 체크아웃 전체를 다시 쓰게 만들 이유가 없다. 아래 두 종류만 못박는다.
+
+# ① 바이트로 비교될 수 있는 스냅샷.
+#    지금 이 저장소의 대조 도구(scripts/verify/compare.mjs)는 JSON.parse로 구조를
+#    비교하므로 CRLF에 안 흔들린다. 그래도 미리 못박는 이유는, 한 폴더만 막으면
+#    다음 사람이 스냅샷을 다른 폴더에 만들 때 같은 함정이 조용히 되살아나기 때문이다.
+#    (다른 저장소에서 실제로: 화면은 하나도 안 달라졌는데 CRLF 때문에 기준선 24개가
+#     이미 빨간불이었고, 아무도 그게 "원래 빨간 것"인 줄 몰랐다.)
+scripts/verify/snapshots/**   text eol=lf
+**/__snapshots__/**           text eol=lf
+tests/**/*-snapshots/**       text eol=lf
+*.snap                        text eol=lf
+
+# ② 빌드가 바이트 그대로 복사하는 정적 파일.
+#    public/ 아래는 Vite가 dist/ 루트로 그대로 복사한다 — 이 파일이 CRLF면
+#    내 컴퓨터의 산출물과 CI 산출물의 바이트가 달라진다. 그러면 "라이브와 바이트를
+#    대조"하는 확인이 아무 문제가 없는데도 다르게 나온다(다른 저장소에서 롤백
+#    예행연습 때 실제로 그렇게 헛짚었다).
+#    지금 실제로 걸리는 것: public/boot-splash.js, public/fonts/pretendard.css.
+public/**/*.js                text eol=lf
+public/**/*.css               text eol=lf
+public/**/*.txt               text eol=lf
