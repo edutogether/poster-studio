@@ -127,7 +127,7 @@
   이 두 성질은 개별 주소가 아니라 **목록 전체를 검사하는 테스트**로 고정돼 있다(`functions/test/index.test.js`).
 
 ## 명령
-- 테스트: `cd functions && npm test`(61개) / 저장소 루트에서 `npm test`(66개) — 둘 다 vitest
+- 테스트: `cd functions && npm test`(65개) / 저장소 루트에서 `npm test`(68개) — 둘 다 vitest
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
 - 빌드: 루트에서 `npm run build` → `dist/`
