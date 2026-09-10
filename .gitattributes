@@ -23,3 +23,19 @@ tests/**/*-snapshots/**       text eol=lf
 public/**/*.js                text eol=lf
 public/**/*.css               text eol=lf
 public/**/*.txt               text eol=lf
+
+# 🔴 바이너리는 줄끝 변환 대상이 아니다 — 위의 경로 규칙에 휩쓸려 깨지는 것을 막는다.
+#    나중 규칙이 이기므로 반드시 아래에 둔다.
+#    다른 저장소에서 실제로 일어난 사고: 폴더 경로에 `text eol=lf`를 걸었더니 그 안의
+#    PNG 40장이 텍스트로 취급돼, 서명에 들어 있는 \r\n 두 바이트가 하나로 합쳐지며
+#    파일이 깨진 채 커밋됐다(81,725 → 81,724바이트). git이 경고를 40줄 찍었지만
+#    커밋 출력에 묻혔다.
+#    이 저장소는 지금 그 경로들에 그림이 없어서 안 터졌을 뿐이다 —
+#    `tests/**/*-snapshots/**`는 Playwright가 스크린샷을 넣는 관례 경로라,
+#    누군가 화면 비교 검사를 하나 추가하는 순간 그 PNG가 깨진다.
+*.png    -text
+*.jpg    -text
+*.jpeg   -text
+*.webp   -text
+*.woff   -text
+*.woff2  -text
