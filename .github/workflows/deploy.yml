@@ -178,6 +178,16 @@ jobs:
               FAILED=1
             fi
 
+            # 공유 카드 그림. 주소만 바꾸고 파일이 없으면 카카오톡 카드에 그림이 안 뜨는데
+            # 화면은 멀쩡해서 아무도 모른다 — 200과 content-type을 같이 본다.
+            # (200만 보면 안 된다: 없는 경로에도 200 + text/html을 주는 서버가 있다.)
+            OG=$(curl -s -o /dev/null -w "%{http_code} %{content_type}" "$HOST/og.jpg")
+            echo "  og.jpg: $OG"
+            case "$OG" in
+              "200 image/jpeg"*) ;;
+              *) echo "::error::$HOST/og.jpg 가 200 + image/jpeg가 아닙니다($OG). 공유 카드에 그림이 안 뜹니다."; FAILED=1 ;;
+            esac
+
             # 헤더가 "있는지"만 보면 값이 다른 오리진이거나 *여도 통과한다 —
             # ALLOWED_ORIGINS의 앵커(^…$)를 지키는 것이 이 저장소 규칙이라
             # **보낸 오리진을 그대로 돌려주는지**까지 본다.
