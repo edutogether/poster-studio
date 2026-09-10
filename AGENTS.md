@@ -27,7 +27,7 @@ AI가 영화 포스터 그림을 만들고, 브라우저 캔버스가 제목·�
 ```bash
 # 백엔드
 cd functions && npm ci
-npm test          # vitest run — 56개, OpenAI/Firestore 실호출 0건
+npm test          # vitest run — 61개, OpenAI/Firestore 실호출 0건
 npm run lint      # eslint
 npm run format    # prettier
 
@@ -55,8 +55,14 @@ npm run verify:selftest  # 대조 도구가 빈 게이트가 아닌지
 ```
 
 - `test`가 실패하면 배포는 아예 안 나간다(`needs:` 체인).
-- `deploy-functions` 뒤에 **부스토큰 스모크테스트**가 붙어 있다 — 라이브 `/generate`가 401이면 파이프라인 실패.
-- `deploy-hosting` 뒤에 라이브 200 확인 + CORS 확인이 붙어 있다.
+- `test`에는 lint·typecheck·**폰트 글자 검사(`fonts:check`)**·테스트·**대조 도구 자기검사**가 들어 있다.
+- `deploy-functions` 뒤에 **부스토큰 스모크테스트**가 붙어 있다 — 라이브 `/generate`가
+  **400(사진 없는 요청의 정상 응답)이어야 통과**하고, 401(토큰 불일치)·그 밖의 응답은 실패다
+  (429만 경고 후 통과). "401이 아니면 통과"였다가 2026-09-10에 고쳤다 — 그 형태는 함수가
+  아예 배포 안 됐을 때도 통과했다.
+- `deploy-hosting`에는 **빌드 → `dist/`에 나가면 안 되는 것 검사 → 배포 → 라이브 확인**이
+  붙어 있다. 라이브 확인은 **두 주소(`poster.edutogether.kr`·`poster-studio.web.app`)를 다**
+  본다(홈 200 · 금지 경로 404 · CORS가 보낸 오리진을 반사) — **하나라도 실패하면 배포 실패**다.
 - 예외 하나: `keepWarm`(Cloud Scheduler) **스케줄 자체를 바꾸는** 배포는 CI 계정 IAM 이슈 이력이 있어
   소유자급 계정으로 로컬 배포하는 경우가 있다 — `_docs/ops/runbook.md` 참고.
 

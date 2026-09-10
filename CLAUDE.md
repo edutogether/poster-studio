@@ -18,21 +18,23 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 
 ## 정체성
 - **위치**: `D:\Projects\inky-festival\poster-studio`
-- **스택**: 정적 프론트엔드(`public/`, ES모듈, 번들러 없음) + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 전담).
-  교육청 MDM 노트북이 설치를 못 받을 수 있어 "주소만 열면 되는" 방식이다 — 설치형 서버는 없다.
+- **스택**: TypeScript + React 19 + Vite로 빌드한 프론트엔드(소스 `src/`, 배포는 산출물 `dist/`)
+  + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 전담). 2026-09-09 머지 전에는
+  번들러 없는 정적 ES모듈이었다.
+  서버는 여전히 없다 — 교육청 MDM 노트북이 설치를 못 받을 수 있어 "주소만 열면 되는" 방식이다.
 - **주소**: **`https://poster.edutogether.kr`** — 2026-09-10부로 정식 주소다. 사람에게 주는 주소,
   안내문·QR을 새로 만들 때 쓰는 주소는 전부 이것이다.
   **`https://poster-studio.web.app`도 계속 살아 있다** — 이미 나간 QR·링크가 죽으면 안 되므로
   없애지 않는다. 두 주소는 같은 것을 서빙한다(번들 해시까지 동일함을 확인).
 - **배포처**: Firebase Hosting + Cloud Functions `posterStudio`(asia-northeast3).
   Firebase 프로젝트는 `inky-poster-studio` 하나뿐이다.
-- **상태**: **실운영 모드**(아래 섹션 참고). 8차 종합감사 100/100(2026-09-07). 최신 프리즈 태그는
-  `poster-studio-freeze-20260907-pre-vitest` — 그 뒤로 8차 감사 수정과 문서 정비가 들어갔으므로,
+- **상태**: **실운영 모드**(아래 섹션 참고). 8차 종합감사 100/100(2026-09-07) — **다만 그건
+  React 전환 *이전*이다.** 최신 프리즈 태그는 `poster-studio-freeze-20260909-pre-react-merge`.
   큰 변경을 시작하기 전에는 새 freeze 태그를 먼저 찍는다.
 
 ## 명령
 ```bash
-cd functions && npm ci && npm test    # vitest 56개
+cd functions && npm ci && npm test    # vitest 61개
 cd functions && npm run lint          # eslint
 cd functions && npm run format        # prettier (functions에만 있음)
 
@@ -73,7 +75,11 @@ _docs/        저장소 문서(배포 대상 아님) — ops/ intents/ CHANGELOG
 ## 알아야 할 것
 - **실비용 발생**: OpenAI 이미지 생성 API가 장당 약 $0.04(medium 화질). API 키는 Firebase Secret Manager 보관 — 절대 코드/커밋에 직접 작성 금지.
 - **인터넷 필수** — AI 생성에 필요, 끊기면 생성 자체가 안 됨(로컬 폴백 없음. 단 "AI 없이 계속하기" 버튼으로 인쇄까지는 가능).
-- ~~노트북 최대 4대(3대 운영+1대 예비), 포토프린터 최대 3대 공유 구성.~~ — **초기 설계 기준이며 2026-09-03에 노트북 20대(공인 IP 3개에 7/7/6 분산)로 확정되면서 대체됐다.** 현재 기준과 프린터 대수 미확인 건은 `.claude/rules/app.md` 참고. 노트북은 브라우저만 있으면 되므로 설치 요건은 없다.
+- **운영 규모(2026-09-09 대표 확정)**: **노트북 3대**, **포토프린터 3대 — 2대 상시 + 1대 예비**.
+  "노트북 20대"는 배치 계획이 아니라 **부하 테스트 목표치**다(문서만 읽고 실제 배치로 오해한 사례가
+  있었다). 근거와 `IP_RATE_LIMIT_MAX` 산정은 `.claude/rules/app.md`, 그 이전 변천은
+  [`_docs/archive/operating-scale-history-20260910.md`](_docs/archive/operating-scale-history-20260910.md).
+  노트북은 브라우저만 있으면 되므로 설치 요건은 없다.
 - 학생 얼굴 사진 + 입력정보 수집 — 실명 필수 아님(별명 허용), 체험목적 외 사용 금지, 현장출력 중심(별도 QR전달 없음). 사진이 OpenAI(미국) 서버로 전송되는 사실을 부스 안내문에 명시할 것(README 참고).
 - **"PNG 저장" 버튼을 누르지 않는 한 노트북에 남는 것은 없다** — 촬영 사진·AI 생성 이미지는 서버/노트북 어디에도 영구 저장되지 않는다(브라우저 메모리·캐시만 존재). 다만 완성 포스터를 `PNG 저장` 버튼으로 내려받으면 아동 얼굴+이름이 담긴 파일이 노트북 다운로드 폴더에 실제로 남는다 — 2026-08-29 대표 결정으로 이 버튼은 유지하고, 그렇게 쌓인 파일은 **연말(2026-12-31)까지 보관 후 삭제**하며, 삭제 작업은 앱이 자동으로 하지 않고 **교육청 장학사가 직접 처리**한다(`_docs/CHANGELOG.md`의 "4차 감사 🔴 후속조치" 참고).
 - **2026-08-30부로 Firestore 사용 중**(`_docs/CHANGELOG.md`의 "5차 감사 후속조치" 참고) — **레이트리밋·재생성한도·일일예산용 순수 숫자 카운터와 사진 SHA-256 해시만** 저장한다. 사진·이름 등 개인정보는 Firestore를 포함해 그 어디에도 저장되지 않는다 — 이 원칙은 안 바뀜.

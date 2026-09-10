@@ -14,22 +14,27 @@
 
 ## 구조
 ```
-public/          정적 자산 (빌드 산출물 dist/가 Firebase Hosting으로 배포 — https://poster.edutogether.kr)
-  index.html
-  app.js         진입점(ES모듈) — 아래 모듈들을 import해 부팅
-  camera.js      웹캠 촬영          api.js       Functions 호출 + 갤러리
-  layout.js      폰트·캔버스 도구    templates.js 포스터 4종 템플릿
-  print.js       PNG 저장·인쇄      constants.js/state.js/dom.js  공용 상수·상태·DOM
-  style.css      privacy.html       poster-wall.webp
-functions/       Firebase Cloud Functions (AI 이미지 생성 API만 담당)
-  index.js
-  package.json
-_docs/           저장소 문서 (배포 대상 아님 — hosting public은 public/ 뿐)
+index.html       Vite 진입 HTML(저장소 루트). privacy.html도 루트에 있다
+src/             프론트엔드 소스 (TypeScript + React 19)
+  main.tsx       마운트         PosterStudio.tsx  화면·로직 전부
+  layout.ts      폰트·캔버스 도구  templates.ts      포스터 4종 템플릿
+  poster.ts      포스터 조립     useLayoutMatch.ts 좌우 높이 맞춤
+  constants.ts / state.ts / favicon.ts / style.css
+public/          정적 자산 — Vite가 dist/ 루트로 그대로 복사한다
+  boot-splash.js  fonts/  poster-wall.webp  logo-*.png  og.jpg(공유 카드 그림)
+dist/            빌드 산출물 = 배포 폴더 (Firebase Hosting — https://poster.edutogether.kr)
+                 커밋하지 않는다
+test/            vitest 66개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
+functions/       Firebase Cloud Functions (AI 이미지 생성 API만 담당) — index.js 하나에 전부
+scripts/         loadtest.mjs(부하테스트) fonts/(서브셋) verify/(전환 대조 도구)
+_docs/           저장소 문서 (배포 대상 아님 — hosting public은 dist/ 뿐)
+  CHANGELOG.md     날짜별 전체 이력
   ops/runbook.md   행사 당일 장애 대응 런북
   intents/         건별 작업 의도 기록(intent.md)
+  archive/         끝났지만 근거로 남기는 것
 AGENTS.md        AI 코딩 도구(Claude Code / Codex 등)가 읽는 저장소 안내
 firebase.json    hosting(poster-studio 타겟) + functions 설정, 보안헤더(CSP 등) 포함
-.github/workflows/deploy.yml   master 푸시 시 test → functions 배포 → hosting(poster-studio) 배포 순서로 자동 진행
+.github/workflows/deploy.yml   master 푸시 시 test → functions 배포 → hosting 배포 순서로 자동 진행
 ```
 
 ## 운영 순서 (행사 당일)
@@ -51,7 +56,7 @@ npm install
 firebase functions:secrets:set OPENAI_API_KEY   # 최초 1회, 콘솔에 값 직접 입력
 firebase deploy --only functions
 ```
-배포 후 발급되는 함수 URL을 `public/constants.js`의 `API_BASE` 상수에 넣어야 프론트엔드가 연결된다.
+배포 후 발급되는 함수 URL을 `src/constants.ts`의 `API_BASE` 상수에 넣어야 프론트엔드가 연결된다.
 
 > Firebase 프로젝트 생성·Blaze(종량제) 플랜 전환은 콘솔(대표 계정) 작업이 먼저 필요하다 — 자세한 내용은 `CLAUDE.md` 참고.
 
