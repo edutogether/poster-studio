@@ -212,6 +212,46 @@ test('parseMultipart: 같은 이름(photo)으로 파일을 2개 보내도 임시
   fs.unlinkSync(req.file.path);
 });
 
+/* CodeQL js/path-injection(2026-09-10, 4건: index.js 317·504·555·631)에 대한 뒤집기 검사.
+   지적받은 네 곳은 전부 `req.file.path`를 쓰는데, 그 값은 클라이언트가 준 파일명이 아니라
+   parseMultipart가 UPLOAD_DIR 안에 `시각-무작위12자리`로 직접 만든 것이다. 코드를 읽어
+   "안전하다"고 넘기지 않고, 실제로 경로 탈출을 시도하는 파일명을 넣어 거부되는지 본다.
+   이 검사가 있으면 나중에 누가 tmpPath를 클라이언트 파일명으로 바꾸는 순간 빨간불이 된다. */
+const PATH_ESCAPE_FILENAMES = [
+  '../../../../etc/passwd',
+  '..\..\..\Windows\System32\drivers\etc\hosts',
+  '/etc/shadow',
+  'C:\Windows\win.ini',
+  'a/../../b.jpg',
+  '....//....//evil.jpg'
+];
+
+for (const filename of PATH_ESCAPE_FILENAMES) {
+  test(`parseMultipart: 경로 탈출을 노린 파일명이 임시 경로에 전혀 반영되지 않는다 — ${filename}`, async () => {
+    const { headers, rawBody } = await buildMultipartRequest([
+      ['photo', { blob: new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xdb])], { type: 'image/jpeg' }), filename }]
+    ]);
+    const { err, req } = await runParseMultipart({ headers, rawBody });
+    expect(err).toBe(undefined);
+    expect(req.file, '정상 이미지이므로 파일 자체는 받아들여져야 한다').toBeTruthy();
+
+    const resolved = path.resolve(req.file.path);
+    expect(
+      path.dirname(resolved),
+      `임시 파일은 UPLOAD_DIR 바로 아래여야 한다 (실제: ${resolved})`
+    ).toBe(path.resolve(UPLOAD_DIR));
+    expect(
+      path.basename(resolved),
+      '파일명은 서버가 만든 "시각-무작위12자리"여야 하고 클라이언트 값이 섞이면 안 된다'
+    ).toMatch(/^\d+-[0-9a-f]{12}$/);
+    expect(resolved.includes('..'), '경로에 .. 가 남아 있으면 안 된다').toBe(false);
+
+    // 실제로 쓰인 곳도 UPLOAD_DIR 안이어야 한다(경로 문자열만 멀쩡하고 다른 데 썼을 가능성 차단).
+    expect(fs.existsSync(resolved), '임시 파일이 UPLOAD_DIR 안에 실제로 있어야 한다').toBe(true);
+    fs.unlinkSync(resolved);
+  });
+}
+
 // ── mapGenerateError(OpenAI 오류 → 상태코드/문구 매핑, 실제 호출 없이 검증) ──
 test('mapGenerateError: 429는 429 그대로, 대기 안내문구', () => {
   const { status, message } = mapGenerateError({ status: 429, message: 'Rate limit exceeded' });
