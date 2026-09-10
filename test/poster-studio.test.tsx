@@ -300,6 +300,45 @@ describe('초기화', () => {
   });
 });
 
+/* ───────────────── 🔴 개인정보 — 화면 고지가 한 약속 ─────────────────
+   `privacy.html`이 아이와 교사에게 **"이름·단체명·출연진은 전송되지 않습니다"**라고
+   약속하고 있고, `app.md`도 "이 설계를 깨지 말 것"이라고 못박아 뒀다.
+
+   그런데 2026-09-10 감사 시점까지 **그 약속을 지키는 테스트가 하나도 없었다.**
+   누가 `form.append('studentName', ...)` 한 줄을 넣어도 테스트·린트·타입검사·CI가
+   전부 초록불이고, 화면 고지만 거짓이 된다. 아동 개인정보라 되돌릴 수도 없다.
+
+   그래서 **보내는 것**과 **절대 안 보내는 것**을 양쪽으로 고정한다. */
+describe('개인정보: 서버로 보내는 것', () => {
+  async function 생성해서_보낸_본문() {
+    const f = installFetch();
+    await act(async () => { renderApp(); });
+    await shoot();
+    el<HTMLInputElement>('studentName').value = '김인키';
+    el<HTMLInputElement>('movieTitle').value = '우주를 달리는 인키';
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(f.bodies.length, '/generate 요청이 실제로 나가야 이 테스트가 의미가 있다').toBeGreaterThan(0);
+    return f.bodies[0];
+  }
+
+  test('🔴 이름·단체명·출연진은 서버로 보내지 않는다(화면 고지가 한 약속)', async () => {
+    const body = await 생성해서_보낸_본문();
+    const keys = [...body.keys()];
+    for (const 금지 of ['studentName', 'groupName', 'members', 'name', 'title']) {
+      expect(keys, `${금지}는 서버로 나가면 안 된다 — privacy.html의 약속이다`).not.toContain(금지);
+    }
+    expect(JSON.stringify([...body.entries()].filter(([k]) => k !== 'photo')))
+      .not.toContain('김인키');
+  });
+
+  test('보내는 필드는 사진·영화제목·홍보문구·장르·모드 다섯뿐이다', async () => {
+    const body = await 생성해서_보낸_본문();
+    expect([...body.keys()].sort())
+      .toEqual(['genre', 'mode', 'movieTitle', 'photo', 'tagline']);
+  });
+});
+
 describe('저장·인쇄', () => {
   test('PNG 저장: 포스터가 없으면 안내만 하고 아무 것도 만들지 않는다', async () => {
     await act(async () => { renderApp(); });

@@ -71,9 +71,13 @@ export function installObjectURL() {
 /** /generate 응답만 가로챈다. 실제 OpenAI·Firestore는 절대 부르지 않는다. */
 export function installFetch(handler?: (url: string) => Response | Promise<Response>) {
   const calls: string[] = [];
-  const fn = vi.fn(async (input: any) => {
+  /* 무엇을 보냈는지도 잡아둔다 — "이름·단체명·출연진은 서버로 안 보낸다"는 화면
+     고지(privacy.html)의 약속을 테스트가 지키려면 URL만으로는 부족하다. */
+  const bodies: FormData[] = [];
+  const fn = vi.fn(async (input: any, init?: any) => {
     const url = String(input);
     calls.push(url);
+    if (init?.body instanceof FormData) bodies.push(init.body);
     if (handler) return handler(url);
     if (url.includes('/generate')) {
       return new Response(JSON.stringify({ images: ['data:image/png;base64,FAKE'] }), {
@@ -87,7 +91,7 @@ export function installFetch(handler?: (url: string) => Response | Promise<Respo
     });
   });
   vi.stubGlobal('fetch', fn);
-  return { calls, fn };
+  return { calls, fn, bodies };
 }
 
 /** 로고 이미지 로드(layout.ts의 loadImg)가 테스트에서 영원히 매달리지 않게 한다. */

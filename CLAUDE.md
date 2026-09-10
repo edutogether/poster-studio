@@ -28,8 +28,9 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
   없애지 않는다. 두 주소는 같은 것을 서빙한다(번들 해시까지 동일함을 확인).
 - **배포처**: Firebase Hosting + Cloud Functions `posterStudio`(asia-northeast3).
   Firebase 프로젝트는 `inky-poster-studio` 하나뿐이다.
-- **상태**: **실운영 모드**(아래 섹션 참고). 8차 종합감사 100/100(2026-09-07) — **다만 그건
-  React 전환 *이전*이다.** 최신 프리즈 태그는 `poster-studio-freeze-20260909-pre-react-merge`.
+- **상태**: **실운영 모드**(아래 섹션 참고). **9차 종합감사 100/100(2026-09-10)** — React
+  전환 후 첫 감사다(8차는 전환 이전이었다). 결함 6건을 고치고 재채점한 결과이며,
+  경위는 `_docs/CHANGELOG.md`에 있다.
   큰 변경을 시작하기 전에는 새 freeze 태그를 먼저 찍는다.
 
 ## 명령
