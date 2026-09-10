@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-09-11 | [loadtest-3ip](2026-09-11-loadtest-3ip/intent.md) | 2 | draft | 공인 IP 3곳에서 동시에 쏘는 부하테스트 — 한 대로는 "여러 대를 버틴다"를 잴 수 없다 |
 | 2026-09-09 | [react-ts-conversion](2026-09-09-react-ts-conversion/intent.md) | 2 | in-progress | 프론트엔드를 React+TypeScript로 전환하되 UI/UX는 체감까지 동일 유지 |
 
 ## 폴더 규칙
