@@ -47,6 +47,35 @@ export function collectStrings() {
       push(m[1]); push(m[2]); push(m[3]);
     }
   }
+  /* 🔴 CSS도 훑는다 (2026-09-11에 추가).
+     왜: `.notes li::before { content:"※ " }`처럼 **화면 글자가 CSS에서 나오는 자리**가 있다.
+     그런데 이 추출기는 html과 src의 ts/tsx만 보고 있어서 **`※`가 서브셋에서 통째로 빠졌고**,
+     `fonts:check`는 통과하는데 라이브에서는 폴백 폰트로 그려졌다(2026-09-11 라이브 확인에서
+     드러남). **게이트에 구멍이 있었던 것이지 글자 하나가 빠진 게 아니다.**
+
+     무엇을 훑는가:
+       - `content:` 값 — `::before/::after`가 실제로 화면에 찍는 글자다. 여기가 본체다.
+       - `quotes:` 값 — 따옴표 글리프도 화면에 그려진다.
+     무엇을 안 훑는가(이유와 함께):
+       - 선택자·속성 이름·색상 등 나머지 — 화면에 **글자로 찍히지 않는다.**
+       - `url(...)`·`attr(...)` 안 — 글자가 아니라 참조다. `attr()`로 끌어온 값은 그 속성이
+         있는 html 쪽에서 이미 걷힌다.
+       - `\\f0c7` 같은 CSS 이스케이프 — 아이콘 폰트용이라 이 서브셋(본문 폰트)과 무관하다.
+     ⚠ 넓게 잡는 쪽이 의도된 설계다. 글자 몇 개를 더 담는 비용이 두부(□)가 나갈 위험보다 싸다. */
+  const cssFiles = fs
+    .readdirSync(SRC)
+    .filter((x) => x.endsWith('.css'))
+    .map((x) => path.join(SRC, x));
+  if (!cssFiles.length) {
+    throw new Error('src/에서 css를 하나도 못 찾았습니다 — CSS에서 나오는 글자(content 등)가 조용히 빠집니다.');
+  }
+  for (const f of cssFiles) {
+    const t = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of t.matchAll(/(?:^|[;{\s])(?:content|quotes)\s*:\s*([^;}]+)/gi)) {
+      for (const q of m[1].matchAll(/'([^'\n]*)'|"([^"\n]*)"/g)) { push(q[1]); push(q[2]); }
+    }
+  }
+
   return out;
 }
 
