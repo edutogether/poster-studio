@@ -205,6 +205,23 @@
   스플래시처럼 애니메이션 시간을 재야 하는 건 그 환경에서 잰 값이 **거짓**이다. Chrome 확장이
   연결 안 될 때는 **헤드리스 Chrome을 직접 띄워(`--headless=new` + CDP) 잰다** — 사람에게
   "직접 열어봐 주세요"로 넘기지 않는다.
+  🔴 **카메라를 타는 흐름(촬영 → 생성 → 인쇄)은 확장으로 확인할 수 없다.** 이 앱은
+  `navigator.mediaDevices.getUserMedia`로 찍으므로, 얼굴이 든 결과를 보려면 **카메라 자체를
+  바꿔야** 한다 — 확장은 이미 떠 있는 크롬에 붙는 것이라 기동 플래그를 줄 수 없다.
+  그럴 때는 **크롬을 직접 띄워 가짜 카메라에 사진을 물린다**:
+
+  ```bash
+  ffmpeg -y -loop 1 -i scripts/sample-photo.jpg -t 3 -r 15 -pix_fmt yuv420p -vf "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720" fake-cam.y4m
+  ```
+
+  크롬 기동 플래그 세 개: `--use-fake-ui-for-media-stream`(권한 창 건너뛰기) ·
+  `--use-fake-device-for-media-stream`(가짜 카메라 켜기) ·
+  `--use-file-for-fake-video-capture=<y4m>`(그 카메라가 보여줄 화면 = 우리 사진).
+
+  **2026-09-11에 이 방법으로 라이브 결함 두 개를 찾았다** — 촬영 미리보기가 CSP에 막혀 안 뜨던 것,
+  `※`가 소스에서 깨져 있던 것. 둘 다 **로컬(`localhost`·`dist` 정적 서버)에서는 안 보이고
+  라이브에서만 보이는** 종류였다. y4m은 용량이 크니(3초 720p ≈ 60MB) 저장소에 넣지 말고
+  세션 임시 폴더에 만든다.
 - 🔴 **검사(게이트)를 새로 넣었으면 반드시 일부러 깨뜨려서 실패하는지 확인한다.** 통과하는 것만
   보고 넘어가면 **아무것도 안 잡는 빈 게이트**를 만들어놓고 안심하게 된다. 실제로 그랬다:
   `scripts/fonts/check-charset.mjs`가 `endsWith('charset.mjs')` 판정 때문에 import만으로
