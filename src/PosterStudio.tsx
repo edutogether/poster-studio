@@ -442,9 +442,17 @@ export default function PosterStudio() {
           <div id="gallery" className="gallery">
             {posters.map((p, i) => (
               <div key={p.label + i}>
-                <div className={i === selected ? 'thumb active' : 'thumb'} onClick={() => setSelected(i)}>
-                  <img src={p.canvas.toDataURL('image/png')} alt={`${p.label} 버전 포스터`} />
-                </div>
+                <button
+                  type="button"
+                  className={i === selected ? 'thumb active' : 'thumb'}
+                  aria-pressed={i === selected}
+                  aria-label={`${p.label} 버전 고르기`}
+                  onClick={() => setSelected(i)}
+                >
+                  {/* 이름은 위 aria-label이 준다. 그림 자체는 같은 것을 한 번 더 읽게 하므로
+                      장식으로 둔다(alt=""). */}
+                  <img src={p.canvas.toDataURL('image/png')} alt="" />
+                </button>
                 <div className="label">{p.label}</div>
               </div>
             ))}
