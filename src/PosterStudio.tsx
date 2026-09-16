@@ -443,7 +443,7 @@ export default function PosterStudio() {
             {posters.map((p, i) => (
               <div key={p.label + i}>
                 <div className={i === selected ? 'thumb active' : 'thumb'} onClick={() => setSelected(i)}>
-                  <img src={p.canvas.toDataURL('image/png')} />
+                  <img src={p.canvas.toDataURL('image/png')} alt={`${p.label} 버전 포스터`} />
                 </div>
                 <div className="label">{p.label}</div>
               </div>
