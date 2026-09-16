@@ -1,0 +1,25 @@
+{
+  "$comment": "배포 후 검증용 주요 화면 선언 (_shared/CONVENTIONS.md §3.5). 화면 문구를 바꾸면 이 파일의 expect도 같은 커밋에서 고친다.",
+  "baseUrl": "https://poster.edutogether.kr",
+  "screens": [
+    {
+      "name": "첫 화면 (촬영·포스터 정보)",
+      "path": "/",
+      "expect": [
+        "InKY Poster Studio",
+        "사진 한 장으로 — 내가 영화의 주인공이 된다",
+        "AI 포스터 만들기"
+      ]
+    }
+  ],
+  "excluded": [
+    {
+      "screen": "스플래시",
+      "reason": "뜨고 사라지는 시간에 의존한다. 스플래시가 지나간 뒤 본문이 보이는지로 판정하는 편이 안정적이다."
+    },
+    {
+      "screen": "카메라 촬영·AI 생성 결과",
+      "reason": "카메라 권한이 필요하고, 누르면 실제로 AI 생성 비용이 드는 요청이 나간다."
+    }
+  ]
+}
