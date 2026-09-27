@@ -56,3 +56,6 @@ export const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
 export const val = (id: string): string => ($<HTMLInputElement>(id)?.value || '').trim();
 export const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random()*arr.length)];
+
+// 확인용 일부러 깨뜨림 — 타입 오류(test 잡이 빨개져야 한다)
+export const __prCheckMutation: number = 'x';
