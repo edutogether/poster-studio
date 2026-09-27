@@ -172,8 +172,8 @@ checkBoothToken → parseMultipart → requirePhoto → rateLimit → ipRateLimi
 
 ## 작업 흐름
 
-- **집 PC의 Claude Code 세션**은 `master`에 직접 커밋한다(팀장 승인 경로). **Codex·클라우드·다른 기기**는 위
-  공통 규칙대로 작업 가지 → PR이고, 머지 버튼은 사람이 누른다.
+- **집 PC의 Claude Code 세션**은 `master`에 직접 커밋한다(팀장 승인 경로). **Codex·클라우드·다른 기기**는 작업 가지 → PR,
+  머지 버튼은 사람이 누른다. **PR이면 `pr-check.yml`(배포 전 검사와 같은 것)이 요청 없이 자동으로 돈다.**
 - 커밋 메시지: `type: 한글 설명 (승인 Bumm M/D)` — type은 feat/fix/docs/chore/refactor/test.
 - 코드를 고쳤으면 **양쪽 `npm test`와 `npm run lint`를 돌리고** 커밋한다 — 실패한 커밋이 `master`에 오르면 배포가 멈춘다.
 - 의미 있는 변경(Functions 설정, 사용자 흐름, 개인정보 취급)은 `_docs/intents/`에 intent를 남긴다 — 기준은 `_docs/intents/README.md`.
