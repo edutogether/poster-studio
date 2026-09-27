@@ -8,6 +8,10 @@
 
 이력에 나오는 `runbook.md`는 전부 현재 경로 `_docs/ops/runbook.md`를 가리킨다.
 
+## AGENTS.md에 조직 공통 규칙 (2026-09-27, 대표 지시 — 팀장 전달)
+
+- Codex·Claude 클라우드가 이 저장소만 받아도 일할 수 있게 공통 절을 원문 그대로 넣고, 로컬 전용 작업에 이 앱 것(라이브 `/generate`, `loadtest.mjs --confirm`, 시크릿 교체)을 덧붙였다. `main`→`master` 읽기 안내, 작업 흐름을 "집 PC 세션은 `master` 직접 / 클라우드는 가지→PR"로 합침. 199→180줄(기준 100~180) — 규칙은 하나도 빼지 않고 설명만 줄였고, 낡은 사실 셋(부스 20대 → 가동 4대, 테스트 개수 표기, `loadtest --dry` → `--confirm`)을 바로잡았다.
+
 ## React 19.3.0 (2026-09-27, 대표 지시 — 팀장 전달)
 
 - `react`·`react-dom`·`@types/react`·`@types/react-dom` 19.2.x → **19.3.0**(`696f351`, 따라온 것은 `react-dom`이 직접 요구하는 `scheduler` 0.28 하나) — 검사 전부 통과·새 경고 0건, **포스터 픽셀 20쌍 불일치 0건**·화면 스냅샷 4조합 전↔후 0건, CI 4잡 통과·배포, 라이브 두 주소에서 19.3.0 번들(`main-ry86cvGP.js`, 대조한 빌드와 같은 해시)·요소 id 25/25·콘솔 오류 0건 확인. 번들은 React 자체가 커져 gzip 69.1→77.8 kB. 되돌릴 지점 `poster-studio-freeze-20260927-pre-react-19.3`(되돌려 태그와 차이 0건 확인). 근거: [`intents/2026-09-27-react-19.3`](intents/2026-09-27-react-19.3/intent.md)
