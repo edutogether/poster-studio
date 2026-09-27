@@ -27,7 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
-| 2026-09-27 | [react-19.3](2026-09-27-react-19.3/intent.md) | 2 | in-progress | react·react-dom·타입 두 개만 19.3.0으로. 화면·포스터 픽셀 전/후 대조 0건이 배포 조건 |
+| 2026-09-27 | [react-19.3](2026-09-27-react-19.3/intent.md) | 2 | done | react·react-dom·타입 두 개만 19.3.0으로. 화면·포스터 픽셀 전/후 대조 0건이 배포 조건 |
 | 2026-09-11 | [loadtest-3ip](2026-09-11-loadtest-3ip/intent.md) | 2 | draft | 부하테스트를 할 것인가 → **안 해도 된다**(병목이 서버가 아니라 프린터). 남은 공백은 전환 후 라이브 생성 $0.08 |
 | 2026-09-09 | [react-ts-conversion](2026-09-09-react-ts-conversion/intent.md) | 2 | in-progress | 프론트엔드를 React+TypeScript로 전환하되 UI/UX는 체감까지 동일 유지 |
 
