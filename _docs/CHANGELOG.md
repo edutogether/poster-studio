@@ -8,6 +8,16 @@
 
 이력에 나오는 `runbook.md`는 전부 현재 경로 `_docs/ops/runbook.md`를 가리킨다.
 
+## 클라우드 세션 준비 — SessionStart 훅 (2026-09-29, 대표 지시 — 가지에만, 미배포)
+
+- `scripts/cloud-session-start.sh`(원본은 `817beatles/projects`의 `_shared/cloud/`)와 `.claude/settings.json`의
+  `SessionStart` 훅. **Anthropic 클라우드 세션(`CLAUDE_CODE_REMOTE=true`)에서만** 돈다 — ① `node_modules`가 없는
+  패키지만 `npm ci` ② Playwright 설정이 있으면 이 저장소가 고정한 Chromium ③ `AGENTS.md`의 «조직 공통 규칙» 절을
+  세션 컨텍스트에 넣는다(클라우드에는 상위 `D:\Projects\CLAUDE.md`가 없다). 집 PC 로컬 세션에서는 첫 줄에서 끝나
+  아무 일도 하지 않는다. 가지 `claude/cloud-session-setup`에만 있고 `master` 반영은 팀장 확인 뒤.
+  설정·여는 법 원문은 `_shared/CLAUDE-CLOUD.md`.
+- 클라우드 실측(2026-09-29, Anthropic 클라우드 Ubuntu 24.04 · Node 22): typecheck·lint·test·build·functions test 전부 통과.
+
 ## PR 자동 검사 (2026-09-27, 대표 지시 — 팀장 전달)
 
 - `.github/workflows/pr-check.yml`("PR Check") 추가 — master 대상 PR이면 요청 없이 돈다. 배포 워크플로의 test 잡 12단계와 똑같고(기계 대조), 배포 전에 도는 빌드·`dist` 점검도 넣었다. 배포·비밀 키·라이브 호출 없음(`pull_request`, 읽기 권한만). 확인 PR #2에서 일부러 깨뜨린 커밋은 두 잡 모두 노린 단계에서 빨강(타입 검사·dist 점검), 되돌린 커밋은 초록 24초 — 합치지 않고 닫고 가지 삭제.
