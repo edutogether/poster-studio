@@ -2,7 +2,7 @@
 
 이 저장소에서 작업하는 **모든 AI 코딩 도구**(Claude Code, Codex 등)를 위한 안내다.
 클로드 전용 규칙은 `CLAUDE.md`·`.claude/rules/app.md`, 이력은 `_docs/CHANGELOG.md`에 있고,
-여기엔 **어떤 도구로 열든 알아야 하는 것**만 적는다.
+여기엔 **어떤 도구로 열든 알아야 하는 것**만 적는다. **작업 전에 공통 인계 문서 `_docs/ops/HANDOFF_CURRENT.md`(담당·현재 상태)를 먼저 읽는다.**
 
 ---
 

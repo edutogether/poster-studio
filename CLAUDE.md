@@ -11,6 +11,7 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 
 | 문서 | 무엇이 있나 |
 |---|---|
+| [`_docs/ops/HANDOFF_CURRENT.md`](_docs/ops/HANDOFF_CURRENT.md) | **Claude·Codex 공통 인계 문서** — 현재 담당·상태·다음 작업. **작업 전에 먼저 읽는다** |
 | [`AGENTS.md`](AGENTS.md) | **모든 AI 도구(Codex 포함)가 읽는 안내.** 명령·배포·금지사항 + 이 저장소의 함정 9건(XFF 규칙, 타임아웃 체인, hosting ignore 등) |
 | [`.claude/rules/app.md`](.claude/rules/app.md) | 개별법 — 행사 정보, 개인정보 취급·보관 정책, 절대 금지사항, 자주 틀리는 것 |
 | [`_docs/ops/runbook.md`](_docs/ops/runbook.md) | **행사 당일 장애 대응**(콜드스타트, 429 4종, AI 실패, 롤백). 부스 진행자가 실제로 펴보는 문서 |

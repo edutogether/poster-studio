@@ -8,6 +8,10 @@
 
 이력에 나오는 `runbook.md`는 전부 현재 경로 `_docs/ops/runbook.md`를 가리킨다.
 
+## Claude·Codex 양방향 인계 체계 (2026-09-29, Bumm님 직접 지시)
+
+- 공통 인계 문서 `_docs/ops/HANDOFF_CURRENT.md`를 만들고(도구별 원장 없음) `AGENTS.md`·`CLAUDE.md`에 먼저 읽으라는 안내를 한 줄씩 넣었다. 이번 담당은 **Codex(일시)** — Claude가 AI Ways Incheon을 개발하는 동안 사용량을 나누기 위한 것이고 영구 이관이 아니다. 인계 절차 5단계("Codex로 인계"/"Claude로 인계")는 그 문서 §1. 가지 `handoff/codex-20260929`에만 있고 master 미반영.
+
 ## PR 자동 검사 (2026-09-27, 대표 지시 — 팀장 전달)
 
 - `.github/workflows/pr-check.yml`("PR Check") 추가 — master 대상 PR이면 요청 없이 돈다. 배포 워크플로의 test 잡 12단계와 똑같고(기계 대조), 배포 전에 도는 빌드·`dist` 점검도 넣었다. 배포·비밀 키·라이브 호출 없음(`pull_request`, 읽기 권한만). 확인 PR #2에서 일부러 깨뜨린 커밋은 두 잡 모두 노린 단계에서 빨강(타입 검사·dist 점검), 되돌린 커밋은 초록 24초 — 합치지 않고 닫고 가지 삭제.
