@@ -8,6 +8,11 @@
 
 이력에 나오는 `runbook.md`는 전부 현재 경로 `_docs/ops/runbook.md`를 가리킨다.
 
+## Codex 일시 인수와 문서 PR (2026-09-29, Bumm님 직접 지시)
+
+- 공식 인계 문서와 적용 규칙을 읽고 `handoff/codex-20260929`의 지정 커밋 `cab49455d9cb7be33fbefb17ad392ff8261c526c`를 인수했다. 미커밋 변경과 인계 이후 master 추가 커밋은 없었다. 실행 코드가 마지막 검증 코드 `696f351`과 같음을 확인하고 기존 검증 기록을 재사용한다.
+- 문서 반영 [PR #3](https://github.com/edutogether/poster-studio/pull/3)을 열고 공통 인계 문서에 진행 상황을 기록했다. 병합·배포·유료 API 호출은 하지 않았다. 정기 감사와 알려진 문서 어긋남 두 건은 2026-09-30 예정이며, 다른 작업자의 가지와 권한 설정은 보존한다.
+
 ## Claude·Codex 양방향 인계 체계 (2026-09-29, Bumm님 직접 지시)
 
 - 공통 인계 문서 `_docs/ops/HANDOFF_CURRENT.md`를 만들고(도구별 원장 없음) `AGENTS.md`·`CLAUDE.md`에 먼저 읽으라는 안내를 한 줄씩 넣었다. 이번 담당은 **Codex(일시)** — Claude가 AI Ways Incheon을 개발하는 동안 사용량을 나누기 위한 것이고 영구 이관이 아니다. 인계 절차 5단계("Codex로 인계"/"Claude로 인계")는 그 문서 §1. 가지 `handoff/codex-20260929`에만 있고 master 미반영.

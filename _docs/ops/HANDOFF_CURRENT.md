@@ -79,6 +79,7 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 
 ### 완료 (최근 것부터)
 
+- 2026-09-29 Codex 일시 인수 — 지정 커밋 `cab49455d9cb7be33fbefb17ad392ff8261c526c`와 원격 가지 일치, 미커밋 변경 없음, 인계 뒤 master 추가 커밋 없음 확인. 문서 반영 [PR #3](https://github.com/edutogether/poster-studio/pull/3)을 열었다. 병합은 사람 확인 대기이며 배포하지 않았다.
 - 2026-09-27 `facd660` — PR 자동 검사 워크플로 `PR Check`(`.github/workflows/pr-check.yml`). 확인 PR #2: 깨뜨린 커밋 빨강 → 되돌린 커밋 초록(24초), 합치지 않고 닫음.
 - 2026-09-27 `105468c` — `AGENTS.md`에 조직 공통 규칙 절(클라우드·Codex 대비), 199→180줄.
 - 2026-09-27 `696f351` — React 19.2.8 → **19.3.0**(react·react-dom·두 타입 패키지, `scheduler` 0.28 동반). 배포·라이브 확인 끝.
@@ -92,7 +93,7 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 
 ### 다음 작업 (담당이 이어서 할 것)
 
-1. **이 인계 가지를 master에 반영할지** — 문서만 담은 가지다. 반영은 PR로 내고 머지는 사람이 누른다(인계 중 병합 금지 지시).
+1. **[문서 PR #3](https://github.com/edutogether/poster-studio/pull/3) 사람 병합 대기** — 문서만 담은 가지다. Codex는 병합하지 않는다.
 2. **2026-09-30 분기 정기 종합감사** — 여덟 저장소가 같은 날 돈다(조직 표준 §25). 채점 원문은 `817beatles/projects`의 `COMMON_STANDARDS.md` §4~§7.
    점수 표기는 `10/10 (YYYY-MM-DD 트리 기준, 이후 커밋 N건)`, N은 `git rev-list --count poster-studio-freeze-20260910-audited-100..master`로 센다.
 3. **외부 확인 대기(재촉하지 않는다)** — 교육청 장학사에게 ① 실제 한 장 인쇄 시간 ② 인화지 팩 규격·수량(~400장).
