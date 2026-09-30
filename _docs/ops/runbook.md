@@ -95,16 +95,14 @@
 5. 배포 완료 후 실제로 `/generate`가 새 토큰으로 정상 응답하는지 확인(CI의 "부스토큰 스모크테스트" 단계가 자동으로 확인하고, 실패하면 파이프라인이 실패로 표시된다).
 
 ## 8. 배포가 나갔는데 라이브가 깨졌을 때 (롤백)
-6차 감사 발견(2026-09-01): 이 저장소엔 "런타임 장애" 대응만 있고 "배포 자체가 문제였을 때" 절차가 없었다 — Hosting과 Functions는 롤백 방법이 다르므로 구분해서 기록한다.
+2026-10-01 현재 조직 규칙에 맞춘 절차다. 이전 문서의 콘솔·수동 CLI 롤백 안내는 사용하지 않는다.
 
-**Firebase Hosting(정적 프론트엔드)이 깨졌을 때**
-- 가장 빠른 방법: Firebase 콘솔 → Hosting → `poster-studio` 사이트 → 배포 이력(Release history)에서 직전 정상 버전 옆의 "되돌리기(Rollback)" 클릭 — 즉시 적용된다(재빌드/재배포 불필요).
-- CLI로도 가능: `firebase hosting:rollback --project inky-poster-studio` (대화형으로 최근 배포 목록을 보여주고 고른 버전으로 되돌림 — CI가 아니라 로컬에서 소유자급 계정으로 실행할 것).
+1. 공통 인계 문서에 적힌 직전 정상 프리즈 태그와 배포 커밋을 확인한다.
+2. 작업 가지에서 문제가 된 변경을 `git revert`하고 PR을 만든다. `reset --hard`·강제 푸시·master 직접 푸시는 하지 않는다.
+3. 프론트와 Functions 검사 후 정해진 승인 경로로 병합하여 기존 CI가 두 서비스를 다시 배포하게 한다.
+4. 해당 커밋의 CI 성공과 두 Hosting 주소의 응답·번들을 확인한다. 실제 `/generate` 호출은 비용이 발생하므로 별도 지시 없이 검사하지 않는다.
 
-**Firebase Functions(백엔드)가 깨졌을 때**
-- Cloud Functions는 콘솔에 원클릭 롤백이 없다 — **문제가 된 커밋 이전의 정상 커밋으로 되돌려 재배포**하는 방식이다.
-- `git revert <문제커밋SHA>` (또는 `git checkout <정상커밋SHA> -- functions/`로 해당 커밋 상태만 되돌린 뒤 새 커밋) → `master`에 push해 CI가 정상 배포하게 하거나, 급하면 로컬에서 소유자급 계정(`edutogether2015@gmail.com`)으로 `firebase deploy --only functions --project inky-poster-studio`를 직접 실행(CI를 기다릴 필요 없음 — 이 저장소가 5차 감사 때부터 실제로 써온 방법).
-- 롤백 후에는 반드시 `/health`와 실제 `/generate` 한 번으로 라이브 정상 동작을 재확인할 것.
+Hosting과 Functions를 콘솔에서 직접 바꾸거나 수동 `firebase deploy`로 우회하지 않는다. 되돌린 뒤 공통 인계 문서에 커밋과 CI 결과를 남긴다.
 
 ## 참고
 - 노트북 재부팅/브라우저 재시작으로 대부분의 일시적 문제는 해결된다.

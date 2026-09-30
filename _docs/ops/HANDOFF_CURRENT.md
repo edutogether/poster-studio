@@ -9,7 +9,8 @@
 | **현재 담당** | **Codex (일시)** — Claude가 AI Ways Incheon을 개발하는 동안 사용량을 나누기 위한 것이다. 영구 이관이 아니다 |
 | **마지막 인계 방향** | Claude → Codex (2026-09-29, Bumm님 직접 지시) |
 | 저장소 | `edutogether/poster-studio` · 기본 가지 `master`(= 라이브 배포 가지) |
-| 인계 가지 | `handoff/codex-20260929` — 이 문서와 안내 한 줄씩만 담은 문서 커밋. **master에는 아직 없다** |
+| 현재 작업 가지 | `codex/audit-fixes-20260930` — 확정 디자인과 촬영·AI 생성·조판·저장·인쇄 통합. 원격 PR·배포 결과는 아래에 갱신 |
+| 인수 기준 커밋 | `a1cc13501e8652d13da6e0129434dd7a4c55d2da` (문서 PR #3 포함) |
 | 인계 기준 master | `facd660194a13816c528e5d7207bde7fe7de32cd` |
 | 라이브 코드 기준 | `696f351`(React 19.3.0, 2026-09-27 배포). 그 뒤 master 커밋은 문서·PR 검사 워크플로뿐이라 배포물은 그대로다 |
 
@@ -68,7 +69,7 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 | `ALLOWED_ORIGINS` 두 주소 + 앵커(`^…$`) | 옛 주소 테스트를 지우지 않는다. 서브도메인은 규칙 완화가 아니라 항목 추가 |
 | `BOOTH_TOKEN` 변경 | `src/constants.ts`와 Secret Manager를 **같은 커밋·같은 배포**로 |
 | og 태그 값(`index.html`) | 포털이 정한 6개 앱 공통 규칙 |
-| 스플래시 두 바퀴 하한(`src/style.css`의 `--splash-cycle`·`--splash-min-cycles`) | 조직 표준 §27 |
+| 스플래시 두 바퀴 하한(`src/studio/splash.css`의 `--splash-cycle`·`--splash-min-cycles`) | 조직 표준 §27 |
 | 부하테스트 | 하지 않기로 결정(2026-09-11). 행사 당일 라이브 부하 금지 |
 | `.claude/settings*.json` | 세션 권한 파일 — **Bumm님이 그 세션 창에 직접 지시할 때만** |
 | `deploy.yml` test 잡 ↔ `pr-check.yml` | 검사 단계가 같아야 한다. 한쪽을 바꾸면 다른 쪽도 |
@@ -78,6 +79,8 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 ## 4. 작업 현황
 
 ### 완료 (최근 것부터)
+
+- 2026-10-01 확정한 첫 화면·이름 태그·개인정보처리방침을 실제 React 앱에 통합했다. 촬영·AI 요청·기존 네 종류 조판·PNG·인쇄를 유지하며 픽셀 20쌍 차이 0건. 분기 감사 발견 사항도 수정했다. 상세: [`audit-2026-09-30.md`](audit-2026-09-30.md).
 
 - 2026-09-29 Codex 일시 인수 — 지정 커밋 `cab49455d9cb7be33fbefb17ad392ff8261c526c`와 원격 가지 일치, 미커밋 변경 없음, 인계 뒤 master 추가 커밋 없음 확인. 문서 반영 [PR #3](https://github.com/edutogether/poster-studio/pull/3)을 열었다. 병합은 사람 확인 대기이며 배포하지 않았다.
 - 2026-09-27 `facd660` — PR 자동 검사 워크플로 `PR Check`(`.github/workflows/pr-check.yml`). 확인 PR #2: 깨뜨린 커밋 빨강 → 되돌린 커밋 초록(24초), 합치지 않고 닫음.
@@ -89,32 +92,27 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 
 ### 진행 중
 
-- **없음.** 이 인계 시점에 반쯤 된 코드 변경은 없다.
+- Bumm님의 "올리고 배포까지" 지시에 따라 통합 변경의 PR·CI·배포 절차를 진행한다. 정적 시안 5522를 배포하는 작업이 아니다. 실제 장치·과금 호출은 검사하지 않는다.
 
 ### 다음 작업 (담당이 이어서 할 것)
 
-1. **[문서 PR #3](https://github.com/edutogether/poster-studio/pull/3) 사람 병합 대기** — 문서만 담은 가지다. Codex는 병합하지 않는다.
-2. **2026-09-30 분기 정기 종합감사** — 여덟 저장소가 같은 날 돈다(조직 표준 §25). 채점 원문은 `817beatles/projects`의 `COMMON_STANDARDS.md` §4~§7.
-   점수 표기는 `10/10 (YYYY-MM-DD 트리 기준, 이후 커밋 N건)`, N은 `git rev-list --count poster-studio-freeze-20260910-audited-100..master`로 센다.
+1. 통합 작업 PR의 원격 검사와 배포 상태를 확인한다. master 직접 푸시나 수동 배포는 하지 않는다. 원래 문서 PR #3의 변경은 이번 가지에 포함돼 있으므로 별도 중복 병합이 필요한지 원격 상태로 판단한다.
+2. **2026-09-30 분기 감사는 실행·후속 수정 완료**. Codex 검토자 두 명으로 수행한 대체 감사이며 Claude 지정 모델 조합으로 실행했다고 주장하지 않는다. 기존 10/10 점수를 새 트리의 점수로 재사용하지 않는다.
 3. **외부 확인 대기(재촉하지 않는다)** — 교육청 장학사에게 ① 실제 한 장 인쇄 시간 ② 인화지 팩 규격·수량(~400장).
    인쇄가 3분이면 프린터 3대 구성에서 60장이 모자란다 — 이 구성의 유일한 위험이다.
 4. **다른 작업자의 가지 `claude/cloud-session-setup`**(`db73821`, 2026-09-28, Claude 클라우드) — 클라우드 세션용
    `SessionStart` 훅과 `scripts/cloud-session-start.sh`. **master 미반영, 팀장 확인 대기.** `.claude/settings.json`을 바꾸므로
    **Bumm님 직접 확인 대상**이다. 이 인계에서는 손대지 않고 보존했다.
-5. **알려진 작은 문서 어긋남(미처리, 감사 때 함께)** — `CLAUDE.md`·`.claude/rules/app.md`의 테스트 개수 표기(65·68개, 실제 71·71개),
-   `_docs/intents/README.md`의 loadtest 행 상태가 `draft`인데 파일은 `dropped`.
+5. **문서 어긋남 수정 완료** — 현재 프론트 79개·서버 71개와 loadtest dropped 상태로 맞췄다.
 6. 행사 당일 운영은 `_docs/ops/runbook.md`.
 
 ---
 
 ## 5. 검증 결과와 미검증 항목
 
-**마지막 전체 검증 — 2026-09-27, 코드 `696f351`(현재 라이브와 같은 코드)**:
-루트 lint·typecheck·test 71·build·fonts:check·verify:selftest, functions test 71·lint 전부 통과, 새 경고 0건.
-포스터 픽셀 지문 **20쌍 불일치 0건**(두 번), 화면 스냅샷 4조합 전↔후 0건, CI 4잡 통과,
-라이브 두 주소 번들 `main-ry86cvGP.js`·요소 id 25/25·콘솔 오류 0건·스플래시 약 3.2초에 걷힘.
+**최근 검증 — 2026-10-01, 현재 통합 작업 트리**: 프론트 lint·typecheck·test 79·build·fonts:check(438자)·verify:selftest, 서버 lint·test 71 모두 통과. 양쪽 npm audit 0건. 이전 빌드와 포스터 픽셀 20쌍 차이 0건. 헤드리스 1920·1366·1280·390 화면의 넘침·자산 누락·실행 오류 없음. 실제 API 요청 0건. 상세 명령·종료 코드는 감사 문서에 기록했다.
 
-**그 뒤 바뀐 것**: 문서, `pr-check.yml`(PR #2에서 빨강·초록 확인). 이 인계 커밋은 문서만이라 검사를 다시 돌리지 않았다.
+**검증 자료**: `.cache/studio-verification/`, 재현 도구 `scripts/verify/studio-flow.mjs`. 로컬 디자인 파일 `.cache/design-preview/v8/`는 보존했지만 배포 소스는 `src/`·`privacy.html`·`public/studio/`다.
 
 **미검증**:
 - **React 19.3.0 이후 라이브 실제 `/generate`(OpenAI 호출)** — 검증 도구가 응답을 가로채 비용 0으로만 확인했다.

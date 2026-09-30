@@ -1,0 +1,138 @@
+body:not(.app-ready) #splash {
+  animation-play-state: paused;
+}
+
+/* 🔴 두 바퀴 하한 (COMMON_STANDARDS §27, 2026-09-11 대표 지시).
+   스플래시는 **자기 애니메이션이 최소 두 바퀴 도는 동안** 떠 있는다.
+
+   왜 "초"가 아니라 "바퀴"인가: 초로 박아 두면 막대 주기를 바꾸는 순간 하한이
+   따라오지 않아, 화면은 그대로인데 한 바퀴 반만 돌고 사라지게 된다. 그래서
+   **유지 시간을 주기에서 계산**한다 — 아래 `--splash-cycle`을 고치면 유지도 같이 움직인다.
+
+   계산: 유지 = 주기 × 2 = 2300ms. 키프레임의 정지점이 비율이라 총길이를 유지에서 역산한다 —
+   유지가 전체의 80%이므로 **총길이 = 유지 ÷ 0.8 = 2875ms**, 페이드 = 16.5% ≈ 474ms.
+   (예전에는 유지 1800ms였는데 그건 1.57바퀴여서 막대가 도중에 잘렸다.)
+
+   기기별로 따로 두지 않는 이유: 이 값들은 **뷰포트와 무관한 시간**이고 스플래시에는
+   크기별 분기가 없다 — 모바일·패드·PC가 같은 애니메이션을 같은 길이로 돈다.
+   ⚠ 그래도 **재 봐야 안다**(다른 저장소는 모바일에만 넣었다가 PC가 0.1초에 스쳐 지나갔다).
+   세 폭에서 실제로 잰 값은 `_docs/CHANGELOG.md`에 있다. */
+:root {
+  --splash-cycle: 1.15s; /* 막대 한 바퀴 */
+  --splash-min-cycles: 2; /* §27 하한 */
+}
+
+#splash {
+  animation: splashOut
+    calc(var(--splash-cycle) * var(--splash-min-cycles) / 0.8) ease forwards;
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: linear-gradient(180deg, var(--bg), var(--panel));
+}
+/* 정지점은 비율이다 — 위 `--splash-cycle`을 고치면 전체가 같은 비율로 늘고 준다.
+   80% = 유지 끝(= 두 바퀴 지점) · 96.5% = 완전 투명 · 100% = 노드 제거 여유 */
+@keyframes splashOut {
+  0%,
+  79.99% {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  80% {
+    opacity: 1;
+    pointer-events: none;
+  }
+  96.5%,
+  100% {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* 표준 §5의 성능 규칙 ① — 스플래시가 덮고 있는 동안 무거운 배경을 그리지 않는다.
+   이 앱에서 무거운 건 body 배경색이 아니라 body::before의 poster-wall.webp다
+   (2026-09-03 5라운드에 "무거운 이미지 디코딩이 로딩 임계경로에 끼어드는
+   버벅임"으로 실제로 겪은 항목이다). 그래서 대체 대상은 그 의사요소다 —
+   스플래시가 사라지면 :has()가 풀려 자동으로 돌아온다. */
+body:has(#splash)::before,
+body:has(#splash)::after {
+  display: none;
+}
+
+#splash .logo {
+  font-size: clamp(48px, 10vw, 72px);
+  filter: drop-shadow(0 10px 24px rgba(233, 185, 73, 0.35));
+  animation: splashPop 0.6s ease;
+}
+#splash .name {
+  font-size: clamp(26px, 5vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+#splash .name .gold {
+  color: var(--gold);
+}
+#splash .stagline {
+  font-size: clamp(13px, 2vw, 16px);
+  color: var(--mut);
+}
+#splash .sbar {
+  display: block;
+  width: 190px;
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(233, 185, 73, 0.2);
+  overflow: hidden;
+  margin-top: 4px;
+}
+/* margin이 아니라 transform으로 움직인다 — margin은 매 프레임 레이아웃을 다시
+   계산시켜(리플로우) 저사양 기기에서 버벅임의 원인이 된다. 예전 인라인 스타일의
+   poster-studio-boot-bar 키프레임이 margin-left를 쓰고 있었다. */
+#splash .sbar i {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--gold), #f6d27a);
+  animation: splashBar var(--splash-cycle) ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes splashPop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes splashBar {
+  0% {
+    transform: translateX(-76px);
+  }
+  100% {
+    transform: translateX(190px);
+  }
+}
+
+/* 표준 개정 2차 — **장식 애니메이션만 끄고 유지·페이드 타이밍은 남긴다.**
+   스플래시의 유지까지 없애면 덜 그려진 화면을 가려주는 역할이 사라져,
+   로드 게이트로 막으려던 문제가 그대로 되돌아온다. */
+@media (prefers-reduced-motion: reduce) {
+  #splash .logo {
+    animation: none;
+  }
+  #splash .sbar i {
+    animation: none;
+  }
+}

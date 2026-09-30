@@ -219,9 +219,9 @@ test('parseMultipart: 같은 이름(photo)으로 파일을 2개 보내도 임시
    이 검사가 있으면 나중에 누가 tmpPath를 클라이언트 파일명으로 바꾸는 순간 빨간불이 된다. */
 const PATH_ESCAPE_FILENAMES = [
   '../../../../etc/passwd',
-  '..\..\..\Windows\System32\drivers\etc\hosts',
+  String.raw`..\..\..\Windows\System32\drivers\etc\hosts`,
   '/etc/shadow',
-  'C:\Windows\win.ini',
+  String.raw`C:\Windows\win.ini`,
   'a/../../b.jpg',
   '....//....//evil.jpg'
 ];

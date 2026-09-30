@@ -13,7 +13,7 @@
    ──────────────────────────────────────────────────────────────────── */
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StrictMode } from 'react';
-import { render, act, cleanup } from '@testing-library/react';
+import { render, act, cleanup, fireEvent } from '@testing-library/react';
 import PosterStudio from '../src/PosterStudio.js';
 import { heightToApply, TWO_COL_MIN_WIDTH } from '../src/useLayoutMatch.js';
 import {
@@ -69,6 +69,109 @@ function renderApp(strict = false) {
   const ui = strict ? <StrictMode><PosterStudio /></StrictMode> : <PosterStudio />;
   return render(ui, { container: document.querySelector('main.app') as HTMLElement });
 }
+
+describe('세 단계 화면 연결', () => {
+  test('정보 준비 → 촬영 → 실제 조판 결과 네 장으로 이동한다', async () => {
+    const f = installFetch();
+    await act(async () => { renderApp(); });
+    expect(el('prepareView').hidden).toBe(false);
+    expect(el('cameraView').hidden).toBe(true);
+    expect(el('resultView').hidden).toBe(true);
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(el('prepareView').hidden).toBe(true);
+    expect(el('cameraView').hidden).toBe(false);
+    expect(f.bodies).toHaveLength(0);
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(f.bodies).toHaveLength(1);
+    expect(el('resultView').hidden).toBe(false);
+    expect(document.querySelectorAll('#gallery .thumb')).toHaveLength(4);
+    const options = document.querySelectorAll<HTMLButtonElement>('#gallery .thumb');
+    await act(async () => { options[2].click(); });
+    expect(options[2].getAttribute('aria-pressed')).toBe('true');
+    expect(options[0].getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('촬영 화면에서 정보 수정으로 돌아가면 카메라를 끈다', async () => {
+    const view = await act(async () => renderApp());
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    await act(async () => { view.getByText('← 정보 수정').click(); });
+    expect(cam.stopped).toEqual(['video']);
+    expect(el('prepareView').hidden).toBe(false);
+  });
+
+  test('권한 응답을 기다리다 돌아간 경우 늦게 도착한 카메라도 끈다', async () => {
+    let resolveCamera!: (stream: MediaStream) => void;
+    const stop = vi.fn();
+    navigator.mediaDevices.getUserMedia = vi.fn(() => new Promise(resolve => { resolveCamera = resolve; }));
+    const view = await act(async () => renderApp());
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); el<HTMLButtonElement>('startBtn').click(); });
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+    await act(async () => { view.getByText('← 정보 수정').click(); });
+    await act(async () => { resolveCamera({ getTracks: () => [{ stop }] } as unknown as MediaStream); });
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(el<HTMLVideoElement>('video').srcObject).toBe(null);
+    expect(el('prepareView').hidden).toBe(false);
+  });
+
+  test('생성이 실패하면 오류를 보이고 기본 버전으로 이어갈 수 있다', async () => {
+    await act(async () => { renderApp(); });
+    await shoot();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({error:'검사 응답 실패'}), {status:503})));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(el('status').textContent).toContain('검사 응답 실패');
+    expect(el('fallbackBtn').className).not.toContain('hidden');
+    await act(async () => { el<HTMLButtonElement>('fallbackBtn').click(); });
+    expect(el('resultView').hidden).toBe(false);
+    expect(document.querySelectorAll('#gallery .thumb')).toHaveLength(4);
+  });
+
+  test('다음 주인공은 이전 사진·입력·결과를 모두 지운다', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    el<HTMLInputElement>('studentName').value = '김인키';
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { view.getByText('다음 주인공').click(); });
+    expect(el('prepareView').hidden).toBe(false);
+    expect(el<HTMLInputElement>('studentName').value).toBe('');
+    expect(el('snapshot').getAttribute('src')).toBe(null);
+    expect(document.querySelectorAll('#gallery .thumb')).toHaveLength(0);
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(el('status').textContent).toContain('먼저 사진을 촬영');
+  });
+
+  test('구분자로 묶은 출연진과 아직 묶지 않은 이름을 함께 조판하고 삭제한다', async () => {
+    const view = await act(async () => renderApp());
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-mode=group]')!.click(); });
+    fireEvent.change(el('memberDraft'), { target: { value: '김인키,이영화.박감독·최소리/윤별|하늘 ' } });
+    expect(document.querySelectorAll('.member-chip')).toHaveLength(6);
+    expect(el<HTMLInputElement>('members').value).toBe('김인키, 이영화, 박감독, 최소리, 윤별, 하늘');
+    fireEvent.change(el('memberDraft'), { target: { value: '새이름' } });
+    expect(el<HTMLInputElement>('members').value).toContain('새이름');
+    fireEvent.click(view.getByRole('button', { name: '박감독 삭제' }));
+    expect(el<HTMLInputElement>('members').value).not.toContain('박감독');
+    expect(el('ticketName').textContent).toContain('새이름');
+    await shoot();
+    const f = installFetch();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect([...f.bodies[0].keys()].sort()).toEqual(['genre','mode','movieTitle','photo','tagline']);
+    expect(JSON.stringify([...f.bodies[0].entries()])).not.toContain('새이름');
+  });
+
+  test('한글 조합 중에는 태그로 자르지 않고 조합이 끝난 뒤 구분한다', async () => {
+    await act(async () => { renderApp(); });
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-mode=group]')!.click(); });
+    fireEvent.compositionStart(el('memberDraft'));
+    fireEvent.change(el('memberDraft'), { target: { value: '김인키 ' } });
+    expect(document.querySelectorAll('.member-chip')).toHaveLength(0);
+    fireEvent.compositionEnd(el('memberDraft'));
+    expect(document.querySelectorAll('.member-chip')).toHaveLength(1);
+    fireEvent.blur(el('memberDraft'));
+    expect(el<HTMLInputElement>('members').value).toBe('김인키');
+  });
+});
 
 /* ───────────────────── 카메라 (예전 camera.test.js) ───────────────────── */
 describe('카메라', () => {
@@ -167,7 +270,7 @@ describe('위험 E: 초기 캔버스 그리기', () => {
 
 /* ───────── 위험 F — 관찰은 왼쪽, 변경은 오른쪽 ───────── */
 describe('위험 F: ResizeObserver 방향', () => {
-  test('오른쪽 패널(자기가 높이를 바꾸는 쪽)은 관찰하지 않는다', async () => {
+  test('단계별 화면은 높이 동기화 관찰자를 만들지 않아 크기 변경 루프가 없다', async () => {
     const observed: Element[] = [];
     class RO {
       constructor(_cb: ResizeObserverCallback) {}
@@ -177,9 +280,9 @@ describe('위험 F: ResizeObserver 방향', () => {
     }
     vi.stubGlobal('ResizeObserver', RO);
     await act(async () => { renderApp(); });
-    expect(observed.length).toBe(1);
-    expect(observed[0].classList.contains('left')).toBe(true);
-    // 이게 깨지면(오른쪽을 관찰하면) 높이 변경이 관찰을 다시 부르며 폭주한다.
+    // 확정된 단계별 디자인은 CSS로 높이를 정한다. 기존 한 화면 3패널의
+    // 높이 복사 관찰자를 제거했으므로 생성 수 0이 회귀 방지 기준이다.
+    expect(observed.length).toBe(0);
     for (const t of observed) expect(t.querySelector('#posterCanvas')).toBe(null);
   });
 

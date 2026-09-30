@@ -34,7 +34,7 @@
        커버하려면 자체 호스팅 시 폰트 용량이 수십 MB로 불어나 Google Fonts CDN(자체 서브셋팅)을
        그대로 쓰는 게 낫다고 판단함 — CLAUDE.md 참고. -->
   <link rel="stylesheet" href="fonts/pretendard.css" />
-  <link rel="stylesheet" href="/src/style.css" />
+  <link rel="stylesheet" href="/src/studio.css" />
 </head>
 <body>
   <!-- 부트 스플래시 — _shared/standards/splash-standard.md 규격(2026-09-09 4단계).
@@ -50,19 +50,7 @@
     <span class="sbar"><i></i></span>
   </div>
   <script src="/boot-splash.js"></script>
-  <header class="topbar">
-    <div class="brand">
-      <span class="reel">🎬</span>
-      <div>
-        <p class="eyebrow">제4회 인천어린이청소년영화제</p>
-        <h1>InKY Poster Studio</h1>
-        <!-- 부제를 제목 바로 밑으로 옮겼다(2026-09-09 대표 지시). 예전엔 오른쪽 위
-             tagWrap 안에 오른쪽 정렬로 있었는데, 제목과 떨어져 있어 무엇에 대한
-             설명인지 잘 안 붙었다. 오른쪽 위에는 아무것도 남지 않는다. -->
-        <p class="tagline">사진 한 장으로 — 내가 영화의 주인공이 된다</p>
-      </div>
-    </div>
-  </header>
+
 
   <!-- 앱 화면은 React가 이 main 안에 그린다(src/main.tsx). main 자체를 루트로 삼는 이유는
        루트용 <div>를 새로 끼우면 body와 main 사이에 없던 요소가 하나 생겨 레이아웃
@@ -80,13 +68,7 @@
        "맨 마지막에 박스 바깥에 당구장 붙여서 말하면 되잖아").
        **오류·상태 표시는 여기 오지 않는다** — 그건 #status 자리에 그대로 있어야 한다.
        여기 오는 것은 화면이 켜져 있는 내내 똑같은 문장뿐이다. -->
-  <footer class="pagefoot">
-    <ul class="notes">
-      <li>카메라를 켜고 사진을 촬영해 주세요.</li>
-      <li>출연진은 선택 항목이며 쉼표로 구분해 적어 주세요.</li>
-    </ul>
-    <a class="privacyLink" href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>
-  </footer>
+
 
   <!-- 앱 번들 하나만 로드한다. 좌우 컬럼 높이 맞춤(예전 layout-match.js)은
        React 훅(src/useLayoutMatch.ts)으로 들어갔다 — 고전 <script>로 두면

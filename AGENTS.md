@@ -158,9 +158,10 @@ checkBoothToken → parseMultipart → requirePhoto → rateLimit → ipRateLimi
 | `functions/index.js` | 전부 여기 — 미들웨어 체인, 프롬프트, OpenAI 호출, Firestore 카운터, 스케줄러 2종 |
 | `functions/test/index.test.js` | 백엔드 테스트 전부 |
 | `src/main.tsx` | 진입점. 기존 `main.app` 요소 **안에** 마운트한다(래퍼 div를 만들지 않는다) |
-| `src/PosterStudio.tsx` | 화면과 로직 전부 — 촬영, `/generate` 호출, 폴백, 갤러리, 초기화, 인쇄 |
+| `src/PosterStudio.tsx` | 촬영, `/generate` 호출, 폴백, 초기화, 저장·인쇄 핸들러 |
+| `src/studio/StudioView.tsx` · `MemberField.tsx` | 영화 준비 → 사진 촬영 → 포스터 선택 화면과 출연진 태그 |
 | `src/layout.ts` · `templates.ts` · `poster.ts` | 캔버스 타이포·포스터 4종 |
-| `src/useLayoutMatch.ts` | 왼쪽 기둥 높이를 재서 오른쪽에 꽂아준다(ResizeObserver). 방향을 뒤집으면 폭주한다 |
+| `src/studio.css` · `src/studio/*.css` | 확정된 화면 스타일·반응형·기존 스플래시·4×6 인쇄 규격. 새 화면 높이는 CSS로 계산한다 |
 | `src/constants.ts` | 부스토큰·장르·상수 |
 | `test/react-setup.ts` | 프론트 테스트 하네스 — 가짜 카메라/캔버스/폰트를 깔고 진짜 컴포넌트를 렌더 |
 | `scripts/fonts/` | UI 폰트 서브셋 — `charset.mjs`(글자 뽑기) `check-charset.mjs`(CI 게이트) `subset.py` |
