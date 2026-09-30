@@ -9,7 +9,8 @@
 | **현재 담당** | **Codex (일시)** — Claude가 AI Ways Incheon을 개발하는 동안 사용량을 나누기 위한 것이다. 영구 이관이 아니다 |
 | **마지막 인계 방향** | Claude → Codex (2026-09-29, Bumm님 직접 지시) |
 | 저장소 | `edutogether/poster-studio` · 기본 가지 `master`(= 라이브 배포 가지) |
-| 현재 작업 가지 | `codex/audit-fixes-20260930` — 확정 디자인과 촬영·AI 생성·조판·저장·인쇄 통합. 원격 PR·배포 결과는 아래에 갱신 |
+| 현재 작업 가지 | `codex/audit-fixes-20260930` — [통합 PR #4](https://github.com/edutogether/poster-studio/pull/4) |
+| 기능 최종 커밋 | `d24c3573f3b25be7fce6562153bd81c8bf53d9c4` (뒤따르는 문서 커밋은 동작 변경 없음) |
 | 인수 기준 커밋 | `a1cc13501e8652d13da6e0129434dd7a4c55d2da` (문서 PR #3 포함) |
 | 인계 기준 master | `facd660194a13816c528e5d7207bde7fe7de32cd` |
 | 라이브 코드 기준 | `696f351`(React 19.3.0, 2026-09-27 배포). 그 뒤 master 커밋은 문서·PR 검사 워크플로뿐이라 배포물은 그대로다 |
@@ -92,7 +93,7 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 
 ### 진행 중
 
-- Bumm님의 "올리고 배포까지" 지시에 따라 통합 변경의 PR·CI·배포 절차를 진행한다. 정적 시안 5522를 배포하는 작업이 아니다. 실제 장치·과금 호출은 검사하지 않는다.
+- Bumm님의 "올리고 배포까지" 지시로 통합 PR #4를 열었다. 기능 커밋 d24c357의 원격 Node 22 PR Check(빌드·테스트)는 통과했다. AGENTS.md의 사람 병합 규칙에 따른 병합 절차와 이후 자동 배포는 아직 미완료다. 정적 시안 5522를 배포하는 작업이 아니다.
 
 ### 다음 작업 (담당이 이어서 할 것)
 
