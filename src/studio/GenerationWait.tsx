@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { waitingSets } from "./waitingSets.js";
 import "./generation-wait.css";
+import "./waiting-art.css";
 
 const OPENING_KEY = "poster-studio-wait-opening";
 let lastOpeningId = -1;
@@ -66,7 +67,7 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
   return (
     <dialog ref={dialog} id="spinner" className="generation-wait spinner" data-paused={still} data-scene={sceneIndex} data-set-id={scene.id} aria-labelledby="generationTitle" onCancel={event => event.preventDefault()}>
       <div className="generation-content">
-        <div className="generation-film">
+        <div className="generation-film waiting-art-frame" data-art={scene.id}>
           <img className="generation-robot-film" data-active="true" src={scene.image} width={704} height={704} alt={scene.theme} />
           {!reduced && <button type="button" className="generation-pause" aria-label={paused ? "자동 넘김 재생" : "자동 넘김 일시 정지"} onClick={() => setPaused(value => !value)}>{paused ? "▷" : "Ⅱ"}</button>}
         </div>
