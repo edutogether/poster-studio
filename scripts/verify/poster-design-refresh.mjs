@@ -1,4 +1,4 @@
-// 샘플 페이지의 이미지·문구 겹침만 확인한다. 실제 앱/API는 열지 않는다.
+// 실제 로컬 앱의 샘플 포스터 경로를 확인한다. 카메라와 외부 API는 차단한다.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -33,19 +33,22 @@ try {
   await evaluate("document.getElementById('prepareNextBtn').click()");
   await delay(100);
   assert.ok((await evaluate("document.getElementById('shotBtn').textContent")).includes('샘플 포스터 보기'));
-  await evaluate("document.getElementById('shotBtn').click()");
+  await evaluate(`window.__posterTexts=[];const draw=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(text,...args){window.__posterTexts.push(text);return draw.call(this,text,...args);};document.getElementById('shotBtn').click()`);
   for(let i=0;i<100;i++){if(await evaluate("document.body.dataset.step==='3'"))break;await delay(100);}
   assert.equal(await evaluate('document.body.dataset.step'),'3');
   assert.equal(await evaluate("document.querySelectorAll('.style-option').length"),8);
   const labels=await evaluate("Array.from(document.querySelectorAll('.style-name'),e=>e.textContent)");
   assert.deepEqual(labels,['시네마','에디토리얼','컬러 블록','아치 프레임','필름스트립','폴라로이드','타이포그래피','트립틱']);
-  assert.equal(await evaluate("document.querySelector('.result-brand').textContent"),'Voice Cinema');
+  assert.equal(await evaluate("document.querySelector('.result-brand').textContent"),'Poster Studio');
   assert.equal(await evaluate("getComputedStyle(document.querySelector('.result-brand em')).color"),'rgb(237, 49, 36)');
   assert.equal(await evaluate("getComputedStyle(document.querySelector('.result-artboard')).backgroundColor"),'rgb(245, 245, 245)');
   assert.equal(await evaluate("getComputedStyle(document.querySelector('#resultWorkspace')).backgroundColor"),'rgb(255, 255, 255)');
   const images=new Set();
   for(let i=0;i<8;i++){await evaluate(`document.querySelectorAll('.style-option')[${i}].click()`);await delay(50);images.add(await evaluate("document.querySelector('#resultView canvas').toDataURL()"));}
   assert.equal(images.size,8,'8개 틀 선택 시 큰 포스터도 변경');
+  assert.equal(await evaluate(`window.__posterTexts.filter(t=>t==='주연 · 감독   김인키').length`),8,'빈 입력의 완성 크레딧은 김인키');
+  assert.equal(await evaluate(`document.querySelector('.result-brand-icon').getAttribute('src')`),'/studio/clapperboard-apple.png');
+  assert.equal(await evaluate(`document.querySelector('.result-brand-icon').naturalWidth>0`),true,'기존 고급형 슬레이트 로드');
   assert.equal(await evaluate('window.__cameraCalls||0'),0);
   assert.equal(requests.filter(u=>/cloudfunctions|run\.app|api\.openai/.test(u)).length,0);
   await evaluate("document.querySelectorAll('.style-option')[0].click()");await delay(100);
@@ -58,5 +61,10 @@ try {
     await call('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});await delay(100);
     assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,'결과 화면 가로 넘침 없음');
   }
+  await call('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
+  await evaluate(`document.querySelectorAll('.result-actions .back-button')[0].click();document.getElementById('studentName').value='김태범';window.__posterTexts=[];document.getElementById('shotBtn').click()`);
+  for(let i=0;i<100;i++){if(await evaluate("document.body.dataset.step==='3'"))break;await delay(100);}
+  assert.equal(await evaluate(`window.__posterTexts.filter(t=>t==='주연 · 감독   김태범').length`),8,'입력한 김태범 이름 전체를 8종에 표시');
+  console.log(JSON.stringify({defaultName:'김인키',enteredName:'김태범',creditVariants:8,brand:'Poster Studio'}));
   await call('Browser.close');
 }finally{socket?.close();chrome.kill();}

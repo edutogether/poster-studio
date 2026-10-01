@@ -14,7 +14,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StrictMode } from 'react';
 import { render, act, cleanup, fireEvent } from '@testing-library/react';
-import PosterStudio from '../src/PosterStudio.js';
+import PosterStudio, { getMeta } from '../src/PosterStudio.js';
 import { heightToApply, TWO_COL_MIN_WIDTH } from '../src/useLayoutMatch.js';
 import {
   installCanvas, installCamera, installFetch, installImage, installFonts,
@@ -69,6 +69,14 @@ function renderApp(strict = false) {
   const ui = strict ? <StrictMode><PosterStudio /></StrictMode> : <PosterStudio />;
   return render(ui, { container: document.querySelector('main.app') as HTMLElement });
 }
+
+describe('주연 이름', () => {
+  test.each(['', '   ', '김인키', '김태범'])('입력 %j의 성을 생략하지 않고 빈 값만 김인키로 채운다', async (name) => {
+    await act(async () => { renderApp(); });
+    el<HTMLInputElement>('studentName').value = name;
+    expect(getMeta('solo').name).toBe(name.trim() || '김인키');
+  });
+});
 
 describe('세 단계 화면 연결', () => {
   test('정보 준비 → 촬영 → 실제 조판 결과 네 장으로 이동한다', async () => {

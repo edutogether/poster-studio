@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { Poster } from "../state.js";
+import { DEFAULT_PERSON_NAME } from "../defaults.js";
 import MemberField from "./MemberField.js";
 import GenerationWait from "./GenerationWait.js";
 
@@ -149,7 +150,7 @@ export default function StudioView(p: StudioViewProps) {
   const groupExample = !preview.group && !members;
   const cast =
     p.mode === "solo"
-      ? preview.name || "김인키"
+      ? preview.name || DEFAULT_PERSON_NAME
       : members ||
         (groupExample
           ? "북두칠성 · 북극성 · 시리우스 · 오리온 · 카시오페아"
@@ -552,7 +553,7 @@ export default function StudioView(p: StudioViewProps) {
                 <strong>{title}</strong>
                 <p>
                   {p.mode === "solo"
-                    ? preview.name || "김인키"
+                    ? preview.name || DEFAULT_PERSON_NAME
                     : preview.group || "별 보러 가요"}
                 </p>
               </div>
@@ -609,7 +610,7 @@ export default function StudioView(p: StudioViewProps) {
       >
         <div className="result-artboard">
           <div className="result-artboard-top">
-            <span className="result-brand"><StudioIcon name="mic"/><span>Voice <em>Cinema</em></span></span>
+            <span className="result-brand"><img className="result-brand-icon" src="/studio/clapperboard-apple.png" alt="" width="160" height="160"/><span>Poster <em>Studio</em></span></span>
             <div className="result-tools"><button type="button" className="icon-button" aria-label="다음 주인공" title="다음 주인공" disabled={locked} onClick={p.onNewPerson}><StudioIcon name="reset"/></button><button
               className="icon-button"
               type="button"

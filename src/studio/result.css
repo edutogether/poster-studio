@@ -137,3 +137,5 @@
 
 #resultView .studio-icon { width: 22px; height: 22px; flex: 0 0 auto; }
 #resultView .result-brand > .studio-icon { width: 21px; height: 21px; }
+
+#resultView .result-brand-icon { display: block; width: 30px; height: 30px; object-fit: contain; flex: 0 0 auto; }

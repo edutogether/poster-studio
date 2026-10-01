@@ -14,6 +14,7 @@ import {
 } from "./constants.js";
 import { buildPosters, makePlaceholderArt } from "./poster.js";
 import StudioView from "./studio/StudioView.js";
+import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
 
 /* 한 장의 사진으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만 허용한다
@@ -28,10 +29,10 @@ export function getMeta(mode: string): Meta {
   if (!tagline) tagline = pick(GENRES[genre].taglines);
   return {
     mode,
-    name: val("studentName") || "인키",
+    name: val("studentName") || DEFAULT_PERSON_NAME,
     groupName: val("groupName") || "우리들",
     members: val("members"),
-    title: val("movieTitle") || "나의 영화",
+    title: val("movieTitle") || DEFAULT_MOVIE_TITLE,
     genre,
     tagline,
   };
