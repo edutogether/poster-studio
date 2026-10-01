@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { Poster } from "../state.js";
 import MemberField from "./MemberField.js";
+import GenerationWait from "./GenerationWait.js";
 
 const choices = [
   ["sf", "SF", "reference-sf.jpg"],
@@ -706,18 +707,7 @@ export default function StudioView(p: StudioViewProps) {
           </div>
         </div>
       </section>
-      <div
-        className={
-          p.spinning
-            ? "generation-overlay spinner"
-            : "generation-overlay spinner hidden"
-        }
-        id="spinner"
-        role="status"
-      >
-        <div className="ring" />
-        <p ref={p.spinTextRef}>AI가 그리는 중…</p>
-      </div>
+      {p.spinning && <GenerationWait spinTextRef={p.spinTextRef} />}
       <div className="studio-status" hidden={!p.status && !p.fallbackShown}>
         <p id="status" role="status">
           {p.status}
