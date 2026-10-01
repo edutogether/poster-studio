@@ -55,6 +55,7 @@ function drawPlaceholder(pctx: CanvasRenderingContext2D) {
 }
 
 export default function PosterStudio() {
+  const designPreview = import.meta.env.DEV && import.meta.env.VITE_POSTER_DESIGN_PREVIEW === "1";
   const [mode, setMode] = useState("solo");
   /* 초기 문구("카메라를 켜고 사진을 촬영해 주세요.")는 페이지 맨 아래 ※ 영역으로
      옮겼다(2026-09-09 대표 지시). **요소는 남긴다** — 오류·진행 상황이 뜨는 자리다.
@@ -141,6 +142,7 @@ export default function PosterStudio() {
      되는 것보다, 페이지를 여는 순간 문제를 아는 게 낫다. 실패해도 촬영은 막지
      않는다(연결이 잠깐 불안정했을 수도 있으므로 fail-open). */
   useEffect(() => {
+    if (designPreview) return;
     let alive = true;
     (async () => {
       try {
@@ -436,6 +438,27 @@ export default function PosterStudio() {
     a.click();
   };
 
+  // 로컬 디자인 작업은 같은 원화 한 장으로 실제 8개 틀을 렌더한다.
+  const onDesignPreview = async () => {
+    if (!designPreview || isGeneratingRef.current) return;
+    stopCamera();
+    isGeneratingRef.current = true;
+    setGenerating(true);
+    setStatus("");
+    setFallbackShown(false);
+    try {
+      const sampleURL = "/src/studio/design-sample.png";
+      const meta = getMeta(mode);
+      meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
+      applyPosters(await buildPosters([sampleURL], meta));
+    } catch {
+      setStatus("샘플 포스터를 불러오지 못했어요. 다시 눌러주세요.");
+    } finally {
+      isGeneratingRef.current = false;
+      setGenerating(false);
+    }
+  };
+
   const onPrint = () => {
     if (!posters.length) {
       setStatus("먼저 포스터를 만들어 주세요.");
@@ -492,9 +515,10 @@ export default function PosterStudio() {
       videoRef={videoRef}
       spinTextRef={spinTextRef}
       onStart={onStart}
-      onShot={onShot}
+      designPreview={designPreview}
+      onShot={designPreview ? onDesignPreview : onShot}
       onRetake={onRetake}
-      onGenerate={onGenerate}
+      onGenerate={designPreview ? onDesignPreview : onGenerate}
       onRegen={onRegen}
       onFallback={onFallback}
       onDownload={onDownload}

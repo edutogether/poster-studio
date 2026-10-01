@@ -36,6 +36,7 @@ export interface StudioViewProps {
   spinTextRef: RefObject<HTMLParagraphElement | null>;
   onStart: Action;
   onShot: Action;
+  designPreview?: boolean;
   onRetake: Action;
   onGenerate: Action;
   onRegen: Action;
@@ -560,7 +561,7 @@ export default function StudioView(p: StudioViewProps) {
               disabled={locked}
               onClick={p.onShot}
             >
-              3·2·1 촬영
+              {p.designPreview ? "샘플 포스터 보기" : "3·2·1 촬영"}
             </button>
             <button
               id="retakeBtn"
