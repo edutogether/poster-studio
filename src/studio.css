@@ -3,6 +3,7 @@
 @import "./studio/cinema.css";
 @import "./studio/compact.css";
 @import "./studio/splash.css";
+@import "./studio/result.css";
 
 /* 로컬 시안의 화면에 기존 React 촬영·캔버스·출력 기능을 연결한다. */
 :root {

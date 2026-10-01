@@ -1,4 +1,4 @@
-// TEMPLATES 4종을 실제 캔버스(@napi-rs/canvas, 미리 빌드된 바이너리 — node-gyp/Visual
+// TEMPLATES 8종을 실제 캔버스(@napi-rs/canvas, 미리 빌드된 바이너리 — node-gyp/Visual
 // Studio 빌드툴 불필요)로 렌더링해 진짜 픽셀 출력을 검증한다. 기존
 // templates.test.js(FakeCtx)는 "예외 없이 끝나는가"만 봤고 실제 그림이 나오는지는
 // 못 봤다 — 이 파일은 그 빈틈을 메운다: 완성된 PNG가 실제로 텍스트/이미지 픽셀을
@@ -16,8 +16,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // napi-rs canvas가 시스템 기본 글꼴로 대체해서 그리므로 렌더 자체는 실패하지 않는다
 // (진짜 목적은 타이포그래피 정확성이 아니라 "실제 캔버스 파이프라인이 텍스트/이미지를
 // 픽셀로 만들어내는가"이다).
-GlobalFonts.registerFromPath(path.join(__dirname, '..', 'fonts', 'Pretendard-Bold.woff2'), 'Pretendard');
-GlobalFonts.registerFromPath(path.join(__dirname, '..', 'fonts', 'Pretendard-Black.woff2'), 'Pretendard');
+GlobalFonts.registerFromPath(path.join(__dirname, '..', 'public', 'fonts', 'Pretendard-Bold.woff2'), 'PretendardFull');
+GlobalFonts.registerFromPath(path.join(__dirname, '..', 'public', 'fonts', 'Pretendard-Black.woff2'), 'PretendardFull');
 
 const app = await loadApp({ createRealCanvas: createCanvas });
 const { W, H } = app;
@@ -72,3 +72,22 @@ for (const template of app.TEMPLATES) {
     expect(diffPixels > W * H * 0.01, `배경과 다른 픽셀이 너무 적음(${diffPixels}px) — 사진/텍스트가 안 그려졌을 가능성`).toBeTruthy();
   });
 }
+
+test('8종 디자인의 긴 제목·단체명·출연진도 글자끼리 겹치거나 인화지 밖으로 나가지 않는다', () => {
+  const cases=[META,{...META,title:'우주를 건너 별들의 바다로 떠나는 아주 길고 긴 모험 이야기',mode:'group',groupName:'햇살초등학교 영화 동아리',members:'김인키 · 이영화 · 박감독 · 최배우 · 정연출 · 한제작'}, {...META,title:'가'.repeat(30)}];
+  for(const template of app.TEMPLATES)for(const meta of cases){
+    const canvas=createCanvas(W,H),ctx=canvas.getContext('2d'),texts=[];
+    const draw=ctx.fillText.bind(ctx);
+    ctx.fillText=(text,x,y,maxWidth)=>{
+      if(text){const m=ctx.measureText(text),matrix=ctx.getTransform();
+        const corners=[[x-m.actualBoundingBoxLeft,y-m.actualBoundingBoxAscent],[x+m.actualBoundingBoxRight,y-m.actualBoundingBoxAscent],[x-m.actualBoundingBoxLeft,y+m.actualBoundingBoxDescent],[x+m.actualBoundingBoxRight,y+m.actualBoundingBoxDescent]].map(([a,b])=>({x:matrix.a*a+matrix.c*b+matrix.e,y:matrix.b*a+matrix.d*b+matrix.f}));
+        texts.push({text,left:Math.min(...corners.map(p=>p.x)),right:Math.max(...corners.map(p=>p.x)),top:Math.min(...corners.map(p=>p.y)),bottom:Math.max(...corners.map(p=>p.y))});
+      }draw(text,x,y,maxWidth);
+    };
+    template.render(ctx,makeFakeArt(),meta,GENRE_STUB);
+    for(let i=0;i<texts.length;i++){
+      const a=texts[i];expect(a.left>=0&&a.right<=W&&a.top>=0&&a.bottom<=H,`${template.label}: 인화지 밖 ${a.text}`).toBe(true);
+      for(const b of texts.slice(i+1))expect(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1,`${template.label}: 겹침 ${a.text} / ${b.text}`).toBe(false);
+    }
+  }
+});

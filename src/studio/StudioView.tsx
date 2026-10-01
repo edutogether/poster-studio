@@ -48,6 +48,20 @@ export interface StudioViewProps {
   stopCamera: Action;
 }
 
+function StudioIcon({name}: {name: 'camera' | 'arrow' | 'reset' | 'expand' | 'print' | 'mic'}) {
+  // Lucide 공식 SVG: camera · rotate-ccw · maximize · mic (ISC 고지: public/studio/lucide-LICENSE.txt)
+  const paths = {
+    // Lucide 공식 camera 아이콘. 원본 고지: public/studio/lucide-LICENSE.txt
+    camera: <><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/></>,
+    arrow: <path d="M4 12h15m-6-6 6 6-6 6"/>,
+    reset: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></>,
+    expand: <><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></>,
+    mic: <><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></>,
+    print: <><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7Z"/><path d="M17 11h1"/></>
+  };
+  return <svg className="studio-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
+
 function PeopleIcon({ group }: { group: boolean }) {
   return (
     <span className="people-icon" aria-hidden="true">
@@ -595,15 +609,15 @@ export default function StudioView(p: StudioViewProps) {
       >
         <div className="result-artboard">
           <div className="result-artboard-top">
-            <span>나의 영화 포스터</span>
-            <button
+            <span className="result-brand"><StudioIcon name="mic"/><span>Voice <em>Cinema</em></span></span>
+            <div className="result-tools"><button type="button" className="icon-button" aria-label="다음 주인공" title="다음 주인공" disabled={locked} onClick={p.onNewPerson}><StudioIcon name="reset"/></button><button
               className="icon-button"
               type="button"
               aria-label="포스터 크게 보기"
               onClick={() => dialog.current?.showModal()}
             >
-              ⛶
-            </button>
+              <StudioIcon name="expand"/>
+            </button></div>
           </div>
           <div className="result-poster-slot">
             <canvas
@@ -615,9 +629,10 @@ export default function StudioView(p: StudioViewProps) {
           </div>
           <span className="print-size">4 × 6 인화 비율</span>
         </div>
-        <div className="workspace">
+        <div className="workspace" id="resultWorkspace">
           <div className="page-heading">
-            <h1>나의 영화가 완성됐어요.</h1>
+            <h1>나만의 영화 포스터, <span className="result-accent">완성 !</span></h1>
+            <p>마음에 드는 디자인을 고르고 인쇄하세요.</p>
           </div>
           <aside className="result-settings">
             <p className="section-description">
@@ -649,62 +664,10 @@ export default function StudioView(p: StudioViewProps) {
                 </button>
               ))}
             </div>
-            <div className="result-secondary">
-              <button
-                type="button"
-                className="quiet-button"
-                disabled={locked}
-                onClick={() => go(1)}
-              >
-                영화 정보 수정
-              </button>
-              <button
-                id="regenBtn"
-                type="button"
-                className="quiet-button"
-                disabled={p.generating || p.spent}
-                onClick={p.onRegen}
-              >
-                {p.spent
-                  ? "재생성 횟수 소진(다시 촬영 시 초기화)"
-                  : "다른 그림으로"}
-              </button>
-              <button
-                id="resetBtn"
-                type="button"
-                className="quiet-button"
-                disabled={locked}
-                onClick={p.onReset}
-              >
-                입력 초기화
-              </button>
-              <button
-                type="button"
-                className="quiet-button"
-                disabled={locked}
-                onClick={p.onNewPerson}
-              >
-                다음 주인공
-              </button>
-            </div>
           </aside>
           <div className="action-dock result-actions">
-            <button
-              id="downloadBtn"
-              type="button"
-              className="secondary-button"
-              onClick={p.onDownload}
-            >
-              PNG 저장
-            </button>
-            <button
-              id="printBtn"
-              type="button"
-              className="primary-button"
-              onClick={p.onPrint}
-            >
-              인쇄하기
-            </button>
+            <button type="button" className="back-button" onClick={() => go(2)} disabled={locked}><span aria-hidden="true">←</span> 이전</button>
+            <button id="printBtn" type="button" className="primary-button" onClick={p.onPrint}><StudioIcon name="print"/>이 포스터로 출력하기</button>
           </div>
         </div>
       </section>

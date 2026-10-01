@@ -100,6 +100,7 @@ export async function ensureLogo(){
   if(state.LOGO_TRIED) return; state.LOGO_TRIED = true;
   try{ state.LOGO_LIGHT = await loadImg('logo-white.png'); }catch(e){ state.LOGO_LIGHT = null; }
   try{ state.LOGO_DARK  = await loadImg('logo-dark.png'); }catch(e){ state.LOGO_DARK = null; }
+  try{ state.LOGO_FESTIVAL = await loadImg('studio/inky-logo.png'); }catch(e){ state.LOGO_FESTIVAL = null; }
 }
 /* 로고를 (cx, cy) 중심에 높이 h로 그린다. variant: 'light'(흰글씨) | 'dark'(짙은글씨), 받침 없음 */
 export function drawOrgLogo(ctx: CanvasRenderingContext2D, cx: number, cy: number, h: number, variant: string){
