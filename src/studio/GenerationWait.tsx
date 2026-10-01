@@ -32,7 +32,6 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
   const [paused, setPaused] = useState(false);
   const [scenes] = useState(createWaitSequence);
   const [sceneIndex, setSceneIndex] = useState(0);
-  const [longWait, setLongWait] = useState(false);
   const still = reduced || paused;
   const scene = scenes[sceneIndex];
 
@@ -43,12 +42,10 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
     if (typeof element.showModal === "function") element.showModal();
     else element.setAttribute("open", "");
     heading.current?.focus();
-    const timer = window.setTimeout(() => setLongWait(true), 60_000);
     const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     const update = () => setReduced(media?.matches ?? false);
     media?.addEventListener?.("change", update);
     return () => {
-      window.clearTimeout(timer);
       document.documentElement.style.overflow = previousOverflow;
       media?.removeEventListener?.("change", update);
       if (element.open && typeof element.close === "function") element.close();
@@ -86,7 +83,6 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
           <div className="generation-copy-stack movie-fact-bodies">
             {scenes.map(({ fact: { body } }, index) => <p key={body} data-active={index === sceneIndex} aria-hidden={index !== sceneIndex}>{body}</p>)}
           </div>
-        <p className="generation-note" role="status">{longWait ? "조금 더 시간이 걸리고 있어요. 완성되면 바로 보여드릴게요." : ""}</p>
         </section>
         <p ref={spinTextRef} className="generation-elapsed" aria-hidden="true">기다린 시간 · 0초</p>
       </div>

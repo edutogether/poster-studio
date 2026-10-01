@@ -79,10 +79,11 @@ describe("포스터 생성 대기", () => {
     view.unmount();expect(document.documentElement.style.overflow).toBe(previousOverflow);
     expect(vi.getTimerCount()).toBe(0);
   });
-  test("60초 지연 안내는 완료나 진행률을 가장하지 않는다",()=>{
+  test("60초가 지나도 지연 안내를 표시하지 않는다",()=>{
     const view=render(<GenerationWait spinTextRef={createRef()}/>);
     act(()=>vi.advanceTimersByTime(60_000));
-    expect(view.getByText('조금 더 시간이 걸리고 있어요. 완성되면 바로 보여드릴게요.')).toBeTruthy();
+    expect(view.queryByText(/조금 더 시간이 걸리고/)).toBeNull();
+    expect(document.querySelector('.generation-note')).toBeNull();
     expect(document.querySelector('progress')).toBe(null);
   });
   test("움직임 줄이기에서는 선택된 장면의 정지 이미지를 유지한다",()=>{
