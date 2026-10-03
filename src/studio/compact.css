@@ -56,28 +56,28 @@ dialog #dialogContent > .poster {
 .festival-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
+  gap: 10px;
+  font-size: 22px;
   letter-spacing: -0.4px;
   white-space: nowrap;
   font-weight: 800;
 }
 .festival-brand strong {
-  font-weight: 400;
+  font-weight: 650;
 }
 .festival-symbol {
   position: relative;
   display: block;
   overflow: hidden;
-  width: 45px;
-  height: 32px;
+  width: 60px;
+  height: 43px;
   flex-shrink: 0;
 }
 .festival-symbol img {
   position: absolute;
-  width: 254px;
+  width: 339px;
   height: auto;
-  left: -38px;
+  left: -51px;
   top: 0;
   max-width: none;
 }
@@ -871,16 +871,16 @@ dialog #dialogContent > .poster {
 }
 @media (min-width: 761px) and (max-width: 1099px) {
   .festival-brand {
-    font-size: 13px;
-    gap: 5px;
+    font-size: 16px;
+    gap: 7px;
   }
   .festival-symbol {
-    width: 35px;
-    height: 27px;
+    width: 44px;
+    height: 32px;
   }
   .festival-symbol img {
-    width: 204px;
-    left: -30px;
+    width: 248px;
+    left: -37px;
   }
   .education-wordmark img {
     width: 134px;
@@ -1122,7 +1122,7 @@ dialog #dialogContent > .poster {
 @media (max-width: 760px) {
   .header-inner {
     position: relative;
-    padding-top: 34px;
+    padding-top: 40px;
   }
   .festival-brand {
     display: flex;
@@ -1131,15 +1131,15 @@ dialog #dialogContent > .poster {
     right: 20px;
     width: auto;
     margin: 0;
-    font-size: 12px;
+    font-size: 14px;
   }
   .festival-symbol {
-    width: 26px;
-    height: 18px;
+    width: 32px;
+    height: 23px;
   }
   .festival-symbol img {
-    width: 151px;
-    left: -23px;
+    width: 181px;
+    left: -27px;
   }
 }
 dialog:has(#dialogContent > .poster):not(
