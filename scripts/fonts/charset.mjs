@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 /** 화면에 글자로 나올 수 있는 곳을 전부 모은다. */
-export function collectStrings() {
+export function collectStrings(root = ROOT) {
   const out = [];
   const push = (s) => { if (s) out.push(s); };
 
@@ -28,7 +28,7 @@ export function collectStrings() {
      쓰면 **읽을 파일이 없어 글자 집합이 조용히 비어버리고**, 검사는 통과하는데
      화면에는 두부(□)가 나온다. 그래서 경로를 여기서 갈라 둔다. */
   for (const f of ['index.html', 'privacy.html']) {
-    let t = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    let t = fs.readFileSync(path.join(root, f), 'utf8');
     t = t.replace(/<!--[\s\S]*?-->/g, '').replace(/<style[\s\S]*?<\/style>/g, '');
     for (const m of t.matchAll(/>([^<>]+)</g)) push(m[1]);
     for (const a of ['placeholder', 'alt', 'title', 'aria-label', 'value', 'content']) {
@@ -36,16 +36,23 @@ export function collectStrings() {
     }
   }
 
-  const SRC = path.join(ROOT, 'src');
-  const srcFiles = fs.readdirSync(SRC).filter((x) => x.endsWith('.ts') || x.endsWith('.tsx'));
+  const SRC = path.join(root, 'src');
+  // 화면 컴포넌트를 하위 폴더로 나눠도 고정 문구가 검사에서 빠지지 않는다.
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const file = path.join(dir, entry.name);
+    return entry.isDirectory() ? walk(file) : [file];
+  });
+  const files = walk(SRC);
+  const srcFiles = files.filter((x) => x.endsWith('.ts') || x.endsWith('.tsx'));
   if (!srcFiles.length) throw new Error('src/에서 소스를 하나도 못 찾았습니다 — 경로가 틀리면 글자 집합이 비어 검사가 무의미해집니다.');
   for (const f of srcFiles) {
-    let t = fs.readFileSync(path.join(SRC, f), 'utf8');
+    let t = fs.readFileSync(f, 'utf8');
     t = t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
     // 따옴표 3종 모두 — 템플릿 리터럴 안의 고정 문구도 화면에 나온다.
     for (const m of t.matchAll(/'([^'\n\\]*)'|"([^"\n\\]*)"|`([^`\\]*)`/g)) {
       push(m[1]); push(m[2]); push(m[3]);
     }
+    if (f.endsWith('.tsx')) for (const m of t.matchAll(/>([^<>]+)</g)) push(m[1]);
   }
   /* 🔴 CSS도 훑는다 (2026-09-11에 추가).
      왜: `.notes li::before { content:"※ " }`처럼 **화면 글자가 CSS에서 나오는 자리**가 있다.
@@ -62,10 +69,7 @@ export function collectStrings() {
          있는 html 쪽에서 이미 걷힌다.
        - `\\f0c7` 같은 CSS 이스케이프 — 아이콘 폰트용이라 이 서브셋(본문 폰트)과 무관하다.
      ⚠ 넓게 잡는 쪽이 의도된 설계다. 글자 몇 개를 더 담는 비용이 두부(□)가 나갈 위험보다 싸다. */
-  const cssFiles = fs
-    .readdirSync(SRC)
-    .filter((x) => x.endsWith('.css'))
-    .map((x) => path.join(SRC, x));
+  const cssFiles = files.filter((x) => x.endsWith('.css'));
   if (!cssFiles.length) {
     throw new Error('src/에서 css를 하나도 못 찾았습니다 — CSS에서 나오는 글자(content 등)가 조용히 빠집니다.');
   }

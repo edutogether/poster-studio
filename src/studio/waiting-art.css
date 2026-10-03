@@ -1,0 +1,15 @@
+/* 원화는 보존한다. 피사체 하단을 상자 높이 94%에 맞추고 장면별 체감 크기만 소폭 보정한다. */
+.waiting-art-frame { overflow: hidden; }
+.waiting-art-frame > img { transform-origin: 50% 100%; transform: translate(var(--art-x, 0%), var(--art-y, 0%)) scale(var(--art-scale, 1)); }
+.waiting-art-frame[data-art="1"] { --art-scale: 1; --art-y: 2.523%; }
+.waiting-art-frame[data-art="2"] { --art-scale: 1; --art-y: 1.528%; }
+.waiting-art-frame[data-art="3"] { --art-scale: 0.95; --art-y: 6.280%; }
+.waiting-art-frame[data-art="4"] { --art-scale: 1.02; --art-y: 10.372%; }
+.waiting-art-frame[data-art="5"] { --art-scale: 0.95; --art-y: 5.200%; }
+.waiting-art-frame[data-art="6"] { --art-scale: 1; --art-y: 2.949%; }
+.waiting-art-frame[data-art="7"] { --art-scale: 1.1; --art-y: 15.562%; }
+.waiting-art-frame[data-art="8"] { --art-scale: 0.98; --art-y: 6.668%; }
+.waiting-art-frame[data-art="9"] { --art-scale: 0.88; --art-y: 1.000%; }
+.waiting-art-frame[data-art="10"] { --art-scale: 0.94; --art-y: -1.060%; }
+.waiting-art-frame[data-art="11"] { --art-scale: 1; --art-y: 4.511%; }
+.waiting-art-frame[data-art="12"] { --art-scale: 1.04; --art-y: 5.966%; --art-x: -1.3%; }

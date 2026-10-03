@@ -1,0 +1,1253 @@
+/* CGV 공식 앱의 흑백 선택 체계와 붉은 BI를 참고한 로컬 디자인. */
+:root {
+  --paper: #fff;
+  --canvas: #f5f5f5;
+  --ink: #191919;
+  --muted: #666;
+  --accent: #d82d23;
+  --line: #e6e6e6;
+  --stage: #141414;
+  color: var(--ink);
+  background: #fff;
+}
+body,
+.workspace,
+.app-header {
+  background: #fff;
+  color: #191919;
+}
+.app-header {
+  height: 88px;
+  border-bottom: 1px solid #ddd;
+}
+.header-inner {
+  padding: 0 32px;
+  gap: 20px;
+}
+.brand {
+  gap: 16px;
+}
+.cgv-symbol {
+  display: block;
+  position: relative;
+  width: 88px;
+  height: 44px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.cgv-symbol img {
+  position: absolute;
+  width: 108px;
+  height: 108px;
+  max-width: none;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.brand-divider {
+  font-size: 21px;
+  font-weight: 400;
+  color: #aaa;
+}
+.education-wordmark {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.education-wordmark small {
+  font-size: 10px;
+  color: #777;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.education-wordmark strong {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+}
+.demo-badge {
+  color: #666;
+  font-size: 12px;
+}
+.help-button {
+  color: #333;
+  border-color: #ddd;
+  background: #fff;
+}
+.help-button:hover {
+  background: #f5f5f5;
+}
+.stepper button {
+  font-size: 15px;
+  color: #717171;
+}
+.stepper button[aria-current="step"],
+.stepper button.done {
+  color: #191919;
+}
+.stepper button[aria-current="step"] .step-index {
+  background: #191919;
+  border-color: #191919;
+}
+.step-index {
+  border-color: #ccc;
+}
+.step-line {
+  background: #ddd;
+}
+.stepper button:disabled {
+  color: #828282;
+}
+.prepare-layout {
+  grid-template-columns: 40% 60%;
+  min-height: calc(100svh - 88px);
+}
+.workspace {
+  padding: 28px 40px 0;
+}
+.page-heading {
+  margin-bottom: 18px;
+}
+.page-heading h1 {
+  font-size: 30px;
+  letter-spacing: -1px;
+  color: #191919;
+}
+#pageDescription {
+  color: #666;
+}
+.identity-section {
+  margin-bottom: 0;
+}
+.section-top {
+  margin-bottom: 18px;
+}
+.segmented {
+  gap: 12px;
+}
+.segmented button {
+  min-height: 70px;
+  background: #fff;
+  color: #555;
+  border: 1px solid #d8d8d8;
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: none;
+  gap: 12px;
+}
+.segmented button[aria-pressed="true"] {
+  background: #222;
+  color: #fff;
+  border-color: #222;
+  box-shadow: none;
+}
+.segmented button[aria-pressed="false"]:hover {
+  background: #f7f7f7;
+  border-color: #777;
+}
+.segmented button[aria-pressed="true"] .mode-check {
+  background: #fff;
+  border-color: #fff;
+  color: #222;
+}
+.mode-copy strong {
+  font-size: 18px;
+}
+.mode-copy > span {
+  font-size: 13px;
+}
+.mode-check {
+  border-color: #bbb;
+}
+.people-icon {
+  width: 28px;
+  transform: scale(0.9);
+}
+.field label {
+  color: #393939;
+  font-size: 14px;
+}
+.field input {
+  background: #fafafa;
+  color: #191919;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 17px;
+  min-height: 50px;
+}
+.field input:focus {
+  border-color: #333;
+  background: #fff;
+  box-shadow: 0 0 0 3px #0000000a;
+}
+.field input::placeholder {
+  color: #767676;
+}
+.input-note {
+  color: #696969;
+  font-size: 12px;
+  margin-top: 10px;
+}
+.privacy-mark {
+  color: #666;
+}
+.optional {
+  color: #707070;
+}
+.genre-section {
+  margin-top: 26px;
+  padding-top: 23px;
+  border-top: 1px solid #e8e8e8;
+}
+.genre-section legend {
+  float: left;
+  display: block;
+  width: 100%;
+  margin-bottom: 7px !important;
+  font-size: 25px;
+  color: #191919;
+  letter-spacing: -0.8px;
+}
+.genre-section .genre-instruction {
+  clear: both;
+  display: block;
+  color: #6b6b6b;
+  font-size: 14px;
+  margin: 0 0 18px;
+}
+.genre-section .genre-grid {
+  max-width: none;
+  gap: 24px 16px;
+  padding: 0;
+}
+.genre-option {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  aspect-ratio: auto;
+  min-height: 0;
+  height: auto;
+  border: 0;
+  border-radius: 10px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  overflow: visible;
+  transition: none;
+  white-space: normal;
+  isolation: auto;
+}
+.genre-option:hover,
+.genre-option:active,
+.genre-option[aria-pressed="true"],
+.genre-option[aria-pressed="true"]:hover {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  padding: 0;
+  transform: none;
+}
+.genre-option:before,
+.genre-option:after {
+  display: none !important;
+}
+.genre-art {
+  position: relative;
+  inset: auto;
+  display: block;
+  isolation: isolate;
+  aspect-ratio: 2/3;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+  z-index: auto;
+  border-radius: 10px;
+  background: #202020;
+  box-shadow: inset 0 0 0 1px #00000008;
+}
+.genre-art:after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 0;
+  background: linear-gradient(transparent, #000000bc);
+  z-index: 0;
+  pointer-events: none;
+}
+.genre-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  z-index: -1;
+  filter: none;
+  transform: none;
+}
+.film-title {
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: 17px;
+  z-index: 1;
+  text-align: center;
+  color: #fff;
+  font-size: clamp(17px, 1.65vw, 26px);
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  word-break: keep-all;
+  text-shadow: 0 2px 8px #0007;
+}
+.film-kicker {
+  position: absolute;
+  top: 14px;
+  left: 7px;
+  right: 7px;
+  text-align: center;
+  font-size: 8px;
+  color: #fff;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 5px #0009;
+}
+.genre-art-sf .film-title {
+  font-weight: 400;
+  letter-spacing: 2px;
+  font-size: 19px;
+}
+.genre-art-fantasy .film-title {
+  color: #edd597;
+  letter-spacing: -0.7px;
+}
+.genre-art-animation .film-title {
+  color: #ffe329;
+  text-shadow:
+    2px 2px 0 #ad332b,
+    -1px -1px 0 #ad332b;
+  font-size: 23px;
+}
+.genre-art-hero .film-title {
+  font-style: italic;
+  color: #f8dd86;
+  font-size: 23px;
+}
+.genre-art-mystery .film-title {
+  color: #f7d492;
+  letter-spacing: 1px;
+  font-size: 20px;
+}
+.genre-art-director .film-title {
+  font-family: Georgia, "Batang", serif;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: #fff5d4;
+}
+.genre-art-sports .film-title {
+  letter-spacing: -1px;
+  font-size: 26px;
+}
+.genre-art-music .film-title {
+  font-weight: 400;
+  letter-spacing: 1px;
+  color: #fbeb9d;
+  font-size: 20px;
+}
+.poster-pick {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  font-size: 14px;
+  background: #fff;
+  color: #d82d23;
+  box-shadow: 0 2px 6px #0003;
+  opacity: 0;
+}
+.genre-option[aria-pressed="true"] .poster-pick {
+  opacity: 1;
+}
+.genre-option[aria-pressed="true"] .genre-art {
+  outline: 3px solid #d82d23;
+  outline-offset: -3px;
+}
+.genre-caption {
+  position: static;
+  display: block;
+  color: #191919;
+  margin-top: 10px;
+  padding: 0 1px;
+}
+.genre-caption strong {
+  font-size: 16px;
+  letter-spacing: -0.4px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.genre-subtitle {
+  position: static;
+  display: block;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #6a6a6a;
+  margin-top: 2px;
+  padding: 0 1px;
+  white-space: normal;
+  text-align: left;
+}
+.selection-check {
+  display: none !important;
+}
+.card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  margin-top: 9px;
+  background: #fff;
+  border: 1px solid #d5d5d5;
+  border-radius: 6px;
+  width: 100%;
+  font-size: 12px;
+  color: #444;
+  font-weight: 700;
+  transition:
+    background 0.16s,
+    color 0.16s,
+    border-color 0.16s;
+}
+.card-action:before {
+  content: "이 영화의 주인공 되기";
+}
+.genre-option:hover .card-action {
+  background: #222;
+  border-color: #222;
+  color: #fff;
+}
+.genre-option[aria-pressed="true"] .card-action {
+  background: #d82d23;
+  color: #fff;
+  border-color: #d82d23;
+}
+.genre-option[aria-pressed="true"] .card-action:before {
+  content: "✓ 선택한 영화";
+}
+.genre-option[aria-pressed="true"]:hover .card-action {
+  background: #222;
+  border-color: #222;
+}
+.genre-story {
+  color: #333;
+  margin: 22px 0 0;
+  font-size: 14px;
+}
+.genre-selected-label {
+  color: #666;
+}
+.collection-note {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #737373;
+  margin-top: 8px;
+}
+.preview-panel {
+  height: calc(100svh - 88px);
+  background: #141414;
+}
+.exhibition {
+  height: 100%;
+  padding: 35px 36px 23px;
+  justify-content: flex-end;
+  min-height: 0;
+}
+.poster-wall {
+  object-position: center center;
+}
+.exhibition-shade {
+  background: linear-gradient(
+    180deg,
+    #1010103d 0%,
+    #10101018 27%,
+    #10101099 56%,
+    #141414f0 81%,
+    #141414 100%
+  );
+}
+.sample-tag {
+  top: 31px;
+  left: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+  color: #fff;
+}
+.sample-divider {
+  color: #a9a9a9;
+  margin: 0 3px;
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  background: #ef3123;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #ef312317;
+}
+.exhibition-copy {
+  margin: 100px 0 28px;
+}
+.event-name {
+  font-size: 13px;
+  letter-spacing: -0.2px;
+  color: #dedede;
+  margin-bottom: 16px;
+}
+.exhibition h2 {
+  font-size: clamp(42px, 4.1vw, 61px);
+  line-height: 1.16;
+  letter-spacing: -2.2px;
+  color: #fff;
+  font-weight: 800;
+}
+.exhibition h2 em {
+  font-style: normal;
+  color: #ff5148;
+}
+.exhibition-description {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #dedede;
+  margin-top: 19px;
+}
+.movie-ticket {
+  background: #fff;
+  border-radius: 8px;
+  min-height: 106px;
+  box-shadow: 0 7px 22px #0003;
+  border-top: 4px solid #ef3123;
+}
+.movie-ticket > div:first-child {
+  padding: 16px 18px;
+}
+.ticket-label {
+  color: #666;
+  font-size: 11px;
+}
+.movie-ticket strong {
+  color: #191919;
+  font-size: 22px;
+  letter-spacing: -0.9px;
+  margin: 5px 0;
+}
+.movie-ticket #ticketName {
+  color: #666;
+  font-size: 13px;
+}
+.ticket-admit {
+  width: 93px;
+  border-left-color: #bcbcbc;
+}
+.ticket-admit:before,
+.ticket-admit:after {
+  background: #141414;
+}
+.ticket-admit > span {
+  color: #dc2d24;
+  font-size: 28px;
+}
+.ticket-admit small {
+  color: #444;
+  font-size: 12px;
+  font-weight: 700;
+}
+.exhibition-link {
+  color: #ddd;
+  font-size: 13px;
+  min-height: 48px;
+  margin-top: 7px;
+}
+.venue-info {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #ffffff26;
+  padding-top: 16px;
+  margin-top: 9px;
+  color: #bcbcbc;
+  font-size: 10px;
+  letter-spacing: -0.1px;
+}
+.action-dock {
+  background: #fffffff7;
+  box-shadow: 0 -12px 22px #ffffffeb;
+  border-top: 1px solid #e7e7e7;
+  margin-top: 24px;
+  padding: 14px 0 20px;
+}
+.dock-inner > p {
+  color: #666;
+  font-size: 13px;
+}
+.primary-button {
+  background: #d82d23;
+  color: #fff;
+  border-radius: 8px;
+  min-height: 56px;
+  font-size: 17px;
+  box-shadow: none;
+  transition: background 0.16s;
+  transform: none;
+}
+.primary-button:hover {
+  background: #bd241c;
+  box-shadow: none;
+  transform: none;
+}
+.primary-button:active {
+  background: #a9211a;
+  box-shadow: none;
+  transform: none;
+}
+.primary-button:disabled {
+  background: #eee;
+  color: #777;
+  box-shadow: none;
+}
+.back-button {
+  background: #f2f2f2;
+  color: #444;
+  border-radius: 8px;
+}
+.quiet-button {
+  color: #555;
+  text-decoration-color: #bbb;
+}
+.secondary-button,
+.icon-button {
+  background: #fff;
+  color: #333;
+  border-color: #d2d2d2;
+  border-radius: 8px;
+}
+.secondary-button:hover,
+.icon-button:hover {
+  background: #f4f4f4;
+}
+.toast {
+  background: #222;
+  color: #fff;
+  box-shadow: 0 6px 22px #0002;
+}
+.dialog-close {
+  background: #f3f3f3;
+  color: #333;
+}
+dialog {
+  background: #fff;
+  color: #222;
+}
+dialog::backdrop {
+  background: #111a;
+}
+dialog p {
+  color: #666;
+}
+dialog .primary-button {
+  background: #d82d23;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #e52d24;
+  outline-offset: 4px;
+}
+.camera-layout,
+.result-layout {
+  min-height: calc(100svh - 88px);
+}
+.camera-surface {
+  background: #f1f1f1;
+}
+.camera-top {
+  color: #333;
+}
+.camera-sample,
+.camera-bottom {
+  color: #666;
+}
+.camera-large {
+  border-radius: 12px;
+  box-shadow: 0 12px 30px #0002;
+}
+.camera-tips li > span {
+  background: #f2f2f2;
+  color: #555;
+}
+.camera-tips strong {
+  color: #222;
+}
+.camera-tips p {
+  color: #666;
+}
+.summary-label {
+  color: #666;
+  border-color: #ddd;
+}
+.ticket-icon {
+  border-color: #efcdc9;
+  background: #fff5f4;
+  color: #d82d23;
+}
+.movie-summary span,
+.movie-summary p {
+  color: #666;
+}
+.movie-summary strong {
+  color: #222;
+}
+.captured-badge {
+  background: #fff;
+  color: #b4221c;
+}
+#photoReview p {
+  color: #555;
+}
+.result-artboard {
+  background: #ededed;
+}
+.result-artboard-top,
+.print-size {
+  color: #666;
+}
+.result-artboard .icon-button {
+  background: #fff;
+  color: #444;
+}
+.result-settings .style-option {
+  background: #fff;
+  border-color: #ddd;
+  border-radius: 10px;
+}
+.result-settings .style-option:hover {
+  border-color: #777;
+  box-shadow: none;
+}
+.result-settings .style-option[aria-pressed="true"] {
+  background: #fff7f6;
+  border-color: #d82d23;
+}
+.style-caption .style-name {
+  color: #222;
+}
+.style-description {
+  color: #666;
+}
+.style-option[aria-pressed="true"] .style-name {
+  color: #bc251d;
+}
+.style-check {
+  background: #d82d23;
+  border-color: #fff;
+}
+.version-note {
+  color: #666;
+}
+.version-note svg {
+  color: #bc251d;
+}
+.result-meta {
+  border-color: #ddd;
+}
+.result-meta strong {
+  color: #222;
+}
+.result-meta > span {
+  color: #666;
+}
+@media (min-width: 1100px) and (max-height: 820px) {
+  .workspace {
+    padding-top: 22px;
+  }
+  .page-heading {
+    margin-bottom: 16px;
+  }
+  .page-heading h1 {
+    font-size: 29px;
+  }
+  .section-top {
+    margin-bottom: 15px;
+  }
+  .segmented button {
+    min-height: 66px;
+    padding: 11px 15px;
+  }
+  .genre-section {
+    margin-top: 21px;
+    padding-top: 19px;
+  }
+  .genre-section legend {
+    font-size: 24px;
+  }
+  .exhibition {
+    padding: 28px 32px 19px;
+  }
+  .sample-tag {
+    left: 32px;
+    top: 25px;
+  }
+  .exhibition h2 {
+    font-size: 52px;
+  }
+  .exhibition-copy {
+    margin-bottom: 24px;
+  }
+  .exhibition-description {
+    margin-top: 16px;
+  }
+  .venue-info {
+    padding-top: 12px;
+    margin-top: 6px;
+  }
+  .exhibition-link {
+    margin-top: 3px;
+  }
+  .film-title {
+    bottom: 16px;
+  }
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  .header-inner {
+    padding: 0 24px;
+    gap: 14px;
+  }
+  .brand {
+    gap: 10px;
+  }
+  .cgv-symbol {
+    width: 74px;
+  }
+  .cgv-symbol img {
+    width: 92px;
+    height: 92px;
+  }
+  .education-wordmark strong {
+    font-size: 16px;
+  }
+  .stepper,
+  .stepper li {
+    gap: 12px;
+  }
+  .stepper button {
+    font-size: 14px;
+  }
+  .workspace {
+    padding: 25px 26px 0;
+  }
+  .prepare-layout {
+    grid-template-columns: 36% 64%;
+  }
+  .exhibition {
+    padding: 25px 25px 18px;
+  }
+  .sample-tag {
+    left: 25px;
+    font-size: 12px;
+  }
+  .exhibition h2 {
+    font-size: 39px;
+    letter-spacing: -1.7px;
+  }
+  .exhibition-description {
+    font-size: 14px;
+  }
+  .exhibition-copy {
+    margin-bottom: 25px;
+  }
+  .ticket-admit {
+    width: 68px;
+  }
+  .movie-ticket > div:first-child {
+    padding: 14px;
+  }
+  .movie-ticket strong {
+    font-size: 19px;
+  }
+  .venue-info {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .genre-section .genre-grid {
+    gap: 20px 12px;
+  }
+  .genre-caption strong {
+    font-size: 15px;
+  }
+  .genre-subtitle {
+    font-size: 10px;
+  }
+  .card-action {
+    font-size: 11px;
+  }
+  .film-title {
+    font-size: 18px;
+  }
+  .genre-art-animation .film-title,
+  .genre-art-hero .film-title,
+  .genre-art-sports .film-title {
+    font-size: 21px;
+  }
+  .genre-art-director .film-title,
+  .genre-art-mystery .film-title,
+  .genre-art-music .film-title {
+    font-size: 17px;
+  }
+  .genre-art-sf .film-title {
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+  .film-kicker {
+    font-size: 7px;
+  }
+  .segmented button {
+    padding: 12px;
+  }
+  .mode-copy strong {
+    font-size: 17px;
+  }
+  .mode-copy > span {
+    font-size: 12px;
+  }
+}
+@media (max-width: 760px) {
+  .app-header {
+    height: auto;
+  }
+  .header-inner {
+    padding: 11px 20px 0;
+    gap: 0;
+  }
+  .brand {
+    gap: 10px;
+  }
+  .cgv-symbol {
+    width: 68px;
+    height: 37px;
+  }
+  .cgv-symbol img {
+    width: 84px;
+    height: 84px;
+  }
+  .brand-divider {
+    font-size: 18px;
+  }
+  .education-wordmark small {
+    font-size: 8px;
+  }
+  .education-wordmark strong {
+    font-size: 16px;
+    letter-spacing: -0.5px;
+  }
+  .header-tools {
+    margin-left: auto;
+  }
+  .help-button {
+    width: 48px;
+    height: 48px;
+  }
+  .header-inner > nav {
+    margin-top: 9px;
+    border-color: #e8e8e8;
+    padding: 7px 0;
+  }
+  .stepper button {
+    font-size: 13px;
+  }
+  .prepare-layout,
+  .camera-layout,
+  .result-layout {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .preview-panel {
+    height: 250px;
+    min-height: 250px;
+  }
+  .exhibition {
+    height: 250px;
+    min-height: 250px;
+    padding: 49px 24px 24px;
+    justify-content: center;
+  }
+  .sample-tag {
+    top: 18px;
+    left: 24px;
+    right: auto;
+    max-width: none;
+    font-size: 11px;
+    padding: 0;
+  }
+  .exhibition-copy {
+    margin: 0;
+  }
+  .exhibition h2 {
+    font-size: 37px;
+    letter-spacing: -1.6px;
+  }
+  .event-name {
+    font-size: 11px;
+    margin-bottom: 10px;
+  }
+  .exhibition-description {
+    font-size: 13px;
+    line-height: 1.6;
+    margin-top: 11px;
+  }
+  .exhibition-description br {
+    display: none;
+  }
+  .exhibition-shade {
+    background: linear-gradient(90deg, #141414e6, #14141444);
+  }
+  .poster-wall {
+    object-position: center 60%;
+  }
+  .venue-info {
+    display: none;
+  }
+  .movie-ticket,
+  .exhibition-link {
+    display: none;
+  }
+  .workspace,
+  .camera-layout .workspace,
+  .result-layout .workspace {
+    padding: 28px 23px 0;
+  }
+  .page-heading h1 {
+    font-size: 27px;
+  }
+  .page-heading {
+    margin-bottom: 20px;
+  }
+  .segmented {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .segmented button {
+    min-height: 74px;
+    padding: 13px 17px;
+    gap: 14px;
+  }
+  .people-icon {
+    display: block;
+  }
+  .mode-copy strong {
+    font-size: 18px;
+  }
+  .mode-copy > span {
+    font-size: 14px;
+  }
+  .field-row {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .field label {
+    font-size: 15px;
+  }
+  .field input {
+    font-size: 17px;
+    min-height: 54px;
+  }
+  .section-top {
+    margin-bottom: 23px;
+  }
+  .input-note {
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .genre-section {
+    margin-top: 26px;
+    padding-top: 25px;
+  }
+  .genre-section legend {
+    font-size: 25px;
+    line-height: 1.4;
+  }
+  .genre-section .genre-instruction {
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 21px;
+    word-break: keep-all;
+  }
+  .genre-section .genre-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 25px 16px;
+  }
+  .genre-caption strong {
+    font-size: 16px;
+  }
+  .genre-subtitle {
+    font-size: 11px;
+  }
+  .card-action {
+    min-height: 36px;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+  .film-title {
+    font-size: 22px;
+  }
+  .genre-art-sf .film-title {
+    font-size: 17px;
+    letter-spacing: 1px;
+  }
+  .genre-art-animation .film-title,
+  .genre-art-hero .film-title,
+  .genre-art-sports .film-title {
+    font-size: 24px;
+  }
+  .genre-art-director .film-title,
+  .genre-art-mystery .film-title,
+  .genre-art-music .film-title {
+    font-size: 19px;
+  }
+  .film-kicker {
+    font-size: 7px;
+    letter-spacing: 0.8px;
+  }
+  .genre-story {
+    margin-top: 22px;
+  }
+  .collection-note {
+    font-size: 12px;
+  }
+  .action-dock {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+  .dock-inner > p {
+    font-size: 13px;
+  }
+  .primary-button {
+    font-size: 16px;
+  }
+  .result-settings > .style-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 370px) {
+  .header-inner {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .brand {
+    gap: 7px;
+  }
+  .cgv-symbol {
+    width: 57px;
+  }
+  .cgv-symbol img {
+    width: 72px;
+    height: 72px;
+  }
+  .education-wordmark strong {
+    font-size: 14px;
+  }
+  .brand-divider {
+    font-size: 16px;
+  }
+  .workspace,
+  .camera-layout .workspace,
+  .result-layout .workspace {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .page-heading h1 {
+    font-size: 25px;
+  }
+  .genre-section legend {
+    font-size: 24px;
+  }
+  .mode-copy > span {
+    font-size: 13px;
+  }
+  .genre-section .genre-grid {
+    gap: 24px 13px;
+  }
+  .film-title {
+    font-size: 19px;
+  }
+  .genre-art-sf .film-title {
+    font-size: 15px;
+    letter-spacing: 0.8px;
+  }
+  .genre-art-animation .film-title,
+  .genre-art-hero .film-title,
+  .genre-art-sports .film-title {
+    font-size: 20px;
+  }
+  .genre-art-director .film-title,
+  .genre-art-mystery .film-title,
+  .genre-art-music .film-title {
+    font-size: 16px;
+  }
+  .genre-caption strong {
+    font-size: 15px;
+  }
+  .genre-subtitle {
+    font-size: 10px;
+  }
+  .card-action {
+    font-size: 10px;
+  }
+  .film-kicker {
+    font-size: 6px;
+  }
+  .exhibition h2 {
+    font-size: 36px;
+  }
+  .primary-button {
+    font-size: 15px;
+  }
+}
+/* 첫 단계는 포스터를 가리지 않는 일반 문서 흐름으로 끝까지 고른 뒤 진행한다. */
+body[data-step="1"] .action-dock {
+  position: relative;
+  bottom: auto;
+  box-shadow: none;
+  backdrop-filter: none;
+  margin-top: 22px;
+}
+@media (min-width: 761px) and (max-height: 820px) {
+  .genre-section {
+    padding-top: 0;
+    margin-top: 21px;
+    border-top: 0;
+  }
+  .genre-section .genre-instruction {
+    display: none;
+  }
+  .genre-section legend {
+    margin-bottom: 17px !important;
+  }
+  .genre-section .genre-grid {
+    clear: both;
+  }
+  .genre-caption {
+    margin-top: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-action,
+  .primary-button {
+    transition: none;
+  }
+}

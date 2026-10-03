@@ -1,0 +1,1 @@
+재생성 없음. robot-logo-v11/11.png의 아이 영역을 선택해 동일한 오른쪽 위치에서 좌우 반전. 원본 해상도와 픽셀 색상 유지. scripts/media/flip-robot-child.mjs 참조.

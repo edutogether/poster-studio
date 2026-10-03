@@ -1,0 +1,151 @@
+body:not(.app-ready) #splash {
+  animation-play-state: paused;
+}
+
+/* 🔴 두 바퀴 하한 (COMMON_STANDARDS §27, 2026-09-11 대표 지시).
+   스플래시는 **자기 애니메이션이 최소 두 바퀴 도는 동안** 떠 있는다.
+
+   왜 "초"가 아니라 "바퀴"인가: 초로 박아 두면 막대 주기를 바꾸는 순간 하한이
+   따라오지 않아, 화면은 그대로인데 한 바퀴 반만 돌고 사라지게 된다. 그래서
+   **유지 시간을 주기에서 계산**한다 — 아래 `--splash-cycle`을 고치면 유지도 같이 움직인다.
+
+   계산: 유지 = 주기 × 2 = 2300ms. Voice Cinema와 같은 600ms 페이드를 이어 붙인다.
+   유지 시간은 animation-delay로 분리해 페이드 길이를 바꿔도 두 바퀴 하한이 보존된다.
+   (예전에는 유지 1800ms였는데 그건 1.57바퀴여서 막대가 도중에 잘렸다.)
+
+   기기별로 따로 두지 않는 이유: 이 값들은 **뷰포트와 무관한 시간**이고 스플래시에는
+   크기별 분기가 없다 — 모바일·패드·PC가 같은 애니메이션을 같은 길이로 돈다.
+   ⚠ 그래도 **재 봐야 안다**(다른 저장소는 모바일에만 넣었다가 PC가 0.1초에 스쳐 지나갔다).
+   세 폭에서 실제로 잰 값은 `_docs/CHANGELOG.md`에 있다. */
+:root {
+  --splash-cycle: 1.15s; /* 막대 한 바퀴 */
+  --splash-min-cycles: 2; /* §27 하한 */
+}
+
+#splash {
+  animation: splashOut 600ms ease
+    calc(var(--splash-cycle) * var(--splash-min-cycles)) forwards;
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  background: #fff;
+}
+/* 두 바퀴 유지 후 Voice Cinema와 동일하게 서서히 사라진다. */
+@keyframes splashOut {
+  from {
+    opacity: 1;
+    pointer-events: none;
+  }
+  to {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* 표준 §5의 성능 규칙 ① — 스플래시가 덮고 있는 동안 무거운 배경을 그리지 않는다.
+   이 앱에서 무거운 건 body 배경색이 아니라 body::before의 poster-wall.webp다
+   (2026-09-03 5라운드에 "무거운 이미지 디코딩이 로딩 임계경로에 끼어드는
+   버벅임"으로 실제로 겪은 항목이다). 그래서 대체 대상은 그 의사요소다 —
+   스플래시가 사라지면 :has()가 풀려 자동으로 돌아온다. */
+body:has(#splash)::before,
+body:has(#splash)::after {
+  display: none;
+}
+
+#splash .logo {
+  font-size: clamp(48px, 10vw, 72px);
+  /* 운영체제 이모지 글꼴 대신 Apple 원본 PNG를 모든 기기에서 공유한다. */
+  width: 1em;
+  height: 1.2em;
+  display: grid;
+  place-items: center;
+  animation: splashPop 0.6s ease;
+}
+#splash .logo img {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+#splash .name {
+  font-size: clamp(26px, 5vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #171717;
+  line-height: normal;
+}
+#splash .name .splash-accent {
+  color: #ed3124;
+}
+#splash .stagline {
+  font-size: clamp(13px, 2vw, 16px);
+  color: #626262;
+  line-height: normal;
+  padding-inline: 24px;
+  text-align: center;
+}
+#splash .splash-education-logo {
+  display: block;
+  width: clamp(160px, 24vw, 190px);
+  height: auto;
+  margin-top: 6px;
+}
+#splash .sbar {
+  display: block;
+  width: 190px;
+  height: 3px;
+  border-radius: 99px;
+  background: #f0e4e3;
+  overflow: hidden;
+  margin-top: 4px;
+}
+/* margin이 아니라 transform으로 움직인다 — margin은 매 프레임 레이아웃을 다시
+   계산시켜(리플로우) 저사양 기기에서 버벅임의 원인이 된다. 예전 인라인 스타일의
+   poster-studio-boot-bar 키프레임이 margin-left를 쓰고 있었다. */
+#splash .sbar i {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 99px;
+  background: #ed3124;
+  animation: splashBar var(--splash-cycle) linear infinite;
+  will-change: transform;
+}
+@keyframes splashPop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes splashBar {
+  0% {
+    transform: translateX(-76px);
+  }
+  100% {
+    transform: translateX(190px);
+  }
+}
+
+/* 표준 개정 2차 — **장식 애니메이션만 끄고 유지·페이드 타이밍은 남긴다.**
+   스플래시의 유지까지 없애면 덜 그려진 화면을 가려주는 역할이 사라져,
+   로드 게이트로 막으려던 문제가 그대로 되돌아온다. */
+@media (prefers-reduced-motion: reduce) {
+  #splash .logo {
+    animation: none;
+  }
+  #splash .sbar i {
+    animation: none;
+  }
+}

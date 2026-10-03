@@ -1,0 +1,45 @@
+.generation-wait {
+  position: fixed; inset: 0; width: 100%; max-width: 100%; height: 100dvh; max-height: 100dvh;
+  margin: 0; padding: 28px 24px; border: 0; border-radius: 0; box-shadow: none; background: #fff; color: #222; overflow-y: auto;
+  overscroll-behavior: contain; font-family: Studio, Pretendard, sans-serif;
+}
+.generation-wait::backdrop { background: #fff; }
+.generation-content { position: relative; width: min(760px, 100%); min-height: 100%; margin: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.generation-film { position: relative; width: min(350px, 65vw); aspect-ratio: 1; flex-shrink: 0; margin-bottom: 12px; }
+.generation-robot-film { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; }
+.generation-robot-film[data-active="true"] { opacity: 1; }
+.generation-pause { position: absolute; right: 8px; bottom: 20px; z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: #f5f5f5; color: #777; opacity: 0; transition: opacity .2s; font-size: 16px; cursor: pointer; }
+.generation-film:hover .generation-pause, .generation-pause:focus-visible { opacity: 1; }
+/* 모든 문구가 같은 칸의 높이를 계산하므로 긴 문구로 바뀌어도 로봇이 움직이지 않는다. */
+.generation-copy-stack { display: grid; width: 100%; min-width: 0; }
+.generation-copy-stack > * { grid-area: 1 / 1; align-self: center; min-width: 0; opacity: 0; visibility: hidden; transition: opacity .45s ease; white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }
+.generation-copy-stack > [data-active="true"] { opacity: 1; visibility: visible; }
+.generation-wait h1 { margin: 0; font-size: clamp(23px, 2.4vw, 32px); letter-spacing: -1px; font-weight: 750; line-height: 1.45; outline: none; }
+.movie-fact { position: relative; width: min(620px, 100%); margin-top: 0; }
+.movie-fact h2 { margin: 0; padding: 0; color: #ed3124; font-size: clamp(20px, 1.8vw, 23px); font-weight: 750; letter-spacing: -.5px; line-height: 1.5; }
+.movie-fact-bodies { margin-top: 14px; }
+.movie-fact p { margin: 0; color: #666; font-size: 16px; font-weight: 400; line-height: 1.75; }
+.generation-dots { display: flex; justify-content: center; align-items: center; gap: 9px; height: 8px; margin: 24px 0; flex-shrink: 0; }
+.generation-dots i { display: block; width: 7px; height: 7px; border-radius: 50%; background: #ed3124; opacity: .3; animation: generation-dot-wave 2.4s ease-in-out infinite; animation-delay: -2.4s; }
+.generation-dots i:nth-child(2) { animation-delay: -2.1s; }
+.generation-dots i:nth-child(3) { animation-delay: -1.8s; }
+@keyframes generation-dot-wave { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+.generation-wait[data-paused="true"] .generation-dots i { animation-play-state: paused; }
+.generation-wait .generation-elapsed { display: none; }
+@media (min-width: 761px) and (max-height: 850px) {
+  .generation-film { width: 270px; margin-bottom: 8px; }
+  .movie-fact { margin-top: 0; }
+}
+@media (max-width: 760px) {
+  .generation-wait { padding: 24px 20px; }
+  .generation-film { width: min(280px, 72vw); }
+  .generation-wait h1 { font-size: 24px; letter-spacing: -.8px; }
+  .movie-fact { margin-top: 0; }
+  .movie-fact h2 { font-size: 20px; }
+  .movie-fact p { font-size: 15px; line-height: 1.65; }
+  .generation-pause { opacity: .6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .generation-copy-stack > *, .generation-robot-film, .generation-dots i { transition: none; }
+  .generation-dots i { animation: none; opacity: .65; }
+}

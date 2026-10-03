@@ -13,8 +13,9 @@
    ──────────────────────────────────────────────────────────────────── */
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { StrictMode } from 'react';
-import { render, act, cleanup } from '@testing-library/react';
-import PosterStudio from '../src/PosterStudio.js';
+import { render, act, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { TEMPLATES } from '../src/templates.js';
+import PosterStudio, { getMeta } from '../src/PosterStudio.js';
 import { heightToApply, TWO_COL_MIN_WIDTH } from '../src/useLayoutMatch.js';
 import {
   installCanvas, installCamera, installFetch, installImage, installFonts,
@@ -26,6 +27,8 @@ let cam: ReturnType<typeof installCamera>;
 let objectUrls: ReturnType<typeof installObjectURL>;
 
 beforeEach(() => {
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   canvasContexts = installCanvas();
   cam = installCamera();
   objectUrls = installObjectURL();
@@ -39,6 +42,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   /* 스파이를 반드시 되돌린다. 안 되돌리면 다음 테스트의
      `document.createElement.bind(document)`가 **이전 테스트의 스파이**를 붙잡고,
      그 위에 새 스파이를 씌우면서 서로를 부르는 무한 재귀가 된다(실제로 겪음 —
@@ -70,13 +74,249 @@ function renderApp(strict = false) {
   return render(ui, { container: document.querySelector('main.app') as HTMLElement });
 }
 
+describe('주연 이름', () => {
+  test.each(['', '   ', '김인키', '김태범'])('입력 %j의 성을 생략하지 않고 빈 값만 김인키로 채운다', async (name) => {
+    await act(async () => { renderApp(); });
+    el<HTMLInputElement>('studentName').value = name;
+    expect(getMeta('solo').name).toBe(name.trim() || '김인키');
+  });
+});
+
+describe('기본 영화 제목', () => {
+  test('비어 있거나 공백만 입력하면 첫 화면과 같은 별을 찾는 아이를 사용한다', async () => {
+    await act(async () => { renderApp(); });
+    expect(getMeta('solo').title).toBe('별을 찾는 아이');
+    el<HTMLInputElement>('movieTitle').value = '   ';
+    expect(getMeta('group').title).toBe('별을 찾는 아이');
+    el<HTMLInputElement>('movieTitle').value = '우리가 만든 영화';
+    expect(getMeta('group').title).toBe('우리가 만든 영화');
+  });
+});
+
+describe('세 단계 화면 연결', () => {
+  test.each([true, false])('생성 대기 일시 정지는 요청을 늘리지 않고 응답 뒤 닫힌다(성공=%s)', async (success) => {
+    await act(async () => { renderApp(); });
+    await shoot();
+    const originalFetch = globalThis.fetch;
+    let release!: () => void;
+    const pendingFetch = vi.fn((...args: Parameters<typeof fetch>) => new Promise<Response>(resolve => {
+      release = () => {
+        if (success) void originalFetch(...args).then(resolve);
+        else resolve(new Response(JSON.stringify({ error: '검사 응답 실패' }), { status: 503 }));
+      };
+    }));
+    vi.stubGlobal('fetch', pendingFetch);
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(el<HTMLDialogElement>('spinner').open).toBe(true);
+    expect(el('status').parentElement!.hidden).toBe(true);
+    fireEvent.click(document.querySelector('.generation-pause')!);
+    fireEvent.click(document.querySelector('.generation-pause')!);
+    expect(pendingFetch).toHaveBeenCalledTimes(1);
+    await act(async () => { release(); });
+    expect(document.getElementById('spinner')).toBe(null);
+    if (success) expect(el('resultView').hidden).toBe(false);
+    else {
+      expect(el('status').parentElement!.hidden).toBe(false);
+      expect(el('status').textContent).toContain('검사 응답 실패');
+      expect(el('fallbackBtn').className).not.toContain('hidden');
+    }
+  });
+
+  test('촬영 안내 사진은 예시일 뿐 생성에 쓰이지 않으며 카메라를 켜면 숨긴다', async () => {
+    const f = installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    const example = document.querySelector<HTMLImageElement>('.camera-example')!;
+    expect(example.hidden).toBe(false);
+    expect(el('snapshot').getAttribute('src')).toBe(null);
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(f.bodies).toHaveLength(0);
+    expect(el('status').textContent).toContain('먼저 사진을 촬영');
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    expect(example.hidden).toBe(true);
+    expect(el('video').className).not.toContain('hidden');
+  });
+
+  test('고른 영화와 단체·구성원은 촬영 티켓까지 이어지고 정보 수정 후에도 갱신된다', async () => {
+    const view = await act(async () => renderApp());
+    fireEvent.click(view.getByRole('button', { name: '우리 같이' }));
+    fireEvent.input(el('movieTitle'), { target: { value: '우리의 별' } });
+    fireEvent.input(el('groupName'), { target: { value: '별빛 동아리' } });
+    fireEvent.change(el('memberDraft'), { target: { value: '태범,서희 ' } });
+    fireEvent.click(view.getByRole('button', { name: '판타지' }));
+    fireEvent.click(el('prepareNextBtn'));
+    const ticket = document.querySelector('.camera-ticket')!;
+    expect(ticket.textContent).toContain('우리의 별');
+    expect(ticket.textContent).toContain('별빛 동아리 | 태범 · 서희');
+    expect(ticket.textContent).toContain('판타지');
+    expect(document.querySelector<HTMLImageElement>('.camera-film-scene img')!.getAttribute('src')).toBe('/studio/reference-fantasy.png');
+    fireEvent.click(view.getByRole('button', { name: '이전 단계로' }));
+    fireEvent.click(view.getByRole('button', { name: '단독 주연' }));
+    fireEvent.input(el('studentName'), { target: { value: '하늘' } });
+    fireEvent.click(el('prepareNextBtn'));
+    expect(ticket.textContent).toContain('주연 · 하늘');
+    expect(ticket.textContent).not.toContain('별빛 동아리');
+  });
+
+  test('정보 준비 → 촬영 → 실제 조판 결과 네 장으로 이동한다', async () => {
+    const f = installFetch();
+    await act(async () => { renderApp(); });
+    expect(el('prepareView').hidden).toBe(false);
+    expect(el('cameraView').hidden).toBe(true);
+    expect(el('resultView').hidden).toBe(true);
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(el('prepareView').hidden).toBe(true);
+    expect(el('cameraView').hidden).toBe(false);
+    expect(f.bodies).toHaveLength(0);
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(f.bodies).toHaveLength(1);
+    expect(el('resultView').hidden).toBe(false);
+    expect(document.querySelectorAll('#gallery .thumb')).toHaveLength(8);
+    const options = document.querySelectorAll<HTMLButtonElement>('#gallery .thumb');
+    await act(async () => { options[2].click(); });
+    expect(options[2].getAttribute('aria-pressed')).toBe('true');
+    expect(options[0].getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('완료 알림은 2.2초 뒤 닫히고 새 생성 때만 다시 표시한다', async () => {
+    await act(async () => { renderApp(); });
+    await shoot();
+    vi.useFakeTimers();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(document.querySelector('.completion-notice strong')!.textContent).toBe('완성 !');
+    expect(document.querySelector('.completion-notice p')!.textContent).toBe('마음에 드는 버전을 고르고 인쇄하세요.');
+    expect(el('status').textContent).toBe('');
+    await act(async () => { await vi.advanceTimersByTimeAsync(2200); });
+    expect(document.querySelector('.completion-notice')).toBe(null);
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(document.querySelector('.completion-notice')).not.toBe(null);
+  });
+
+  test.each(['영화 준비', '사진 촬영'])('완료 알림은 %s 단계로 나가면 즉시 사라지고 돌아와도 재표시하지 않는다', async (destination) => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(document.querySelector('.completion-notice')).not.toBe(null);
+    await act(async () => { view.getByRole('button', { name: new RegExp(destination) }).click(); });
+    expect(document.querySelector('.completion-notice')).toBe(null);
+    await act(async () => { view.getByRole('button', { name: /포스터 선택/ }).click(); });
+    expect(document.querySelector('.completion-notice')).toBe(null);
+    expect(el('status').textContent).toBe('');
+  });
+
+  test('촬영 화면에서 정보 수정으로 돌아가면 카메라를 끈다', async () => {
+    const view = await act(async () => renderApp());
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    await act(async () => { view.getByRole('button', { name: '이전 단계로' }).click(); });
+    expect(cam.stopped).toEqual(['video']);
+    expect(el('prepareView').hidden).toBe(false);
+  });
+
+  test('권한 응답을 기다리다 돌아간 경우 늦게 도착한 카메라도 끈다', async () => {
+    let resolveCamera!: (stream: MediaStream) => void;
+    const stop = vi.fn();
+    navigator.mediaDevices.getUserMedia = vi.fn(() => new Promise(resolve => { resolveCamera = resolve; }));
+    const view = await act(async () => renderApp());
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); el<HTMLButtonElement>('startBtn').click(); });
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+    await act(async () => { view.getByRole('button', { name: '이전 단계로' }).click(); });
+    await act(async () => { resolveCamera({ getTracks: () => [{ stop }] } as unknown as MediaStream); });
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(el<HTMLVideoElement>('video').srcObject).toBe(null);
+    expect(el('prepareView').hidden).toBe(false);
+  });
+
+  test('생성이 실패하면 오류를 보이고 기본 버전으로 이어갈 수 있다', async () => {
+    await act(async () => { renderApp(); });
+    await shoot();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({error:'검사 응답 실패'}), {status:503})));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(el('status').textContent).toContain('검사 응답 실패');
+    expect(el('fallbackBtn').className).not.toContain('hidden');
+    await act(async () => { el<HTMLButtonElement>('fallbackBtn').click(); });
+    expect(el('resultView').hidden).toBe(false);
+    expect(document.querySelectorAll('#gallery .thumb')).toHaveLength(8);
+  });
+
+  test('다음 주인공은 이전 사진·입력·결과를 모두 지운다', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    el<HTMLInputElement>('studentName').value = '김인키';
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { view.getByRole('button', { name: '다음 주인공' }).click(); });
+    expect(el('prepareView').hidden).toBe(false);
+    expect(el<HTMLInputElement>('studentName').value).toBe('');
+    expect(el('snapshot').getAttribute('src')).toBe(null);
+    expect(document.querySelectorAll('#gallery .thumb')).toHaveLength(0);
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(el('status').textContent).toContain('먼저 사진을 촬영');
+  });
+
+  test('구분자로 묶은 출연진과 아직 묶지 않은 이름을 함께 조판하고 삭제한다', async () => {
+    const view = await act(async () => renderApp());
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-mode=group]')!.click(); });
+    fireEvent.change(el('memberDraft'), { target: { value: '김인키,이영화.박감독·최소리/윤별|하늘 ' } });
+    expect(document.querySelectorAll('.member-chip')).toHaveLength(6);
+    expect(el<HTMLInputElement>('members').value).toBe('김인키, 이영화, 박감독, 최소리, 윤별, 하늘');
+    fireEvent.change(el('memberDraft'), { target: { value: '새이름' } });
+    expect(el<HTMLInputElement>('members').value).toContain('새이름');
+    fireEvent.click(view.getByRole('button', { name: '박감독 삭제' }));
+    expect(el<HTMLInputElement>('members').value).not.toContain('박감독');
+    expect(el('ticketName').textContent).toContain('새이름');
+    await shoot();
+    const f = installFetch();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect([...f.bodies[0].keys()].sort()).toEqual(['genre','mode','movieTitle','photo','tagline']);
+    expect(JSON.stringify([...f.bodies[0].entries()])).not.toContain('새이름');
+  });
+
+  test('한글 조합 중에는 태그로 자르지 않고 조합이 끝난 뒤 구분한다', async () => {
+    await act(async () => { renderApp(); });
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-mode=group]')!.click(); });
+    fireEvent.compositionStart(el('memberDraft'));
+    fireEvent.change(el('memberDraft'), { target: { value: '김인키 ' } });
+    expect(document.querySelectorAll('.member-chip')).toHaveLength(0);
+    fireEvent.compositionEnd(el('memberDraft'));
+    expect(document.querySelectorAll('.member-chip')).toHaveLength(1);
+    fireEvent.blur(el('memberDraft'));
+    expect(el<HTMLInputElement>('members').value).toBe('김인키');
+  });
+});
+
 /* ───────────────────── 카메라 (예전 camera.test.js) ───────────────────── */
 describe('카메라', () => {
   test('카메라 켜기: 스트림을 연결하고 안내 문구를 바꾼다', async () => {
     await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
-    expect(el('status').textContent).toContain('카메라 준비 완료');
+    expect(document.querySelector('.camera-ready-notice')!.textContent).toContain('카메라 준비 완료');
+    expect(el('status').textContent).toBe('');
+  });
+
+  test('카메라 끄기는 스트림을 해제하고 켜짐 표시와 준비 알림을 지운다', async () => {
+    const view = await act(async () => renderApp());
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    vi.useFakeTimers();
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    expect(document.querySelector('.camera-live-indicator')).not.toBe(null);
+    expect(document.querySelector('.camera-ready-notice')).not.toBe(null);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1800); });
+    expect(document.querySelector('.camera-ready-notice')).toBe(null);
+    await act(async () => { el<HTMLButtonElement>('stopCameraBtn').click(); });
+    expect(cam.stopped).toEqual(['video']);
+    expect(el<HTMLVideoElement>('video').srcObject).toBe(null);
+    expect(document.querySelector('.camera-live-indicator')).toBe(null);
+    expect(document.querySelector<HTMLImageElement>('.camera-example')!.hidden).toBe(false);
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    expect(document.querySelector('.camera-ready-notice')).not.toBe(null);
+    await act(async () => { view.getByRole('button', { name: '이전 단계로' }).click(); });
+    expect(document.querySelector('.camera-ready-notice')).toBe(null);
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(document.querySelector('.camera-ready-notice')).toBe(null);
   });
 
   test('카메라 켜기: 권한이 거부되면 안내 문구를 보여준다', async () => {
@@ -98,8 +338,10 @@ describe('카메라', () => {
 
   test('촬영: 정상 촬영하면 미리보기가 뜨고 안내 문구가 바뀐다', async () => {
     await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await shoot();
-    expect(el('status').textContent).toContain('촬영 완료');
+    expect(el('status').textContent).toBe('');
+    expect(document.querySelector('.camera-capture-notice')!.textContent).toContain('촬영 완료 !');
     expect(el('snapshot').className).not.toContain('hidden');
     expect(el<HTMLImageElement>('snapshot').getAttribute('src')).toBe(objectUrls.created[0]);
     expect(el('video').className).toContain('hidden');
@@ -107,6 +349,7 @@ describe('카메라', () => {
 
   test('촬영: 카메라가 꺼져 있으면 먼저 켠 뒤 이어서 촬영한다', async () => {
     await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     vi.useFakeTimers();
     await act(async () => { el<HTMLButtonElement>('shotBtn').click(); });
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
@@ -115,16 +358,38 @@ describe('카메라', () => {
     vi.useRealTimers();
     await act(async () => { await Promise.resolve(); });
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
-    expect(el('status').textContent).toContain('촬영 완료');
+    expect(el('status').textContent).toBe('');
+    expect(document.querySelector('.camera-capture-notice')!.textContent).toContain('촬영 완료 !');
+  });
+
+  test.each(['시간 경과', '단계 이동'])('촬영 완료 알림은 %s 후 사라지고 돌아와도 반복되지 않는다', async (reason) => {
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    makeVideoReady(el<HTMLVideoElement>('video'));
+    vi.useFakeTimers();
+    await act(async () => { el<HTMLButtonElement>('shotBtn').click(); });
+    await runCountdown();
+    expect(document.querySelector('.camera-capture-notice')).not.toBeNull();
+    if (reason === '시간 경과') {
+      await act(async () => { await vi.advanceTimersByTimeAsync(2400); });
+    } else {
+      await act(async () => { document.querySelector<HTMLButtonElement>('#cameraWorkspace .back-button')!.click(); });
+    }
+    expect(document.querySelector('.camera-capture-notice')).toBeNull();
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(document.querySelector('.camera-capture-notice')).toBeNull();
   });
 
   test('다시 촬영: 미리보기가 사라지고 카메라가 다시 켜진다', async () => {
     await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await shoot();
     await act(async () => { el<HTMLButtonElement>('retakeBtn').click(); });
     expect(el('video').className).not.toContain('hidden');
     expect(el('snapshot').className).toContain('hidden');
-    expect(el('status').textContent).toContain('카메라 준비 완료');
+    expect(document.querySelector('.camera-ready-notice')!.textContent).toContain('카메라 준비 완료');
+    expect(el('status').textContent).toBe('');
   });
 });
 
@@ -167,7 +432,7 @@ describe('위험 E: 초기 캔버스 그리기', () => {
 
 /* ───────── 위험 F — 관찰은 왼쪽, 변경은 오른쪽 ───────── */
 describe('위험 F: ResizeObserver 방향', () => {
-  test('오른쪽 패널(자기가 높이를 바꾸는 쪽)은 관찰하지 않는다', async () => {
+  test('단계별 화면은 높이 동기화 관찰자를 만들지 않아 크기 변경 루프가 없다', async () => {
     const observed: Element[] = [];
     class RO {
       constructor(_cb: ResizeObserverCallback) {}
@@ -177,9 +442,9 @@ describe('위험 F: ResizeObserver 방향', () => {
     }
     vi.stubGlobal('ResizeObserver', RO);
     await act(async () => { renderApp(); });
-    expect(observed.length).toBe(1);
-    expect(observed[0].classList.contains('left')).toBe(true);
-    // 이게 깨지면(오른쪽을 관찰하면) 높이 변경이 관찰을 다시 부르며 폭주한다.
+    // 확정된 단계별 디자인은 CSS로 높이를 정한다. 기존 한 화면 3패널의
+    // 높이 복사 관찰자를 제거했으므로 생성 수 0이 회귀 방지 기준이다.
+    expect(observed.length).toBe(0);
     for (const t of observed) expect(t.querySelector('#posterCanvas')).toBe(null);
   });
 
@@ -198,21 +463,13 @@ describe('재생성 한도', () => {
     await act(async () => { await Promise.resolve(); });
   };
 
-  test('1차 생성 뒤에도 재생성 버튼은 살아 있다', async () => {
+  test('결과 화면에는 8개 디자인과 인쇄만 제공하고 저장·재생성·더 보기는 없다', async () => {
     await act(async () => { renderApp(); });
-    await shoot();
-    await generate();
-    expect(el<HTMLButtonElement>('regenBtn').disabled).toBe(false);
-  });
-
-  test('2차(재생성)까지 쓰면 재생성 버튼이 잠기고 문구가 바뀐다', async () => {
-    await act(async () => { renderApp(); });
-    await shoot();
-    await generate();
-    await act(async () => { el<HTMLButtonElement>('regenBtn').click(); });
-    await act(async () => { await Promise.resolve(); });
-    expect(el<HTMLButtonElement>('regenBtn').disabled).toBe(true);
-    expect(el('regenBtn').textContent).toContain('소진');
+    await shoot(); await generate();
+    expect(document.querySelectorAll('#gallery .thumb')).toHaveLength(8);
+    for (const id of ['downloadBtn', 'regenBtn', 'resetBtn']) expect(document.getElementById(id)).toBe(null);
+    expect(document.querySelector('#resultView details')).toBe(null);
+    expect(el<HTMLButtonElement>('printBtn').disabled).toBe(false);
   });
 
   test('한도를 넘긴 3차 시도는 서버에 요청조차 보내지 않는다', async () => {
@@ -229,31 +486,30 @@ describe('재생성 한도', () => {
     expect(el('status').textContent).toContain('재생성 횟수를 모두 사용');
   });
 
-  test('다시 촬영하면 한도가 초기화된다', async () => {
-    await act(async () => { renderApp(); });
-    await shoot();
-    await generate();
-    await generate();
-    expect(el<HTMLButtonElement>('regenBtn').disabled).toBe(true);
-    await act(async () => { el<HTMLButtonElement>('retakeBtn').click(); });
-    expect(el<HTMLButtonElement>('regenBtn').disabled).toBe(false);
-    expect(el('regenBtn').textContent).not.toContain('소진');
-  });
-
-  test('결과가 없으면 재생성 버튼은 아무 것도 안 한다', async () => {
+  test('다시 촬영한 사진은 두 번 한도를 소진한 이전 사진과 별도로 생성할 수 있다', async () => {
     const { calls } = installFetch();
     await act(async () => { renderApp(); });
-    await shoot();
-    await act(async () => { el<HTMLButtonElement>('regenBtn').click(); });
-    expect(calls.filter((u) => u.includes('/generate')).length).toBe(0);
+    await shoot(); await generate(); await generate(); await generate();
+    expect(calls.filter(u => u.includes('/generate'))).toHaveLength(2);
+    await act(async () => { el<HTMLButtonElement>('retakeBtn').click(); });
+    await shoot(); await generate();
+    expect(calls.filter(u => u.includes('/generate'))).toHaveLength(3);
+  });
+
+  test('8개 디자인 선택은 추가 생성 요청을 보내지 않는다', async () => {
+    const { calls } = installFetch();
+    await act(async () => { renderApp(); });
+    await shoot(); await generate();
+    for (const option of document.querySelectorAll<HTMLButtonElement>('#gallery .thumb')) {
+      await act(async () => { option.click(); });
+    }
+    expect(calls.filter(u => u.includes('/generate'))).toHaveLength(1);
   });
 });
 
 /* ───────────────── 저장·인쇄 (예전 print.test.js) ───────────────── */
-/* ───────────────────── 초기화 (2026-09-09 대표 지시) ─────────────────────
-   🔴 이 묶음의 핵심은 **사진이 남는지**다 — 그게 `다시 촬영`과 초기화를 가르는
-   유일한 차이라서, 여기가 무너지면 아이가 다시 찍어야 한다. */
-describe('초기화', () => {
+/* 다음 주인공은 기존 촬영 사진과 입력값을 함께 정리한다. */
+describe('다음 주인공', () => {
   /** 촬영까지 끝내고 입력을 다 채운 뒤 포스터까지 만들어 둔다. */
   async function 채워놓기() {
     await act(async () => { renderApp(); });
@@ -270,7 +526,7 @@ describe('초기화', () => {
   test('입력·장르·개인단체·포스터를 지운다', async () => {
     await 채워놓기();
     expect(document.querySelectorAll('.gallery .thumb').length).toBeGreaterThan(0);
-    await act(async () => { el<HTMLButtonElement>('resetBtn').click(); });
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="다음 주인공"]')!.click(); });
     for (const id of ['studentName', 'groupName', 'members', 'movieTitle']) {
       expect(el<HTMLInputElement>(id).value).toBe('');
     }
@@ -280,23 +536,14 @@ describe('초기화', () => {
     expect(el('status').textContent).toBe('');
   });
 
-  test('🔴 촬영한 사진은 남긴다 — `다시 촬영`과 정반대다', async () => {
+  test('다음 주인공은 이전 사진과 포스터를 제거하고 영화 준비 화면으로 돌아간다', async () => {
     await 채워놓기();
-    const 사진 = el<HTMLImageElement>('snapshot').getAttribute('src');
-    expect(사진).toBeTruthy();
-    await act(async () => { el<HTMLButtonElement>('resetBtn').click(); });
-    expect(el<HTMLImageElement>('snapshot').getAttribute('src')).toBe(사진);
-    expect(el('snapshot').className).not.toContain('hidden');
-  });
-
-  test('초기화 뒤 곧바로 다시 만들 수 있다(사진이 남아 있으므로)', async () => {
-    await 채워놓기();
-    await act(async () => { el<HTMLButtonElement>('resetBtn').click(); });
-    el<HTMLInputElement>('studentName').value = '김인키';
+    expect(el<HTMLImageElement>('snapshot').getAttribute('src')).toBeTruthy();
+    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="다음 주인공"]')!.click(); });
+    expect(el<HTMLImageElement>('snapshot').getAttribute('src')).toBeFalsy();
+    expect(el('prepareView').hidden).toBe(false);
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
-    await act(async () => { await Promise.resolve(); });
-    expect(el('status').textContent).not.toContain('먼저 사진을 촬영');
-    expect(document.querySelectorAll('.gallery .thumb').length).toBeGreaterThan(0);
+    expect(el('status').textContent).toContain('먼저 사진을 촬영');
   });
 });
 
@@ -339,38 +586,7 @@ describe('개인정보: 서버로 보내는 것', () => {
   });
 });
 
-describe('저장·인쇄', () => {
-  test('PNG 저장: 포스터가 없으면 안내만 하고 아무 것도 만들지 않는다', async () => {
-    await act(async () => { renderApp(); });
-    const created: string[] = [];
-    const realCreate = document.createElement.bind(document);
-    vi.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
-      created.push(tag);
-      return realCreate(tag);
-    }) as any);
-    await act(async () => { el<HTMLButtonElement>('downloadBtn').click(); });
-    expect(el('status').textContent).toContain('먼저 포스터를 만들어 주세요');
-    expect(created).not.toContain('a');
-  });
-
-  test('PNG 저장: 포스터가 있으면 파일명을 채운 <a>를 만들어 클릭한다', async () => {
-    await act(async () => { renderApp(); });
-    await shoot();
-    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
-    await act(async () => { await Promise.resolve(); });
-    let anchor: HTMLAnchorElement | null = null;
-    const realCreate = document.createElement.bind(document);
-    vi.spyOn(document, 'createElement').mockImplementation(((tag: string) => {
-      const node = realCreate(tag);
-      if (tag === 'a') { anchor = node as HTMLAnchorElement; (node as any).click = vi.fn(); }
-      return node;
-    }) as any);
-    await act(async () => { el<HTMLButtonElement>('downloadBtn').click(); });
-    expect(anchor).not.toBe(null);
-    expect(anchor!.download).toMatch(/^InKY_영화포스터_.+\.png$/);
-    expect(anchor!.click).toHaveBeenCalled();
-  });
-
+describe('인쇄', () => {
   test('인쇄: 포스터가 없으면 인쇄창을 열지 않는다', async () => {
     const print = vi.fn();
     (window as any).print = print;
@@ -398,5 +614,28 @@ describe('저장·인쇄', () => {
     expect(print).toHaveBeenCalled();
     window.dispatchEvent(new Event('afterprint'));
     expect(document.getElementById('printArea')).toBe(null);
+  });
+});
+
+
+describe('로컬 포스터 디자인 작업',()=>{
+  test('촬영 없이 샘플 한 장으로 8개 틀을 열고 외부 요청을 보내지 않는다',async()=>{
+    vi.stubEnv('DEV',true);vi.stubEnv('VITE_POSTER_DESIGN_PREVIEW','1');
+    const f=installFetch();
+    await act(async()=>{renderApp();});
+    await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
+    expect(el('shotBtn').textContent).toContain('샘플 포스터 보기');
+    await act(async()=>{el<HTMLButtonElement>('shotBtn').click();});
+    await waitFor(()=>expect(document.body.dataset.step).toBe('3'));
+    expect(document.querySelectorAll('.style-option')).toHaveLength(TEMPLATES.length);
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+    expect(f.calls).toHaveLength(0);
+    expect(document.getElementById('spinner')).toBeNull();
+  });
+  test('배포 환경에서는 디자인 설정이 있어도 촬영 버튼을 유지한다',async()=>{
+    vi.stubEnv('DEV',false);vi.stubEnv('VITE_POSTER_DESIGN_PREVIEW','1');
+    await act(async()=>{renderApp();});
+    expect(el('shotBtn').textContent).not.toContain('샘플 포스터 보기');
+    expect(el('shotBtn').textContent).toBe('3초 뒤 사진 찍기');
   });
 });

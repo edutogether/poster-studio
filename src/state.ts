@@ -31,5 +31,6 @@ export const state = {
   pendingMeta: null as Meta | null,   // AI 생성 실패 시 폴백 버튼이 재사용할 마지막 입력값(camera.ts도 다시 촬영 시 초기화함)
   LOGO_LIGHT: null as HTMLImageElement | null,
   LOGO_DARK: null as HTMLImageElement | null,
+  LOGO_FESTIVAL: null as HTMLImageElement | null,
   LOGO_TRIED: false
 };

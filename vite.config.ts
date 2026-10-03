@@ -32,5 +32,6 @@ export default defineConfig({
       }
     }
   },
-  server: { port: 5173 }
+  // 헤드리스 검증 프로필의 잠긴 파일은 앱 소스가 아니므로 감시하지 않는다.
+  server: { port: 5173, watch: { ignored: ['**/.cache/**'] } }
 });

@@ -54,10 +54,39 @@ for (const template of app.TEMPLATES) {
   }
 }
 
-test('TEMPLATES: 정확히 4종(클래식/임팩트/시네마/포토카드)이다', () => {
-  expect(app.TEMPLATES.length).toBe(4);
+test('TEMPLATES: 서로 다른 조판 방식의 8개 디자인이다', () => {
+  expect(app.TEMPLATES.length).toBe(8);
   // vm 샌드박스의 배열은 이 realm의 Array.prototype과 달라 deepEqual이 realm
   // 불일치로 실패할 수 있다 — Array.from으로 이 realm의 평범한 배열로 옮겨 비교.
   const labels = Array.from(app.TEMPLATES, (t) => t.label);
-  expect(labels).toEqual(['클래식', '임팩트', '시네마', '포토카드']);
+  expect(labels).toEqual(['시네마', '에디토리얼', '컬러 블록', '아치 프레임', '필름스트립', '폴라로이드', '타이포그래피', '트립틱']);
 });
+
+for (const template of app.TEMPLATES) {
+  test(`${template.label}: 브랜드는 위 양쪽에, 영화제명은 하단 한 곳에만 조판한다`, () => {
+    const ctx = new FakeCtx();
+    const texts = [];
+    const logos = [];
+    ctx.fillText = (text, x, y) => texts.push({ text, x, y });
+    ctx.drawImage = (...args) => logos.push(args);
+    const light = { naturalWidth: 380, naturalHeight: 100 };
+    const dark = { naturalWidth: 380, naturalHeight: 100 };
+    const festival = { naturalWidth: 800, naturalHeight: 201 };
+    app.state.LOGO_LIGHT = light; app.state.LOGO_DARK = dark; app.state.LOGO_FESTIVAL = festival;
+    try {
+      template.render(ctx, FAKE_ART, METAS.짧은솔로, GENRE_STUB);
+      const festivalNames = texts.filter(item => item.text === app.FEST);
+      expect(festivalNames).toHaveLength(1);
+      expect(festivalNames[0].y).toBeGreaterThan(1500);
+      expect(texts.find(item => item.text === 'InKY').x).toBeLessThan(600);
+      expect(texts.find(item => item.text === 'Film Festival').y).toBeLessThan(180);
+      expect(logos.filter(args => args[0] === festival)).toHaveLength(1);
+      const education = logos.filter(args => args[0] === light || args[0] === dark);
+      expect(education).toHaveLength(1);
+      expect(education[0][1]).toBeGreaterThan(600);
+      expect(education[0][2]).toBeLessThan(180);
+    } finally {
+      app.state.LOGO_LIGHT = null; app.state.LOGO_DARK = null; app.state.LOGO_FESTIVAL = null;
+    }
+  });
+}

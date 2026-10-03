@@ -1,0 +1,49 @@
+// 샘플 페이지의 이미지·문구 겹침만 확인한다. 실제 앱/API는 열지 않는다.
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+const out = path.resolve('.cache/design-sample-flow');
+await fs.mkdir(out, { recursive: true });
+const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new','--disable-gpu','--no-first-run','--no-default-browser-check','--disable-background-networking','--remote-debugging-port=9538',`--user-data-dir=${out}/chrome`,'about:blank'], {windowsHide:true,stdio:'ignore'});
+const delay = ms => new Promise(r=>globalThis.setTimeout(r,ms));
+let socket,seq=0;
+const pending = new Map();
+try {
+  let target;
+  for(let i=0;i<50;i++) { try {target=(await(await fetch('http://127.0.0.1:9538/json')).json()).find(t=>t.type==='page');if(target)break;}catch{} await delay(100); }
+  assert.ok(target,'브라우저 시작');
+  socket=new globalThis.WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((r,j)=>{socket.onopen=r;socket.onerror=j;});
+  socket.onmessage=e=>{const m=JSON.parse(e.data);if(m.id){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(Error(m.error.message)):p.resolve(m.result);}};
+  const call=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
+  const evaluate=async expression=>{const r=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});assert.ok(!r.exceptionDetails,JSON.stringify(r.exceptionDetails));return r.result.value;};
+  const requests=[];
+  const originalMessage=socket.onmessage;
+  socket.onmessage=e=>{const m=JSON.parse(e.data);if(m.method==='Network.requestWillBeSent')requests.push(m.params.request.url);originalMessage(e);};
+  await call('Network.enable');
+  await call('Network.setBlockedURLs',{urls:['https://*']});
+  await call('Page.enable');
+  await call('Page.addScriptToEvaluateOnNewDocument',{source:"navigator.mediaDevices.getUserMedia=async()=>{window.__cameraCalls=(window.__cameraCalls||0)+1;throw Error('디자인 확인 중 카메라 차단');};window.print=()=>{throw Error('디자인 확인 중 인쇄 차단');};"});
+  await call('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
+  await call('Page.navigate',{url:'http://127.0.0.1:5500/'});
+  for(let i=0;i<80;i++){if(await evaluate('!!document.getElementById("shotBtn")'))break;await delay(100);}
+  await evaluate('document.fonts.ready');
+  await delay(3300);
+  await evaluate("document.getElementById('prepareNextBtn').click()");
+  await delay(100);
+  assert.ok((await evaluate("document.getElementById('shotBtn').textContent")).includes('샘플 포스터 보기'));
+  await evaluate("document.getElementById('shotBtn').click()");
+  for(let i=0;i<100;i++){if(await evaluate("document.body.dataset.step==='3'"))break;await delay(100);}
+  assert.equal(await evaluate('document.body.dataset.step'),'3');
+  assert.equal(await evaluate("document.querySelectorAll('.style-option').length"),8);
+  const images=new Set();
+  for(let i=0;i<8;i++){await evaluate(`document.querySelectorAll('.style-option')[${i}].click()`);await delay(50);images.add(await evaluate("document.querySelector('#resultView canvas').toDataURL()"));}
+  assert.equal(images.size,8,'8개 틀 선택 시 큰 포스터도 변경');
+  assert.equal(await evaluate('window.__cameraCalls||0'),0);
+  assert.equal(requests.filter(u=>/cloudfunctions|run\.app|api\.openai/.test(u)).length,0);
+  await evaluate("document.querySelectorAll('.style-option')[0].click()");await delay(100);
+  const shot=await call('Page.captureScreenshot',{format:'png'});await fs.writeFile(path.join(out,'sample.png'),Buffer.from(shot.data,'base64'));
+  console.log(JSON.stringify({templates:images.size,cameraCalls:0,apiCalls:0,countdown:false}));
+  await call('Browser.close');
+}finally{socket?.close();chrome.kill();}

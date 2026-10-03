@@ -41,6 +41,7 @@ class FakeCtx {
   save() {}
   restore() {}
   fillRect() {}
+  strokeRect() {}
   clearRect() {}
   beginPath() {}
   moveTo() {}
@@ -58,6 +59,7 @@ class FakeCtx {
   scale() {}
   translate() {}
   rotate() {}
+  transform() {}
   createLinearGradient() { return { addColorStop() {} }; }
   createRadialGradient() { return { addColorStop() {} }; }
   createPattern() { return {}; }

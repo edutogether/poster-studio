@@ -1,0 +1,141 @@
+/* 결과 화면: 세로 원본 한 장 + 구성이 다른 디자인 8종. */
+#resultView {
+  grid-template-columns: minmax(0, 38fr) minmax(0, 62fr);
+  height: calc(100svh - var(--header-h, 72px));
+  min-height: 620px;
+  background: #fff;
+}
+#resultView .result-artboard {
+  padding: 22px 28px 26px;
+  justify-content: flex-start;
+  gap: 18px;
+  background: #f5f5f5;
+  overflow: visible;
+  min-height: 0;
+}
+#resultView .result-artboard::before,
+#resultView .result-artboard::after { display: none; }
+#resultView .result-artboard-top {
+  position: static;
+  margin: 0;
+  min-height: 36px;
+  color: #363636;
+  font-size: 14px;
+  font-weight: 600;
+}
+#resultView .result-artboard .icon-button {
+  width: 36px; height: 36px;
+  color: #333; background: #fff; border: 0;
+}
+#resultView .result-poster-slot {
+  flex: 0 1 auto;
+  width: min(100%, calc((100svh - 180px) * 2 / 3));
+  height: auto;
+  max-height: none;
+  aspect-ratio: 2 / 3;
+  box-shadow: 0 6px 24px #15151514;
+}
+#resultView .result-poster-slot > canvas {
+  width: 100%; height: auto; max-width: 100%;
+  aspect-ratio: 2 / 3; box-shadow: none;
+}
+#resultView #resultWorkspace {
+  padding: 38px 28px 24px;
+  background: #fff;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+#resultView .page-heading { margin: 0 0 22px; flex: none; }
+#resultView .page-heading h1 { font-size: clamp(24px, 1.75vw, 34px); line-height: 1.35; }
+#resultView .result-accent { color: var(--accent, #d82d23); }
+#resultView .page-heading p { margin: 12px 0 0; font-size: 16px; color: #646464; }
+#resultView .result-settings { flex: 0 0 auto; padding: 0; background: transparent; border: 0; }
+#resultView .section-description { display: none; }
+#resultView #gallery.style-grid {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  align-content: start;
+  align-items: start;
+  gap: 18px 18px;
+  width: 100%;
+  max-width: max(520px, calc((100svh - 342px) * 4 / 3));
+  margin: 0 auto;
+  padding: 4px;
+  height: auto;
+}
+#resultView #gallery .style-option {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  height: auto;
+  min-height: 0;
+  transform: none;
+  background: transparent;
+  box-shadow: none;
+}
+#resultView #gallery .style-image {
+  display: block;
+  flex: none;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 2 / 3;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 3px 12px #00000012;
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+  transition: outline-color .2s ease, box-shadow .2s ease;
+}
+#resultView #gallery .style-image img { width: 100%; height: 100%; object-fit: contain; }
+#resultView #gallery .style-option:hover .style-image { box-shadow: 0 5px 18px #00000025; }
+#resultView #gallery .style-option[aria-pressed="true"] .style-image { outline-color: #e72a21; }
+#resultView #gallery .style-caption { display: block; padding: 0; background: transparent; }
+#resultView #gallery .style-name { color: #494949; font-size: 14px; font-weight: 600; line-height: 1.5; }
+#resultView #gallery .style-option[aria-pressed="true"] .style-name { color: #dc241b; font-weight: 750; }
+#resultView #gallery .style-check { top: 7px; right: 7px; background: #e72a21; color: #fff; }
+#resultView .result-actions {
+  flex: none;
+  width: 100%;
+  margin-top: 20px;
+  padding: 0;
+  position: static;
+  background: #fff;
+}
+@media (max-width: 1099px) {
+  #resultView { grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); }
+  #resultView .result-artboard { padding: 24px 18px; }
+  #resultView #resultWorkspace { padding: 42px 20px 0; }
+  #resultView #gallery.style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 470px; gap: 20px 16px; }
+}
+@media (max-width: 760px) {
+  #resultView { grid-template-columns: 1fr; height: auto; min-height: 0; }
+  #resultView .result-artboard { padding: 26px 22px; }
+  #resultView .result-poster-slot { width: min(100%, 340px); }
+  #resultView #resultWorkspace { padding: 28px 22px 0; overflow: visible; }
+  #resultView .page-heading h1 { font-size: 25px; }
+  #resultView .page-heading p { font-size: 15px; }
+  #resultView .result-actions { z-index: 3; }
+}
+
+#resultView .result-brand { display: inline-flex; align-items: center; gap: 9px; color: #191919; font-size: 19px; font-weight: 750; letter-spacing: -.4px; }
+#resultView .result-brand > .studio-icon { width: 21px; height: 21px; }
+#resultView .result-brand em { color: #ed3124; font-style: normal; }
+#resultView .result-tools { display: flex; gap: 8px; }
+
+#resultView .studio-icon { width: 22px; height: 22px; flex: 0 0 auto; }
+#resultView .result-brand > .studio-icon { width: 21px; height: 21px; }
+
+#resultView .result-brand-icon { display: block; width: 30px; height: 30px; object-fit: contain; flex: 0 0 auto; }
