@@ -118,6 +118,7 @@ export default [
        .tsx를 files로 잡지 않아 애초에 검사 대상이 아니다(eslint -f json으로 확인함).
        역시 typecheck가 받는다. */
     // 출력 픽셀 대조용 수정 전 빌드도 배포 번들의 사본이다. 원본 소스·검증 도구는 계속 검사한다.
-    ignores: ['dist/**', '.cache/integration-baseline/dist/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
+    // 다운로드한 Blender 런타임은 외부 배포물이다. 저장소의 scripts/ 검사는 그대로 유지한다.
+    ignores: ['dist/**', '.cache/integration-baseline/dist/**', '.cache/blender-runtime/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
   }
 ];

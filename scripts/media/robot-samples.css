@@ -1,0 +1,29 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #f5f5f5; color: #222; font-family: Pretendard, system-ui, sans-serif; }
+main { max-width: 1440px; margin: auto; padding: 40px 24px 64px; }
+h1 { margin: 0; font-size: clamp(24px, 3vw, 32px); letter-spacing: -1px; }
+header p { color: #666; line-height: 1.7; margin: 12px 0 24px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start; }
+.card { min-width: 0; background: white; border: 1px solid #e5e5e5; border-radius: 16px; overflow: hidden; container-type: inline-size; }
+.label { padding: 18px 22px 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 13px; color: #666; }
+.ready { color: #777; }
+/* 이미지의 고유 크기가 그리드 행을 밀어내지 않도록 비율 상자 안에 고정한다. */
+.media { position: relative; aspect-ratio: 1; margin: 16px 22px 0; overflow: hidden; }
+.media img, .media video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; }
+.copy { padding: 24px 22px 26px; text-align: center; overflow-wrap: anywhere; }
+.copy h2 { margin: 0; font-size: clamp(17px, 4.8cqi, 22px); font-weight: 750; line-height: 1.5; letter-spacing: -.6px; word-break: keep-all; text-wrap: balance; }
+.dots { display: flex; gap: 7px; justify-content: center; margin: 24px 0; }
+.dots i { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: #ed3124; animation: flow 2.4s ease-in-out infinite; }
+.dots i:nth-child(1) { animation-delay: -2.4s; }
+.dots i:nth-child(2) { animation-delay: -2.1s; }
+.dots i:nth-child(3) { animation-delay: -1.8s; }
+.copy h3 { margin: 0 0 16px; color: #ed3124; font-size: clamp(16px, 4.3cqi, 19px); font-weight: 700; line-height: 1.5; letter-spacing: -.5px; word-break: keep-all; text-wrap: balance; }
+.body { margin: 0 auto; max-width: 40ch; color: #666; font-size: clamp(14px, 3.5cqi, 15px); line-height: 1.8; word-break: keep-all; text-wrap: balance; }
+.note { border-top: 1px solid #eee; padding-top: 16px; margin: 18px 0 0; font-size: 12px; color: #777; line-height: 1.8; text-align: left; }
+.note summary { cursor: pointer; }
+.downloads { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 20px; margin-bottom: 0; font-size: 13px; }
+a { color: #555; }
+@keyframes flow { 0%,65%,100% { opacity: .25; } 30% { opacity: 1; } }
+@media (max-width: 1150px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .grid { grid-template-columns: 1fr; } main { padding: 28px 16px; } }
+@media (prefers-reduced-motion: reduce) { .dots i { animation: none; opacity: .6; } }

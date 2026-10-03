@@ -55,7 +55,7 @@ cd functions && npm ci && npm test    # vitest 71개
 cd functions && npm run lint          # eslint
 cd functions && npm run format        # prettier (functions에만 있음)
 
-npm ci && npm test                    # vitest 79개 (저장소 루트 = 프론트엔드 루트)
+npm ci && npm test                    # vitest 91개 (저장소 루트 = 프론트엔드 루트)
 npm run lint                          # eslint
 npm run typecheck                     # TS strict
 npm run build                         # -> dist/ (배포되는 것)
@@ -79,7 +79,7 @@ src/          프론트엔드 소스(TypeScript + React 19)
 public/       정적 자산. Vite가 dist/ 루트로 그대로 복사한다
               boot-splash.js fonts/ poster-wall.webp logo-*.png
 dist/         빌드 산출물 = 배포 폴더(firebase.json의 public). 커밋하지 않는다
-test/         vitest 79개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
+test/         vitest 91개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/    Cloud Functions — index.js 하나에 전부(미들웨어 체인·프롬프트·OpenAI·Firestore 카운터·스케줄러)
 scripts/      loadtest.mjs(부하테스트, --dry 먼저) fonts/(서브셋) verify/(전환 대조 도구)
 _docs/        저장소 문서(배포 대상 아님) — ops/ intents/ CHANGELOG.md

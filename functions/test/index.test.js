@@ -4,7 +4,8 @@
 process.env.OPENAI_API_KEY = 'test-key-not-real';
 process.env.BOOTH_TOKEN = 'test-booth-token';
 
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
+import { Writable } from 'node:stream';
 import fs from 'node:fs';
 import http from 'node:http';
 
@@ -177,6 +178,35 @@ test('parseMultipart: 정상 사진 하나 → req.file이 채워지고 실제�
   expect(fs.existsSync(req.file.path), '임시 파일이 실제로 저장돼 있어야 한다').toBeTruthy();
   expect(fs.readFileSync(req.file.path).length).toBe(photoBytes.length);
   fs.unlinkSync(req.file.path); // 이 테스트가 만든 파일은 직접 정리
+});
+
+test('parseMultipart: 저장 공간 부족 시 오류를 전달하고 부분 사진을 삭제한다', async () => {
+  let partialPath;
+  const failure = Object.assign(new Error('사진 저장 실패'), { code: 'ENOSPC' });
+  const spy = vi.spyOn(fs, 'createWriteStream').mockImplementation((filename) => {
+    partialPath = filename;
+    const stream = new Writable({
+      write(chunk, encoding, callback) {
+        fs.writeFileSync(filename, chunk.subarray(0, 2));
+        callback(failure);
+      }
+    });
+    // 결함이 있는 버전도 테스트 프로세스를 종료하지 않고 결과로 실패하게 한다.
+    stream.on('error', () => {});
+    return stream;
+  });
+  try {
+    const request = await buildMultipartRequest([
+      ['photo', { blob: new Blob([new Uint8Array(128 * 1024)], { type: 'image/jpeg' }), filename: 'photo.jpg' }]
+    ]);
+    const { err, req } = await runParseMultipart(request);
+    expect(err).toBe(failure);
+    expect(req.file).toBeUndefined();
+    await vi.waitFor(() => expect(fs.existsSync(partialPath)).toBe(false));
+  } finally {
+    spy.mockRestore();
+    if (partialPath && fs.existsSync(partialPath)) fs.unlinkSync(partialPath);
+  }
 });
 
 test('parseMultipart: 사진 없이 필드만 보내면 에러 없이 req.file=null로 끝난다(라우트가 400 처리)', async () => {

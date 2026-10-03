@@ -1,3 +1,9 @@
+## 현행 8종 출시 검증
+
+`node scripts/verify/release-baseline.mjs`는 production dist를 Windows 헤드리스 Chrome에서 실제 촬영→생성→인쇄 흐름으로 검증한다. 카메라·AI·인쇄는 모의 처리하고 외부 생성 요청을 차단한다. 결과는 `.cache/release-local/pixels.json`의 5개 입력 × 8종 RGBA 지문이다. `release-20261003-windows.json`은 Bumm님이 승인한 새 8종 조판의 기준이며, 예전 4종과 의도된 디자인 변경을 비교해 차이 0으로 만들지 않는다. 기준선과 비교할 때 `npm run verify:pixels -- <전.json> <후.json>`를 사용한다.
+
+배포 확인: `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`. 실제 운영 자산·CSP에서 같은 흐름을 실행하고 저장된 40개 지문과 대조한다. 실제 AI·Firestore·장치 부하 검사는 포함하지 않는다. 아래 `poster-pixels-ui.js`와 `studio-flow.mjs`의 4종 UI 설명은 이전 전환 검증 기록이다.
+
 # 전환 검증 도구
 
 리액트+TS 전환 전후가 **체감까지 동일한지**를 기계로 증명하기 위한 도구다.

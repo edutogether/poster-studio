@@ -22,7 +22,7 @@ import type { Meta, Poster } from "./state.js";
    아이는 그대로 끝"이 되는 문제가 있어 절충한 값. 다시 촬영하면 초기화된다. */
 const MAX_GENERATIONS_PER_PHOTO = 2;
 
-/** 화면 입력값 수집. 원본 api.ts의 getMeta()와 동일 — id가 그대로라 val()이 그대로 쓰인다. */
+/** 화면 입력값 수집. 비어 있는 영화 제목은 준비 화면과 같은 예시로 채운다. */
 export function getMeta(mode: string): Meta {
   const genre = val("genre") || "animation";
   let tagline = val("tagline");
@@ -62,6 +62,8 @@ export default function PosterStudio() {
      옮겼다(2026-09-09 대표 지시). **요소는 남긴다** — 오류·진행 상황이 뜨는 자리다.
      비어 있을 때는 CSS(.status:empty)가 줄을 통째로 접는다. */
   const [status, setStatus] = useState("");
+  const [completionId, setCompletionId] = useState(0);
+  const [cameraReadyId, setCameraReadyId] = useState(0);
   /* 촬영 영역의 3상태. 원본의 classList 조작을 그대로 옮긴 것이다:
        idle — video 보임(빈 화면) · snapshot 숨김 · camHint 보임 (초기)
        live — video 보임(스트림)  · snapshot 숨김 · camHint 숨김 (startCamera)
@@ -75,7 +77,6 @@ export default function PosterStudio() {
   const [fallbackShown, setFallbackShown] = useState(false);
   const [posters, setPosters] = useState<Poster[]>([]);
   const [selected, setSelected] = useState(0);
-  const [genCount, setGenCount] = useState(0);
   const [generating, setGenerating] = useState(false);
 
   const [resetKey, setResetKey] = useState(0);
@@ -198,7 +199,8 @@ export default function PosterStudio() {
       streamRef.current = stream;
       videoRef.current.srcObject = stream;
       setPhase("live");
-      setStatus("카메라 준비 완료. ‘3·2·1 촬영’을 누르세요.");
+      setStatus("");
+      setCameraReadyId(value => value + 1);
     })();
     cameraOpening.current = opening;
     void opening
@@ -273,9 +275,8 @@ export default function PosterStudio() {
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       if (videoRef.current) videoRef.current.srcObject = null;
-      setStatus("촬영 완료! 사진을 확인하고 ‘AI 포스터 만들기’를 누르세요.");
+      setStatus("");
       genCountRef.current = 0;
-      setGenCount(0);
     } finally {
       shootingRef.current = false;
       setCapturing(false);
@@ -292,7 +293,6 @@ export default function PosterStudio() {
     setFallbackShown(false);
     pendingMetaRef.current = null;
     genCountRef.current = 0;
-    setGenCount(0);
     try {
       await startCamera();
     } catch {
@@ -324,7 +324,6 @@ export default function PosterStudio() {
     setPosters([]);
     setSelected(0);
     genCountRef.current = 0;
-    setGenCount(0);
     pendingMetaRef.current = null;
     setFallbackShown(false);
     setStatus("");
@@ -347,11 +346,10 @@ export default function PosterStudio() {
     const meta = getMeta(mode);
     isGeneratingRef.current = true;
     genCountRef.current += 1;
-    setGenCount(genCountRef.current);
     setGenerating(true);
     setFallbackShown(false);
     setSpinning(true);
-    setStatus("AI가 영화 포스터 그림을 그리는 중입니다… (10~25초)");
+    setStatus("AI가 영화 포스터를 그리고 있어요. 완성되면 자동으로 보여드릴게요.");
 
     const form = new FormData();
     form.append("photo", capturedBlobRef.current, "capture.jpg");
@@ -365,7 +363,7 @@ export default function PosterStudio() {
       // 경과 시간 표시(체감 대기 개선)
       const el = spinTextRef.current;
       if (el)
-        el.textContent = `AI가 그리는 중… ${Math.round((Date.now() - started) / 1000)}초`;
+        el.textContent = `기다린 시간 · ${Math.round((Date.now() - started) / 1000)}초`;
     }, 1000);
     const ctrl = new AbortController(); // 요청 시간 제한(부스 무한 멈춤 방지)
     const timer = setTimeout(() => ctrl.abort(), 150_000);
@@ -379,7 +377,8 @@ export default function PosterStudio() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "생성 실패");
       applyPosters(await buildPosters(data.images, meta));
-      setStatus("완성! 아래에서 마음에 드는 버전을 고르고 인쇄하세요.");
+      setStatus("");
+      setCompletionId(value => value + 1);
     } catch (e: any) {
       let msg = e.message;
       if (e.name === "AbortError")
@@ -405,10 +404,6 @@ export default function PosterStudio() {
     }
   };
 
-  const onRegen = () => {
-    if (posters.length) void onGenerate();
-  };
-
   const onFallback = async () => {
     const meta = pendingMetaRef.current;
     if (!meta || isGeneratingRef.current) return;
@@ -426,17 +421,6 @@ export default function PosterStudio() {
       isGeneratingRef.current = false;
       setGenerating(false);
     }
-  };
-
-  const onDownload = () => {
-    if (!posters.length) {
-      setStatus("먼저 포스터를 만들어 주세요.");
-      return;
-    }
-    const a = document.createElement("a");
-    a.download = `InKY_영화포스터_${posters[selected].label}_${Date.now()}.png`;
-    a.href = posters[selected].canvas.toDataURL("image/png");
-    a.click();
   };
 
   // 로컬 디자인 작업은 같은 원화 한 장으로 실제 8개 틀을 렌더한다.
@@ -506,25 +490,24 @@ export default function PosterStudio() {
       spinning={spinning}
       fallbackShown={fallbackShown}
       status={status}
+      completionId={completionId}
       posters={posters}
       selected={selected}
       select={setSelected}
-      spent={genCount >= MAX_GENERATIONS_PER_PHOTO}
       resetKey={resetKey}
       capturing={capturing}
       canvasRef={canvasRef}
       videoRef={videoRef}
       spinTextRef={spinTextRef}
       onStart={onStart}
+      cameraReadyId={cameraReadyId}
+      onStop={() => { stopCamera(); setPhase("idle"); setStatus(""); }}
       designPreview={designPreview}
       onShot={designPreview ? onDesignPreview : onShot}
       onRetake={onRetake}
       onGenerate={designPreview ? onDesignPreview : onGenerate}
-      onRegen={onRegen}
       onFallback={onFallback}
-      onDownload={onDownload}
       onPrint={onPrint}
-      onReset={onReset}
       onNewPerson={onNewPerson}
       stopCamera={stopCamera}
     />

@@ -202,7 +202,7 @@ try {
         true,
       );
       await evaluate(
-        `[...document.querySelectorAll('button')].find(b=>b.textContent==='다음 주인공').click()`,
+        `document.querySelector('[aria-label="다음 주인공"]').click()`,
       );
       await wait(100);
       assert.equal(
@@ -246,6 +246,18 @@ try {
     }
     layouts.push(layout);
     await screenshot(`준비-${width}`);
+    await evaluate(`document.getElementById('prepareNextBtn').click()`);
+    await wait(100);
+    const camera = await evaluate(`(()=>{const box=e=>{const r=e.getBoundingClientRect();return {top:r.top,bottom:r.bottom}};return {width:document.documentElement.scrollWidth,button:box(document.getElementById('shotBtn')),ticket:box(document.querySelector('.camera-ticket')),heading:box(document.querySelector('#cameraWorkspace h1')),privacy:box(document.querySelector('.privacy-link')),example:document.querySelector('.camera-example').naturalWidth>0}})()`);
+    await screenshot(`촬영-${width}`);
+    assert.ok(camera.example, '촬영 안내 사진 표시');
+    assert.ok(camera.width <= width, '촬영 화면 가로 넘침 없음');
+    assert.ok(camera.ticket.bottom > camera.ticket.top, '모바일에서도 촬영 티켓을 표시함');
+    assert.ok(camera.ticket.bottom <= camera.button.top, '촬영 티켓과 버튼이 겹치지 않음');
+    if (width >= 1100) {
+      assert.ok(camera.button.bottom <= height, `촬영 버튼이 화면 안에 보임: ${width}×${height}, ${JSON.stringify(camera)}`);
+      assert.ok(camera.heading.top >= camera.privacy.bottom + 20, '개인정보 링크와 제목 사이 여백');
+    }
   }
   assert.equal(errors.length, 0, "브라우저 실행 오류 없음");
   assert.equal(

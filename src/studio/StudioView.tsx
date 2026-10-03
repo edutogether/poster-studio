@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { Poster } from "../state.js";
-import { DEFAULT_PERSON_NAME } from "../defaults.js";
+import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "../defaults.js";
 import MemberField from "./MemberField.js";
 import GenerationWait from "./GenerationWait.js";
 
 const choices = [
   ["sf", "SF", "reference-sf.jpg"],
-  ["fantasy", "판타지", "reference-fantasy.jpg"],
+  ["fantasy", "판타지", "reference-fantasy.png"],
   ["animation", "애니메이션", "reference-animation.jpg"],
   ["hero", "히어로", "reference-hero.jpg"],
   ["mystery", "스릴러", "parasite-en.webp"],
@@ -26,25 +26,24 @@ export interface StudioViewProps {
   spinning: boolean;
   fallbackShown: boolean;
   status: string;
+  completionId: number;
   posters: Poster[];
   selected: number;
   select: (index: number) => void;
-  spent: boolean;
   resetKey: number;
   capturing: boolean;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   videoRef: RefObject<HTMLVideoElement | null>;
   spinTextRef: RefObject<HTMLParagraphElement | null>;
   onStart: Action;
+  onStop: Action;
+  cameraReadyId: number;
   onShot: Action;
   designPreview?: boolean;
   onRetake: Action;
   onGenerate: Action;
-  onRegen: Action;
   onFallback: Action;
-  onDownload: Action;
   onPrint: Action;
-  onReset: Action;
   onNewPerson: Action;
   stopCamera: Action;
 }
@@ -92,6 +91,9 @@ function PeopleIcon({ group }: { group: boolean }) {
 
 export default function StudioView(p: StudioViewProps) {
   const [step, setStep] = useState(1);
+  const [completionVisible, setCompletionVisible] = useState(false);
+  const [cameraReadyVisible, setCameraReadyVisible] = useState(false);
+  const [captureNoticeVisible, setCaptureNoticeVisible] = useState(false);
   const [genre, setGenre] = useState("sf");
   const [preview, setPreview] = useState({
     title: "",
@@ -120,6 +122,9 @@ export default function StudioView(p: StudioViewProps) {
       return;
     if (next !== 2) void p.stopCamera();
     refresh();
+    setCompletionVisible(false);
+    setCameraReadyVisible(false);
+    setCaptureNoticeVisible(false);
     setStep(next);
   };
   useEffect(() => {
@@ -136,13 +141,44 @@ export default function StudioView(p: StudioViewProps) {
     shownPosters.current = p.posters;
   }, [p.posters]);
   useEffect(() => {
+    if (!p.completionId) return;
+    setCompletionVisible(true);
+    const timer = window.setTimeout(() => setCompletionVisible(false), 2200);
+    return () => window.clearTimeout(timer);
+  }, [p.completionId]);
+  useEffect(() => {
+    if (p.generating) setCompletionVisible(false);
+  }, [p.generating]);
+  useEffect(() => {
     if (p.resetKey === prevReset.current) return;
     prevReset.current = p.resetKey;
     setPreview({ title: "", name: "", group: "", members: "" });
     setGenre("animation");
+    setCompletionVisible(false);
     setStep(1);
   }, [p.resetKey]);
-  const title = preview.title || "별을 찾는 아이";
+  useEffect(() => {
+    if (!p.cameraReadyId) return;
+    setCameraReadyVisible(true);
+    const timer = window.setTimeout(() => setCameraReadyVisible(false), 1800);
+    return () => window.clearTimeout(timer);
+  }, [p.cameraReadyId]);
+  useEffect(() => {
+    if (p.phase !== "live" || p.capturing || step !== 2) setCameraReadyVisible(false);
+  }, [p.phase, p.capturing, step]);
+  useEffect(() => {
+    if (p.phase !== "shot") {
+      setCaptureNoticeVisible(false);
+      return;
+    }
+    setCaptureNoticeVisible(true);
+    const timer = window.setTimeout(() => setCaptureNoticeVisible(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, [p.phase, p.snapshotURL]);
+  useEffect(() => {
+    if (step !== 2 || p.generating) setCaptureNoticeVisible(false);
+  }, [step, p.generating]);
+  const title = preview.title || DEFAULT_MOVIE_TITLE;
   const members = preview.members
     .split(/[,\.·/|;\s]+/u)
     .filter(Boolean)
@@ -155,7 +191,8 @@ export default function StudioView(p: StudioViewProps) {
         (groupExample
           ? "북두칠성 · 북극성 · 시리우스 · 오리온 · 카시오페아"
           : "");
-  const genreLabel = choices.find((c) => c[0] === genre)?.[1] ?? "애니메이션";
+  const selectedFilm = choices.find((c) => c[0] === genre) ?? choices[0];
+  const genreLabel = selectedFilm[1];
   const locked = p.generating || p.capturing;
 
   return (
@@ -257,7 +294,7 @@ export default function StudioView(p: StudioViewProps) {
                 주인공은, <em>나.</em>
               </h2>
               <p className="exhibition-description">
-                인천의 극장에서 만나는 나만의 첫 번째 영화 포스터.
+                인천을 대표하는 극장에서 만나는 나의 첫 번째 영화 포스터
               </p>
             </div>
             <div className="movie-ticket">
@@ -289,7 +326,7 @@ export default function StudioView(p: StudioViewProps) {
         </div>
         <div className="workspace" id="prepareWorkspace">
           <div className="page-heading">
-            <h1>오늘의 주인공, 등장 !</h1>
+            <h1>오늘의 <span className="camera-heading-accent">주인공,</span> 등장 !</h1>
           </div>
           <form
             className="story-form"
@@ -301,11 +338,11 @@ export default function StudioView(p: StudioViewProps) {
                 <div
                   className="segmented"
                   id="modeSeg"
-                  aria-label="나 혼자 또는 다 같이 선택"
+                  aria-label="단독 주연 또는 우리 같이 선택"
                 >
                   {[
-                    ["solo", "나 혼자"],
-                    ["group", "다 같이"],
+                    ["solo", "단독 주연"],
+                    ["group", "우리 같이"],
                   ].map(([mode, label]) => (
                     <button
                       type="button"
@@ -449,155 +486,54 @@ export default function StudioView(p: StudioViewProps) {
         </div>
       </section>
 
-      <section
-        id="cameraView"
-        className="camera-layout"
-        hidden={step !== 2}
-        aria-label="사진 촬영"
-      >
+      <section id="cameraView" className="camera-layout" hidden={step !== 2} aria-label="사진 촬영">
         <div className="camera-surface">
-          <div className="camera-top">
-            <span>카메라 미리 보기</span>
-            <span>{p.phase === "shot" ? "촬영 완료" : "사진 촬영"}</span>
-          </div>
+          <div className="camera-top"><span>카메라 미리 보기</span><span>{p.phase === "shot" ? "촬영 완료" : p.phase === "live" ? "카메라 연결됨" : "촬영 구도 예시"}</span></div>
           <div className="camera-large cameraBox">
-            <video
-              id="video"
-              ref={p.videoRef}
-              autoPlay
-              playsInline
-              muted
-              className={p.phase === "shot" ? "hidden" : ""}
-            />
-            <img
-              id="snapshot"
-              src={p.snapshotURL ?? undefined}
-              className={p.phase === "shot" ? "" : "hidden"}
-              alt="촬영 사진"
-            />
-            <div
-              id="camHint"
-              className={p.phase === "idle" ? "camHint" : "camHint hidden"}
-            >
-              <PeopleIcon group={p.mode === "group"} />
-              <p>카메라를 켜고 주인공을 만나보세요.</p>
-              <button
-                type="button"
-                id="startBtn"
-                className="primary-button"
-                onClick={p.onStart}
-                disabled={locked}
-              >
-                카메라 켜기
-              </button>
+            <img className={`camera-example${p.mode === "group" ? " camera-example-group" : ""}`} src={p.mode === "group" ? "/studio/camera-group.webp" : "/studio/camera-student.webp"} alt={p.mode === "group" ? "모두의 얼굴이 보이게 모여 웃는 단체 촬영 구도 예시" : "얼굴과 어깨를 담고 편하게 웃는 촬영 구도 예시"} hidden={p.phase !== "idle"} />
+            <video id="video" ref={p.videoRef} autoPlay playsInline muted className={p.phase === "live" ? "" : "hidden"}/>
+            <img id="snapshot" src={p.snapshotURL ?? undefined} className={p.phase === "shot" ? "" : "hidden"} alt="촬영 사진"/>
+            <div id="camHint" className={p.phase === "idle" ? "camHint camera-example-caption" : "camHint hidden"}>
+              <span className="camera-example-label">{p.mode === "group" ? "이렇게, 모두의 얼굴이 보이게" : "이렇게, 얼굴과 어깨가 보이게"}</span>
+              <button type="button" id="startBtn" className="camera-start-button" onClick={p.onStart} disabled={locked}>카메라 켜기 <StudioIcon name="camera"/></button>
             </div>
-            <div className="camera-guides" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-              <i />
-            </div>
-            <div
-              id="countdown"
-              className={
-                p.countdown === null ? "countdown hidden" : "countdown"
-              }
-              aria-live="assertive"
-            >
-              {p.countdown}
-            </div>
+            {p.phase === "live" && <>
+              <span className="camera-live-indicator"><i aria-hidden="true"/>실시간 미리보기</span>
+              <div className="camHint camera-example-caption">
+                <button type="button" id="stopCameraBtn" className="camera-start-button" onClick={p.onStop} disabled={locked}>카메라 끄기 <StudioIcon name="camera"/></button>
+              </div>
+            </>}
+            {cameraReadyVisible && step === 2 && p.phase === "live" && !p.capturing && <div className="camera-ready-notice" role="status">카메라 준비 완료</div>}
+            {captureNoticeVisible && step === 2 && p.phase === "shot" && !p.generating && <div className="camera-ready-notice camera-capture-notice" role="status"><strong>촬영 완료 !</strong><span>사진을 확인하고 ‘이 사진으로 만들기’를 눌러주세요.</span></div>}
+            <div className="camera-guides" aria-hidden="true"><i/><i/><i/><i/></div>
+            {p.phase === "shot" && <span className="captured-badge">✓ 촬영 완료</span>}
+            <div id="countdown" className={p.countdown === null ? "countdown hidden" : "countdown"} aria-live="assertive">{p.countdown}</div>
           </div>
-          <p className="camera-bottom">
-            얼굴과 어깨가 화면 안에 충분히 보이도록 맞춰주세요.
-          </p>
+          <p className="camera-bottom">{p.mode === "group" ? "모두의 얼굴이 잘 보이도록, 조금씩 가까이 모여주세요." : "얼굴과 어깨가 화면 안에 들어오도록 맞춰주세요."}</p>
+
         </div>
-        <div className="workspace">
-          <div className="page-heading">
-            <h1>
-              {p.phase === "shot"
-                ? "주인공의 순간, 준비 완료 !"
-                : "나답게, 편하게 웃어주세요."}
-            </h1>
-          </div>
+        <div className="workspace" id="cameraWorkspace">
+          <div className="page-heading"><h1>{p.phase === "shot" ? "이 사진으로 만들까요?" : <><span className="camera-heading-accent">{p.mode === "group" ? "우리답게," : "나답게,"}</span> 편하게 웃어주세요.</>}</h1></div>
           <aside className="camera-guide">
-            <ul className="camera-tips">
-              <li>
-                <span>1</span>
-                <div>
-                  <strong>얼굴이 잘 보이게</strong>
-                  <p>머리 위부터 어깨까지 화면에 담아주세요.</p>
-                </div>
-              </li>
-              <li>
-                <span>2</span>
-                <div>
-                  <strong>표정은 나답게</strong>
-                  <p>편하게 웃어도, 멋진 포즈를 지어도 좋아요.</p>
-                </div>
-              </li>
-              <li>
-                <span>3</span>
-                <div>
-                  <strong>준비되면 촬영</strong>
-                  <p>버튼을 누르고 잠시 포즈를 유지해 주세요.</p>
-                </div>
-              </li>
+            <div className="camera-instructions" data-review={p.phase === "shot"}>
+            <ul className="camera-tips" aria-hidden={p.phase === "shot"}>
+              <li><span>1</span><div><strong>{p.mode === "group" ? "모두의 얼굴이 잘 보이게" : "얼굴이 잘 보이게"}</strong><p>{p.mode === "group" ? "앞뒤로 겹치지 않게, 프레임 안에 모여주세요." : "머리 위부터 어깨까지 화면에 담아주세요."}</p></div></li>
+              <li><span>2</span><div><strong>{p.mode === "group" ? "표정은 우리답게" : "표정은 나답게"}</strong><p>편하게 웃어도, 멋진 포즈를 지어도 좋아요.</p></div></li>
+              <li><span>3</span><div><strong>준비되면 촬영</strong><p>버튼을 누르고 3초만 포즈를 유지해 주세요.</p></div></li>
             </ul>
-            <p className="summary-label">오늘 촬영할 영화</p>
-            <div className="movie-summary">
-              <div className="ticket-icon" aria-hidden="true">
-                ✧
-              </div>
-              <div>
-                <span>{genreLabel}</span>
-                <strong>{title}</strong>
-                <p>
-                  {p.mode === "solo"
-                    ? preview.name || DEFAULT_PERSON_NAME
-                    : preview.group || "별 보러 가요"}
-                </p>
-              </div>
+
+            <div className="photo-review" aria-hidden={p.phase !== "shot"}><p>표정과 구도가 마음에 드나요?<br/>다시 찍어도 괜찮아요.</p><button id="retakeBtn" type="button" className="quiet-button" disabled={locked || p.phase !== "shot"} onClick={p.onRetake}><StudioIcon name="reset"/>다시 찍기</button></div>
+            </div>
+            <div className="camera-film-heading"><h2>오늘 촬영할 <span className="camera-heading-accent">영화</span></h2></div>
+            <div className="camera-film-card">
+              <div className="camera-film-scene"><div className="camera-film-poster"><img src={'/studio/' + selectedFilm[2]} alt={genreLabel + ' 선택 포스터'}/><span>{p.mode === "solo" ? "단독 주연" : "우리 같이"}</span></div></div>
+              <div className="movie-ticket camera-ticket"><div><span className="ticket-label">{genreLabel} · 나의 첫 번째 영화</span><strong>{title}</strong><span className="camera-ticket-name">{p.mode === 'solo' ? '주연' : preview.group || (groupExample ? '별 보러 가요' : '단체 이름')}<span className="ticket-cast">{cast ? (p.mode === 'solo' ? ' · ' : ' | ') + cast : ''}</span></span></div><div className="ticket-admit"><span>11.14</span><small>CGV 인천</small></div></div>
             </div>
           </aside>
           <div className="action-dock camera-actions">
-            <button
-              type="button"
-              className="back-button"
-              disabled={locked}
-              onClick={() => go(1)}
-            >
-              ← 정보 수정
-            </button>
-            <button
-              id="shotBtn"
-              type="button"
-              className="primary-button"
-              hidden={p.phase === "shot"}
-              disabled={locked}
-              onClick={p.onShot}
-            >
-              {p.designPreview ? "샘플 포스터 보기" : "3·2·1 촬영"}
-            </button>
-            <button
-              id="retakeBtn"
-              type="button"
-              className="secondary-button"
-              hidden={p.phase !== "shot"}
-              disabled={locked}
-              onClick={p.onRetake}
-            >
-              다시 촬영
-            </button>
-            <button
-              id="generateBtn"
-              type="button"
-              className="primary-button"
-              hidden={p.phase !== "shot"}
-              disabled={p.generating}
-              onClick={p.onGenerate}
-            >
-              AI 포스터 만들기
-            </button>
+            <button type="button" className="back-button" aria-label="이전 단계로" disabled={locked} onClick={() => go(1)}><span aria-hidden="true">←</span> 이전</button>
+            <button id="shotBtn" type="button" className="primary-button" hidden={p.phase === "shot"} disabled={locked} onClick={p.onShot}><StudioIcon name="camera"/>{p.designPreview ? '샘플 포스터 보기' : p.capturing ? '촬영 중…' : '3초 뒤 사진 찍기'}</button>
+            <button id="generateBtn" type="button" className="primary-button" hidden={p.phase !== "shot"} disabled={p.generating} onClick={p.onGenerate}>이 사진으로 만들기 <StudioIcon name="arrow"/></button>
           </div>
         </div>
       </section>
@@ -672,8 +608,13 @@ export default function StudioView(p: StudioViewProps) {
           </div>
         </div>
       </section>
-      {p.spinning && <GenerationWait spinTextRef={p.spinTextRef} />}
-      <div className="studio-status" hidden={!p.status && !p.fallbackShown}>
+      {p.spinning && <GenerationWait spinTextRef={p.spinTextRef}/>}
+      {completionVisible && step === 3 && !p.generating && <div className="completion-notice" role="status">
+        <span className="completion-notice-mark" aria-hidden="true">✓</span>
+        <strong>완성 !</strong>
+        <p>마음에 드는 버전을 고르고 인쇄하세요.</p>
+      </div>}
+      <div className="studio-status" hidden={p.spinning || (!p.status && !p.fallbackShown)}>
         <p id="status" role="status">
           {p.status}
         </p>

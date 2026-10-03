@@ -9,8 +9,8 @@ body:not(.app-ready) #splash {
    따라오지 않아, 화면은 그대로인데 한 바퀴 반만 돌고 사라지게 된다. 그래서
    **유지 시간을 주기에서 계산**한다 — 아래 `--splash-cycle`을 고치면 유지도 같이 움직인다.
 
-   계산: 유지 = 주기 × 2 = 2300ms. 키프레임의 정지점이 비율이라 총길이를 유지에서 역산한다 —
-   유지가 전체의 80%이므로 **총길이 = 유지 ÷ 0.8 = 2875ms**, 페이드 = 16.5% ≈ 474ms.
+   계산: 유지 = 주기 × 2 = 2300ms. Voice Cinema와 같은 600ms 페이드를 이어 붙인다.
+   유지 시간은 animation-delay로 분리해 페이드 길이를 바꿔도 두 바퀴 하한이 보존된다.
    (예전에는 유지 1800ms였는데 그건 1.57바퀴여서 막대가 도중에 잘렸다.)
 
    기기별로 따로 두지 않는 이유: 이 값들은 **뷰포트와 무관한 시간**이고 스플래시에는
@@ -23,8 +23,8 @@ body:not(.app-ready) #splash {
 }
 
 #splash {
-  animation: splashOut
-    calc(var(--splash-cycle) * var(--splash-min-cycles) / 0.8) ease forwards;
+  animation: splashOut 600ms ease
+    calc(var(--splash-cycle) * var(--splash-min-cycles)) forwards;
   position: fixed;
   inset: 0;
   z-index: 999;
@@ -33,22 +33,16 @@ body:not(.app-ready) #splash {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  background: linear-gradient(180deg, var(--bg), var(--panel));
+  text-align: center;
+  background: #fff;
 }
-/* 정지점은 비율이다 — 위 `--splash-cycle`을 고치면 전체가 같은 비율로 늘고 준다.
-   80% = 유지 끝(= 두 바퀴 지점) · 96.5% = 완전 투명 · 100% = 노드 제거 여유 */
+/* 두 바퀴 유지 후 Voice Cinema와 동일하게 서서히 사라진다. */
 @keyframes splashOut {
-  0%,
-  79.99% {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  80% {
+  from {
     opacity: 1;
     pointer-events: none;
   }
-  96.5%,
-  100% {
+  to {
     opacity: 0;
     pointer-events: none;
   }
@@ -66,28 +60,47 @@ body:has(#splash)::after {
 
 #splash .logo {
   font-size: clamp(48px, 10vw, 72px);
-  filter: drop-shadow(0 10px 24px rgba(233, 185, 73, 0.35));
+  /* 운영체제 이모지 글꼴 대신 Apple 원본 PNG를 모든 기기에서 공유한다. */
+  width: 1em;
+  height: 1.2em;
+  display: grid;
+  place-items: center;
   animation: splashPop 0.6s ease;
+}
+#splash .logo img {
+  display: block;
+  width: 1em;
+  height: 1em;
 }
 #splash .name {
   font-size: clamp(26px, 5vw, 38px);
   font-weight: 800;
   letter-spacing: -0.01em;
-  color: var(--ink);
+  color: #171717;
+  line-height: normal;
 }
-#splash .name .gold {
-  color: var(--gold);
+#splash .name .splash-accent {
+  color: #ed3124;
 }
 #splash .stagline {
   font-size: clamp(13px, 2vw, 16px);
-  color: var(--mut);
+  color: #626262;
+  line-height: normal;
+  padding-inline: 24px;
+  text-align: center;
+}
+#splash .splash-education-logo {
+  display: block;
+  width: clamp(160px, 24vw, 190px);
+  height: auto;
+  margin-top: 6px;
 }
 #splash .sbar {
   display: block;
   width: 190px;
   height: 3px;
   border-radius: 99px;
-  background: rgba(233, 185, 73, 0.2);
+  background: #f0e4e3;
   overflow: hidden;
   margin-top: 4px;
 }
@@ -99,8 +112,8 @@ body:has(#splash)::after {
   width: 40%;
   height: 100%;
   border-radius: 99px;
-  background: linear-gradient(90deg, var(--gold), #f6d27a);
-  animation: splashBar var(--splash-cycle) ease-in-out infinite;
+  background: #ed3124;
+  animation: splashBar var(--splash-cycle) linear infinite;
   will-change: transform;
 }
 @keyframes splashPop {

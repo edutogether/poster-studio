@@ -1541,8 +1541,13 @@ dialog .secondary-button {
   *:before,
   *:after {
     transition: none !important;
-    animation: none !important;
     scroll-behavior: auto !important;
+  }
+  /* 스플래시 소멸은 로드 게이트이므로 유지하고 장식 움직임만 끈다. */
+  *:not(#splash),
+  *:before,
+  *:after {
+    animation: none !important;
   }
 }
 

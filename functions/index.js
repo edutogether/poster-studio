@@ -104,6 +104,13 @@ function parseMultipart(req, res, next) {
     const tmpPath = path.join(UPLOAD_DIR, `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`);
     const out = fs.createWriteStream(tmpPath);
     pendingWrite = new Promise((resolve) => out.on('close', resolve));
+    // 저장 실패도 파싱 오류로 전달한다. 남은 입력을 비워 busboy가 끝나게 하고,
+    // close 이후 기존 finish() 경로에서 부분 파일을 삭제한다.
+    out.on('error', (err) => {
+      error = error || err;
+      stream.unpipe(out);
+      stream.resume();
+    });
     stream.pipe(out);
     stream.on('limit', () => {
       error = Object.assign(new Error('사진 파일이 너무 큽니다(최대 12MB).'), { code: 'LIMIT_FILE_SIZE' });
