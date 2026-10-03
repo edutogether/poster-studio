@@ -24,7 +24,7 @@ function line(c: Ctx, text: string, x: number, y: number, size: number, color: s
 
 /** 2줄 안에서 실제 글자 폭을 재며 맞춘다. 그림자·굵은 외곽선 없이 조판한다. */
 function title(c: Ctx, text: string, y: number, color: string | CanvasGradient, size = 126, weight = 800,
-  family = sans, align: CanvasTextAlign = 'center', tracking = 0, width = 1024, stacked = false) {
+  family = sans, align: CanvasTextAlign = 'center', tracking = 0, width = 1024, stacked = false, maxHeight = Infinity) {
   c.save(); setLS(c, tracking);
   let lines = [text];
   const wordCuts = new Set(Array.from(text.matchAll(/\s+/g), match => match.index));
@@ -43,6 +43,20 @@ function title(c: Ctx, text: string, y: number, color: string | CanvasGradient, 
       if (next <= score) { score = next; best = [a, b]; }
     }
     if (best.length) { lines = best; break; }
+  }
+  // 대체 명조 글꼴은 같은 px에서도 실제 한글 높이가 다르다. 제목 전용 세로
+  // 영역도 측정해 긴 두 줄이 아래 크레딧으로 침범하지 않게 한다.
+  c.textBaseline = 'middle';
+  while (size > 12 && Number.isFinite(maxHeight)) {
+    c.font = `${weight} ${size}px ${family}`;
+    const fits = lines.every((value, i) => {
+      const metrics = c.measureText(value);
+      const offset = (i - (lines.length - 1) / 2) * size * 1.18;
+      return offset - (metrics.actualBoundingBoxAscent ?? size / 2) >= -maxHeight / 2
+        && offset + (metrics.actualBoundingBoxDescent ?? size / 2) <= maxHeight / 2;
+    });
+    if (fits) break;
+    size -= 2;
   }
   c.restore();
   const x = align === 'left' ? 88 : W / 2;
@@ -118,7 +132,7 @@ export const TEMPLATES: Template[] = [
     image(c,art,110,180,980,1120);c.restore();
     c.strokeStyle='#d5ba79';c.lineWidth=3;c.beginPath();c.moveTo(92,1318);c.lineTo(92,670);c.arc(600,670,508,Math.PI,Math.PI*2);c.lineTo(1108,1318);c.closePath();c.stroke();
     line(c,m.tagline,600,1342,28,'#e1ce9f',500,1000,serif);
-    title(c,m.title,1468,'#f5e3b4',128,700,serif,'center',1);
+    title(c,m.title,1468,'#f5e3b4',128,700,serif,'center',1,1024,false,160);
     credits(c,m,1573,'#ede3cd');footer(c,'#dfcfac');
   }},
   { label:'필름스트립', render(c,art,m) {
@@ -137,7 +151,7 @@ export const TEMPLATES: Template[] = [
     image(c,art,163,227,874,970);
     line(c,m.tagline,600,1262,30,'#554e43',500,826,serif);
     c.restore();
-    title(c,m.title,1468,'#fff9e9',128,700,serif,'center',-1);
+    title(c,m.title,1468,'#fff9e9',128,700,serif,'center',-1,1024,false,160);
     credits(c,m,1570,'#fff4df');footer(c,'#ffe4cc');
   }},
   { label:'타이포그래피', render(c,art,m) {
