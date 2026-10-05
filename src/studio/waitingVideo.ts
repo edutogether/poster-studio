@@ -6,6 +6,6 @@ export function approvedWaitingVideo(id: number): string | undefined {
   const item = (manifest as VideoEntry[]).find(entry => entry.id === id);
   if (!item || item.status !== "approved" || !item.src || !item.sha256) return;
   const name = String(id).padStart(2, "0");
-  return item.src === `/studio/waiting-video-v1/${name}-${item.sha256.slice(0, 12)}.mp4`
+  return item.src === `/studio/waiting-video-v1/${name}-${item.sha256.slice(0, 12)}.webm`
     && /^[a-f0-9]{64}$/.test(item.sha256) ? item.src : undefined;
 }

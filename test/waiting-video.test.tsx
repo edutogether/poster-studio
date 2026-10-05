@@ -40,7 +40,7 @@ test("StrictMode의 effect 정리·재실행 뒤에도 재생 소스를 유지�
   expect(view.container.querySelector('video')!.getAttribute('src')).toBe(props.video);
   expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
 });
-test("3초 영상 종료 뒤 재시작하지 않고 마지막 프레임을 유지한다", () => {
+test("영상 종료 뒤 재시작하지 않고 마지막 프레임을 유지한다", () => {
   const view = render(<WaitingArtwork {...props}/>);
   const video = view.container.querySelector("video")!;
   fireEvent.playing(video); fireEvent.ended(video);

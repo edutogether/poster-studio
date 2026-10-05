@@ -12,7 +12,7 @@ function Review() {
   return <main className="video-review">
     <header><h1>Poster Studio · 로딩 영상 검토</h1>
       <p>검수 완료 영상 {completed}/12편 · 아래 미제작 항목은 승인 원화입니다. 동영상 완성본이 아닙니다.</p>
-      <p>원화·문구·8초 전환을 보존합니다. 승인 영상만 3초 정방향으로 한 번 재생한 뒤 다음 세트까지 마지막 장면을 유지합니다.</p>
+      <p>원화·문구·8초 전환을 보존합니다. 승인 영상만 8초(세트 간격과 같은 길이) 정방향으로 한 번 재생합니다.</p>
       <a href="/">실제 로딩 화면 미리보기</a> · <a href="/samples.html">기존 승인 자료</a>
     </header>
     <div className="video-review-grid">{waitingSets.map(set => {
