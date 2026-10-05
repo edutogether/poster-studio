@@ -6,6 +6,19 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+// 10/1 승인 보관본은 당시 기록이라 고치지 않는다. 그 뒤 Bumm님이 승인한 수정은 prompt-amendments.json에 적고,
+// 후속 프롬프트·동작 문구는 «보관본 + 기록된 수정»과 정확히 같아야 한다 — 기록 없는 변경은 여기서 막힌다.
+export function applyAmendments(text, amendments, { prompt = false } = {}) {
+  let out = text;
+  for (const item of amendments) {
+    for (const [from, to] of item.replace) out = out.split(from).join(to);
+    if (prompt) {
+      assert.equal(out.split(item.insertAfter).length - 1, 1, `${item.date} 수정을 넣을 자리가 프롬프트에 정확히 한 번 있어야 한다`);
+      out = out.replace(item.insertAfter, item.insertAfter + item.insert);
+    }
+  }
+  return out;
+}
 export function validateVideoEntry(entry, bytes, probe) {
   assert.equal(entry.status, 'approved');
   assert.match(entry.reviewedBy, /\S+/);
@@ -32,6 +45,7 @@ export function checkWaitingVideos({ requireComplete = false } = {}) {
   const mapping = JSON.parse(fs.readFileSync(`${follow}/asset-map.json`, 'utf8'));
   const sets = JSON.parse(fs.readFileSync(`${archive}/assets/sets.json`, 'utf8'));
   const manifest = JSON.parse(fs.readFileSync('src/studio/waiting-videos.json', 'utf8'));
+  const amendments = JSON.parse(fs.readFileSync(`${follow}/prompt-amendments.json`, 'utf8'));
   assert.equal(manifest.length, 12); assert.equal(mapping.length, 12);
   assert.deepEqual(manifest.map(entry => entry.id), Array.from({ length: 12 }, (_, i) => i + 1));
   let approved = 0;
@@ -39,8 +53,10 @@ export function checkWaitingVideos({ requireComplete = false } = {}) {
     const record = mapping.find(item => item.id === entry.id), id = String(entry.id).padStart(2, '0');
     assert.equal(record.sourceSha256, sha(fs.readFileSync(record.source)), `${id} 원본 해시`);
     assert.deepEqual(fs.readFileSync('public' + record.fallback), fs.readFileSync(`${archive}/assets/${id}.webp`), `${id} 대체 원화 보존`);
-    assert.deepEqual(fs.readFileSync(`${follow}/${record.prompt}`), fs.readFileSync(`${archive}/assets/${id}-영상-프롬프트.txt`), `${id} 승인 프롬프트 보존`);
-    assert.equal(record.motion, sets.find(item => item.id === entry.id).motion);
+    const read = file => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');   // 줄 끝은 체크아웃 설정마다 달라 비교에서 뺀다
+    const approvedPrompt = read(`${archive}/assets/${id}-영상-프롬프트.txt`);
+    assert.equal(read(`${follow}/${record.prompt}`), applyAmendments(approvedPrompt, amendments, { prompt: true }), `${id} 승인 프롬프트 + 기록된 수정`);
+    assert.equal(record.motion, applyAmendments(sets.find(item => item.id === entry.id).motion, amendments), `${id} 동작 문구 + 기록된 수정`);
     if (entry.status === 'awaiting-generation') {
       assert.equal(entry.src, null); assert.equal(entry.sha256, null);
       continue;

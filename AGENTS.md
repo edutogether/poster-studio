@@ -31,6 +31,7 @@
 ## APPROVED 영역·회귀
 
 - 승인 로딩 기준은 `_docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/README.md`다. 그림·제목·상식의 12세트 짝, 한 바퀴 내 중복 없는 무작위 순서, 8초 전환, 크기·간격을 유지한다. 로딩 난수는 출력 조판의 난수와 분리한다. 향후 영상 교체도 같은 세트·표시 기준을 따른다.
+- 대기 영상은 원화에 없는 얼굴 요소(눈썹·입·코 등)를 만들면 탈락이다(2026-10-06 Bumm님 확정). 반입 전 `python scripts/media/check-face-elements.py <장면> <영상>`(종료 1 탈락·3 사람 확인)과 `node scripts/media/check-waiting-videos.mjs`를 돌린다. 승인 프롬프트 수정은 `video-followup-2026-10-03/prompt-amendments.json`에만 기록한다.
 - CSP의 `script-src 'self'`와 Vite의 `modulePreload.polyfill: false`를 유지한다. 인라인 script를 추가하지 않는다. HTML·`/`는 `no-cache`, immutable은 해시가 붙은 `/assets/`에만 적용한다. 고정 이름의 `public/` 자산에는 같은 캐시 전제를 적용하지 않는다.
 
 ## 검사

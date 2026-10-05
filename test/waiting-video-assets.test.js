@@ -1,6 +1,15 @@
 import { test, expect } from 'vitest';
 import crypto from 'node:crypto';
-import { validateVideoEntry, checkWaitingVideos } from '../scripts/media/check-waiting-videos.mjs';
+import { validateVideoEntry, checkWaitingVideos, applyAmendments } from '../scripts/media/check-waiting-videos.mjs';
+
+test('승인 프롬프트 수정은 기록된 것만 반영하고, 넣을 자리가 정확히 한 번이 아니면 거부한다', () => {
+  const amendments = [{ date: '2026-10-06', replace: [['입과 고개가', '고개가']], insertAfter: '유지한다.', insert: ' 얼굴은 원화 그대로.' }];
+  expect(applyAmendments('눈을 유지한다. 노래하듯 입과 고개가 움직인다.', amendments, { prompt: true }))
+    .toBe('눈을 유지한다. 얼굴은 원화 그대로. 노래하듯 고개가 움직인다.');
+  expect(applyAmendments('노래하듯 입과 고개가 움직인다.', amendments)).toBe('노래하듯 고개가 움직인다.');
+  expect(() => applyAmendments('자리가 없는 프롬프트', amendments, { prompt: true })).toThrow('정확히 한 번');
+  expect(() => applyAmendments('유지한다. 또 유지한다.', amendments, { prompt: true })).toThrow('정확히 한 번');
+});
 
 test('승인 원화·프롬프트 12개 매핑을 보존하고 미제작을 완료로 통과시키지 않는다', () => {
   const result = checkWaitingVideos();
