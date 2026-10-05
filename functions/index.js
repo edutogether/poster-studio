@@ -45,6 +45,16 @@ const INPUT_FIDELITY = (process.env.INPUT_FIDELITY || 'high').toLowerCase();
 const UPLOAD_DIR = path.join(os.tmpdir(), 'uploads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
+// 사진 한 장(최대 12MB)과 짧은 글 필드 몇 개를 담는 요청보다 큰 본문은 파싱하지 않는다.
+const MAX_REQUEST_BYTES = MAX_PHOTO_BYTES + 256 * 1024;
+const MULTIPART_LIMITS = {
+  fileSize: MAX_PHOTO_BYTES,
+  files: 1,
+  fields: 10,
+  fieldSize: 2048,
+  fieldNameSize: 64,
+  parts: 12
+};
 
 /* Cloud Functions(v2)는 핸들러를 부르기 전에 요청 본문을 전부 읽어 req.rawBody(Buffer)로
    채워두고, 원본 req 스트림은 이미 끝난 상태로 넘어온다. multer는 req 스트림에서 직접
@@ -53,6 +63,9 @@ const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
 function parseMultipart(req, res, next) {
   if (!/^multipart\/form-data/i.test(req.headers['content-type'] || '')) return next();
   if (!req.rawBody) return next(new Error('요청 본문을 읽을 수 없습니다.'));
+  if (req.rawBody.length > MAX_REQUEST_BYTES) {
+    return next(Object.assign(new Error('사진 파일이 너무 큽니다(최대 12MB).'), { code: 'LIMIT_FILE_SIZE' }));
+  }
 
   let busboy;
   try {
@@ -60,7 +73,7 @@ function parseMultipart(req, res, next) {
     // 비워버리고 'file' 이벤트 자체를 안 준다. 이게 없으면 아래 fileInfo/pendingWrite
     // 변수 하나를 여러 파일이 공유하다가 어느 파일이 최종 채택될지 불확정해지고,
     // 채택 안 된 쪽은 삭제 코드가 못 건드려 /tmp에 영구히 남는다.
-    busboy = Busboy({ headers: req.headers, limits: { fileSize: MAX_PHOTO_BYTES, files: 1 } });
+    busboy = Busboy({ headers: req.headers, limits: MULTIPART_LIMITS });
   } catch (err) {
     return next(err);
   }
@@ -78,7 +91,11 @@ function parseMultipart(req, res, next) {
     if (finished) return;
     finished = true;
     if (err) {
-      if (fileInfo) fs.unlink(fileInfo.path, () => {});
+      if (fileInfo)
+        return fs.promises
+          .unlink(fileInfo.path)
+          .catch(() => {})
+          .then(() => next(err));
       return next(err);
     }
     req.file = fileInfo;
@@ -93,6 +110,12 @@ function parseMultipart(req, res, next) {
   busboy.on('field', (name, value) => {
     req.body[name] = value;
   });
+  // 필드·파트 개수가 한도를 넘으면 정상 요청이 아니다(앱은 글 필드 다섯 개와 사진 하나만 보낸다).
+  const tooManyParts = () => {
+    error = error || new Error('요청 형식이 올바르지 않습니다.');
+  };
+  busboy.on('fieldsLimit', tooManyParts);
+  busboy.on('partsLimit', tooManyParts);
 
   busboy.on('file', (name, stream, info) => {
     const { mimeType } = info;
@@ -206,6 +229,16 @@ app.set('trust proxy', true);
    파일만 다루고 API 호출은 프록시하지 않는다, 아래 ALLOWED_ORIGINS 주석 참고).
    만약 나중에 이 API를 CDN/Hosting 뒤로 옮기면 맨 오른쪽 값이 그 CDN 주소가 되어
    모든 부스가 한 버킷을 공유하게 되므로, 그때는 이 함수를 반드시 같이 고칠 것. */
+/* 레이트리밋 버킷 키에 쓰는 접속 IP는 원래 값 대신 되돌릴 수 없는 값(HMAC-SHA256)으로 바꿔 저장한다.
+   키는 새 비밀을 만들지 않고 이미 있는 서버 비밀을 쓴다(값은 저장·출력하지 않는다). */
+function ipKey(ip) {
+  return crypto
+    .createHmac('sha256', OPENAI_API_KEY.value() || 'local')
+    .update(String(ip))
+    .digest('hex')
+    .slice(0, 32);
+}
+
 function clientIpForRateLimit(req) {
   const raw = req.headers?.['x-forwarded-for'];
   const chain = (Array.isArray(raw) ? raw.join(',') : String(raw || ''))
@@ -425,6 +458,24 @@ function _setCounterImplForTesting(fn) {
   _incrementAndCheck = fn || _firestoreIncrementAndCheck;
 }
 
+/* 카운터 한 번이 오래 걸리면 그만 기다리고 오류로 처리한다(각 미들웨어의 대체 처리로 넘어간다).
+   카운터 대기가 길어지면 요청 전체 예산(GENERATE_BUDGET_MS) 안에서 생성에 쓸 시간이 줄어든다. */
+const COUNTER_TIMEOUT_MS_DEFAULT = 5_000;
+let COUNTER_TIMEOUT_MS = COUNTER_TIMEOUT_MS_DEFAULT;
+function _setCounterTimeoutForTesting(ms) {
+  COUNTER_TIMEOUT_MS = ms ?? COUNTER_TIMEOUT_MS_DEFAULT;
+}
+function checkCounter(collectionName, docId, limit) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`카운터 응답이 ${COUNTER_TIMEOUT_MS}ms를 넘었습니다`)),
+      COUNTER_TIMEOUT_MS
+    );
+  });
+  return Promise.race([_incrementAndCheck(collectionName, docId, limit), timeout]).finally(() => clearTimeout(timer));
+}
+
 // 노트북/인스턴스 여러 개에 걸쳐 진짜로 전역 강제되는 상한. 2026-08-29엔 인스턴스별
 // 메모리 카운터(30/10분)라 maxInstances를 올릴 때마다 실효 상한이 같이 커졌는데
 // (25대면 이론상 750/10분), 이제 Firestore로 전역화하면서 "노트북 최대 20대가
@@ -466,6 +517,21 @@ const RATE_LIMIT_MAX = 150;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const IP_RATE_LIMIT_MAX = 50;
 
+/* 카운터 저장소를 쓸 수 없을 때의 대체 한도 — 부스가 멈추지 않게 통과시키되, 인스턴스(서버 한 대)마다
+   10분에 FALLBACK_LIMIT_PER_INSTANCE건까지만 통과시킨다. 노트북 4대가 정상 사용하는 양보다 넉넉하다. */
+const FALLBACK_LIMIT_PER_INSTANCE = 10;
+const _fallbackCounts = new Map();
+function fallbackAllowed(now = Date.now()) {
+  const bucket = Math.floor(now / RATE_LIMIT_WINDOW_MS);
+  for (const key of _fallbackCounts.keys()) if (key !== bucket) _fallbackCounts.delete(key);
+  const count = (_fallbackCounts.get(bucket) || 0) + 1;
+  _fallbackCounts.set(bucket, count);
+  return count <= FALLBACK_LIMIT_PER_INSTANCE;
+}
+function _resetFallbackForTesting() {
+  _fallbackCounts.clear();
+}
+
 // 6차 감사 발견(2026-09-01): 위 RATE_LIMIT_MAX는 10분 버킷마다 초기화되므로,
 // "행사 당일 270분 동안만 호출된다"는 가정이 있어야 하루 지출이 $162 근처로
 // 묶인다는 CLAUDE.md의 기존 결론이 성립했다 — 그런데 그 가정을 강제하는 코드가
@@ -482,7 +548,7 @@ function kstDateKey(now = Date.now()) {
 
 async function dailyBudgetCap(req, res, next) {
   try {
-    const { allowed } = await _incrementAndCheck('dailyBudgetBuckets', kstDateKey(), DAILY_BUDGET_MAX);
+    const { allowed } = await checkCounter('dailyBudgetBuckets', kstDateKey(), DAILY_BUDGET_MAX);
     if (!allowed) {
       return denyWithCleanup(req, res, 429, '오늘의 생성 한도에 도달했습니다. 운영팀에 문의해 주세요.');
     }
@@ -515,15 +581,17 @@ async function denyWithCleanup(req, res, status, message) {
 async function rateLimit(req, res, next) {
   const bucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
   try {
-    const { allowed } = await _incrementAndCheck('rateLimitBuckets', String(bucket), RATE_LIMIT_MAX);
+    const { allowed } = await checkCounter('rateLimitBuckets', String(bucket), RATE_LIMIT_MAX);
     if (!allowed) {
       return denyWithCleanup(req, res, 429, '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.');
     }
     next();
   } catch (err) {
-    // Firestore 장애로 부스 전체가 멈추면 안 되므로 fail-open(레이트리밋 없이 통과) —
-    // 진짜 비용 하드캡은 어차피 OpenAI 월 지출 상한이 맡고 있다.
-    console.error('[rateLimit] Firestore 오류, fail-open:', err?.message || err);
+    // Firestore 장애로 부스 전체가 멈추면 안 되므로 통과시키되, 인스턴스별 대체 한도 안에서만.
+    console.error('[rateLimit] 카운터 오류 — 인스턴스 대체 한도로 처리:', err?.message || err);
+    if (!fallbackAllowed()) {
+      return denyWithCleanup(req, res, 429, '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.');
+    }
     next();
   }
 }
@@ -532,7 +600,7 @@ async function ipRateLimit(req, res, next) {
   const bucket = Math.floor(Date.now() / RATE_LIMIT_WINDOW_MS);
   const ip = clientIpForRateLimit(req);
   try {
-    const { allowed } = await _incrementAndCheck('ipRateLimitBuckets', `${bucket}:${ip}`, IP_RATE_LIMIT_MAX);
+    const { allowed } = await checkCounter('ipRateLimitBuckets', `${bucket}:${ipKey(ip)}`, IP_RATE_LIMIT_MAX);
     if (!allowed) {
       return denyWithCleanup(req, res, 429, '이 네트워크에서 요청이 너무 많이 몰렸습니다. 잠시 후 다시 시도해 주세요.');
     }
@@ -541,6 +609,43 @@ async function ipRateLimit(req, res, next) {
     console.error('[ipRateLimit] Firestore 오류, fail-open:', err?.message || err);
     next();
   }
+}
+
+/* 생성 허용 시간창 — 비어 있으면 꺼짐(언제나 허용). 켜려면 GENERATE_WINDOWS_DEFAULT나 환경변수
+   GENERATE_WINDOWS에 한국 시간 기준 "시작~끝"을 쉼표로 이어 적고 배포한다. 형식이 틀리면 함수가
+   시작되지 않아 배포가 실패한다(잘못된 설정이 조용히 무시되지 않게).
+   샘플: '2026-11-14T09:00~2026-11-14T18:00, 2026-11-07T13:00~2026-11-07T17:00' */
+const GENERATE_WINDOWS_DEFAULT = '';
+function parseGenerateWindows(text) {
+  const items = String(text || '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+  return items.map((item) => {
+    const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})~(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})$/.exec(item);
+    if (!m) throw new Error(`GENERATE_WINDOWS 형식 오류: "${item}" (예: 2026-11-14T09:00~2026-11-14T18:00)`);
+    const start = Date.parse(`${m[1]}:00+09:00`);
+    const end = Date.parse(`${m[2]}:00+09:00`);
+    if (!(end > start)) throw new Error(`GENERATE_WINDOWS 시작이 끝보다 늦습니다: "${item}"`);
+    return { start, end };
+  });
+}
+function makeGenerateWindowGate(windows, now = () => Date.now()) {
+  return (req, res, next) => {
+    if (!windows.length) return next();
+    const t = now();
+    if (windows.some((w) => t >= w.start && t < w.end)) return next();
+    return res.status(403).json({ error: '지금은 포스터 생성 운영 시간이 아닙니다. 운영 시간에 다시 시도해 주세요.' });
+  };
+}
+const generateWindowGate = makeGenerateWindowGate(
+  parseGenerateWindows(process.env.GENERATE_WINDOWS ?? GENERATE_WINDOWS_DEFAULT)
+);
+
+// 요청 시간 예산은 요청이 들어온 순간부터 잰다(카운터 처리 시간도 예산 안에 넣는다).
+function markRequestStart(req, res, next) {
+  req.startedAt = Date.now();
+  next();
 }
 
 function checkBoothToken(req, res, next) {
@@ -561,7 +666,7 @@ async function checkPhotoGenerationLimit(req, res, next) {
   if (!req.file) return next(); // 사진이 없으면(400으로 이어짐) 이 체크는 의미 없음
   const hash = crypto.createHash('sha256').update(fs.readFileSync(req.file.path)).digest('hex');
   try {
-    const { allowed } = await _incrementAndCheck('photoGenCounts', hash, PHOTO_GENERATION_LIMIT);
+    const { allowed } = await checkCounter('photoGenCounts', hash, PHOTO_GENERATION_LIMIT);
     if (!allowed) {
       // 막힌 요청은 아래 /generate 핸들러(임시파일 정리 담당)까지 못 가므로 여기서 직접
       // 지워야 /tmp에 고아 파일이 안 남는다(2차 감사 때 고친 것과 같은 종류의 버그 재발 방지).
@@ -603,7 +708,9 @@ function mapGenerateError(err) {
 
 app.post(
   '/generate',
+  markRequestStart,
   checkBoothToken,
+  generateWindowGate,
   parseMultipart,
   requirePhoto,
   rateLimit,
@@ -617,28 +724,33 @@ app.post(
   // 실제로 생성으로 이어질 요청만 세도록 순서를 뒤집는다.
   checkPhotoGenerationLimit,
   dailyBudgetCap,
-  async (req, res) => {
-    const genre = req.body.genre || 'animation';
-    const mode = req.body.mode === 'group' ? 'group' : 'solo';
-    const title = sanitizePromptField(req.body.movieTitle, 60);
-    const tagline = sanitizePromptField(req.body.tagline, 80);
-    const prompt = buildPrompt({ genre, mode, title, tagline });
-
-    try {
-      const t0 = Date.now();
-      const images = await generateArt(req.file.path, req.file.mimetype, prompt, t0 + GENERATE_BUDGET_MS);
-      const sec = ((Date.now() - t0) / 1000).toFixed(1);
-      console.log(`[generate] 완료 ${sec}초  (모델=${MODEL} · 화질=${QUALITY} · 얼굴보존=${INPUT_FIDELITY})`);
-      res.json({ images, meta: { genre, mode, seconds: Number(sec) } });
-    } catch (err) {
-      console.error('[generate]', err?.status || '', err?.message || err);
-      const { status, message } = mapGenerateError(err);
-      res.status(status).json({ error: message });
-    } finally {
-      fs.unlink(req.file.path, () => {});
-    }
-  }
+  (req, res) => generateHandler(req, res)
 );
+
+// 임시 사진은 결과를 돌려주기 **전에** 지운다 — 응답 뒤로 미루면 삭제가 언제 끝날지 보장되지 않는다.
+async function generateHandler(req, res) {
+  const genre = req.body.genre || 'animation';
+  const mode = req.body.mode === 'group' ? 'group' : 'solo';
+  const title = sanitizePromptField(req.body.movieTitle, 60);
+  const tagline = sanitizePromptField(req.body.tagline, 80);
+  const prompt = buildPrompt({ genre, mode, title, tagline });
+
+  const t0 = Date.now();
+  const deadlineAt = (req.startedAt ?? t0) + GENERATE_BUDGET_MS;
+  let result;
+  try {
+    const images = await generateArt(req.file.path, req.file.mimetype, prompt, deadlineAt);
+    const sec = ((Date.now() - t0) / 1000).toFixed(1);
+    console.log(`[generate] 완료 ${sec}초  (모델=${MODEL} · 화질=${QUALITY} · 얼굴보존=${INPUT_FIDELITY})`);
+    result = { status: 200, body: { images, meta: { genre, mode, seconds: Number(sec) } } };
+  } catch (err) {
+    console.error('[generate]', err?.status || '', err?.message || err);
+    const { status, message } = mapGenerateError(err);
+    result = { status, body: { error: message } };
+  }
+  await fs.promises.unlink(req.file.path).catch(() => {});
+  res.status(result.status).json(result.body);
+}
 
 // 업로드/기타 오류도 항상 JSON으로 응답(브라우저가 HTML 오류를 받아 이상한 문구가 뜨는 것 방지)
 app.use((err, req, res, _next) => {
@@ -712,7 +824,17 @@ export {
   _resetOpenAIHealthCacheForTesting,
   COUNTER_COLLECTIONS,
   COUNTER_TTL_MS,
+  COUNTER_TTL_OVERRIDES_MS,
   cleanupOldCounters,
+  MAX_REQUEST_BYTES,
+  _setCounterTimeoutForTesting,
+  FALLBACK_LIMIT_PER_INSTANCE,
+  _resetFallbackForTesting,
+  ipKey,
+  parseGenerateWindows,
+  makeGenerateWindowGate,
+  markRequestStart,
+  generateHandler,
   ALLOWED_ORIGINS
 };
 
@@ -732,7 +854,7 @@ export const posterStudio = onRequest(
     // concurrency:1이라 동시 처리 가능 요청 수 = maxInstances 그 자체 — 노트북 수보다
     // 낮으면 나머지는 대기열에 걸리다 timeoutSeconds(140초) 넘어 실패한다. 인스턴스
     // 상한 자체는 비용이 붙지 않는다(실제 생성 건수만 과금) — 진짜 비용 상한은
-    // OpenAI 대시보드 월 지출 한도($200)가 맡는다.
+    // OpenAI 조직의 강제 한도($250, 2026-10-05 확인)가 맡는다.
     maxInstances: 25,
     secrets: [OPENAI_API_KEY, BOOTH_TOKEN],
     cors: ALLOWED_ORIGINS
@@ -771,6 +893,8 @@ export const posterStudio = onRequest(
    안 함) — updatedAt 필드는 _incrementAndCheck가 매번 갱신해두고 있어 추가 저장 불필요. */
 const COUNTER_COLLECTIONS = ['rateLimitBuckets', 'ipRateLimitBuckets', 'photoGenCounts', 'dailyBudgetBuckets'];
 const COUNTER_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+// IP 버킷은 10분짜리라 오래 둘 이유가 없다 — 하루 뒤 지운다.
+const COUNTER_TTL_OVERRIDES_MS = { ipRateLimitBuckets: 24 * 60 * 60 * 1000 };
 
 // dbInstance를 인자로 받는 이유: 테스트에서 진짜 Firestore를 두드리지 않고
 // Firestore와 같은 모양(collection/where/limit/get/batch)의 가짜 객체를 주입하기 위함
@@ -790,9 +914,9 @@ async function _deleteOldDocsInCollection(dbInstance, collectionName, cutoffDate
 }
 
 async function cleanupOldCounters(dbInstance = db, now = Date.now()) {
-  const cutoff = new Date(now - COUNTER_TTL_MS);
   let total = 0;
   for (const collectionName of COUNTER_COLLECTIONS) {
+    const cutoff = new Date(now - (COUNTER_TTL_OVERRIDES_MS[collectionName] ?? COUNTER_TTL_MS));
     const deleted = await _deleteOldDocsInCollection(dbInstance, collectionName, cutoff);
     total += deleted;
     if (deleted) console.log(`[cleanupOldCounters] ${collectionName}: ${deleted}건 삭제`);
