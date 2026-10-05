@@ -1,5 +1,30 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-05 — Claude Code 인계 기준 (현재 상태)
+
+- Bumm님의 2026-10-05 결정과 Project Engineering 지시에 따라 **담당을 Claude Code로 인계**한다. 이번 승인 범위는 기존 작업 보존 커밋·일반 push·문서 갱신이며 PR 생성·병합·배포·유료 호출은 포함하지 않는다. 아래 날짜별 기록의 “미커밋/진행 중”은 당시 상태이며 이 절을 현재 기준으로 읽는다.
+- 실제 cwd/git root는 `D:\Projects\inky-festival\poster-studio`, 단일 worktree다. 시작 가지 `codex/festival-header-balance`, 시작 HEAD `fa097922714d57daae4e720ced8d22b9db2d81d3`, staged 0·수정 13파일·앱 작업 신규 30파일이었다. 기존 `.codex/config.toml`은 소유권 밖의 로컬 설정으로 제외했다.
+- 인계 가지 **`codex/claude-handoff-20261005`**, 기능 보존 커밋 **`c166c4b738a5a5be0f2d1e0b74d7c379a79ba5d8`**. 뒤따르는 인계 문서 커밋은 기능을 바꾸지 않는다. 최종 remote tip 전체 SHA는 인계 최종 보고를 기준으로 `git ls-remote origin refs/heads/codex/claude-handoff-20261005`와 대조한다.
+- **완료·미배포**: 우측 브랜드 확대(시작 HEAD), 양쪽 브랜드 홈 재시작, 첫 페이지와 결과 화면 비율·제목·목록·버튼 정렬. 영상 재생/전환/정지/오류 복구 구현과 12편 제작 지시서·프롬프트도 보존했다.
+- **미완료**: 승인 영상은 `src/studio/waiting-videos.json` 기준 12개 모두 `awaiting-generation`, src 없음(0/12). 생성 서비스·계정·원화 전송·재생성 포함 총비용 상한 결정을 받은 뒤 실제 영상 제작/반입·시각 검수·완료 게이트를 진행한다. QA 패턴과 과거 v2~v5 실험 MP4를 승인 영상으로 대체하지 않는다.
+- **보류**: “새 버전이 있어요” 알림은 현재 앱 소스/확인한 로컬 화면에서 출처를 찾지 못했다. 알림 위치나 화면이 추가로 제공되기 전에는 해결됐다고 하지 않는다. 실제 프린터·현장 준비 결정은 기존 운영 문서를 따른다.
+- **배포**: 마지막 완료 기록은 10/3 PR #4·CI `37101742147`, 배포 커밋 `348595bc1748c04dbc3bfe88cf2377d73f1ca0ba`, 프리즈 `poster-studio-freeze-20261003-audited-100`. 10/5 원격 master·태그가 이 SHA와 일치함만 새로 확인했다. 오늘 운영 사이트/배포를 재검사하지 않았으며 새 배포 승인은 없다.
+
+### 재사용 검증과 현재 확인의 구분
+
+- **10/3 마지막 로컬 트리**(시작 HEAD fa09792 위의 후속 변경, 지금 c166c4b에 보존): Windows·Node 24.18·헤드리스 Chrome. 프런트 151/10파일·서버 72, 타입·앱/서버 린트·빌드·폰트 504자·verify:selftest 18건 모두 종료 0. 이번 인계를 이유로 재실행하지 않았다. 최신 결과 화면 검증과 이전 배포 커밋 검증은 서로 다른 대상이다.
+- 결과 배치 6화면·8개 선택: `.cache/result-layout/2026-10-03T14-45-30.961Z/results.json` (종료 0). 50:50 결함 주입은 예상 종료 1. 홈 재시작 2영역·6화면: `.cache/header-home/2026-10-03T11-07-40.539Z/results.json` (종료 0), 클릭 생략은 예상 종료 1.
+- 최신 인쇄 출력: `.cache/result-layout-print-20261003/pixels.json`, 출시 기준 `scripts/verify/snapshots/release-20261003-windows.json`과 40쌍 불일치 0(수집·대조 종료 0). 실제 API 호출 0. 인쇄물 픽셀과 로딩 승인 자산은 변경하지 않았다.
+- 영상별 검증은 `_docs/intents/2026-09-30-studio-design-integration/video-followup-2026-10-03/validation.md`의 **영상 구현 단계 148개** 기록이다. 후속 홈 테스트를 더한 최신 전체가 151개다. 실제 12편 영상·실기 iOS·실제 얼굴 촬영·프린터 출력·유료 API는 미검증이다.
+- **10/5 새로 확인**: cwd/root·branch/HEAD·worktree·작업 목록·원격 master/프리즈·증거 파일 존재·작업 해시 보존·문서 diff. 새 테스트/빌드/전체 감사는 하지 않았다. `git diff --cached --check`에서 제작 지시서 EOF 빈 줄 1건(종료 2)을 발견해 문서만 정리한 뒤 종료 0. 그 밖에 기존 43개 대상의 바이트 변경 없음은 `.cache/handoff-20261005/before.json`으로 대조했다.
+
+### 인수 시 보존할 로컬 파일
+
+- `.codex/config.toml`(untracked), `.env.development.local`(ignored), `.cache/` 전체와 `.cache/release-348595b.zip` 복구본을 그대로 둔다. 설정 내용/비밀값은 기록하거나 커밋하지 않는다. 강제 checkout·reset·clean·stash·삭제 금지.
+- `.cache/release-local/`, `.cache/release-live/`, `.cache/header-home/`, `.cache/result-layout/`, `.cache/result-layout-print-20261003/`, `.cache/video-followup-checks/`, `.cache/video-followup-20261003/`는 같은 PC에 남는 검증 증거이며 원격 Git에 포함하지 않는다.
+- 승인 원화/문구/ZIP의 기준은 `_docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/README.md`. 제작 후속은 옆 `video-followup-2026-10-03/README.md`다. 12세트 짝·중복 없는 무작위 순서·8초 전환·크기/여백은 LOCKED다.
+- 앱은 `npm run dev -- --host 127.0.0.1 --port 5500`, 영상 검토 페이지는 `node scripts/media/wait-video-preview-server.mjs` → `http://127.0.0.1:5524/videos.html`. 기존 포트 사용자를 확인하고 중복 기동하지 않는다. 인계일에는 서버 실행 상태를 새로 확인하지 않았다.
+
 ## 2026-10-03 — 결과 화면 배치 정렬 (로컬 반영)
 
 - Bumm님 요청에 따라 결과 화면을 첫 페이지와 같은 좌우 비율·제목 위계·목록 너비·하단 버튼 기준선으로 맞췄다. 별도 갤러리 최대 폭을 제거하고 데스크톱 4열×2행을 화면 높이에 맞춘다. 모바일은 2열과 세로 스크롤을 유지한다. 단계 이동 시 포커스는 유지하되 화면 상단으로 돌아와 공통 헤더가 보인다.
@@ -78,14 +103,14 @@ Bumm님이 12세트를 최종 승인했다. [보관본·영상 제작 안내](..
 
 | 항목 | 값 |
 |---|---|
-| **현재 담당** | **Codex (일시)** — Claude가 AI Ways Incheon을 개발하는 동안 사용량을 나누기 위한 것이다. 영구 이관이 아니다 |
-| **마지막 인계 방향** | Claude → Codex (2026-09-29, Bumm님 직접 지시) |
-| 저장소 | `edutogether/poster-studio` · 기본 가지 `master`(= 라이브 배포 가지) |
-| 현재 작업 가지 | `codex/audit-fixes-20260930` — [통합 PR #4](https://github.com/edutogether/poster-studio/pull/4) |
-| 기능 최종 커밋 | `d24c3573f3b25be7fce6562153bd81c8bf53d9c4` (뒤따르는 문서 커밋은 동작 변경 없음) |
-| 인수 기준 커밋 | `a1cc13501e8652d13da6e0129434dd7a4c55d2da` (문서 PR #3 포함) |
-| 인계 기준 master | `facd660194a13816c528e5d7207bde7fe7de32cd` |
-| 라이브 코드 기준 | `696f351`(React 19.3.0, 2026-09-27 배포). 그 뒤 master 커밋은 문서·PR 검사 워크플로뿐이라 배포물은 그대로다 |
+| **현재 담당** | **Claude Code** — 2026-10-05 Bumm님 결정, Codex 구현 중지 |
+| **마지막 인계 방향** | Codex → Claude Code (2026-10-05) |
+| 저장소 | `edutogether/poster-studio` · 배포 가지 `master` |
+| 현재 작업 가지 | `codex/claude-handoff-20261005` — PR 생성 없음 |
+| 기능 보존 커밋 | `c166c4b738a5a5be0f2d1e0b74d7c379a79ba5d8` |
+| 최종 인수 커밋 | 위 가지의 최종 remote tip — 최종 보고의 전체 SHA와 대조 |
+| 인계 시작 HEAD | `fa097922714d57daae4e720ced8d22b9db2d81d3` |
+| 배포·프리즈 기준 | `348595bc1748c04dbc3bfe88cf2377d73f1ca0ba` · 10/3 배포 기록, 10/5 원격 ref 확인 |
 
 ---
 
@@ -116,7 +141,7 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 ## 2. 앱 목적·구조·적용 규칙
 
 - **무엇**: 제4회 인천어린이청소년영화제(**2026-11-14, 인천 CGV, 10:30~15:00**) 체험부스 웹앱. 웹캠 사진 → AI 포스터 그림
-  → 브라우저 캔버스가 제목·크레딧을 합성해 4종 → 4×6 인화지 즉석 인쇄. 명단 기준 참가자 **최대 2000명**.
+  → 브라우저 캔버스가 제목·크레딧을 합성해 8종 → 4×6 인화지 즉석 인쇄. 명단 기준 참가자 **최대 2000명**.
 - **구조**: 프론트 `src/`(TypeScript + React 19.3 + Vite 7) → 빌드 `dist/` → Firebase Hosting.
   백엔드 `functions/index.js` 하나(Cloud Functions v2 `posterStudio`, asia-northeast3) — OpenAI 이미지 생성 중계만.
   Firebase 프로젝트 `inky-poster-studio`. 주소 둘 다 살아 있어야 한다: `https://poster.edutogether.kr`(정식) · `https://poster-studio.web.app`.
@@ -133,7 +158,7 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 
 | 영역 | 왜 잠겼나 / 지키는 장치 |
 |---|---|
-| **포스터 출력 픽셀**(`src/layout.ts`·`templates.ts`·`poster.ts`와 그 입력) | 🔴 아이가 인쇄해 가는 포스터가 **1픽셀도 달라지면 안 된다.** 바꿀 일이 있으면 `scripts/verify/poster-pixels-ui.js`로 전/후 지문을 떠서 20쌍 0건을 확인한다 |
+| **포스터 출력 픽셀**(`src/layout.ts`·`templates.ts`·`poster.ts`와 그 입력) | 🔴 아이가 인쇄해 가는 포스터가 **1픽셀도 달라지면 안 된다.** 바꿀 일이 있으면 `scripts/verify/release-baseline.mjs`로 5개 입력×8종 지문을 수집하고 `npm run verify:pixels`로 40쌍 불일치 0건을 확인한다 |
 | 이름·단체명·출연진 **서버 미전송** | 🔴 `privacy.html`의 약속. `test/poster-studio.test.tsx` "개인정보: 서버로 보내는 것" 2건이 지킨다 — 지우지 않는다 |
 | Firestore = **정수 카운터 4종 + 사진 SHA-256만** | 개인정보 추가 금지(승인 조건) |
 | 타임아웃 4단 체인 120 < 125 < 140 < 150초 | 하나만 바꾸면 임시 사진 삭제가 안 돈다 |
@@ -163,7 +188,7 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 - 2026-09-17 `12721b8`·`2a5f865` — 포스터 버전 썸네일 대체 텍스트, 키보드 선택(div → button).
 - 더 이전 이력은 `_docs/CHANGELOG.md`.
 
-### 진행 중
+### 과거 진행 기록 (2026-10-01 당시, 현재 상태는 맨 위 10/5 절)
 
 - 2026-10-01 결과 조판 추가 수정: 좌상단 InKY Film Festival/우상단 교육청 공통 브랜드, 기존 상단 영화제명 서식을 하단 한 곳으로 이동. 원래 4개 시안의 배치 차이를 8개 장르로 확장, 제목 단어 줄바꿈·하단 이미지 여백 개선. 결과 제목은 완성 !만 빨강. 좌우 38:62·인쇄 버튼을 선택 카드 바로 아래로 이동. 타입·빌드 0, 변경 회귀는 마무리에 실행. 5500/5524 로컬, 미커밋·미배포.
 
@@ -211,21 +236,17 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 
 - Bumm님의 "올리고 배포까지" 지시로 통합 PR #4를 열었다. 기능 커밋 d24c357의 원격 Node 22 PR Check(빌드·테스트)는 통과했다. AGENTS.md의 사람 병합 규칙에 따른 병합 절차와 이후 자동 배포는 아직 미완료다. 정적 시안 5522를 배포하는 작업이 아니다.
 
-### 다음 작업 (담당이 이어서 할 것)
+### 다음 작업 (Claude Code)
 
-1. 통합 작업 PR의 원격 검사와 배포 상태를 확인한다. master 직접 푸시나 수동 배포는 하지 않는다. 원래 문서 PR #3의 변경은 이번 가지에 포함돼 있으므로 별도 중복 병합이 필요한지 원격 상태로 판단한다.
-2. **2026-09-30 분기 감사는 실행·후속 수정 완료**. Codex 검토자 두 명으로 수행한 대체 감사이며 Claude 지정 모델 조합으로 실행했다고 주장하지 않는다. 기존 10/10 점수를 새 트리의 점수로 재사용하지 않는다.
-3. **외부 확인 대기(재촉하지 않는다)** — 교육청 장학사에게 ① 실제 한 장 인쇄 시간 ② 인화지 팩 규격·수량(~400장).
-   인쇄가 3분이면 프린터 3대 구성에서 60장이 모자란다 — 이 구성의 유일한 위험이다.
-4. **다른 작업자의 가지 `claude/cloud-session-setup`**(`db73821`, 2026-09-28, Claude 클라우드) — 클라우드 세션용
-   `SessionStart` 훅과 `scripts/cloud-session-start.sh`. **master 미반영, 팀장 확인 대기.** `.claude/settings.json`을 바꾸므로
-   **Bumm님 직접 확인 대상**이다. 이 인계에서는 손대지 않고 보존했다.
-5. **문서 어긋남 수정 완료** — 현재 프론트 79개·서버 71개와 loadtest dropped 상태로 맞췄다.
-6. 행사 당일 운영은 `_docs/ops/runbook.md`.
+1. 현재 트리와 로컬 전용 설정·자산을 먼저 보존하고 인계 가지의 remote tip 및 전체 SHA를 확인한다. 기능 작업 유실 없이 확보한 뒤 위 10/5 절부터 이어간다.
+2. 승인 로딩 12세트의 영상 후속을 이어간다. 서비스/계정·원화 전송·예산 결정 또는 완성 영상 제공 전에는 비용을 쓰지 않는다. 원화·문구·짝·스타일·출력은 유지한다.
+3. 헤더 홈 재시작·결과 배치·브랜드 보강은 로컬 검증 완료이며 미배포다. 신규 제품 변경이나 병합·배포는 별도 승인 후 진행한다.
+4. 반복 새 버전 알림은 위치 확인 대기. 실제 인쇄 시간/소모품 등 현장 결정은 `_docs/ops/runbook.md`와 `printer-capacity.md`를 따른다. 다른 작업자의 `claude/cloud-session-setup`은 이번에 확인·수정·병합하지 않았다.
+5. 과거 PR #4는 완료된 출시 이력이다. 과거 4종/20쌍 검증이나 예전 v3/v4 영상 실험을 현재 미완료 작업으로 되살리지 않는다.
 
 ---
 
-## 5. 검증 결과와 미검증 항목
+## 5. 과거 검증 결과 (최신 검증은 맨 위 10/5 절)
 
 **통합 커밋 검증 — 2026-10-01, d24c357**: 프론트 lint·typecheck·test 79·build·fonts:check(438자)·verify:selftest, 서버 lint·test 71 모두 통과. 양쪽 npm audit 0건. 이전 빌드와 포스터 픽셀 20쌍 차이 0건. 헤드리스 1920·1366·1280·390 화면의 넘침·자산 누락·실행 오류 없음. 실제 API 요청 0건. 상세 명령·종료 코드는 감사 문서에 기록했다.
 
@@ -239,13 +260,12 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 
 ---
 
-## 6. 실제 배포 상태 (2026-09-29 확인)
+## 6. 배포 기준 (기록과 2026-10-05 원격 ref 확인)
 
-- 두 주소 모두 번들 `/assets/main-ry86cvGP.js`(React 19.3.0) 서빙 중.
-- 마지막으로 배포 잡이 돈 실행: `36291384513`(`696f351`, 2026-09-27, 성공). 이후 실행은 문서 커밋이라 배포 잡이 건너뛰어졌다.
-- 되돌릴 지점: `poster-studio-freeze-20260927-pre-react-19.3`(= `786cd1d`, 되돌려 태그와 0건 차이 확인함),
-  `poster-studio-freeze-20260910-audited-100`(= `c6608b9`, 대조용). 되돌리기는 CI 경로(`git revert` + push)로만.
-- **`master`에 push = 라이브 배포.** 클라우드·Codex는 작업 가지 → PR이고, PR이면 `PR Check`가 자동으로 돈다.
+- 마지막 완료된 출시 기록: PR #4, CI `37101742147`, `348595bc1748c04dbc3bfe88cf2377d73f1ca0ba` (2026-10-03).
+- 프리즈 `poster-studio-freeze-20261003-audited-100`의 peeled SHA와 원격 master가 위 SHA로 일치한다. 운영 HTTP/번들은 10/5 재확인하지 않았다. 자세한 기존 근거는 `_docs/ops/release-2026-10-03.md`와 `.cache/release-live/`에 보존한다.
+- 그 뒤 브랜드·영상 재생 준비·홈 재시작·결과 화면 배치는 인계 가지에만 있다. 이번 인계는 배포/롤백/태그 변경 승인이 아니다.
+- `master` push는 라이브 배포다. 인수 중 직접 push·병합·수동 배포하지 않는다.
 
 ---
 
