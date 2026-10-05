@@ -94,7 +94,7 @@ describe('기본 영화 제목', () => {
 });
 
 describe('세 단계 화면 연결', () => {
-  test.each([true, false])('생성 대기 일시 정지는 요청을 늘리지 않고 응답 뒤 닫힌다(성공=%s)', async (success) => {
+  test.each([true, false])('생성 대기 화면은 요청을 늘리지 않고 응답 뒤 닫힌다(성공=%s)', async (success) => {
     await act(async () => { renderApp(); });
     await shoot();
     const originalFetch = globalThis.fetch;
@@ -109,8 +109,7 @@ describe('세 단계 화면 연결', () => {
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
     expect(el<HTMLDialogElement>('spinner').open).toBe(true);
     expect(el('status').parentElement!.hidden).toBe(true);
-    fireEvent.click(document.querySelector('.generation-pause')!);
-    fireEvent.click(document.querySelector('.generation-pause')!);
+    expect(document.querySelector('.generation-pause')).toBeNull();   // 로딩 화면에 멈춤 단추가 없다(결정 118)
     expect(pendingFetch).toHaveBeenCalledTimes(1);
     await act(async () => { release(); });
     expect(document.getElementById('spinner')).toBe(null);

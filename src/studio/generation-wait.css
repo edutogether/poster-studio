@@ -8,8 +8,6 @@
 .generation-film { position: relative; width: min(350px, 65vw); aspect-ratio: 1; flex-shrink: 0; margin-bottom: 12px; }
 .generation-robot-film { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; }
 .generation-robot-film[data-active="true"] { opacity: 1; }
-.generation-pause { position: absolute; right: 8px; bottom: 20px; z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: #f5f5f5; color: #777; opacity: 0; transition: opacity .2s; font-size: 16px; cursor: pointer; }
-.generation-film:hover .generation-pause, .generation-pause:focus-visible { opacity: 1; }
 /* 모든 문구가 같은 칸의 높이를 계산하므로 긴 문구로 바뀌어도 로봇이 움직이지 않는다. */
 .generation-copy-stack { display: grid; width: 100%; min-width: 0; }
 .generation-copy-stack > * { grid-area: 1 / 1; align-self: center; min-width: 0; opacity: 0; visibility: hidden; transition: opacity .45s ease; white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }
@@ -37,7 +35,6 @@
   .movie-fact { margin-top: 0; }
   .movie-fact h2 { font-size: 20px; }
   .movie-fact p { font-size: 15px; line-height: 1.65; }
-  .generation-pause { opacity: .6; }
 }
 @media (prefers-reduced-motion: reduce) {
   .generation-copy-stack > *, .generation-robot-film, .generation-dots i { transition: none; }
