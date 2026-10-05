@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createRef } from "react";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import GenerationWait, { createWaitSequence } from "../src/studio/GenerationWait.js";
 import { waitingSets } from "../src/studio/waitingSets.js";
 import fs from "node:fs";
@@ -66,15 +66,14 @@ describe("포스터 생성 대기", () => {
     expect(document.querySelector('.generation-dots')).toBe(dots);
     expect(dots.firstElementChild).toBe(dot);
   });
-  test("일시 정지는 넘김·점·문구를 멈추고 종료 시 타이머를 정리한다", () => {
+  test("로딩 화면은 멈춤 단추 없이 계속 넘어가고 종료 시 타이머를 정리한다", () => {
+    // 2026-10-06 Bumm님 결정 118: 로딩 화면은 멈추는 화면이 아니다 — 자동 넘김 일시 정지 단추를 두지 않는다
     const previousOverflow=document.documentElement.style.overflow;
     const view=render(<GenerationWait spinTextRef={createRef()}/>);
-    const first=headline();const firstFact=fact();
-    fireEvent.click(view.getByRole('button',{name:'자동 넘김 일시 정지'}));
-    act(()=>vi.advanceTimersByTime(24_000));
-    expect(headline()).toBe(first);expect(fact()).toBe(firstFact);
-    expect(document.getElementById('spinner')?.dataset.paused).toBe('true');
-    fireEvent.click(view.getByRole('button',{name:'자동 넘김 재생'}));
+    expect(view.queryByRole('button')).toBeNull();
+    expect(document.querySelector('.generation-pause')).toBeNull();
+    const first=headline();
+    expect(document.getElementById('spinner')?.dataset.paused).toBe('false');
     act(()=>vi.advanceTimersByTime(8_000));expect(headline()).not.toBe(first);
     view.unmount();expect(document.documentElement.style.overflow).toBe(previousOverflow);
     expect(vi.getTimerCount()).toBe(0);

@@ -2,7 +2,7 @@
 
 ## 2026-10-06 — 일시정지 단추 제거 PR(118) · 가장자리 안정화 확정(119) (생성 0건)
 
-- **118 일시정지 단추 제거**: PR [edutogether/poster-studio#7](https://github.com/edutogether/poster-studio/pull/7)(가지 `fix/remove-wait-pause`, 원격 `master` 기준, 커밋 `4450e8556dac139921069531b62f15e0edf0b0d9`). **병합·배포하지 않는다**(지시). 움직임 줄이기 설정에서 자동 넘김을 멈추는 동작은 그대로. 접근성(WCAG 2.2.2) 영향은 PR 본문에 사실로 적었다. 🟠 이 작업 가지(`codex/claude-handoff-20261005`)의 `GenerationWait.tsx`(84번째 줄)에도 같은 단추가 있다 — 병합 전에 같은 제거가 필요하다.
+- **118 일시정지 단추 제거**: PR [edutogether/poster-studio#7](https://github.com/edutogether/poster-studio/pull/7)(가지 `fix/remove-wait-pause`, 원격 `master` 기준, 커밋 `4450e8556dac139921069531b62f15e0edf0b0d9`). **병합·배포하지 않는다**(지시). 움직임 줄이기 설정에서 자동 넘김을 멈추는 동작은 그대로. 접근성(WCAG 2.2.2) 영향은 PR 본문에 사실로 적었다. 이 작업 가지(`codex/claude-handoff-20261005`)에서도 같은 단추를 별도 커밋으로 제거했다(병합 금지 — 병합은 팀장이 Bumm님 «합쳐»를 받아 정한다). 이 가지는 탭이 숨겨졌을 때 멈추는 동작도 그대로 둔다.
 - **119 가장자리 안정화 = 12편 제작 기준**(`app.md` «대기 영상 투명 처리 기준»). 파이프라인: 정사각형 자르기 → AI 누끼 → `refine_frames.py … 1.6` → `stabilize_edges.py --poster track --band`(장면별 포스터 꼭짓점 필요) → VP9 알파 crf 28 → 얼굴 검사·자산 검사 → 확인 페이지(원본 4배)로 사람 확인. 🟠 도구 8개는 아직 로컬 `.cache/tools/`에만 있다(목록은 `app.md`) — 제작 전에 저장소로 옮길 것.
 - 12편 제작·비용 발생은 시작하지 않았다(77~80 결정 대기).
 

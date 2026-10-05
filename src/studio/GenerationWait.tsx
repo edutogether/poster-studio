@@ -32,7 +32,6 @@ export default function GenerationWait({ spinTextRef, initialSetId }: { spinText
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [reduced, setReduced] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
-  const [paused, setPaused] = useState(false);
   const [hidden, setHidden] = useState(() => document.hidden);
   const [scenes] = useState(() => {
     const sequence = createWaitSequence();
@@ -42,7 +41,9 @@ export default function GenerationWait({ spinTextRef, initialSetId }: { spinText
     return sequence;
   });
   const [sceneIndex, setSceneIndex] = useState(0);
-  const still = reduced || paused || hidden;
+  // 로딩 화면은 멈추는 화면이 아니다(2026-10-06 Bumm님 결정 118) — 멈춤 단추는 없고,
+  // 자동 넘김·영상은 «움직임 줄이기» 설정이거나 탭이 화면에서 숨겨졌을 때만 멈춘다.
+  const still = reduced || hidden;
   const scene = scenes[sceneIndex];
 
   useEffect(() => {
@@ -80,9 +81,7 @@ export default function GenerationWait({ spinTextRef, initialSetId }: { spinText
     <dialog ref={dialog} id="spinner" className="generation-wait spinner" data-paused={still} data-scene={sceneIndex} data-set-id={scene.id} aria-labelledby="generationTitle" onCancel={event => event.preventDefault()}>
       <div className="generation-content">
         <div className="generation-film waiting-art-frame" data-art={scene.id}>
-          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} paused={still} reduced={reduced} />
-          {!reduced && <button type="button" className="generation-pause" aria-label={paused ? "자동 넘김 재생" : "자동 넘김 일시 정지"} onClick={() => setPaused(value => !value)}>{paused ? "▷" : "Ⅱ"}</button>}
-        </div>
+          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} paused={still} reduced={reduced} />        </div>
         <h1 ref={heading} tabIndex={-1} id="generationTitle" className="generation-copy-stack">
           {scenes.map(({ id, title }, index) => <span key={id} className="generation-copy" data-active={index === sceneIndex} aria-hidden={index !== sceneIndex}>{title}</span>)}
         </h1>
