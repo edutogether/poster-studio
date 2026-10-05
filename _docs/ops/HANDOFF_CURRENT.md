@@ -1,5 +1,15 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-05 — 서버·CI 정비 초안 PR (병합·배포 대기)
+
+- Bumm님 결정: 정비는 **앱이 완결된 뒤 수정·배포**한다. 지금은 **초안 PR까지만** 준비했고 병합·배포하지 않는다.
+  - [PR #5](https://github.com/edutogether/poster-studio/pull/5) `ci/pin-tool-versions` — 워크플로 액션 SHA·`firebase-tools@15.32.1` 고정. PR Check 초록.
+  - [PR #6](https://github.com/edutogether/poster-studio/pull/6) `fix/generate-request-handling` — 서버 요청 처리 정비 + 생성 허용 시간창(기본 꺼짐). 서버 테스트 85개, PR Check 초록.
+  - 두 PR 모두 `master` 기준이라 화면·포스터 템플릿 작업과 겹치지 않는다(서버·워크플로 파일만).
+- 지금은 사내 클로즈 베타라 **누구나 생성 가능 상태 유지**. 행사 기기 전용 전환은 Bumm님이 시점을 정한다(설계 메모는 비공개로 보관).
+- 개인정보처리방침 수정안은 **승인 대기**(샘플: 로컬 `.cache/privacy-sample-20261005/`). 승인 전에는 `privacy.html`을 고치지 않는다.
+- OpenAI: 강제 한도 $250 확인, **이용 등급 1단계(월 $100·분당 5장)** — 행사 전 2단계 이상 필요(`runbook.md` ①).
+
 ## 2026-10-05 — 로딩 영상 시험 3편 추가 (11번, Bumm님 승인 3건)
 
 - **만든 것**: 모두 11번, 고친 지시문("눈 색뿐 아니라 승인 원화 그대로", "노란 눈" 삭제). A Fast 4초 · B 표준(`veo-3.1-generate-001`) 4초 · C Fast 8초("천천히" 추가). 720p·소리 없음·결과 1개, **각 요청 1번, 재생성 0번**. 걸린 시간 47.7초 · 47.7초 · 59.1초, 걸러짐 0.
