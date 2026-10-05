@@ -17,6 +17,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import PosterStudio from './PosterStudio.js';
 import './favicon.js';
+import { finishHomeRestart } from './restartHome.js';
+
+finishHomeRestart();
 
 const container = document.querySelector('main.app');
 if (container) {

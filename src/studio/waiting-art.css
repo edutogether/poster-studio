@@ -1,6 +1,6 @@
 /* 원화는 보존한다. 피사체 하단을 상자 높이 94%에 맞추고 장면별 체감 크기만 소폭 보정한다. */
 .waiting-art-frame { overflow: hidden; }
-.waiting-art-frame > img { transform-origin: 50% 100%; transform: translate(var(--art-x, 0%), var(--art-y, 0%)) scale(var(--art-scale, 1)); }
+.waiting-art-frame > img, .waiting-art-frame > video { transform-origin: 50% 100%; transform: translate(var(--art-x, 0%), var(--art-y, 0%)) scale(var(--art-scale, 1)); }
 .waiting-art-frame[data-art="1"] { --art-scale: 1; --art-y: 2.523%; }
 .waiting-art-frame[data-art="2"] { --art-scale: 1; --art-y: 1.528%; }
 .waiting-art-frame[data-art="3"] { --art-scale: 0.95; --art-y: 6.280%; }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { waitingSets } from "./waitingSets.js";
+import { approvedWaitingVideo } from "./waitingVideo.js";
+import WaitingArtwork from "./WaitingArtwork.js";
 import "./generation-wait.css";
 import "./waiting-art.css";
 
@@ -26,14 +28,21 @@ export function createWaitSequence() {
   return sequence;
 }
 
-export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject<HTMLParagraphElement | null> }) {
+export default function GenerationWait({ spinTextRef, initialSetId }: { spinTextRef: RefObject<HTMLParagraphElement | null>; initialSetId?: number }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [reduced, setReduced] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
   const [paused, setPaused] = useState(false);
-  const [scenes] = useState(createWaitSequence);
+  const [hidden, setHidden] = useState(() => document.hidden);
+  const [scenes] = useState(() => {
+    const sequence = createWaitSequence();
+    // API 없는 로컬 자료 페이지에서 지정한 세트를 먼저 확인한다.
+    const index = sequence.findIndex(item => item.id === initialSetId);
+    if (index > 0) [sequence[0], sequence[index]] = [sequence[index], sequence[0]];
+    return sequence;
+  });
   const [sceneIndex, setSceneIndex] = useState(0);
-  const still = reduced || paused;
+  const still = reduced || paused || hidden;
   const scene = scenes[sceneIndex];
 
   useEffect(() => {
@@ -46,9 +55,12 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
     const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     const update = () => setReduced(media?.matches ?? false);
     media?.addEventListener?.("change", update);
+    const visibility = () => setHidden(document.hidden);
+    document.addEventListener("visibilitychange", visibility);
     return () => {
       document.documentElement.style.overflow = previousOverflow;
       media?.removeEventListener?.("change", update);
+      document.removeEventListener("visibilitychange", visibility);
       if (element.open && typeof element.close === "function") element.close();
     };
   }, []);
@@ -68,7 +80,7 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
     <dialog ref={dialog} id="spinner" className="generation-wait spinner" data-paused={still} data-scene={sceneIndex} data-set-id={scene.id} aria-labelledby="generationTitle" onCancel={event => event.preventDefault()}>
       <div className="generation-content">
         <div className="generation-film waiting-art-frame" data-art={scene.id}>
-          <img className="generation-robot-film" data-active="true" src={scene.image} width={704} height={704} alt={scene.theme} />
+          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} paused={still} reduced={reduced} />
           {!reduced && <button type="button" className="generation-pause" aria-label={paused ? "자동 넘김 재생" : "자동 넘김 일시 정지"} onClick={() => setPaused(value => !value)}>{paused ? "▷" : "Ⅱ"}</button>}
         </div>
         <h1 ref={heading} tabIndex={-1} id="generationTitle" className="generation-copy-stack">

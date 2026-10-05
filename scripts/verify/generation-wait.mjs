@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 
 const root = process.cwd();
 const selfTest = process.argv.includes("--selftest");
-const out = path.join(root, ".cache", "wait-v2-verification");
+const out = process.env.VERIFY_OUTPUT_DIR ? path.resolve(process.env.VERIFY_OUTPUT_DIR) : path.join(root, ".cache", "wait-v2-verification");
 await fs.mkdir(out, { recursive: true });
 const headers = JSON.parse(await fs.readFile("firebase.json", "utf8")).hosting
   .headers[0].headers;

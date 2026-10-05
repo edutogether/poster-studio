@@ -46,6 +46,14 @@ dialog #dialogContent > .poster {
 .brand {
   gap: 13px;
 }
+.header-home {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.header-home:focus-visible { outline: 3px solid #ed3124; outline-offset: 5px; border-radius: 4px; }
 .cgv-symbol {
   width: 80px;
 }

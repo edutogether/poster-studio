@@ -16,6 +16,7 @@ import { buildPosters, makePlaceholderArt } from "./poster.js";
 import StudioView from "./studio/StudioView.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
+import { restartAtHome } from "./restartHome.js";
 
 /* 한 장의 사진으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만 허용한다
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
@@ -479,6 +480,15 @@ export default function PosterStudio() {
     setPhase("idle");
     onReset();
   };
+  const onHome = () => {
+    stopCamera();
+    capturedBlobRef.current = null;
+    pendingMetaRef.current = null;
+    if (snapshotURLRef.current) URL.revokeObjectURL(snapshotURLRef.current);
+    snapshotURLRef.current = null;
+    $("printArea")?.remove();
+    restartAtHome();
+  };
   return (
     <StudioView
       mode={mode}
@@ -509,6 +519,7 @@ export default function PosterStudio() {
       onFallback={onFallback}
       onPrint={onPrint}
       onNewPerson={onNewPerson}
+      onHome={onHome}
       stopCamera={stopCamera}
     />
   );

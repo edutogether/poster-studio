@@ -1,0 +1,18 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Pretendard, sans-serif; color: #222; background: #f5f5f5; }
+button { font: inherit; }
+.video-review { max-width: 1600px; margin: auto; padding: 32px; }
+.video-review header { margin-bottom: 28px; line-height: 1.7; }
+.video-review-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.video-review article { min-width: 0; background: white; border: 1px solid #ddd; border-radius: 14px; padding: 20px; text-align: center; }
+.video-review-status { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: 13px; color: #666; }
+.video-review-status b { font-weight: 500; }
+.video-review .generation-film { width: min(100%, 350px); margin: 12px auto; }
+.video-review h2 { font-size: 22px; line-height: 1.45; margin: 0; word-break: keep-all; }
+.video-review h3 { color: #ed3124; font-size: 19px; line-height: 1.5; }
+.video-review p { color: #666; line-height: 1.75; word-break: keep-all; }
+.video-review-dots { color: #ed3124; font-size: 10px; margin: 20px 0; }
+.video-review-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 20px; font-size: 13px; }
+.video-review a { color: #365974; text-underline-offset: 3px; }
+@media (max-width: 1100px) { .video-review-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .video-review { padding: 16px; } .video-review-grid { grid-template-columns: 1fr; } }

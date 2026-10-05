@@ -1,8 +1,8 @@
 /* 결과 화면: 세로 원본 한 장 + 구성이 다른 디자인 8종. */
 #resultView {
-  grid-template-columns: minmax(0, 38fr) minmax(0, 62fr);
-  height: calc(100svh - var(--header-h, 72px));
-  min-height: 620px;
+  grid-template-columns: minmax(0, 40fr) minmax(0, 60fr);
+  height: auto;
+  min-height: calc(100svh - 76px);
   background: #fff;
 }
 #resultView .result-artboard {
@@ -40,15 +40,15 @@
   aspect-ratio: 2 / 3; box-shadow: none;
 }
 #resultView #resultWorkspace {
-  padding: 38px 28px 24px;
+  padding: 28px 40px 0;
   background: #fff;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: auto;
 }
-#resultView .page-heading { margin: 0 0 22px; flex: none; }
-#resultView .page-heading h1 { font-size: clamp(24px, 1.75vw, 34px); line-height: 1.35; }
+#resultView .page-heading { margin: 0 0 18px; flex: none; }
+#resultView .page-heading h1 { font-size: 27px; font-weight: 800; line-height: 1.25; letter-spacing: -1px; }
 #resultView .result-accent { color: var(--accent, #d82d23); }
 #resultView .page-heading p { margin: 12px 0 0; font-size: 16px; color: #646464; }
 #resultView .result-settings { flex: 0 0 auto; padding: 0; background: transparent; border: 0; }
@@ -60,19 +60,19 @@
   grid-template-rows: auto auto;
   align-content: start;
   align-items: start;
-  gap: 18px 18px;
+  gap: 12px 18px;
   width: 100%;
-  max-width: max(520px, calc((100svh - 342px) * 4 / 3));
-  margin: 0 auto;
-  padding: 4px;
+  max-width: none;
+  margin: 0;
+  padding: 2px;
   height: auto;
 }
 #resultView #gallery .style-option {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  gap: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -102,32 +102,50 @@
 #resultView #gallery .style-image img { width: 100%; height: 100%; object-fit: contain; }
 #resultView #gallery .style-option:hover .style-image { box-shadow: 0 5px 18px #00000025; }
 #resultView #gallery .style-option[aria-pressed="true"] .style-image { outline-color: #e72a21; }
-#resultView #gallery .style-caption { display: block; padding: 0; background: transparent; }
-#resultView #gallery .style-name { color: #494949; font-size: 14px; font-weight: 600; line-height: 1.5; }
+#resultView #gallery .style-caption { display: block; height: 22px; margin-top: 4px; padding: 0; background: transparent; }
+#resultView #gallery .style-name { color: #494949; font-size: 14px; font-weight: 600; line-height: 22px; }
 #resultView #gallery .style-option[aria-pressed="true"] .style-name { color: #dc241b; font-weight: 750; }
 #resultView #gallery .style-check { top: 7px; right: 7px; background: #e72a21; color: #fff; }
 #resultView .result-actions {
   flex: none;
   width: 100%;
-  margin-top: 20px;
-  padding: 0;
+  margin-top: auto;
+  padding: 12px 0;
   position: static;
   background: #fff;
 }
+/* 첫 화면과 같은 좌우 기준선·목록 셀·하단 버튼 영역을 사용한다. */
+@media (min-width: 1100px) and (min-height: 700px) {
+  #resultView { height: calc(100svh - 76px); min-height: 0; }
+  #resultView #resultWorkspace { height: 100%; padding: 18px 30px 0; overflow: visible; }
+  #resultView .page-heading { margin-bottom: 12px; }
+  #resultView .result-settings { display: flex; flex: 1; min-height: 0; }
+  #resultView #gallery.style-grid { flex: 1; height: 100%; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  #resultView #gallery .style-option { height: 100%; min-height: 0; }
+  #resultView #gallery .style-image { height: calc(100% - 26px); width: auto; max-width: 100%; }
+  #resultView .result-actions { min-height: 72px; margin-top: 10px; }
+  #resultView .result-actions > button { min-height: 48px; }
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  #resultView { grid-template-columns: minmax(0, 36fr) minmax(0, 64fr); }
+}
 @media (max-width: 1099px) {
-  #resultView { grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); }
   #resultView .result-artboard { padding: 24px 18px; }
-  #resultView #resultWorkspace { padding: 42px 20px 0; }
-  #resultView #gallery.style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 470px; gap: 20px 16px; }
+  #resultView #resultWorkspace { padding: 25px 26px 0; }
+  #resultView #gallery.style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; }
 }
 @media (max-width: 760px) {
   #resultView { grid-template-columns: 1fr; height: auto; min-height: 0; }
   #resultView .result-artboard { padding: 26px 22px; }
   #resultView .result-poster-slot { width: min(100%, 340px); }
-  #resultView #resultWorkspace { padding: 28px 22px 0; overflow: visible; }
-  #resultView .page-heading h1 { font-size: 25px; }
+  #resultView #resultWorkspace { padding: 25px 23px 0; overflow: visible; }
+  #resultView .page-heading h1 { font-size: 27px; }
   #resultView .page-heading p { font-size: 15px; }
   #resultView .result-actions { z-index: 3; }
+  #resultView #gallery.style-grid { gap: 22px 16px; }
+}
+@media (max-width: 370px) {
+  #resultView #resultWorkspace { padding-left: 20px; padding-right: 20px; }
 }
 
 #resultView .result-brand { display: inline-flex; align-items: center; gap: 9px; color: #191919; font-size: 19px; font-weight: 750; letter-spacing: -.4px; }

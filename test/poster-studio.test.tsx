@@ -16,6 +16,7 @@ import { StrictMode } from 'react';
 import { render, act, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { TEMPLATES } from '../src/templates.js';
 import PosterStudio, { getMeta } from '../src/PosterStudio.js';
+import * as homeRestart from '../src/restartHome.js';
 import { heightToApply, TWO_COL_MIN_WIDTH } from '../src/useLayoutMatch.js';
 import {
   installCanvas, installCamera, installFetch, installImage, installFonts,
@@ -27,6 +28,7 @@ let cam: ReturnType<typeof installCamera>;
 let objectUrls: ReturnType<typeof installObjectURL>;
 
 beforeEach(() => {
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   canvasContexts = installCanvas();
@@ -73,6 +75,32 @@ function renderApp(strict = false) {
   const ui = strict ? <StrictMode><PosterStudio /></StrictMode> : <PosterStudio />;
   return render(ui, { container: document.querySelector('main.app') as HTMLElement });
 }
+
+describe('헤더에서 처음으로', () => {
+  test.each(['.brand.header-home', '.festival-brand.header-home'])('%s는 카메라를 끄고 새 홈 문서로 이동한다', async selector => {
+    const restart = vi.spyOn(homeRestart, 'restartAtHome').mockImplementation(() => {});
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    expect(cam.stopped).toEqual([]);
+    fireEvent.click(document.querySelector(selector)!);
+    expect(cam.stopped).toEqual(['video']);
+    expect(restart).toHaveBeenCalledTimes(1);
+  });
+
+  test('촬영한 사진 URL과 인쇄용 화면을 폐기한 뒤 재시작한다', async () => {
+    const restart = vi.spyOn(homeRestart, 'restartAtHome').mockImplementation(() => {});
+    await act(async () => { renderApp(); });
+    await shoot();
+    const snapshot = el<HTMLImageElement>('snapshot').src;
+    const print = document.createElement('div');
+    print.id = 'printArea';
+    document.body.append(print);
+    fireEvent.click(document.querySelector('.brand.header-home')!);
+    expect(objectUrls.revoked).toContain(snapshot);
+    expect(document.getElementById('printArea')).toBeNull();
+    expect(restart).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('주연 이름', () => {
   test.each(['', '   ', '김인키', '김태범'])('입력 %j의 성을 생략하지 않고 빈 값만 김인키로 채운다', async (name) => {
