@@ -40,7 +40,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
       - id: filter
@@ -75,8 +75,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
       - run: npm ci
@@ -104,13 +104,13 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
       - run: npm ci
         working-directory: functions
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
       # github-actions-deploy 서비스 계정은 project-level roles/secretmanager.secretAccessor
@@ -118,7 +118,7 @@ jobs:
       # 조회, secrets.get — firebase-tools가 배포 시점에 필요) 둘 다 있어야 한다.
       # Secret Accessor 하나만으로는 secrets.get이 없어서 배포가 403으로 막힌다
       # (2026-08-29 실제로 겪고 원인 확인함).
-      - run: npx firebase-tools deploy --only functions --project inky-poster-studio --non-interactive
+      - run: npx --yes firebase-tools@15.32.1 deploy --only functions --project inky-poster-studio --non-interactive
       # 5차 감사 발견: API_BASE/ALLOWED_ORIGINS/BOOTH_TOKEN 3곳이 수동 동기화 지점이라
       # 하나만 어긋나도 부스 전체가 조용히 401로 죽을 수 있다. 배포 직후 실제로
       # 클라이언트에 박힌 부스토큰으로 라이브 /generate를 호출해 401이 아닌지
@@ -162,10 +162,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # 2026-09-09 리액트+TS 전환으로 빌드 단계가 처음 생겼다. 배포되는 것은
       # 소스(public/)가 아니라 산출물(dist/)이다 — firebase.json의 hosting.public 참고.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
       - run: npm ci
@@ -195,10 +195,10 @@ jobs:
             fi
           done
           echo "dist 점검 통과"
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
-      - run: npx firebase-tools deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive
+      - run: npx --yes firebase-tools@15.32.1 deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive
       # 배포 직후 라이브 확인. **주소가 두 개이고 둘 다 살아 있어야 한다**(2026-09-10):
       #   poster.edutogether.kr  정식 주소 — 사람에게 주는 주소
       #   poster-studio.web.app  이미 나간 QR·링크가 죽으면 안 되므로 유지
