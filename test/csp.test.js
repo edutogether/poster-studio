@@ -58,3 +58,8 @@ test('CSP의 핵심 지시자가 그대로다 — 예외를 넓히다 이것들�
   expect(directive('object-src')).toEqual(["'none'"]);
   expect(directive('frame-ancestors')).toEqual(["'none'"]);
 });
+
+test('CSP가 외부 글꼴 주소를 허용하지 않는다 — 포스터 글꼴까지 이 도메인에서 받는다(2026-10-07)', () => {
+  expect(directive('font-src')).toEqual(["'self'"]);
+  expect(directive('style-src')).toEqual(["'self'", "'unsafe-inline'"]);
+});
