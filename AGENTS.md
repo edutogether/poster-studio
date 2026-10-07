@@ -22,9 +22,10 @@
 - 생성 서버로 보내는 FormData는 `photo`·`movieTitle`·`tagline`·`genre`·`mode` 다섯 필드다. 사진과 제작 정보는 서버를 거쳐 OpenAI 이미지 생성에 사용한다. 이름·단체명·출연진은 브라우저에서만 합성하며 서버로 보내지 않는다. `test/poster-studio.test.tsx`의 요청 본문 허용 목록 검사를 유지한다.
 - Firestore에는 제한·예산용 카운터 4종과 사진 SHA-256·갱신 시각만 남긴다. 사진 원본·이름을 추가하지 않는다. `cleanupOldCountersSchedule`의 매일 KST 04시 실행·30일 지난 기록 삭제를 개인정보 고지와 일치시킨다.
 - 로컬로 저장한 포스터 파일은 서버 정리로 삭제되지 않는다. 개인정보 고지의 2026-12-31까지 보관 후 운영자 삭제 정책을 유지한다.
-- 업로드는 플랫폼의 `rawBody`를 busboy로 파싱한다. `/generate` 순서인 `checkBoothToken → parseMultipart → requirePhoto → rateLimit → ipRateLimit → checkPhotoGenerationLimit → dailyBudgetCap`을 유지한다. 생성 성공·실패뿐 아니라 파싱 오류·429 차단에서도 임시 사진을 삭제하고 촬영 후 카메라 트랙을 해제한다.
+- 업로드는 플랫폼의 `rawBody`를 busboy로 파싱한다. `/generate` 순서인 `markRequestStart → checkBoothToken → checkBoothCode → generateWindowGate → parseMultipart → requirePhoto → rateLimit → ipRateLimit → checkPhotoGenerationLimit → dailyBudgetCap`을 유지한다. 생성 성공·실패뿐 아니라 파싱 오류·429 차단에서도 임시 사진을 삭제하고 촬영 후 카메라 트랙을 해제한다.
 - 타임아웃 체인 120초(OpenAI 1회) < 125초(재시도·폴백 포함 요청 총시간) < 140초(Functions) < 150초(클라이언트)를 함께 유지한다. 변경 시 `scripts/loadtest.mjs`의 관련 값도 맞춘다.
 - IP 제한은 `clientIpForRateLimit()`의 XFF 마지막 항목을 유지한다. 전역 150건/10분·IP별 50건/10분·사진별 생성 2회·KST 하루 4000건의 트랜잭션 검증을 유지한다. 실패한 AI 요청의 카운터가 자동 복구된다고 가정하지 않는다. 부스토큰은 클라이언트와 Secret Manager를 함께 맞춘다.
+- 부스 코드 스위치(기본 꺼짐)는 서버 `checkBoothCode`·화면 `src/boothCode.ts`·배포 `scripts/ci/booth-code-env.mjs` 세 자리가 같은 코드 형식을 쓴다. 한 곳만 바꾸지 않는다. 켜고 끄는 절차와 코드 값은 공개 저장소에 쓰지 않는다.
 - CORS는 정식 주소 `https://poster.edutogether.kr`와 기존 주소 `https://poster-studio.web.app`을 유지하며 허용 출처 정규식의 앵커·점 이스케이프를 풀지 않는다.
 - `/generate`는 실제 비용·운영 카운터를 소모한다. 검사에 OpenAI·Firestore 실호출을 넣지 않고 가짜 응답으로 검증한다. `public/`의 파일은 배포로 공개된다.
 
@@ -32,6 +33,7 @@
 
 - 승인 로딩 기준은 `_docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/README.md`다. 그림·제목·상식의 12세트 짝, 한 바퀴 내 중복 없는 무작위 순서, 8초 전환, 크기·간격을 유지한다. 로딩 난수는 출력 조판의 난수와 분리한다. 향후 영상 교체도 같은 세트·표시 기준을 따른다.
 - CSP의 `script-src 'self'`와 Vite의 `modulePreload.polyfill: false`를 유지한다. 인라인 script를 추가하지 않는다. HTML·`/`는 `no-cache`, immutable은 해시가 붙은 `/assets/`에만 적용한다. 고정 이름의 `public/` 자산에는 같은 캐시 전제를 적용하지 않는다.
+- 글꼴은 전부 자체 호스팅이다(`font-src 'self'`). 포스터 글꼴 `public/fonts/poster/`는 `scripts/fonts/fetch-poster-fonts.mjs`가 받은 파일 그대로이며, 다시 받으면 40지문 대조로 출력이 같은지 확인한다. 외부 글꼴 도메인을 CSP·HTML에 다시 넣지 않는다.
 
 ## 검사
 

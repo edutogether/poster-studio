@@ -54,6 +54,8 @@ import {
   ipKey,
   parseGenerateWindows,
   makeGenerateWindowGate,
+  makeBoothCodeGate,
+  _setBoothCodeForTesting,
   markRequestStart,
   generateHandler
 } from '../index.js';
@@ -333,19 +335,40 @@ test('mapGenerateError: 알 수 없는 오류는 500 + 원문(raw) 노출 없이
 });
 
 // ── /generate 레이트리밋(실제 OpenAI 호출 전에 막히는 경로만 검증) ────
+// 플랫폼처럼 본문을 다 읽어 req.rawBody로 넘기되, 플랫폼의 HTTP 요청 한도(32MiB)까지만 받는다.
+// 시험 중에만 잠깐 뜨는 서버라도 이 컴퓨터(127.0.0.1)에서만 연다.
+const TEST_SERVER_MAX_BODY = 32 * 1024 * 1024;
 function startTestServer() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       const chunks = [];
-      req.on('data', (c) => chunks.push(c));
+      let size = 0;
+      req.on('data', (c) => {
+        size += c.length;
+        if (size > TEST_SERVER_MAX_BODY) {
+          res.writeHead(413).end();
+          req.destroy();
+          return;
+        }
+        chunks.push(c);
+      });
       req.on('end', () => {
         req.rawBody = Buffer.concat(chunks);
         app(req, res);
       });
     });
-    server.listen(0, () => resolve(server));
+    server.listen(0, '127.0.0.1', () => resolve(server));
   });
 }
+
+test('시험 서버: 이 컴퓨터(127.0.0.1)에서만 열린다', async () => {
+  const server = await startTestServer();
+  try {
+    expect(server.address().address).toBe('127.0.0.1');
+  } finally {
+    server.close();
+  }
+});
 
 test('POST /generate: 부스 토큰 헤더가 없거나 틀리면 401이고 레이트리밋 카운트도 안 늘어난다', async () => {
   const server = await startTestServer();
@@ -1406,13 +1429,14 @@ test('generateHandler: 시간 예산은 요청이 들어온 순간부터 잰다(
   }
 });
 
-test('POST /generate: 요청 시작 표시가 맨 앞이고, 시간창은 부스 토큰 뒤·사진 파싱 앞이다', () => {
+test('POST /generate: 요청 시작 표시가 맨 앞이고, 부스 코드·시간창은 부스 토큰 뒤·사진 파싱 앞이다', () => {
   const router = app.router || app._router;
   const layer = router.stack.find((l) => l.route?.path === '/generate');
   const names = layer.route.stack.map((s) => s.handle.name);
   expect(layer.route.stack[0].handle).toBe(markRequestStart);
   expect(names[1]).toBe('checkBoothToken');
-  expect(names[3]).toBe('parseMultipart');
+  expect(names[2]).toBe('checkBoothCode');
+  expect(names[4]).toBe('parseMultipart');
 });
 
 test('parseGenerateWindows: 샘플 형식을 한국 시간으로 읽고, 형식이 틀리면 오류다', () => {
@@ -1440,4 +1464,102 @@ test('생성 허용 시간창: 비어 있으면 언제나 통과, 설정하면 �
     expect(before).toBe(403);
     expect(atEnd).toBe(403);
   });
+});
+
+// ── 부스 코드(2026-10-07, 기본 꺼짐) ─────────────────────────────────────
+// 꺼져 있으면 요청이 지금과 같고, 켜면 x-booth-code의 SHA-256이 설정값과 같을 때만 통과한다.
+// 사진 파싱·카운터보다 앞에서 막으므로 막힌 요청은 임시 파일도, 카운터 소모도 남기지 않는다.
+
+const BOOTH_CODE = 'TEST-CODE-1234';
+const BOOTH_CODE_SHA256 = crypto.createHash('sha256').update(BOOTH_CODE).digest('hex');
+
+function runGate(gate, headers = {}) {
+  return new Promise((resolve) => {
+    gate({ headers }, { status: (code) => ({ json: (body) => resolve({ code, body }) }) }, () => resolve('next'));
+  });
+}
+
+test('부스 코드: 꺼져 있으면 헤더가 없어도 통과한다', async () => {
+  expect(await runGate(makeBoothCodeGate({ required: false }))).toBe('next');
+  expect(await runGate(makeBoothCodeGate({ required: false, sha256: '' }), { 'x-booth-code': 'x' })).toBe('next');
+});
+
+test('부스 코드: 켜면 맞는 코드만 통과하고, 없거나 틀리면 403과 안내 문구다', async () => {
+  const gate = makeBoothCodeGate({ required: true, sha256: BOOTH_CODE_SHA256 });
+  expect(await runGate(gate, { 'x-booth-code': BOOTH_CODE })).toBe('next');
+  for (const headers of [
+    {},
+    { 'x-booth-code': '' },
+    { 'x-booth-code': 'TEST-CODE-1235' },
+    { 'x-booth-code': BOOTH_CODE.toLowerCase() },
+    { 'x-booth-code': BOOTH_CODE + ' ' }
+  ]) {
+    const r = await runGate(gate, headers);
+    expect(r.code, JSON.stringify(headers)).toBe(403);
+    expect(r.body.error).toBe('행사 부스에서만 만들 수 있어요.');
+  }
+});
+
+test('부스 코드: 켜졌는데 해시가 없거나 형식이 틀리면 시작 단계에서 오류다(조용히 통과·차단하지 않는다)', () => {
+  for (const sha256 of [undefined, '', 'abc', BOOTH_CODE_SHA256.toUpperCase(), BOOTH_CODE_SHA256 + '0']) {
+    expect(() => makeBoothCodeGate({ required: true, sha256 }), String(sha256)).toThrow(/BOOTH_CODE_SHA256/);
+  }
+});
+
+test('POST /generate: 부스 코드가 켜지면 코드 없는 요청은 파싱·카운터 전에 403이고 임시 파일·카운터를 남기지 않는다', async () => {
+  const seen = [];
+  _setCounterImplForTesting(async (collectionName) => {
+    seen.push(collectionName);
+    return { allowed: true, count: 1 };
+  });
+  _setBoothCodeForTesting({ required: true, sha256: BOOTH_CODE_SHA256 });
+  const server = await startTestServer();
+  const port = server.address().port;
+  const before = countUploads();
+  try {
+    const { headers, rawBody } = await buildMultipartRequest([
+      [
+        'photo',
+        {
+          blob: new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xdb, ...crypto.randomBytes(8)])], { type: 'image/jpeg' }),
+          filename: 'p.jpg'
+        }
+      ]
+    ]);
+    const blocked = await fetch(`http://127.0.0.1:${port}/generate`, {
+      method: 'POST',
+      headers: { ...headers, 'x-booth-token': 'test-booth-token' },
+      body: rawBody
+    });
+    expect(blocked.status).toBe(403);
+    expect(seen, '막힌 요청은 카운터를 건드리면 안 된다').toEqual([]);
+    expect(countUploads(), '막힌 요청은 임시 파일을 만들면 안 된다').toBe(before);
+
+    // 맞는 코드는 다음 단계로 넘어간다 — 사진이 없으니 400(사진 확인)에서 끝난다.
+    const passed = await fetch(`http://127.0.0.1:${port}/generate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-booth-token': 'test-booth-token', 'x-booth-code': BOOTH_CODE },
+      body: '{}'
+    });
+    expect(passed.status).toBe(400);
+  } finally {
+    server.close();
+    _setBoothCodeForTesting(null);
+    useSharedCounterImpl();
+  }
+});
+
+test('POST /generate: 기본(꺼짐) 상태에서는 부스 코드 없이도 지금처럼 다음 단계로 간다', async () => {
+  const server = await startTestServer();
+  const port = server.address().port;
+  try {
+    const r = await fetch(`http://127.0.0.1:${port}/generate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-booth-token': 'test-booth-token' },
+      body: '{}'
+    });
+    expect(r.status).toBe(400);
+  } finally {
+    server.close();
+  }
 });

@@ -13,6 +13,7 @@ import {
   H,
 } from "./constants.js";
 import { buildPosters, makePlaceholderArt } from "./poster.js";
+import { boothCodeHeaders } from "./boothCode.js";
 import StudioView from "./studio/StudioView.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
@@ -370,7 +371,7 @@ export default function PosterStudio() {
     try {
       const res = await fetch(`${API_BASE}/generate`, {
         method: "POST",
-        headers: { "x-booth-token": BOOTH_TOKEN },
+        headers: { "x-booth-token": BOOTH_TOKEN, ...boothCodeHeaders() },
         body: form,
         signal: ctrl.signal,
       });

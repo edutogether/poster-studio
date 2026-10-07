@@ -110,6 +110,13 @@ jobs:
           node-version: '22'
       - run: npm ci
         working-directory: functions
+      # 부스 코드 스위치(2026-10-07, 기본 꺼짐). 값은 저장소에 두지 않고 저장소 설정의 변수·비밀값에서
+      # 배포할 때만 넣는다. 꺼져 있으면 아무것도 쓰지 않고, 켜졌는데 값이 틀리면 여기서 배포를 멈춘다.
+      - name: 부스 코드 설정
+        env:
+          BOOTH_CODE_REQUIRED: ${{ vars.BOOTH_CODE_REQUIRED }}
+          BOOTH_CODE: ${{ secrets.BOOTH_CODE }}
+        run: node scripts/ci/booth-code-env.mjs functions/.env.inky-poster-studio
       - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'

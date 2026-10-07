@@ -26,13 +26,11 @@
   <meta property="og:image:height" content="630" />
   <meta property="og:image:type" content="image/jpeg" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Serif+KR:wght@500;700;900&family=Anton&family=Bebas+Neue&display=swap" rel="stylesheet" />
-  <!-- Pretendard는 자체 호스팅(fonts/pretendard.css) — jsDelivr(GitHub raw) CDN 단일장애점 제거.
-       Black Han Sans·Noto Serif KR 등 나머지는 학생이 입력하는 임의의 한글 텍스트 전체를
-       커버하려면 자체 호스팅 시 폰트 용량이 수십 MB로 불어나 Google Fonts CDN(자체 서브셋팅)을
-       그대로 쓰는 게 낫다고 판단함 — CLAUDE.md 참고. -->
+  <!-- 글꼴은 전부 자체 호스팅이다. Pretendard(fonts/pretendard.css)는 CDN 단일장애점 제거로,
+       포스터 글꼴(fonts/poster.css — Black Han Sans·Noto Serif KR·Anton·Bebas Neue)은 2026-10-07에
+       구글 폰트가 주던 파일·조각 규칙 그대로 옮겼다. 브라우저는 그리는 글자가 든 조각만 받는다.
+       다시 받는 방법: scripts/fonts/fetch-poster-fonts.mjs -->
+  <link rel="stylesheet" href="fonts/poster.css" />
   <link rel="stylesheet" href="fonts/pretendard.css" />
   <link rel="stylesheet" href="/src/studio.css" />
 </head>
