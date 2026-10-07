@@ -51,6 +51,9 @@ EXTRA_RATIO = 0.15   # 원화 눈 넓이(얼굴 크기로 환산) 대비 이 비
 ALLOW_GROWTH = 2.5   # 원화에 있던 종류는 원화 크기의 이 배수까지 허용
 BAND_PAD = 0.08      # 눈높이 띠를 위아래로 얼굴판 높이의 이 비율만큼 넓힌다
 SEARCH = 0.3         # 추적할 때 앞 프레임 위치에서 상자 크기의 이 비율만큼 둘러본다
+EXPAND = 0.35        # 얼굴 상자를 사방으로 이 비율만큼 넓혀 얼굴판 전체를 본다 — 고개를 돌리면 얼굴판이 상자 밖으로 나가
+                     # 입 절반을 놓쳤다(2026-10-07 01번). 얼굴판은 «원래 상자와 겹치고, 넓이의 25% 이상이 상자 안인» 어두운 덩어리다
+CORE_SHARE = 0.25
 
 
 def warm_mask(rgb):
@@ -66,20 +69,31 @@ def hull_mask(mask):
     return np.asarray(im, dtype=bool)
 
 
-def face_marks(crop):
-    """상자 안 얼굴판의 표시 덩어리. 얼굴판이 안 보이면 None. 좌표는 상자 기준."""
+def expand(box, shape):
+    """얼굴 상자를 EXPAND만큼 넓힌 영역과, 그 안에서 원래 상자의 자리(core)."""
+    x0, y0, x1, y1 = box; px, py = int(EXPAND * (x1 - x0)), int(EXPAND * (y1 - y0))
+    X0, Y0, X1, Y1 = max(0, x0 - px), max(0, y0 - py), min(shape[1], x1 + px), min(shape[0], y1 + py)
+    return [X0, Y0, X1, Y1], (x0 - X0, y0 - Y0, x1 - X0, y1 - Y0)
+
+
+def face_marks(crop, core=None):
+    """얼굴판의 표시 덩어리. 얼굴판이 안 보이면 None. 좌표는 crop 기준.
+    core = crop 안의 원래 얼굴 상자(없으면 crop 전체). 크기 기준은 모두 core로 잰다."""
     v = crop.max(2).astype(np.int32)
     warm = warm_mask(crop)
+    cx0, cy0, cx1, cy1 = core or (0, 0, crop.shape[1], crop.shape[0]); ch, cw = cy1 - cy0, cx1 - cx0
     lab, n = ndi.label(ndi.binary_closing(v < DARK, iterations=3))
     if not n: return None
-    sizes = ndi.sum(np.ones(lab.shape), lab, range(1, n + 1))
-    keep = np.isin(lab, 1 + np.flatnonzero(sizes >= 0.05 * v.size))   # 상자 넓이의 5% 이상인 어두운 덩어리만
+    idx = range(1, n + 1)
+    sizes = ndi.sum(np.ones(lab.shape), lab, idx)
+    in_core = ndi.sum(np.ones((ch, cw)), lab[cy0:cy1, cx0:cx1], idx)
+    # 상자 넓이의 5% 이상이고 넓이의 CORE_SHARE 이상이 상자 안인 어두운 덩어리만(상자 밖 검은 손·소품은 빼고, 상자 밖으로 나간 얼굴판은 끝까지)
+    keep = np.isin(lab, 1 + np.flatnonzero((sizes >= 0.05 * ch * cw) & (in_core >= CORE_SHARE * sizes)))
     if keep.sum() < 50: return None
     hull = hull_mask(keep)
-    h, w = hull.shape
-    inner = ndi.binary_erosion(hull, iterations=max(3, int(0.04 * min(h, w))))
+    inner = ndi.binary_erosion(hull, iterations=max(3, int(0.04 * min(ch, cw))))
     if (warm & inner).sum() < GLOW_MIN: return None
-    local = ndi.median_filter(v, size=max(9, int(0.25 * h) | 1))
+    local = ndi.median_filter(v, size=max(9, int(0.25 * ch) | 1))
     mark = inner & (v - local >= CONTRAST) & (v >= BRIGHT)
     mark = ndi.binary_dilation(mark, iterations=1) & inner
     r, g, b = (crop[..., k].astype(np.int32) for k in range(3))
@@ -90,11 +104,12 @@ def face_marks(crop):
         m = mlab == j
         ring = ndi.binary_dilation(m, iterations=3) & hull & (v >= BRIGHT)   # 눈은 가운데가 거의 흰색, 둘레가 주황
         ys, xs = np.nonzero(m)
-        comps.append({'area': int(m.sum()), 'warm': float(warm[ring].mean()) if ring.any() else 0.0, 'red': float(red[m].mean()),
+        comps.append({'idx': j, 'area': int(m.sum()), 'warm': float(warm[ring].mean()) if ring.any() else 0.0, 'red': float(red[m].mean()),
                       'peak': float(np.percentile(v[m], 95)), 'box': [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())]})
     comps.sort(key=lambda c: -c['area'])
     rows = np.nonzero(hull.any(1))[0]
-    return {'top': int(rows.min()), 'height': int(rows.max() - rows.min() + 1), 'marks': comps, 'inner': inner}
+    # labels·hull은 지우기 보정(remove-face-marks.py)이 덩어리 화소와 얼굴판 영역을 찾는 데 쓴다
+    return {'top': int(rows.min()), 'height': int(rows.max() - rows.min() + 1), 'marks': comps, 'inner': inner, 'hull': hull, 'labels': mlab}
 
 
 def x_overlap(a, b):
@@ -144,7 +159,8 @@ def classify(face, eye_area, band=None):
 
 
 def reference(art, box):
-    face = face_marks(art[box[1]:box[3], box[0]:box[2]])
+    big, core = expand(box, art.shape)
+    face = face_marks(art[big[1]:big[3], big[0]:big[2]], core)
     if face is None: return None
     warm = [c for c in face['marks'] if c['warm'] >= WARM_SHARE]
     if len(warm) < 2: return None
@@ -194,12 +210,12 @@ def selftest(art, faces, refs):
     눈썹은 각 눈 바로 위, 입은 원화의 미소선 자리(face-regions.json의 mouth). 원화에 입이 있는 08번은 입 대신 눈썹만 본다."""
     ok = True
     for fi, (spec, ref) in enumerate(zip(faces, refs)):
-        box = spec['face']; crop = art[box[1]:box[3], box[0]:box[2]]
-        face = face_marks(crop)
+        big, core = expand(spec['face'], art.shape); crop = art[big[1]:big[3], big[0]:big[2]]
+        face = face_marks(crop, core)
         eyes, _ = classify(face, ref['eye_area'])
         eh = max(8, min(e['box'][3] - e['box'][1] for e in eyes)); ew = max(e['box'][2] - e['box'][0] for e in eyes)
         lw = max(3, eh // 5); gap = max(0.4 * eh, 0.1 * face['height']) + lw
-        mx, my = spec['mouth'][0] - box[0], spec['mouth'][1] - box[1]
+        mx, my = spec['mouth'][0] - big[0], spec['mouth'][1] - big[1]
         shapes = {
             '눈썹': lambda d: [d.line([e['box'][0], e['box'][1] - gap, e['box'][2], e['box'][1] - gap], fill=(255, 150, 40), width=lw) for e in eyes],
             '흰 입': lambda d: d.arc([mx - ew * 0.35, my - eh * 0.5, mx + ew * 0.35, my + eh * 0.2], 20, 160, fill=(250, 250, 250), width=lw),
@@ -208,7 +224,7 @@ def selftest(art, faces, refs):
         for name, draw in shapes.items():
             if name.endswith('입') and '입' in ref['allowed']: continue
             im = Image.fromarray(crop.copy()); draw(ImageDraw.Draw(im))
-            f = face_marks(np.asarray(im))
+            f = face_marks(np.asarray(im), core)
             caught = bool(f and new_elements(f, ref))
             print(f'자기검사 · 얼굴 {fi + 1} · 가짜 {name}: {"걸림" if caught else "못 잡음 ← 검사 결함"}')
             ok &= caught
@@ -242,10 +258,11 @@ def main():
             prev = g
             found = []
             for fi, (b, ref) in enumerate(zip(boxes, refs)):
-                face = face_marks(rgb[b[1]:b[3], b[0]:b[2]])
+                big, core = expand(b, rgb.shape)
+                face = face_marks(rgb[big[1]:big[3], big[0]:big[2]], core)
                 if face is None: unseen.append(i); continue
                 for e in new_elements(face, ref, s):
-                    e['box'] = [e['box'][0] + b[0], e['box'][1] + b[1], e['box'][2] + b[0], e['box'][3] + b[1]]
+                    e['box'] = [e['box'][0] + big[0], e['box'][1] + big[1], e['box'][2] + big[0], e['box'][3] + big[1]]
                     found.append({**e, 'face': fi + 1})
             if not found: continue
             rows.append({'frame': i, 'sec': round((i - 1) / a.fps, 2), 'kinds': sorted({e['kind'] for e in found}), 'extras': found})
