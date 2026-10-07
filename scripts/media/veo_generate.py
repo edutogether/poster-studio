@@ -6,7 +6,8 @@
 #  · 비용 기록(<작업 폴더>/cost-log.jsonl)의 누적에 이번 요청을 더해 상한을 넘으면 요청하지 않는다. 재시도하지 않는다.
 #  · --confirm 없이는 요청하지 않는다(입력 그림·지시문만 만들어 보여 준다).
 #  · --negative면 얼굴 요소를 막는 부정 지시(negativePrompt)를 더한다 — 기본은 끈다(아래 NEGATIVE 주석).
-# 사용: python scripts/media/veo_generate.py <장면 01~12> <작업 폴더> --account <gcloud 계정> [--no-last-frame | --last-image <그림>] [--negative] [--stop 15] --confirm
+# 멈춤선 기본값 $20(2026-10-08 Bumm님 «막히면 안 되니 넉넉히 올려만 놓자» — 결제 쪽 하드 리밋이 아니라 대표님과 정한 멈춤선).
+# 사용: python scripts/media/veo_generate.py <장면 01~12> <작업 폴더> --account <gcloud 계정> [--no-last-frame | --last-image <그림>] [--negative] [--stop 20] --confirm
 import argparse, base64, json, os, shutil, subprocess, sys, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 import numpy as np
@@ -56,7 +57,7 @@ def call(url, token, body):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('scene'); ap.add_argument('work'); ap.add_argument('--account', required=True)
-    ap.add_argument('--no-last-frame', action='store_true'); ap.add_argument('--last-image'); ap.add_argument('--negative', action='store_true'); ap.add_argument('--stop', type=float, default=15.0); ap.add_argument('--confirm', action='store_true')
+    ap.add_argument('--no-last-frame', action='store_true'); ap.add_argument('--last-image'); ap.add_argument('--negative', action='store_true'); ap.add_argument('--stop', type=float, default=20.0); ap.add_argument('--confirm', action='store_true')
     # 한 장면을 짧은 영상 여럿으로 이어 붙일 때(11번: 원화 → 안기 4초 + 안기 → 안아 올림 4초): 첫 장면 그림·길이·지시문을 따로 준다
     ap.add_argument('--first-image'); ap.add_argument('--seconds', type=int, choices=[4, 6, 8], default=SECONDS); ap.add_argument('--prompt-file')
     a = ap.parse_args()
