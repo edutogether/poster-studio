@@ -24,7 +24,7 @@
       python scripts/media/check-face-elements.py <장면번호> --selftest
 필요: numpy · scipy · Pillow, 영상 파일이면 ffmpeg.
 종료코드 0 = 통과, 1 = 새 얼굴 요소 발견 → 탈락(또는 자기검사 실패), 2 = 사용법·기준 오류,
-         3 = 새 요소는 없지만 눈빛이 안 보여 확인 못 한 프레임이 있다 → 출력된 프레임을 사람이 본다.
+         3 = 새 요소는 없지만 눈빛이 안 보이거나 얼굴 앞에 무언가 겹쳐 확인 못 한 프레임이 있다 → 출력된 프레임을 사람이 본다.
 """
 import argparse
 import glob
@@ -54,6 +54,9 @@ SEARCH = 0.3         # 추적할 때 앞 프레임 위치에서 상자 크기의
 EXPAND = 0.35        # 얼굴 상자를 사방으로 이 비율만큼 넓혀 얼굴판 전체를 본다 — 고개를 돌리면 얼굴판이 상자 밖으로 나가
                      # 입 절반을 놓쳤다(2026-10-07 01번). 얼굴판은 «원래 상자와 겹치고, 넓이의 25% 이상이 상자 안인» 어두운 덩어리다
 CORE_SHARE = 0.25
+ENCLOSED = 0.82      # 표시의 둘레(3~7화소 띠, 얼굴판 안·눈빛 제외)에서 밝기 SCREEN_MAX 미만(검은 얼굴판·회색 반사광)이 이 비율 이상일 때만
+SCREEN_MAX = 130     # 얼굴 요소로 센다. 2026-10-07 실측: 진짜 입 ≈1.0, 자기검사 가짜 눈썹·입 0.88 이상, 얼굴 앞을 지나는 03번 슬레이트
+                     # 흰 줄무늬 0.65~0.77 — 소품은 «가려짐»으로 빼서 사람이 본다
 
 
 def warm_mask(rgb):
@@ -104,7 +107,9 @@ def face_marks(crop, core=None):
         m = mlab == j
         ring = ndi.binary_dilation(m, iterations=3) & hull & (v >= BRIGHT)   # 눈은 가운데가 거의 흰색, 둘레가 주황
         ys, xs = np.nonzero(m)
-        comps.append({'idx': j, 'area': int(m.sum()), 'warm': float(warm[ring].mean()) if ring.any() else 0.0, 'red': float(red[m].mean()),
+        # 얼굴판 안쪽 둘레만, 눈빛(주황) 화소는 빼고 잰다 — 얼굴판 가장자리 근처 입·눈 바로 위 눈썹도 «둘러싸임»으로 센다
+        around = ndi.binary_dilation(m, iterations=7) & ~ndi.binary_dilation(m, iterations=3) & hull & ~warm
+        comps.append({'idx': j, 'enclosed': float((v[around] < SCREEN_MAX).mean()) if around.any() else 0.0, 'area': int(m.sum()), 'warm': float(warm[ring].mean()) if ring.any() else 0.0, 'red': float(red[m].mean()),
                       'peak': float(np.percentile(v[m], 95)), 'box': [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())]})
     comps.sort(key=lambda c: -c['area'])
     rows = np.nonzero(hull.any(1))[0]
@@ -154,6 +159,7 @@ def classify(face, eye_area, band=None):
             kind = '입'                                             # 두 눈 선보다 눈 높이의 절반 넘게 아래인 흰 입
         else:
             continue            # 눈높이의 흰 점(깜박일 때 눈이 흰 점으로 보임)·얼굴판 위쪽 반사광은 세지 않는다
+        if c['enclosed'] < ENCLOSED: kind = '가려짐'                  # 둘레가 검은 얼굴판이 아니면 얼굴 앞 소품일 수 있다 → 사람이 본다
         out.append({**c, 'kind': kind})
     return eyes, out
 
@@ -174,10 +180,13 @@ def reference(art, box):
             'band': ((min(c['box'][1] for c in eyes) - top) / h, (max(c['box'][3] for c in eyes) - top) / h)}
 
 
-def new_elements(face, ref, scale=1.0):
-    """scale = 영상 화소 / 원화 화소. 원화에 없던 종류이거나 원화보다 2.5배 넘게 커진 요소만 돌려준다."""
+def new_elements(face, ref, scale=1.0, occluded=None):
+    """scale = 영상 화소 / 원화 화소. 원화에 없던 종류이거나 원화보다 2.5배 넘게 커진 요소만 돌려준다.
+    occluded에 리스트를 주면 «가려짐»(얼굴 앞 소품일 수 있는 흰·빨간 표시)을 거기에 모은다 — 요소로는 세지 않는다."""
     area_scale = scale ** 2
     _, extras = classify(face, ref['eye_area'] * area_scale, ref['band'])
+    if occluded is not None: occluded.extend(e for e in extras if e['kind'] == '가려짐')
+    extras = [e for e in extras if e['kind'] != '가려짐']
     return [e for e in extras if e['area'] > ALLOW_GROWTH * ref['allowed'].get(e['kind'], 0) * area_scale]
 
 
@@ -251,7 +260,7 @@ def main():
         first = np.asarray(Image.open(files[0]).convert('RGB'))
         s = first.shape[1] / art.shape[1]          # 영상은 원화를 같은 비율로 줄인 정사각형이다
         boxes = [[int(round(c * s)) for c in f['face']] for f in regions[scene]]
-        rows, unseen, prev = [], [], None
+        rows, unseen, covered, prev = [], [], [], None
         for i, f in enumerate(files, 1):
             rgb = np.asarray(Image.open(f).convert('RGB')); g = gray(rgb)
             if prev is not None: boxes = [track(prev, g, b) for b in boxes]
@@ -261,7 +270,10 @@ def main():
                 big, core = expand(b, rgb.shape)
                 face = face_marks(rgb[big[1]:big[3], big[0]:big[2]], core)
                 if face is None: unseen.append(i); continue
-                for e in new_elements(face, ref, s):
+                hidden = []
+                news = new_elements(face, ref, s, hidden)
+                if hidden and not news: covered.append(i)
+                for e in news:
                     e['box'] = [e['box'][0] + big[0], e['box'][1] + big[1], e['box'][2] + big[0], e['box'][3] + big[1]]
                     found.append({**e, 'face': fi + 1})
             if not found: continue
@@ -274,20 +286,21 @@ def main():
                 im.save(os.path.join(a.marks, f'{i:04d}.png'))
     if a.json:
         with open(a.json, 'w', encoding='utf-8') as fp:
-            json.dump({'scene': scene, 'source': a.source, 'frames': len(files), 'face_unseen': sorted(set(unseen)), 'flagged': len(rows), 'rows': rows}, fp, ensure_ascii=False, indent=1)
+            json.dump({'scene': scene, 'source': a.source, 'frames': len(files), 'face_unseen': sorted(set(unseen)), 'face_covered': sorted(set(covered)), 'flagged': len(rows), 'rows': rows}, fp, ensure_ascii=False, indent=1)
     def runs(nums, kinds=None):
         out = []
         for k, n in enumerate(nums):
             if out and n == out[-1][1] + 1: out[-1][1] = n; out[-1][2].update(kinds[k] if kinds else ())
             else: out.append([n, n, set(kinds[k] if kinds else ())])
         return out
-    unseen = sorted(set(unseen))
+    unseen = sorted(set(unseen)); covered = sorted(set(covered) - {r['frame'] for r in rows})
     flagged = runs([r['frame'] for r in rows], [r['kinds'] for r in rows])
     print(f'{os.path.basename(a.source.rstrip("/"))}: {len(files)}프레임 · 새 얼굴 요소 {len(rows)}프레임 · 확인 못 한 프레임 {len(unseen)}'
           + ''.join(f'\n  탈락 {s0}~{e0}번({(s0 - 1) / a.fps:.2f}~{(e0 - 1) / a.fps:.2f}초) {"·".join(sorted(k))}' for s0, e0, k in flagged)
-          + ''.join(f'\n  사람 확인 {s0}~{e0}번({(s0 - 1) / a.fps:.2f}~{(e0 - 1) / a.fps:.2f}초) 눈빛이 안 보임(고개 돌림·눈 감음)' for s0, e0, _ in runs(unseen)))
+          + ''.join(f'\n  사람 확인 {s0}~{e0}번({(s0 - 1) / a.fps:.2f}~{(e0 - 1) / a.fps:.2f}초) 눈빛이 안 보임(고개 돌림·눈 감음)' for s0, e0, _ in runs(unseen))
+          + ''.join(f'\n  사람 확인 {s0}~{e0}번({(s0 - 1) / a.fps:.2f}~{(e0 - 1) / a.fps:.2f}초) 얼굴 앞에 무언가 겹침(소품일 수 있음)' for s0, e0, _ in runs(covered)))
     if rows: return 1
-    return 3 if unseen else 0
+    return 3 if unseen or covered else 0
 
 
 if __name__ == '__main__':
