@@ -28,7 +28,7 @@
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
 | 2026-09-30 | [studio-design-integration](2026-09-30-studio-design-integration/intent.md) | 2 | in-progress | 확정한 디자인에 기존 촬영·AI 생성·네 포스터·저장·인쇄 연결, 배포 준비 |
-| 2026-10-07 | [ops-hardening](2026-10-07-ops-hardening/intent.md) | 2 | in-progress | 부스 코드 스위치(기본 꺼짐)·포스터 글꼴 자체 서빙·로컬 도구 정비 |
+| 2026-10-07 | [ops-hardening](2026-10-07-ops-hardening/intent.md) | 2 | done | 부스 코드 스위치(기본 꺼짐)·포스터 글꼴 자체 서빙·로컬 도구 정비 |
 | 2026-09-27 | [react-19.3](2026-09-27-react-19.3/intent.md) | 2 | done | react·react-dom·타입 두 개만 19.3.0으로. 화면·포스터 픽셀 전/후 대조 0건이 배포 조건 |
 | 2026-09-11 | [loadtest-3ip](2026-09-11-loadtest-3ip/intent.md) | 2 | dropped | 부하테스트를 할 것인가 → **안 해도 된다**(병목이 서버가 아니라 프린터). 남은 공백은 전환 후 라이브 생성 $0.08 |
 | 2026-09-09 | [react-ts-conversion](2026-09-09-react-ts-conversion/intent.md) | 2 | in-progress | 프론트엔드를 React+TypeScript로 전환하되 UI/UX는 체감까지 동일 유지 |
