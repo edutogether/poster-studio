@@ -57,28 +57,31 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('scene'); ap.add_argument('work'); ap.add_argument('--account', required=True)
     ap.add_argument('--no-last-frame', action='store_true'); ap.add_argument('--last-image'); ap.add_argument('--negative', action='store_true'); ap.add_argument('--stop', type=float, default=15.0); ap.add_argument('--confirm', action='store_true')
+    # 한 장면을 짧은 영상 여럿으로 이어 붙일 때(11번: 원화 → 안기 4초 + 안기 → 안아 올림 4초): 첫 장면 그림·길이·지시문을 따로 준다
+    ap.add_argument('--first-image'); ap.add_argument('--seconds', type=int, choices=[4, 6, 8], default=SECONDS); ap.add_argument('--prompt-file')
     a = ap.parse_args()
     scene = a.scene.zfill(2); d = os.path.join(a.work, scene); os.makedirs(d, exist_ok=True)
     log = os.path.join(a.work, 'cost-log.jsonl')
     tries = 1 + sum(1 for l in open(log, encoding='utf-8') if l.strip() and json.loads(l).get('장면') == scene) if os.path.exists(log) else 1
     name = f'try{tries}'
-    info = input_image(scene, os.path.join(d, 'input-16x9.png'))
+    info = input_image(scene, os.path.join(d, f'{name}-first-16x9.png'), a.first_image)
     if a.last_image: input_image(scene, os.path.join(d, f'{name}-last-16x9.png'), a.last_image)
-    prompt = open(os.path.join(PROMPTS, f'{scene}.txt'), encoding='utf-8').read().replace('\r\n', '\n')
+    prompt = open(a.prompt_file or os.path.join(PROMPTS, f'{scene}.txt'), encoding='utf-8').read().replace('\r\n', '\n')
     open(os.path.join(d, f'{name}-prompt.txt'), 'w', encoding='utf-8').write(prompt)
-    cost = round(SECONDS * RATE, 2); before = spent(log)
+    cost = round(a.seconds * RATE, 2); before = spent(log)
     print(f'장면 {scene} {name} · 입력 {info} · 끝 장면 지정 {"안 함" if a.no_last_frame else (a.last_image or "원화")} · 이번 ${cost} · 누적 ${before} → ${before + cost:.2f} (멈춤 ${a.stop})')
     if before + cost > a.stop: print('상한을 넘는다 — 요청하지 않는다'); sys.exit(4)
     if not a.confirm: print('--confirm 없음 — 요청하지 않았다'); sys.exit(0)
     token = subprocess.run([shutil.which('gcloud'), 'auth', 'print-access-token', a.account], capture_output=True, text=True, check=True).stdout.strip()
-    img = {'bytesBase64Encoded': base64.b64encode(open(os.path.join(d, 'input-16x9.png'), 'rb').read()).decode(), 'mimeType': 'image/png'}
+    img = {'bytesBase64Encoded': base64.b64encode(open(os.path.join(d, f'{name}-first-16x9.png'), 'rb').read()).decode(), 'mimeType': 'image/png'}
     inst = {'prompt': prompt, 'image': img}
     if a.last_image:
         inst['lastFrame'] = {'bytesBase64Encoded': base64.b64encode(open(os.path.join(d, f'{name}-last-16x9.png'), 'rb').read()).decode(), 'mimeType': 'image/png'}
     elif not a.no_last_frame: inst['lastFrame'] = img
     base = f'https://{LOC}-aiplatform.googleapis.com/v1/projects/{PROJECT}/locations/{LOC}/publishers/google/models/{MODEL}'
     t0 = time.time()
-    params = dict(PARAMS, negativePrompt=NEGATIVE) if a.negative else dict(PARAMS)
+    params = dict(PARAMS, durationSeconds=a.seconds)
+    if a.negative: params['negativePrompt'] = NEGATIVE
     st, op = call(f'{base}:predictLongRunning', token, {'instances': [inst], 'parameters': params})
     rec = {'t': datetime.now(timezone.utc).isoformat(timespec='seconds'), '장면': scene, '시도': name, '모델': MODEL, '조건': params, '끝장면': (os.path.basename(a.last_image) if a.last_image else (not a.no_last_frame))}
     if st != 200 or 'name' not in op:
