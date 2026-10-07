@@ -585,6 +585,33 @@ describe('개인정보: 서버로 보내는 것', () => {
   });
 });
 
+describe('부스 코드(서버 스위치 기본 꺼짐)', () => {
+  async function 생성_요청_헤더() {
+    const f = installFetch();
+    await act(async () => { renderApp(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { await Promise.resolve(); });
+    const call = f.fn.mock.calls.find(([url]) => String(url).includes('/generate'));
+    expect(call, '/generate 요청이 실제로 나가야 이 테스트가 의미가 있다').toBeTruthy();
+    return call![1].headers as Record<string, string>;
+  }
+
+  test('보관된 코드가 없으면 생성 요청 헤더는 예전과 같다', async () => {
+    localStorage.removeItem('poster-studio-booth-code');
+    expect(Object.keys(await 생성_요청_헤더())).toEqual(['x-booth-token']);
+  });
+
+  test('보관된 코드가 있으면 생성 요청에 x-booth-code로 싣는다', async () => {
+    localStorage.setItem('poster-studio-booth-code', 'TEST-CODE-1234');
+    try {
+      expect((await 생성_요청_헤더())['x-booth-code']).toBe('TEST-CODE-1234');
+    } finally {
+      localStorage.removeItem('poster-studio-booth-code');
+    }
+  });
+});
+
 describe('인쇄', () => {
   test('인쇄: 포스터가 없으면 인쇄창을 열지 않는다', async () => {
     const print = vi.fn();

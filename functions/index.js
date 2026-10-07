@@ -656,6 +656,35 @@ function checkBoothToken(req, res, next) {
   next();
 }
 
+/* 부스 코드 — 행사 기기에서만 생성을 허용할 때 켜는 스위치(기본 꺼짐). 켜지면 요청의 x-booth-code를
+   SHA-256으로 바꿔 BOOTH_CODE_SHA256과 상수 시간 비교한다. 두 값은 저장소에 없고 배포할 때 CI가
+   functions/.env.<프로젝트>에 넣는다(scripts/ci/booth-code-env.mjs). 꺼져 있으면 요청은 지금과 같다.
+   켜졌는데 해시가 없거나 형식이 틀리면 함수가 시작되지 않아 배포가 실패한다(조용히 다 막거나 다 통과시키지 않게). */
+const BOOTH_CODE_PATTERN = /^[A-Za-z0-9-]{4,64}$/;
+function makeBoothCodeGate({ required, sha256 }) {
+  if (!required) return (req, res, next) => next();
+  if (!/^[0-9a-f]{64}$/.test(sha256 || '')) {
+    throw new Error('BOOTH_CODE_REQUIRED가 켜졌는데 BOOTH_CODE_SHA256이 없거나 형식이 틀립니다.');
+  }
+  const expected = Buffer.from(sha256, 'hex');
+  return (req, res, next) => {
+    const code = String(req.headers['x-booth-code'] || '');
+    const provided = crypto.createHash('sha256').update(code).digest();
+    if (BOOTH_CODE_PATTERN.test(code) && crypto.timingSafeEqual(provided, expected)) return next();
+    return res.status(403).json({ error: '행사 부스에서만 만들 수 있어요.' });
+  };
+}
+let boothCodeGate = makeBoothCodeGate({
+  required: process.env.BOOTH_CODE_REQUIRED === 'true',
+  sha256: process.env.BOOTH_CODE_SHA256
+});
+function _setBoothCodeForTesting(config) {
+  boothCodeGate = makeBoothCodeGate(config || { required: false });
+}
+function checkBoothCode(req, res, next) {
+  return boothCodeGate(req, res, next);
+}
+
 /* "한 장의 사진당 최초 생성 1회 + 재생성 1회"(대표 확정 정책)를 Firestore로 전역
    강제한다. 2026-08-30 이전엔 인스턴스 로컬 Map이라 다른 인스턴스로 라우팅되면
    카운트가 안 이어지는 한계가 있었는데(5차 감사 발견), Firestore 트랜잭션으로
@@ -710,6 +739,7 @@ app.post(
   '/generate',
   markRequestStart,
   checkBoothToken,
+  checkBoothCode,
   generateWindowGate,
   parseMultipart,
   requirePhoto,
@@ -833,6 +863,8 @@ export {
   ipKey,
   parseGenerateWindows,
   makeGenerateWindowGate,
+  makeBoothCodeGate,
+  _setBoothCodeForTesting,
   markRequestStart,
   generateHandler,
   ALLOWED_ORIGINS
