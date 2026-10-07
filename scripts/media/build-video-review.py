@@ -5,7 +5,9 @@
 «처음부터 순서대로 재생»을 누르면 12편이 차례로 이어진다.
 
 입력: <검토 폴더>/points.json — [{"id":1,"status":"video|still|pending","source":"...","video":"<webm 경로>","frames":"<RGBA 프레임 폴더>",
+       "raw":"<생성 원본 mp4(선택)>","done":"한 일","concern":"남은 걱정","files":[{"label":"...","path":"<검토 폴더 기준 상대 경로>"}],
        "summary":"...","points":[{"t":5.3,"what":"...","why":"...","kind":"봐야 할 곳|확인한 곳"}]}]
+맨 위에 편별 표(번호 · 편 이름 · 한 일 · 남은 걱정 · 열기 링크)를 둔다(2026-10-08 Bumm님 보고 형식).
 사용: python scripts/media/build-video-review.py <검토 폴더>   → <검토 폴더>/index.html (영상·원화·캡처를 폴더 안으로 복사)
 """
 import html, json, os, shutil, sys
@@ -20,8 +22,8 @@ def main():
     out = os.path.abspath(sys.argv[1])
     items = json.load(open(os.path.join(out, 'points.json'), encoding='utf-8'))
     sets = {s['id']: s for s in json.load(open(os.path.join(ASSETS, 'sets.json'), encoding='utf-8'))}
-    for sub in ('videos', 'art', 'captures'): os.makedirs(os.path.join(out, sub), exist_ok=True)
-    sections = []
+    for sub in ('videos', 'art', 'captures', 'raw'): os.makedirs(os.path.join(out, sub), exist_ok=True)
+    sections, table = [], []
     for it in sorted(items, key=lambda x: x['id']):
         n = f"{it['id']:02d}"; theme = sets[it['id']]['theme']
         shutil.copyfile(os.path.join(ASSETS, f'{n}.png'), os.path.join(out, 'art', f'{n}.png'))
@@ -41,6 +43,14 @@ def main():
             t = '' if p.get('t') is None else f'<button class="seek" data-t="{p["t"]}">{p["t"]:.2f}초</button>'
             rows.append(f'<tr class="{ "look" if p.get("kind") == "봐야 할 곳" else "ok" }"><td>{t}</td><td>{html.escape(p.get("kind", ""))}</td>'
                         f'<td>{html.escape(p["what"])}</td><td>{html.escape(p["why"])}</td><td>{cap}</td></tr>')
+        raw = ''
+        if it.get('raw'):
+            shutil.copyfile(os.path.join(ROOT, it['raw']), os.path.join(out, 'raw', f'{n}.mp4'))
+            raw = f'<div><h3>생성 원본(누끼 전)</h3><div class="stage art"><video src="raw/{n}.mp4" controls preload="metadata" playsinline muted></video></div></div>'
+        links = [f'<a href="#s{n}">검토 영상</a>'] + ([f'<a href="raw/{n}.mp4" target="_blank">생성 원본</a>'] if raw else []) + \
+                [f'<a href="{html.escape(f["path"])}" target="_blank">{html.escape(f["label"])}</a>' for f in it.get('files', [])]
+        table.append(f'<tr><td>{n}</td><td>{html.escape(theme)}</td><td>{html.escape(it.get("done", ""))}</td>'
+                     f'<td>{html.escape(it.get("concern", ""))}</td><td>{" · ".join(links)}</td></tr>')
         badge = {'video': '영상', 'still': '정지 그림으로 대체', 'pending': '판단 대기'}[it['status']]
         player = (f'<div class="stage"><video src="{video}" controls preload="auto" playsinline muted></video></div>'
                   '<div class="tools"><button class="fr" data-d="-1">◀ 1프레임</button><button class="fr" data-d="1">1프레임 ▶</button>'
@@ -49,10 +59,12 @@ def main():
         sections.append(f'''<section id="s{n}" data-video="{1 if video else 0}">
 <h2>{n} · {html.escape(theme)} <span class="badge {it['status']}">{badge}</span></h2>
 <p class="summary">{html.escape(it.get('summary', ''))}</p><p class="source">{html.escape(it.get('source', ''))}</p>
-<div class="pair"><div><h3>최종</h3>{player}</div><div><h3>원화</h3><div class="stage art"><img src="art/{n}.png" alt="원화 {n}"></div></div></div>
+<div class="pair"><div><h3>최종(누끼)</h3>{player}</div><div><h3>원화</h3><div class="stage art"><img src="art/{n}.png" alt="원화 {n}"></div></div>{raw}</div>
 <table><thead><tr><th>지점</th><th>구분</th><th>무엇</th><th>왜 봐야 하나</th><th>캡처</th></tr></thead><tbody>{''.join(rows) or '<tr><td colspan="5">짚을 곳 없음</td></tr>'}</tbody></table>
 </section>''')
-    page = TEMPLATE.replace('{{SECTIONS}}', '\n'.join(sections))
+    summary = ('<section id="table"><h2>편별 표</h2><table><thead><tr><th>번호</th><th>편 이름</th><th>한 일</th><th>남은 걱정</th><th>열기</th></tr></thead>'
+               f'<tbody>{"".join(table)}</tbody></table></section>')
+    page = TEMPLATE.replace('{{SECTIONS}}', summary + '\n' + '\n'.join(sections))
     open(os.path.join(out, 'index.html'), 'w', encoding='utf-8').write(page)
     print(os.path.join(out, 'index.html'))
 
@@ -71,7 +83,7 @@ h2{margin:0 0 4px;font-size:20px}h3{margin:6px 0;font-size:14px;color:#555}
 .badge{font-size:13px;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:2px}
 .badge.video{background:#e3f2fd}.badge.still{background:#ffebee}.badge.pending{background:#fff8e1}
 .summary{margin:4px 0}.source{margin:0 0 8px;color:#666;font-size:13px}
-.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:900px){.pair{grid-template-columns:1fr}}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
 .stage{border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:760px}
 .stage video,.stage img{display:block;width:100%;height:auto}
 .stage.zoomed video{width:200%;image-rendering:pixelated}
@@ -98,7 +110,7 @@ for(const sec of $$('section')){const v=$('video',sec);if(!v)continue;const t=$(
   for(const b of $$('.fr',sec))b.onclick=()=>{v.pause();v.currentTime=Math.max(0,v.currentTime+(+b.dataset.d)/24);};
   $('.slow',sec).onclick=e=>{v.playbackRate=v.playbackRate===1?0.25:1;e.target.textContent=v.playbackRate===1?'느리게(0.25배)':'보통 속도';};
   $('.zoom',sec).onclick=e=>{const s=v.parentElement;s.classList.toggle('zoomed');e.target.textContent=s.classList.contains('zoomed')?'원래 크기':'2배 확대';};}
-$('#playAll').onclick=()=>{const vids=$$('section[data-video="1"] video');let i=0;
+$('#playAll').onclick=()=>{const vids=$$('section[data-video="1"] .stage:not(.art) video');let i=0;
   const play=()=>{if(i>=vids.length)return;const v=vids[i];v.currentTime=0;v.scrollIntoView({block:'center'});v.play();v.onended=()=>{v.onended=null;i++;play();};};play();};
 </script></body></html>'''
 

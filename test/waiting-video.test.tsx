@@ -31,9 +31,20 @@ test("실제 playing 전에는 원화가 유지되고 무음·인라인·비반�
   expect(video.dataset.active).toBe("false");
   fireEvent.loadedData(video);
   expect(video.dataset.active).toBe("false");
+  expect(view.getByAltText(props.theme).dataset.active).toBe("true");
   fireEvent.playing(video);
   expect(video.dataset.active).toBe("true");
-  expect(view.getByAltText(props.theme)).toBeTruthy();
+  // 투명 영상이라 재생 중에는 아래 원화를 숨긴다(겹쳐 보임 방지). 원화 요소는 남겨 실패 때 바로 되돌린다
+  expect(view.getByAltText(props.theme).dataset.active).toBe("false");
+});
+test("영상이 재생 중 실패하면 원화를 다시 보인다", () => {
+  const view = render(<WaitingArtwork {...props}/>);
+  const video = view.container.querySelector("video")!;
+  fireEvent.playing(video);
+  expect(view.getByAltText(props.theme).dataset.active).toBe("false");
+  fireEvent.error(video);
+  expect(view.container.querySelector("video")).toBeNull();
+  expect(view.getByAltText(props.theme).dataset.active).toBe("true");
 });
 test("StrictMode의 effect 정리·재실행 뒤에도 재생 소스를 유지한다", () => {
   const view = render(<StrictMode><WaitingArtwork {...props}/></StrictMode>);

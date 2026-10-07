@@ -191,7 +191,10 @@ try {
     for(let i=0;i<150;i++){await wait(100);if(await evaluate("!!document.getElementById('spinner')"))break;}
     await wait(1000);
     assert.ok(await evaluate("!!document.querySelector('.movie-fact')"), await evaluate("JSON.stringify({body:document.body.innerText.slice(-2000),video:document.getElementById('video').videoWidth})"));
-    const info=await evaluate(`(()=>{const d=document.getElementById('spinner');const b=document.querySelector('.movie-fact').getBoundingClientRect();const v=document.querySelector('.generation-robot-film[data-active=true]');return {open:d.open,width:d.scrollWidth,clientWidth:d.clientWidth,factBottom:b.bottom,height:innerHeight,imageWidth:v.naturalWidth,image:v.getAttribute("src"),paused:d.dataset.paused,headline:document.querySelector('#generationTitle [data-active=true]').textContent,fact:document.querySelector('.movie-fact h2[data-active=true]').textContent}})()`);
+    const info=await evaluate(`(()=>{const d=document.getElementById('spinner');const b=document.querySelector('.movie-fact').getBoundingClientRect();const v=document.querySelector('.generation-robot-film[data-active=true]');return {open:d.open,width:d.scrollWidth,clientWidth:d.clientWidth,factBottom:b.bottom,height:innerHeight,imageWidth:v.naturalWidth,image:v.getAttribute("src"),paused:d.dataset.paused,headline:document.querySelector('#generationTitle [data-active=true]').textContent,fact:document.querySelector('.movie-fact h2[data-active=true]').textContent,bg:getComputedStyle(d).backgroundColor,filmBg:getComputedStyle(document.querySelector('.generation-film')).backgroundColor}})()`);
+    // 대기 영상은 투명 배경이다(결정 86) — 영상 뒤에 깔리는 것은 대기 화면의 순백 바탕뿐이어야 한다. 바탕이 바뀌면 누끼의 흰 구멍(06번 점토 안)이 드러난다
+    assert.equal(info.bg,'rgb(255, 255, 255)','대기 화면 바탕은 순백');
+    assert.equal(info.filmBg,'rgba(0, 0, 0, 0)','영상 칸 자체에는 바탕이 없다');
     assert.equal(info.open,true);
     assert.ok(info.width<=info.clientWidth);
     assert.ok(info.factBottom<=height, JSON.stringify(info));

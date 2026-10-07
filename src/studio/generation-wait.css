@@ -9,6 +9,8 @@
 .generation-robot-film { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; }
 .generation-robot-film[data-active="true"] { opacity: 1; }
 .generation-robot-video { pointer-events: none; transition: opacity .18s ease; }
+/* 투명 영상이 나타나면 아래 원화를 숨긴다 — 영상이 다 나타난 뒤(.18s)에 숨기고, 다시 보일 때(영상 실패)는 바로 보인다 */
+.generation-robot-still[data-active="false"] { transition: opacity 0s linear .18s; }
 /* 모든 문구가 같은 칸의 높이를 계산하므로 긴 문구로 바뀌어도 로봇이 움직이지 않는다. */
 .generation-copy-stack { display: grid; width: 100%; min-width: 0; }
 .generation-copy-stack > * { grid-area: 1 / 1; align-self: center; min-width: 0; opacity: 0; visibility: hidden; transition: opacity .45s ease; white-space: normal; word-break: keep-all; overflow-wrap: anywhere; }

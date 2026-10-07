@@ -1,4 +1,5 @@
 // 검토 페이지(build-video-review.py 결과)가 실제로 동작하는지 헤드리스 크롬으로 확인한다.
+/* global WebSocket, setTimeout -- Node 22 내장(WebSocket·타이머). scripts 아래 .mjs 공통 globals에는 없어 여기서만 밝힌다 */
 // 영상마다 불러오기·길이(8초)·투명도 표시, «지점» 단추가 그 초로 옮기는지, 콘솔 오류 0, 캡처 링크가 실제 파일인지.
 // 사용: node scripts/media/verify-video-review.mjs <검토 폴더> [캡처 PNG 저장 경로]
 import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path'; import { pathToFileURL } from 'node:url';

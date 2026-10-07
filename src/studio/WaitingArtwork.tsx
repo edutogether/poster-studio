@@ -45,7 +45,9 @@ export default function WaitingArtwork({ image, theme, video, paused, reduced }:
   }, [enabled, paused, buffering]);
 
   return <>
-    <img className="generation-robot-film" data-active="true" src={image} width={704} height={704} alt={theme} />
+    {/* 영상은 투명 배경이라 아래 원화가 비쳐 겹쳐 보인다(2026-10-08 06번 실측: 안테나가 두 개). 영상이 실제로 재생되면 원화를 숨긴다 —
+        숨기는 쪽만 영상이 다 나타난 뒤(0.18초)로 늦춰, 둘이 동시에 반투명해 흰 바탕이 번쩍이지 않게 한다(generation-wait.css). */}
+    <img className="generation-robot-film generation-robot-still" data-active={!(enabled && visible)} src={image} width={704} height={704} alt={theme} />
     {enabled && <video ref={player} className="generation-robot-film generation-robot-video"
       data-active={visible} src={video} poster={image} width={704} height={704}
       muted playsInline preload="auto" aria-hidden="true" disablePictureInPicture
