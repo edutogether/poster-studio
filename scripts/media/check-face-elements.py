@@ -69,6 +69,8 @@ def warm_mask(rgb):
 
 def hull_mask(mask):
     ys, xs = np.nonzero(mask)
+    # 점이 한 줄로만 늘어선 덩어리(가로 한 줄짜리 입선 등)는 볼록 다각형이 없다 — 그대로 돌려준다(12번 실측 QhullError)
+    if len(xs) < 3 or np.ptp(xs) == 0 or np.ptp(ys) == 0: return mask.copy()
     poly = np.c_[xs, ys][ConvexHull(np.c_[xs, ys]).vertices]
     im = Image.new('1', (mask.shape[1], mask.shape[0]), 0)
     ImageDraw.Draw(im).polygon([tuple(int(q) for q in p) for p in poly], fill=1)

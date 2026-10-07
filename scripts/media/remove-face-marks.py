@@ -69,6 +69,9 @@ DARK_THICK = 6             # --mouth-frames: 검은 입 두께(반지름) 하한
 DARK_RIM = 0.06            # --mouth-frames: 검은 입이 얼굴판 가장자리 4화소 띠에 걸쳐도 되는 비율(06번 112번 벌린 입 0.043 — 0.03이면 놓쳤다)
 DARK_EDGE = 15             # --mouth-frames: 검은 입 둘레 띠의 평균 밝기 하한(06번 벌린 입 20~30, 04번 얼굴판 아래 그늘 10 아래)
 LINE_THICK = 4             # --mouth-frames: 하얗거나 회색인 입선 두께(반지름) 상한(입선 2~3, 반사광·김은 6 넘음)
+LINE_MIN = 120             # --mouth-frames·--line-frames: 입선의 가장 밝은 곳 하한 — 원화 미소선의 은은한 윤기는 85 이하(10편 원화 실측)
+LINE_BRIGHT = 170          # 이보다 밝은 입선은 김·반사광 위여도 입선이다(10번 김 속 입선 180 안팎)
+LINE_RING_MAX = 45         # 입선 둘레 얼굴판 평균 밝기 상한(검은 얼굴판 20~35, 김·반사광 위는 50 넘음)
 LINE_GROW = 3              # --mouth-frames: 입선만 지울 때 선 둘레를 넓히는 폭
 LINE_CONTRAST = 40         # --mouth-frames: 입선은 둘레 얼굴판보다 이만큼 넘게 밝은 곳이 있다
 MOUTH_ABOVE = 0.2          # --mouth-frames: 하얗거나 회색인 입선은 원화 입 자리보다 얼굴 상자 높이의 이 배수 위까지만 본다
@@ -77,8 +80,8 @@ NEUTRAL = 40               # --mouth-frames: 덩어리의 (빨강-파랑) 평균
 
 def faint_rim(lines, v, local, zone, eyes):
     """입선 둘레의 흐린 빛과, 입선에서 이어지는 흐린 끝(둘레보다 8 넘게 밝은 화소 덩어리 중 입선에 닿고 입선에서 12화소 안).
-    둘레 3화소만 넣으면 초승달 입선의 흐린 양 끝이 회색 점으로 남았다(04번 151번 실측)."""
-    near = ndi.binary_dilation(lines, iterations=12)
+    둘레 3화소만 넣으면 초승달 입선의 흐린 양 끝이 회색 점으로 남았다(04번 151번 실측). 6화소 넘게 따라가면 김·반사광까지 잡았다(10번)."""
+    near = ndi.binary_dilation(lines, iterations=6)
     faint = zone & near & (v - local > 8) & ~ndi.binary_dilation(eyes, iterations=2)
     flab, fn = ndi.label(faint)
     if not fn: return faint
@@ -164,7 +167,11 @@ def open_mouth(crop, core, mouth_at=None, lines_only=False):
             # 얼굴 앞을 지나는 김은 넓고 흐려서 이 기준에서 빠진다(10번 김·얼굴판 가운데 반사광 실측)
             # 두꺼워도 하얗게 빛나면(200 이상) 입이다 — 12번 119번처럼 하얀 초승달이 통째로 그려진 입
             if not ((r - b)[m].mean() < NEUTRAL and np.nonzero(m)[0].mean() > top): return False
-            if (v - local)[m].max() < LINE_CONTRAST: return False
+            if (v - local)[m].max() < LINE_CONTRAST or v[m].max() < LINE_MIN: return False
+            # 둘레(2~6화소, 얼굴판 안)가 검은 얼굴판이어야 한다 — 얼굴 앞을 지나는 김·반사광 덩어리 위의 밝은 결은 입선이 아니다
+            # (10번 45~51번: 김의 결을 입선으로 잡아 김 자리를 검게 메웠다)
+            ring = ndi.binary_dilation(m, iterations=6) & ~ndi.binary_dilation(m, iterations=2) & visor
+            if ring.any() and v[ring].mean() >= LINE_RING_MAX and v[m].max() < LINE_BRIGHT: return False   # 아주 밝은 입선은 김 위여도 지운다
             return ndi.distance_transform_edt(m).max() <= LINE_THICK or v[m].max() >= 200
         touch = np.array([j for j in ids if mouth_part(j)], dtype=int)
         # 눈 = 입이 아닌 밝은 화소 중 색이 있는 화소(덩어리가 아니라 화소로). 눈빛 번짐과 얼굴판 반사광이 이어져 한 덩어리가 되면
@@ -230,12 +237,18 @@ def open_mouth(crop, core, mouth_at=None, lines_only=False):
         # 얼굴판 안의 회색(반사광과 그 가장자리)은 막는 선이 아니다 — 막으면 메울 자리가 반사광 아래 끝에서 멈춰, 입이 가리던
         # 반사광 끝이 혹처럼 남았다(06번 115~122번 실측). 08번의 팝 필터 테두리는 이 모드를 쓰지 않는다
         long_gray &= ~visor
+        if lines_only: long_gray &= ~ndi.binary_erosion(hull, iterations=3)   # 얼굴 앞을 지나는 김(회색)도 막는 선이 아니다(10번)
     gray_edge = ndi.binary_dilation(long_gray, iterations=1) & ~tongue
     cand = near_mouth & (visor | mouth) & ~glow & (~halo | ndi.binary_dilation(mouth, iterations=3)) & ~gray_edge
     clab, _ = ndi.label(cand)
     keep = np.unique(clab[ndi.binary_dilation(mouth, iterations=1) & cand])
     region = np.isin(clab, keep[keep > 0])
-    return region, visor & ~glow & ~gray_edge
+    known = visor & ~glow & ~gray_edge
+    if mouth_at is not None and lines_only:
+        # 입선만 지울 때는 얼굴판 안쪽의 김·반사광(밝기 160 아래)도 경계로 쓴다 — 검은 얼굴판만 경계로 쓰면 김 속 입선 자리가
+        # 검은 얼룩·점으로 메워졌다(10번 45~49번 실측)
+        known = (visor | (ndi.binary_erosion(hull, iterations=3) & (v < 160))) & ~glow & ~gray_edge
+    return region, known
 
 
 def fill_mouth(crop, core, region, known):
