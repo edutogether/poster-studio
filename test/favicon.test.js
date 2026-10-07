@@ -5,7 +5,7 @@
    예전에는 src/favicon.ts가 📷 이모지를 캔버스에 그려 꽂고, 탭이 비활성이면
    흑백으로 바꿔치기했다. §33이 그 회색 전환을 폐기했으므로 이 검사가 두 가지를
    못 박는다:
-   1. 각 HTML 페이지에 아이콘 링크가 정확히 하나, `/favicon-inky.png`를 가리킨다.
+   1. 각 HTML 페이지에 아이콘 링크가 정확히 하나, `/favicon-inky.png?v=날짜`를 가리킨다.
    2. 어떤 소스도 실행 중에 아이콘 링크를 건드리지 않는다(탭 상태에 따른 교체 금지).
    ──────────────────────────────────────────────────────────────────── */
 import { test, expect } from 'vitest';
@@ -14,7 +14,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const ROOT = process.cwd();
-const ICON_HREF = '/favicon-inky.png';
+/* ?v=날짜: 주소가 그대로면 브라우저가 최대 1시간 예전 아이콘을 쓴다(Hosting max-age=3600) — 그림을 바꿀 때마다 날짜를 올린다 */
+const ICON_HREF = '/favicon-inky.png?v=20261008';
 /* _shared/favicons/inky-camera-64.png 원본 그대로. 다시 자르거나 인코딩하면 값이 바뀐다. */
 const ICON_SHA256 = 'f74e7e0a1dc21be7f003d691ae308396ccdee10d2a681af85c7cff5cad6558d5';
 
@@ -29,7 +30,7 @@ for (const page of ['index.html', 'privacy.html']) {
   test(`${page}: 아이콘 링크가 정확히 하나이고 ${ICON_HREF}를 가리킨다`, () => {
     const links = iconLinks(fs.readFileSync(path.join(ROOT, page), 'utf8'));
     expect(links, `${page}의 rel=icon 링크`).toHaveLength(1);
-    expect(links[0]).toMatch(new RegExp(`\\bhref\\s*=\\s*["']${ICON_HREF.replace('.', '\\.')}["']`));
+    expect(links[0]).toMatch(new RegExp(`\\bhref\\s*=\\s*["']${ICON_HREF.replace(/[.?]/g, '\\$&')}["']`));
   });
 }
 

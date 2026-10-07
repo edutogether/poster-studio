@@ -95,7 +95,9 @@
 ## 파비콘 (2026-10-07 Bumm님 결정, `COMMON_STANDARDS.md` §33)
 - 파비콘은 **InKY 노란 카메라(필름까지 포함한 전체 로고) 하나**다 — `public/favicon-inky.png`,
   `_shared/favicons/inky-camera-64.png`를 바이트 그대로 복사한 것(다시 자르거나 인코딩하지 않는다).
-  `index.html`·`privacy.html`에 `<link rel="icon" … href="/favicon-inky.png">`가 하나씩 있다.
+  `index.html`·`privacy.html`에 `<link rel="icon" … href="/favicon-inky.png?v=20261008">`가 하나씩 있다.
+- 🟠 **아이콘 그림을 바꿀 때마다 `?v=` 날짜도 같이 올린다**(2026-10-08 Bumm님 «다른 앱들도 아이콘 주소에 날짜 붙여»). 주소가
+  그대로면 브라우저가 최대 1시간(Hosting `max-age=3600`) 예전 아이콘을 쓴다. 날짜는 `test/favicon.test.js`의 기대 주소와 함께 바꾼다.
 - 🟠 **정적이다. 탭 상태(비활성·포커스)에 따라 바꾸지 않는다.** 예전 `src/favicon.ts`의 📷 이모지 +
   비활성 흑백 전환은 §33으로 폐기·삭제했다. `test/favicon.test.js`가 링크 하나·파일 지문·
   실행 중 교체 코드 0건을 고정한다.
