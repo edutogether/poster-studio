@@ -4,7 +4,8 @@
 정면을 볼 때 하얀 웃는 입을 그렸다(01번 두 번 모두). 원화의 얼굴판은 주황 눈 두 개 말고는 검다 — 그래서 새로 생긴 표시만
 얼굴판 색으로 메우면 원화와 같은 얼굴이 된다. 눈·원화에 있던 요소(08번의 입)는 건드리지 않는다.
 
-지우는 것은 원화에 입이 없는 장면에 생긴 입(하얀·빨간)뿐이다. 눈썹으로 분류된 빛(모양이 바뀐 눈일 수 있다)과 원화에 입이 있는 장면은
+지우는 것은 원화에 입이 없는 장면에 생긴 입(하얀·빨간)뿐이다. 흰 입을 지운 뒤 남은 빨간 혀 조각은 --tongue-frames로 사람이 고른
+프레임에서만, 아래 --all-mouths와 같은 방식(혀에서 출발해 얼굴판 화소로 매끄럽게 메움)으로 한 번 더 지운다. 눈썹으로 분류된 빛(모양이 바뀐 눈일 수 있다)과 원화에 입이 있는 장면은
 손대지 않고 보정 뒤 검사에 그대로 남겨 사람이 판단한다.
 판정은 얼굴 검사(check-face-elements.py)와 같은 함수를 쓴다. 다만 검사는 «원화 눈 넓이의 15% 이상»만 탈락으로 세지만,
 보정은 크기와 상관없이 새 요소를 전부 지운다(입이 나타나고 사라지는 사이의 작은 조각까지). 지운 자리는 둘레 4화소까지 넓혀
@@ -19,7 +20,7 @@
 이때는 보정 뒤 검사도 --all-mouths로 돌린다. 검사는 밝은 표시만 세므로 검은 입이 남았는지는 사람이 전후 그림으로 본다.
 
 보정 뒤에는 반드시 얼굴 검사를 다시 돌려 0프레임인지 보고, 지운 프레임은 사람이 확대해 본다(--compare 전후 그림).
-사용: python scripts/media/remove-face-marks.py <장면 01~12> <원본 프레임 폴더> <출력 폴더> [--compare 전후 그림 폴더] [--all-mouths]
+사용: python scripts/media/remove-face-marks.py <장면 01~12> <원본 프레임 폴더> <출력 폴더> [--compare 전후 그림 폴더] [--all-mouths | --tongue-frames 121-140,167]
 """
 import argparse, glob, importlib.util, json, os, shutil
 import numpy as np
@@ -64,7 +65,8 @@ FILL_STEPS = 400           # 라플라스 보간 반복 수
 
 
 def open_mouth(crop, core):
-    """--all-mouths: 메울 자리(벌린 입)와 경계로 쓸 얼굴판 화소. 혀가 안 보이면 (None, None).
+    """메울 자리(혀·벌린 입)와 경계로 쓸 얼굴판 화소. 혀가 안 보이면 (None, None). --all-mouths(08번)와, 기본 보정에서
+    --tongue-frames로 고른 프레임(흰 입을 지운 뒤 남은 혀 조각)에 쓴다.
     얼굴판 덩어리 = 얼굴 상자와 가장 많이 겹치는 어두운 덩어리(닫기 없이 — 닫으면 헤드폰과 이어진다), 눈·혀 구멍은 메운다.
     혀 = 그 안의 빨강 덩어리(색상 비율로 눈빛 가장자리의 주황과 가른다 — 감은 눈 ∪의 빛 가장자리도 붉다).
     입 = 혀 + 혀에 닿은 «둘레 얼굴판보다 훨씬 검은» 입 모양·입술 선. 그 둘레 MOUTH_GROW화소를 눈빛·회색 테두리만 빼고 메운다."""
@@ -76,14 +78,18 @@ def open_mouth(crop, core):
     overlap = ndi.sum(np.ones((cy1 - cy0, cx1 - cx0)), lab[cy0:cy1, cx0:cx1], range(1, n + 1))
     body = lab == 1 + int(np.argmax(overlap))
     visor = ndi.binary_fill_holes(body)
+    hull = gate.hull_mask(body)
     hue = (g - b) / np.maximum(r - b, 1)
     reddish = (r - np.maximum(g, b) > 40) & (r > 70)
-    tongue = visor & reddish & (hue < TONGUE_HUE)
-    tlab, tn = ndi.label(tongue)
+    # 혀 = 넓이의 절반 이상이 얼굴판 볼록 다각형 안에 있는 빨강 덩어리(12화소 이상) 중 가장 큰 것. 얼굴판에 «둘러싸인» 것만 보면
+    # 얼굴판 아래 테두리에 붙은 혀 조각을 놓쳤다(04번 122~133번은 63~74%만 다각형 안)
+    tlab, tn = ndi.label(reddish & (hue < TONGUE_HUE))
     if not tn: return None, None
-    sizes = ndi.sum(tongue, tlab, range(1, tn + 1))
-    if sizes.max() < 12: return None, None
-    tongue = tlab == 1 + int(np.argmax(sizes))                   # 가장 큰 빨강 덩어리 하나가 혀
+    idx = range(1, tn + 1)
+    sizes, inside = ndi.sum(np.ones(tlab.shape), tlab, idx), ndi.sum(hull, tlab, idx)
+    ok = np.flatnonzero((sizes >= 12) & (inside >= 0.5 * sizes))
+    if not len(ok): return None, None
+    tongue = tlab == 1 + int(ok[np.argmax(sizes[ok])])
     # 눈빛 = 얼굴판 안의 밝거나 붉은 덩어리 중 혀에 닿지 않는 것. 혀 가장자리의 주황빛 화소까지 눈빛으로 빼면 빨간 조각이 남았다
     lit = visor & (reddish | (v >= 120))
     llab, _ = ndi.label(lit)
@@ -176,7 +182,9 @@ def remove_open_mouths(a, scene, regions, files):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('scene'); ap.add_argument('src'); ap.add_argument('out'); ap.add_argument('--compare'); ap.add_argument('--all-mouths', action='store_true')
+    ap.add_argument('--tongue-frames', default='')   # 예: 121-140,167 — 혀 조각까지 지울 프레임(사람이 확인한 구간)
     a = ap.parse_args()
+    tongue_frames = {n for part in a.tongue_frames.split(',') if part for n in range(int(part.split('-')[0]), int(part.split('-')[-1]) + 1)}
     scene = a.scene.zfill(2)
     regions = json.load(open(os.path.join(HERE, 'face-regions.json'), encoding='utf-8'))[scene]
     art = np.asarray(Image.open(os.path.join(gate.ART_DIR, f'{scene}.png')).convert('RGB'))
@@ -210,7 +218,7 @@ def main():
             per.append({'box': big, 'core': core, 'seen': True, 'mask': m, 'hull': face['hull']})
         plan.append(per)
     # 2) 지우기. 눈빛이 안 보이는 프레임은 앞뒤 프레임의 지운 자리 안 밝은 표시만 지운다
-    report = {'frames': len(files), 'fixed': [], 'borrowed': []}
+    report = {'frames': len(files), 'fixed': [], 'borrowed': [], 'tongue': []}
     for i, f in enumerate(files):
         rgb = np.asarray(Image.open(f).convert('RGB')).copy(); changed = False
         for fi, item in enumerate(plan[i]):
@@ -234,6 +242,15 @@ def main():
                 if region.any(): report['borrowed'].append(i + 1)
             if region is None or not region.any(): continue
             rgb[b[1]:b[3], b[0]:b[2]] = fill(crop, region, hull); changed = True
+        # --tongue-frames로 고른 프레임: 흰 입을 지운 뒤에도 남은 빨간 혀(와 그에 붙은 검은 입)를 지운다. 표시 지우기는 «입»으로 분류된
+        # 밝은 덩어리만 지워서 흰 입 아래 어두운 빨강 혀가 남았다(04번 5.0~5.8초·6.9~7.2초, 2026-10-07 실측). 모든 프레임에 자동으로
+        # 걸지 않는다: 얼굴판 아래 테두리에 걸친 빨간 연필 끝(02번 1.5초)과 혀 조각이 크기·색·위치로 갈리지 않았다 — 사람이 프레임을 고른다
+        for item, ref in zip(plan[i], refs):
+            if i + 1 not in tongue_frames or '입' in ref['allowed']: continue
+            b = item['box']; crop = rgb[b[1]:b[3], b[0]:b[2]]
+            region, known = open_mouth(crop, item['core'])
+            if region is None or not region.any(): continue
+            rgb[b[1]:b[3], b[0]:b[2]] = harmonic_fill(crop, region, known); changed = True; report['tongue'].append(i + 1)
         name = os.path.basename(f)
         if changed:
             Image.fromarray(rgb).save(os.path.join(a.out, name)); report['fixed'].append(i + 1)
@@ -247,7 +264,7 @@ def main():
             shutil.copyfile(f, os.path.join(a.out, name))
     report['borrowed'] = sorted(set(report['borrowed']))
     json.dump(report, open(os.path.join(a.out, '..', os.path.basename(a.out.rstrip('/\\')) + '.face-fix.json'), 'w', encoding='utf-8'), ensure_ascii=False)
-    print(f'{len(files)}장 · 지운 프레임 {len(report["fixed"])} · 그중 앞뒤에서 빌린 프레임 {len(report["borrowed"])}')
+    print(f'{len(files)}장 · 지운 프레임 {len(report["fixed"])} · 그중 앞뒤에서 빌린 프레임 {len(report["borrowed"])} · 혀 조각까지 지운 프레임 {len(report["tongue"])}')
 
 
 if __name__ == '__main__':
