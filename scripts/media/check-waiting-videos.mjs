@@ -12,7 +12,7 @@ export function applyAmendments(text, amendments, { prompt = false } = {}) {
   let out = text;
   for (const item of amendments) {
     for (const [from, to] of item.replace) out = out.split(from).join(to);
-    if (prompt) {
+    if (prompt && item.insertAfter !== undefined) {   // 바꾸기만 하는 기록도 있다(넣을 문장이 없으면 건너뛴다)
       assert.equal(out.split(item.insertAfter).length - 1, 1, `${item.date} 수정을 넣을 자리가 프롬프트에 정확히 한 번 있어야 한다`);
       out = out.replace(item.insertAfter, item.insertAfter + item.insert);
     }
