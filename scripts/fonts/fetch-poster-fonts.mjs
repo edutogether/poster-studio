@@ -37,7 +37,6 @@ const css = await get(CSS_URL);
 const files = new Map();
 for (const [, url, family, name] of css.matchAll(FILE_URL)) files.set(url, `${family}/${name}`);
 if (files.size === 0) throw new Error('글꼴 파일 주소를 하나도 찾지 못했다 — 응답 형식이 바뀌었다');
-if (css.replace(FILE_URL, '').includes('fonts.gstatic.com')) throw new Error('바꾸지 못한 외부 주소가 남았다');
 
 fs.rmSync(OUT, { recursive: true, force: true });
 for (const [url, local] of files) {
@@ -55,6 +54,11 @@ for (const family of LICENSES) {
 const header = `/* 포스터 글꼴 — 자체 호스팅(SIL OFL 1.1, poster/<글꼴>/OFL.txt).
    scripts/fonts/fetch-poster-fonts.mjs가 구글 폰트에서 받은 파일·규칙 그대로다. 손으로 고치지 않는다. */
 `;
-fs.writeFileSync(CSS_OUT, header + css.replace(FILE_URL, (_, url) => `url(poster/${files.get(url)})`));
+const localCss = css.replace(FILE_URL, (_, url) => `url(poster/${files.get(url)})`);
+// 허용 목록으로 확인한다 — 모든 url()이 방금 받은 파일을 가리켜야 한다. 하나라도 다르면 쓰지 않는다.
+const urls = [...localCss.matchAll(/url\(([^)]*)\)/g)].map((m) => m[1]);
+const stray = urls.filter((u) => !/^poster\/[a-z0-9]+\/[A-Za-z0-9_.-]+\.woff2$/.test(u));
+if (urls.length === 0 || stray.length) throw new Error(`바꾸지 못한 주소가 남았다: ${stray[0] ?? '(url 없음)'}`);
+fs.writeFileSync(CSS_OUT, header + localCss);
 const bytes = [...files.values()].reduce((sum, local) => sum + fs.statSync(path.join(OUT, local)).size, 0);
 console.log(`글꼴 파일 ${files.size}개 · ${(bytes / 1024 / 1024).toFixed(2)}MB · 규칙 ${css.match(/@font-face/g).length}개`);
