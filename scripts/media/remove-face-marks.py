@@ -11,8 +11,15 @@
 빛 번짐까지 덮고, 얼굴판 안에서만, 가장 가까운 얼굴판 화소의 색으로 채운 뒤 그 안에서만 살짝 부드럽게 한다.
 눈빛이 안 보이는 프레임(눈 감음·고개 돌림)은 판정을 못 하므로, 앞뒤에서 지운 자리 안의 밝은 표시만 지운다.
 
+--all-mouths면 원화에 입이 있는 장면에서도 입을 모두 지운다 — 08번(원화에 벌린 입)을 «입만 지워» 다른 장면과 같은 얼굴로
+맞추라는 2026-10-07 Bumm님 결정 때문이다. 벌린 입은 밝은 표시(혀)만이 아니라 얼굴판보다 더 검은 입 모양이라, 위의 표시 지우기로는
+혀만 빠지고 검은 입이 남았다. 게다가 08번은 헤드폰·팝 필터가 얼굴판 볼록 다각형에 섞여 흰 테두리·헤드폰까지 검게 번졌다(2026-10-07 실측).
+그래서 이 모드는 따로 간다: 빨간 혀와 그에 붙은 «거의 검은» 입 모양·입술 선만 찾아(얼굴판 덩어리 안), 둘레의 얼굴판 화소만
+경계로 매끄럽게 메운다(라플라스 보간 — 얼굴판의 은은한 명암이 그대로 이어진다). 눈빛·흰 테두리·팝 필터 테두리는 메우지도, 경계로 쓰지도 않는다.
+이때는 보정 뒤 검사도 --all-mouths로 돌린다. 검사는 밝은 표시만 세므로 검은 입이 남았는지는 사람이 전후 그림으로 본다.
+
 보정 뒤에는 반드시 얼굴 검사를 다시 돌려 0프레임인지 보고, 지운 프레임은 사람이 확대해 본다(--compare 전후 그림).
-사용: python scripts/media/remove-face-marks.py <장면 01~12> <원본 프레임 폴더> <출력 폴더> [--compare 전후 그림 폴더]
+사용: python scripts/media/remove-face-marks.py <장면 01~12> <원본 프레임 폴더> <출력 폴더> [--compare 전후 그림 폴더] [--all-mouths]
 """
 import argparse, glob, importlib.util, json, os, shutil
 import numpy as np
@@ -51,9 +58,124 @@ def dark_hull(crop, core):
     return gate.hull_mask(keep) if keep.sum() >= 50 else None
 
 
+TONGUE_HUE = 0.12          # (초록-파랑)/(빨강-파랑). 혀(분홍빛 빨강) 0.07 안팎, 눈빛 가장자리(주황) 0.2 넘음 — 08번 실측
+MOUTH_GROW = 5             # 찾은 입 둘레를 이만큼 넓혀 메운다(흐린 입 윤곽·입술 선까지)
+FILL_STEPS = 400           # 라플라스 보간 반복 수
+
+
+def open_mouth(crop, core):
+    """--all-mouths: 메울 자리(벌린 입)와 경계로 쓸 얼굴판 화소. 혀가 안 보이면 (None, None).
+    얼굴판 덩어리 = 얼굴 상자와 가장 많이 겹치는 어두운 덩어리(닫기 없이 — 닫으면 헤드폰과 이어진다), 눈·혀 구멍은 메운다.
+    혀 = 그 안의 빨강 덩어리(색상 비율로 눈빛 가장자리의 주황과 가른다 — 감은 눈 ∪의 빛 가장자리도 붉다).
+    입 = 혀 + 혀에 닿은 «둘레 얼굴판보다 훨씬 검은» 입 모양·입술 선. 그 둘레 MOUTH_GROW화소를 눈빛·회색 테두리만 빼고 메운다."""
+    v = crop.max(2).astype(np.int32)
+    r, g, b = (crop[..., k].astype(np.int32) for k in range(3))
+    cx0, cy0, cx1, cy1 = core
+    lab, n = ndi.label(v < gate.DARK)
+    if not n: return None, None
+    overlap = ndi.sum(np.ones((cy1 - cy0, cx1 - cx0)), lab[cy0:cy1, cx0:cx1], range(1, n + 1))
+    body = lab == 1 + int(np.argmax(overlap))
+    visor = ndi.binary_fill_holes(body)
+    hue = (g - b) / np.maximum(r - b, 1)
+    reddish = (r - np.maximum(g, b) > 40) & (r > 70)
+    tongue = visor & reddish & (hue < TONGUE_HUE)
+    tlab, tn = ndi.label(tongue)
+    if not tn: return None, None
+    sizes = ndi.sum(tongue, tlab, range(1, tn + 1))
+    if sizes.max() < 12: return None, None
+    tongue = tlab == 1 + int(np.argmax(sizes))                   # 가장 큰 빨강 덩어리 하나가 혀
+    # 눈빛 = 얼굴판 안의 밝거나 붉은 덩어리 중 혀에 닿지 않는 것. 혀 가장자리의 주황빛 화소까지 눈빛으로 빼면 빨간 조각이 남았다
+    lit = visor & (reddish | (v >= 120))
+    llab, _ = ndi.label(lit)
+    near_t = ndi.binary_dilation(tongue, iterations=4)
+    # 혀에 닿은 밝은 덩어리 중 혀 빛깔이거나(색상 비율 평균 < 0.2) 혀보다 작은 것(입술 선)만 입이다. 번짐이 넓은 눈빛이
+    # 혀 곁까지 닿으면 눈까지 입으로 잡혀, 메운 자리가 눈 옆까지 네모나게 번졌다(08번 129번 실측)
+    touch = np.unique(llab[near_t & lit]); touch = touch[touch > 0]
+    touch = np.array([j for j in touch if hue[llab == j].mean() < 0.2 or (llab == j).sum() < 0.5 * tongue.sum()], dtype=int)
+    eye_lit = lit & ~np.isin(llab, touch)
+    glow = ndi.binary_dilation(eye_lit, iterations=2)                # 눈빛 — 메우지도, 경계로 쓰지도 않는다
+    halo = ndi.binary_dilation(eye_lit, iterations=7)                # 눈빛 번짐 — 입 자체가 아니면 메우지 않는다(경계로는 쓴다).
+    # 번짐을 피하지 않으면 번짐이 칼로 자른 듯 끊기고, 번짐 화소를 경계에서 빼지 않으면 보간이 갈색으로 번진다.
+    # 대신 번짐 안에 들어온 입 자체(혀·검은 입 둘레 3화소)는 메운다 — 안 그러면 입 끝이 점으로 남았다(08번 127·129번 실측)
+    local = ndi.median_filter(np.where(visor, v, 0), size=31)
+    reach = max(12, int(3 * np.sqrt(tongue.sum())))               # 초승달 입 끝은 혀에서 혀 크기의 3배까지 간다(1.5배면 끝이 점으로 남았다)
+    dark = visor & (v <= np.maximum(8, 0.7 * local)) & ndi.binary_dilation(tongue, iterations=reach)   # 입 윤곽(둘레의 0.55~0.7배)까지 — 0.55면 윤곽이 점으로 남았다(08번 127번)
+    dlab, dn = ndi.label(dark)
+    mouth = tongue | np.isin(llab, touch)
+    for j in range(1, dn + 1):
+        m = dlab == j
+        if (m & near_t).any(): mouth |= m
+    # 메울 자리 = 찾은 입(혀·검은 입·입술 선)에서 MOUTH_GROW화소. 입 상자를 키운 타원·네모로 잡으면 입과 상관없는
+    # 눈빛 번짐 곁까지 들어가 그 자리가 네모난 갈색 조각으로 남았다(08번 129번 실측)
+    near_mouth = ndi.binary_dilation(mouth, iterations=MOUTH_GROW)
+    # 경계는 «긴» 회색 선(팝 필터·얼굴판 테두리, 60화소 이상)만이다 — 입술 끝의 짧은 회색 선까지 막으면 그 선이 남았다(08번 58번 실측)
+    gray = (v >= 60) & (crop.max(2).astype(np.int32) - crop.min(2) <= 25) & ~mouth
+    glab, gn = ndi.label(gray)
+    long_gray = np.isin(glab, 1 + np.flatnonzero(ndi.sum(gray, glab, range(1, gn + 1)) >= 60)) if gn else gray
+    gray_edge = ndi.binary_dilation(long_gray, iterations=1) & ~tongue
+    cand = near_mouth & (visor | mouth) & ~glow & (~halo | ndi.binary_dilation(mouth, iterations=3)) & ~gray_edge
+    clab, _ = ndi.label(cand)
+    keep = np.unique(clab[ndi.binary_dilation(mouth, iterations=1) & cand])
+    region = np.isin(clab, keep[keep > 0])
+    return region, visor & ~glow & ~gray_edge
+
+
+def harmonic_fill(rgb, region, visor):
+    """region을 둘레의 얼굴판 화소(visor 안, region 밖 — 눈빛 심·회색 테두리 제외)만 경계로 라플라스 보간해 메운다."""
+    ys, xs = np.nonzero(region)                                  # 입 둘레만 잘라 계산한다(빠르게)
+    y0, y1, x0, x1 = max(0, ys.min() - 4), min(rgb.shape[0], ys.max() + 5), max(0, xs.min() - 4), min(rgb.shape[1], xs.max() + 5)
+    reg, vis = region[y0:y1, x0:x1], visor[y0:y1, x0:x1]
+    out = rgb[y0:y1, x0:x1].astype(np.float64)
+    known = vis & ~reg
+    ring = ndi.binary_dilation(reg, iterations=2) & known
+    if not ring.any(): return rgb
+    out[reg] = out[ring].mean(0)
+    use = (reg | known).astype(np.float64)
+    use[0, :] = use[-1, :] = use[:, 0] = use[:, -1] = 0     # np.roll이 반대편 가장자리를 끌어오지 않게
+    for _ in range(FILL_STEPS):
+        acc = np.zeros_like(out); cnt = np.zeros(out.shape[:2])
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            acc += np.roll(out * use[..., None], (dy, dx), (0, 1)); cnt += np.roll(use, (dy, dx), (0, 1))
+        upd = acc / np.maximum(cnt, 1)[..., None]
+        out[reg] = upd[reg]
+    res = rgb.copy(); res[y0:y1, x0:x1] = np.clip(out.round(), 0, 255).astype(np.uint8)
+    return res
+
+
+def remove_open_mouths(a, scene, regions, files):
+    first = np.asarray(Image.open(files[0]).convert('RGB'))
+    art_w = Image.open(os.path.join(gate.ART_DIR, f'{scene}.png')).width
+    s = first.shape[1] / art_w
+    boxes = [[int(round(c * s)) for c in f['face']] for f in regions]
+    report = {'frames': len(files), 'fixed': [], 'no_mouth': []}
+    prev = None
+    for i, f in enumerate(files):
+        rgb = np.asarray(Image.open(f).convert('RGB')).copy(); g = gate.gray(rgb)
+        if prev is not None: boxes = [gate.track(prev, g, bx) for bx in boxes]
+        prev = g; changed = False
+        for bx in boxes:
+            big, core = gate.expand(bx, rgb.shape)
+            crop = rgb[big[1]:big[3], big[0]:big[2]]
+            region, visor = open_mouth(crop, core)
+            if region is None: report['no_mouth'].append(i + 1); continue
+            rgb[big[1]:big[3], big[0]:big[2]] = harmonic_fill(crop, region, visor); changed = True
+        name = os.path.basename(f)
+        Image.fromarray(rgb).save(os.path.join(a.out, name)) if changed else shutil.copyfile(f, os.path.join(a.out, name))
+        if changed:
+            report['fixed'].append(i + 1)
+            if a.compare:
+                os.makedirs(a.compare, exist_ok=True)
+                b = boxes[0]; pad = 20
+                box = (max(0, b[0] - pad), max(0, b[1] - pad), min(rgb.shape[1], b[2] + pad), min(rgb.shape[0], b[3] + pad))
+                Image.open(f).convert('RGB').crop(box).save(os.path.join(a.compare, f'{i + 1:03d}-before.png'))
+                Image.fromarray(rgb).crop(box).save(os.path.join(a.compare, f'{i + 1:03d}-after.png'))
+    json.dump(report, open(os.path.join(a.out, '..', os.path.basename(a.out.rstrip('/\\')) + '.face-fix.json'), 'w', encoding='utf-8'), ensure_ascii=False)
+    print(f'{len(files)}장 · 벌린 입 지운 프레임 {len(report["fixed"])} · 입을 못 찾은 프레임 {len(report["no_mouth"])}')
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('scene'); ap.add_argument('src'); ap.add_argument('out'); ap.add_argument('--compare')
+    ap.add_argument('scene'); ap.add_argument('src'); ap.add_argument('out'); ap.add_argument('--compare'); ap.add_argument('--all-mouths', action='store_true')
     a = ap.parse_args()
     scene = a.scene.zfill(2)
     regions = json.load(open(os.path.join(HERE, 'face-regions.json'), encoding='utf-8'))[scene]
@@ -63,6 +185,7 @@ def main():
     files = sorted(glob.glob(os.path.join(a.src, '*.png')))
     if not files: raise SystemExit(f'프레임 0장: {a.src}')
     os.makedirs(a.out, exist_ok=True)
+    if a.all_mouths: return remove_open_mouths(a, scene, regions, files)
     first = np.asarray(Image.open(files[0]).convert('RGB'))
     s = first.shape[1] / art.shape[1]
     boxes = [[int(round(c * s)) for c in f['face']] for f in regions]

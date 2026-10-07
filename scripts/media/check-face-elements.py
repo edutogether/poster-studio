@@ -19,8 +19,11 @@
      · 빨간 표시(빨간 입·혀, 초록≈파랑인 진짜 빨강) → 입. 두 눈 선보다 눈 높이의 절반 넘게 아래인 아주 밝은 흰 표시 → 입.
        눈높이의 흰 점(깜박일 때 눈이 점으로 보임)과 얼굴판 위쪽 회색 반사광은 세지 않는다.
   5. --selftest: 원화에 가짜 눈썹·흰 입·빨간 입을 그려 넣어 각각 걸리는지 확인한다(빈 게이트 방지).
+  6. --all-mouths: 원화에 있던 입도 탈락으로 센다 — 08번을 «입만 지워» 다른 장면과 같은 얼굴로 맞춘 2026-10-07 Bumm님 결정용.
+     08번은 얼굴판 흰 테두리·팝 필터 테두리가 얼굴판 볼록 다각형 안에 들어와 «입»으로 잘못 세는 프레임이 있다 —
+     이 모드의 탈락은 전후 그림으로 사람이 본다(2026-10-07 192장 확인: 입 없음, 걸린 104프레임은 모두 테두리).
 
-사용: python scripts/media/check-face-elements.py <장면번호 01~12> <프레임 폴더 또는 영상 파일> [--json 결과.json] [--marks 표시그림폴더]
+사용: python scripts/media/check-face-elements.py <장면번호 01~12> <프레임 폴더 또는 영상 파일> [--json 결과.json] [--marks 표시그림폴더] [--all-mouths]
       python scripts/media/check-face-elements.py <장면번호> --selftest
 필요: numpy · scipy · Pillow, 영상 파일이면 ffmpeg.
 종료코드 0 = 통과, 1 = 새 얼굴 요소 발견 → 탈락(또는 자기검사 실패), 2 = 사용법·기준 오류,
@@ -180,6 +183,11 @@ def reference(art, box):
             'band': ((min(c['box'][1] for c in eyes) - top) / h, (max(c['box'][3] for c in eyes) - top) / h)}
 
 
+def forbid_mouths(refs):
+    """원화에 있던 입도 허용하지 않는다(--all-mouths). 08번 원화의 벌린 입까지 지우라는 2026-10-07 Bumm님 결정용."""
+    for r in refs: r['allowed'].pop('입', None)
+
+
 def new_elements(face, ref, scale=1.0, occluded=None):
     """scale = 영상 화소 / 원화 화소. 원화에 없던 종류이거나 원화보다 2.5배 넘게 커진 요소만 돌려준다.
     occluded에 리스트를 주면 «가려짐»(얼굴 앞 소품일 수 있는 흰·빨간 표시)을 거기에 모은다 — 요소로는 세지 않는다."""
@@ -244,6 +252,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('scene'); ap.add_argument('source', nargs='?'); ap.add_argument('--json'); ap.add_argument('--marks')
     ap.add_argument('--fps', type=float, default=24.0); ap.add_argument('--selftest', action='store_true')
+    ap.add_argument('--all-mouths', action='store_true')   # 원화에 있던 입도 탈락으로 센다(08번, 2026-10-07 Bumm님 결정)
     a = ap.parse_args()
     with open(os.path.join(HERE, 'face-regions.json'), encoding='utf-8') as fp: regions = json.load(fp)
     scene = a.scene.zfill(2)
@@ -252,6 +261,7 @@ def main():
     refs = [reference(art, f['face']) for f in regions[scene]]
     if any(r is None for r in refs):
         print(f'기준 오류: 원화 {scene}의 얼굴 상자에서 눈 두 개를 찾지 못했다 — 검사를 믿을 수 없다', file=sys.stderr); return 2
+    if a.all_mouths: forbid_mouths(refs)
     if a.selftest: return 0 if selftest(art, regions[scene], refs) else 1
     if not a.source: ap.error('프레임 폴더 또는 영상 파일이 필요하다')
     with tempfile.TemporaryDirectory() as tmp:
