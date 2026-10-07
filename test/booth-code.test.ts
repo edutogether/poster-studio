@@ -38,6 +38,14 @@ test("형식이 틀린 값(한글·짧은 값·특수문자·깨진 인코딩)�
   }
 });
 
+test("형식이 틀린 값으로 열어도 이미 보관된 코드는 지우지 않는다", () => {
+  localStorage.setItem(KEY, "INKY-2026-ABCD");
+  for (const bad of ["%E0%A4%A", "abc", "%ED%95%9C%EA%B8%80"]) {
+    open(`/#booth=${bad}`);
+    expect(localStorage.getItem(KEY), bad).toBe("INKY-2026-ABCD");
+  }
+});
+
 test("다른 주소 조각(#...)과 보통 방문은 건드리지 않는다", () => {
   open("/#top");
   expect(location.hash).toBe("#top");

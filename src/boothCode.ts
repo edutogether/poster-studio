@@ -9,11 +9,11 @@ const HASH = /^#booth=(.*)$/;
 export function captureBoothCode(loc: Location = window.location, hist: History = window.history) {
   const match = HASH.exec(loc.hash);
   if (!match) return;
-  let code = "";
-  try { code = decodeURIComponent(match[1]).trim(); } catch { /* 깨진 값은 보관하지 않는다 */ }
+  let code: string | null = null;
+  try { code = decodeURIComponent(match[1]).trim(); } catch { /* 깨진 값은 무시한다(보관된 코드도 그대로 둔다) */ }
   try {
-    if (!code) localStorage.removeItem(KEY);
-    else if (FORMAT.test(code)) localStorage.setItem(KEY, code);
+    if (code === "") localStorage.removeItem(KEY);
+    else if (code && FORMAT.test(code)) localStorage.setItem(KEY, code);
   } catch { /* 저장소가 막힌 브라우저는 코드 없이 동작한다 */ }
   hist.replaceState(hist.state, "", loc.pathname + loc.search);
 }
