@@ -12,6 +12,7 @@ export default [
         Buffer: 'readonly',
         __dirname: 'readonly',
         setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         FormData: 'readonly',
         Request: 'readonly',
         Blob: 'readonly',

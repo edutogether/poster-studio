@@ -45,7 +45,17 @@ import {
   COUNTER_TTL_MS,
   cleanupOldCounters,
   _firestoreIncrementAndCheck,
-  ALLOWED_ORIGINS
+  ALLOWED_ORIGINS,
+  COUNTER_TTL_OVERRIDES_MS,
+  MAX_REQUEST_BYTES,
+  _setCounterTimeoutForTesting,
+  FALLBACK_LIMIT_PER_INSTANCE,
+  _resetFallbackForTesting,
+  ipKey,
+  parseGenerateWindows,
+  makeGenerateWindowGate,
+  markRequestStart,
+  generateHandler
 } from '../index.js';
 
 // 레이트리밋/사진별 생성한도는 이제 Firestore 트랜잭션으로 전역 강제되는데(5차
@@ -1201,4 +1211,233 @@ test('/generate 미들웨어 순서: checkPhotoGenerationLimit이 dailyBudgetCap
   expect(photoIdx < budgetIdx, '생성으로 이어지지 않는 요청이 하루 예산을 소모하면 안 되므로 사진별 한도가 먼저여야 한다').toBeTruthy();
   // 6차 감사에서 잡은 순서(사진 확인이 레이트리밋보다 먼저)도 같이 지킨다.
   expect(names.indexOf('requirePhoto') < names.indexOf('rateLimit'), 'requirePhoto가 rateLimit보다 먼저여야 한다').toBeTruthy();
+});
+
+// ── 요청 처리 안정성 (2026-10-05) ───────────────────────────────────────
+// 본문 크기·필드 개수 한도, 카운터 응답 제한 시간과 대체 한도, IP 키, 보관 기간,
+// 응답 전 임시 사진 삭제, 요청 시작 기준 예산, 생성 허용 시간창(기본 꺼짐).
+
+function countUploads() {
+  return fs.existsSync(UPLOAD_DIR) ? fs.readdirSync(UPLOAD_DIR).length : 0;
+}
+
+test('parseMultipart: 허용 크기를 넘는 본문은 파싱하지 않고 413용 오류로 끝내며 파일을 남기지 않는다', async () => {
+  const before = countUploads();
+  const { err } = await runParseMultipart({
+    headers: { 'content-type': 'multipart/form-data; boundary=x' },
+    rawBody: Buffer.alloc(MAX_REQUEST_BYTES + 1)
+  });
+  expect(err?.code).toBe('LIMIT_FILE_SIZE');
+  expect(countUploads()).toBe(before);
+});
+
+const jpegPart = (name = 'photo', filename = 'p.jpg') => [name, { blob: new Blob([Buffer.from([0xff, 0xd8, 0xff, ...crypto.randomBytes(8)])], { type: 'image/jpeg' }), filename }];
+
+test('parseMultipart: 글 필드가 한도(10개)를 넘으면 요청 형식 오류다', async () => {
+  const parts = [];
+  for (let i = 0; i < 11; i++) parts.push([`f${i}`, 'x']);
+  const { err } = await runParseMultipart(await buildMultipartRequest(parts));
+  expect(err?.message).toBe('요청 형식이 올바르지 않습니다.');
+});
+
+test('parseMultipart: 파트 수가 한도(12개)를 넘으면 요청 형식 오류다(글 필드는 한도 안)', async () => {
+  const parts = [jpegPart(), jpegPart('photo', 'b.jpg'), jpegPart('photo', 'c.jpg')];
+  for (let i = 0; i < 10; i++) parts.push([`f${i}`, 'x']);
+  const { err } = await runParseMultipart(await buildMultipartRequest(parts));
+  expect(err?.message).toBe('요청 형식이 올바르지 않습니다.');
+});
+
+test('parseMultipart: 오류로 끝날 때 다음 단계로 넘기기 전에 이미 쓴 사진 삭제를 마친다', async () => {
+  // 콜백형 삭제를 일부러 늦춘다 — 삭제를 기다리지 않는 구현이면 다음 단계 시점에 파일이 남아 있다.
+  const realUnlink = fs.unlink;
+  const spy = vi.spyOn(fs, 'unlink').mockImplementation((p, cb) => setTimeout(() => realUnlink(p, cb), 200));
+  try {
+    const before = countUploads();
+    const parts = [jpegPart()];
+    for (let i = 0; i < 11; i++) parts.push([`f${i}`, 'x']);
+    const fake = await buildMultipartRequest(parts);
+    const atNext = await new Promise((resolve) => {
+      parseMultipart({ ...fake }, {}, (err) => resolve({ err, files: countUploads() }));
+    });
+    expect(atNext.err).toBeTruthy();
+    expect(atNext.files, '다음 단계로 넘어가는 순간 사진이 이미 지워져 있어야 한다').toBe(before);
+  } finally {
+    spy.mockRestore();
+    await new Promise((r) => setTimeout(r, 250));
+  }
+});
+
+test('카운터 응답이 제한 시간을 넘으면 기다리지 않고 대체 처리로 넘어간다', async () => {
+  _setCounterImplForTesting(() => new Promise(() => {}));
+  _setCounterTimeoutForTesting(50);
+  _resetFallbackForTesting();
+  try {
+    const t0 = Date.now();
+    const passed = await new Promise((resolve) => {
+      rateLimit({}, { status: () => ({ json: () => resolve(false) }) }, () => resolve(true));
+    });
+    expect(passed).toBe(true);
+    expect(Date.now() - t0, '제한 시간(50ms) 근처에서 끝나야 한다').toBeLessThan(1000);
+  } finally {
+    _setCounterTimeoutForTesting(null);
+    _resetFallbackForTesting();
+    useSharedCounterImpl();
+  }
+});
+
+test(`카운터를 못 쓰면 인스턴스마다 10분에 ${FALLBACK_LIMIT_PER_INSTANCE}건까지만 통과시키고 그다음은 429다`, async () => {
+  _setCounterImplForTesting(async () => {
+    throw new Error('시뮬레이션: Firestore 연결 실패');
+  });
+  _resetFallbackForTesting();
+  try {
+    const results = [];
+    for (let i = 0; i < FALLBACK_LIMIT_PER_INSTANCE + 1; i++) {
+      results.push(
+        await new Promise((resolve) => {
+          rateLimit({}, { status: (c) => ({ json: () => resolve(c) }) }, () => resolve('next'));
+        })
+      );
+    }
+    expect(results.slice(0, FALLBACK_LIMIT_PER_INSTANCE).every((r) => r === 'next')).toBe(true);
+    expect(results[FALLBACK_LIMIT_PER_INSTANCE]).toBe(429);
+  } finally {
+    _resetFallbackForTesting();
+    useSharedCounterImpl();
+  }
+});
+
+test('ipRateLimit: 카운터 문서 ID에 접속 IP 원래 값이 들어가지 않고, 같은 IP는 같은 키·다른 IP는 다른 키다', async () => {
+  const ids = [];
+  _setCounterImplForTesting(async (collectionName, docId) => {
+    ids.push(docId);
+    return { allowed: true, count: 1 };
+  });
+  try {
+    const call = (ip) =>
+      new Promise((resolve) => ipRateLimit({ headers: { 'x-forwarded-for': ip } }, {}, () => resolve()));
+    await call('203.0.113.9');
+    await call('203.0.113.9');
+    await call('198.51.100.4');
+    expect(ids.some((id) => id.includes('203.0.113.9') || id.includes('198.51.100.4'))).toBe(false);
+    expect(ids[0]).toBe(ids[1]);
+    expect(ids[0]).not.toBe(ids[2]);
+    expect(ipKey('203.0.113.9')).toMatch(/^[0-9a-f]{32}$/);
+  } finally {
+    useSharedCounterImpl();
+  }
+});
+
+test('cleanupOldCounters: IP 버킷은 하루, 나머지는 30일이 지나면 지운다', async () => {
+  const now = Date.now();
+  const twoDays = new Date(now - 2 * 24 * 60 * 60 * 1000);
+  const hours = new Date(now - 3 * 60 * 60 * 1000);
+  expect(COUNTER_TTL_OVERRIDES_MS.ipRateLimitBuckets).toBe(24 * 60 * 60 * 1000);
+  const fakeDb = makeFakeFirestoreDb({
+    rateLimitBuckets: [{ id: 'r2d', updatedAt: twoDays }],
+    ipRateLimitBuckets: [{ id: 'ip2d', updatedAt: twoDays }, { id: 'ip3h', updatedAt: hours }],
+    photoGenCounts: [{ id: 'h2d', updatedAt: twoDays }],
+    dailyBudgetBuckets: []
+  });
+  const total = await cleanupOldCounters(fakeDb, now);
+  expect(total).toBe(1);
+  expect(fakeDb._remainingIds('ipRateLimitBuckets')).toEqual(['ip3h']);
+  expect(fakeDb._remainingIds('rateLimitBuckets')).toEqual(['r2d']);
+  expect(fakeDb._remainingIds('photoGenCounts')).toEqual(['h2d']);
+});
+
+function runHandler(req) {
+  return new Promise((resolve) => {
+    const res = {
+      status(code) {
+        this.code = code;
+        return this;
+      },
+      json(body) {
+        resolve({ code: this.code, body, fileExistedAtResponse: fs.existsSync(req.file.path) });
+      }
+    };
+    generateHandler(req, res);
+  });
+}
+
+test('generateHandler: 성공·실패 모두 임시 사진을 지운 뒤에 응답한다', async () => {
+  for (const ok of [true, false]) {
+    _setClientForTesting(
+      makeFakeClient(async () => {
+        if (ok) return { data: [{ b64_json: 'AAA' }] };
+        const e = new Error('테스트용 실패');
+        e.status = 400;
+        throw e;
+      })
+    );
+    const filePath = makeTempFile(Buffer.from([0xff, 0xd8, 0xff, ...crypto.randomBytes(8)]));
+    try {
+      const r = await runHandler({ file: { path: filePath, mimetype: 'image/jpeg' }, body: {}, startedAt: Date.now() });
+      expect(r.code, '실패는 기존 규칙대로 일반 오류(500)').toBe(ok ? 200 : 500);
+      expect(r.fileExistedAtResponse, '응답 순간에 사진이 이미 지워져 있어야 한다').toBe(false);
+    } finally {
+      _setClientForTesting(null);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+  }
+});
+
+test('generateHandler: 시간 예산은 요청이 들어온 순간부터 잰다(이미 다 쓴 요청은 OpenAI를 부르지 않는다)', async () => {
+  let calls = 0;
+  _setClientForTesting(
+    makeFakeClient(async () => {
+      calls++;
+      return { data: [{ b64_json: 'AAA' }] };
+    })
+  );
+  const filePath = makeTempFile(Buffer.from([0xff, 0xd8, 0xff, ...crypto.randomBytes(8)]));
+  try {
+    const r = await runHandler({
+      file: { path: filePath, mimetype: 'image/jpeg' },
+      body: {},
+      startedAt: Date.now() - (GENERATE_BUDGET_MS + 1000)
+    });
+    expect(calls).toBe(0);
+    expect(r.code).toBe(504);
+  } finally {
+    _setClientForTesting(null);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+});
+
+test('POST /generate: 요청 시작 표시가 맨 앞이고, 시간창은 부스 토큰 뒤·사진 파싱 앞이다', () => {
+  const router = app.router || app._router;
+  const layer = router.stack.find((l) => l.route?.path === '/generate');
+  const names = layer.route.stack.map((s) => s.handle.name);
+  expect(layer.route.stack[0].handle).toBe(markRequestStart);
+  expect(names[1]).toBe('checkBoothToken');
+  expect(names[3]).toBe('parseMultipart');
+});
+
+test('parseGenerateWindows: 샘플 형식을 한국 시간으로 읽고, 형식이 틀리면 오류다', () => {
+  const w = parseGenerateWindows('2026-11-14T09:00~2026-11-14T18:00, 2026-11-07T13:00~2026-11-07T17:00');
+  expect(w).toHaveLength(2);
+  expect(w[0].start).toBe(Date.parse('2026-11-14T00:00:00Z'));
+  expect(w[0].end).toBe(Date.parse('2026-11-14T09:00:00Z'));
+  expect(parseGenerateWindows('')).toEqual([]);
+  expect(() => parseGenerateWindows('2026-11-14 09:00~18:00')).toThrow();
+  expect(() => parseGenerateWindows('2026-11-14T18:00~2026-11-14T09:00')).toThrow();
+});
+
+test('생성 허용 시간창: 비어 있으면 언제나 통과, 설정하면 그 안에서만 통과하고 밖은 403이다', () => {
+  const w = parseGenerateWindows('2026-11-14T09:00~2026-11-14T18:00');
+  const run = (gate) =>
+    new Promise((resolve) => gate({}, { status: (c) => ({ json: () => resolve(c) }) }, () => resolve('next')));
+  return Promise.all([
+    run(makeGenerateWindowGate([], () => 0)),
+    run(makeGenerateWindowGate(w, () => Date.parse('2026-11-14T10:00:00+09:00'))),
+    run(makeGenerateWindowGate(w, () => Date.parse('2026-11-14T08:59:00+09:00'))),
+    run(makeGenerateWindowGate(w, () => Date.parse('2026-11-14T18:00:00+09:00')))
+  ]).then(([off, inside, before, atEnd]) => {
+    expect(off).toBe('next');
+    expect(inside).toBe('next');
+    expect(before).toBe(403);
+    expect(atEnd).toBe(403);
+  });
 });
