@@ -24,6 +24,13 @@ public/**/*.js                text eol=lf
 public/**/*.css               text eol=lf
 public/**/*.txt               text eol=lf
 
+# ③ 첫 줄이 `#!/usr/bin/env node`인 노드 스크립트.
+#    CRLF로 받으면 vitest가 이 모듈을 불러오는 검사 파일을 «Invalid or unexpected token»으로
+#    아예 못 연다(2026-10-08 Windows 체크아웃에서 test/booth-code-env·capture-server 두 파일 실측 —
+#    같은 모듈을 LF로 바꾸자 통과). CI(리눅스)는 LF라 초록불이어서 아무도 몰랐다.
+#    셔뱅이 없는 .mjs도 같은 폴더에 섞여 생기므로 scripts/ 아래 .mjs를 통째로 묶는다.
+scripts/**/*.mjs              text eol=lf
+
 # 🔴 바이너리는 줄끝 변환 대상이 아니다 — 위의 경로 규칙에 휩쓸려 깨지는 것을 막는다.
 #    나중 규칙이 이기므로 반드시 아래에 둔다.
 #    다른 저장소에서 실제로 일어난 사고: 폴더 경로에 `text eol=lf`를 걸었더니 그 안의

@@ -4,6 +4,7 @@
 
 - 📷 이모지 파비콘과 탭 비활성 시 흑백 전환(`src/favicon.ts`)을 없애고, 공용 `_shared/favicons/inky-camera-64.png`를 그대로 복사한 `public/favicon-inky.png`를 `index.html`·`privacy.html`에 정적으로 걸었다. 새 검사(`test/favicon.test.js`)는 옛 코드에서 4건 모두 실패하는 것을 확인했다.
 - 아이콘 주소에 날짜를 붙였다(`/favicon-inky.png?v=20261008`, Bumm님 «다른 앱들도 아이콘 주소에 날짜 붙여»). 주소가 그대로면 브라우저가 최대 1시간 예전 아이콘을 쓴다. 그림을 바꿀 때마다 날짜를 올린다.
+- 셔뱅(`#!/usr/bin/env node`)이 있는 `scripts/**/*.mjs`를 `.gitattributes`에서 LF로 고정했다. Windows에서 CRLF로 받으면 vitest가 `test/booth-code-env`·`capture-server` 두 검사 파일을 아예 열지 못했다(CI 리눅스는 LF라 초록불이어서 몰랐다). 이미 받은 Windows 작업 폴더는 해당 파일을 LF로 다시 받아야 한다.
 
 ## 2026-10-07 — 운영 스위치·포스터 글꼴 자체 서빙·로컬 도구 정비 (팀장 지시, Bumm님 «진행할 건 싹 진행해»)
 
