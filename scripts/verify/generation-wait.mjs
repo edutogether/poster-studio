@@ -206,8 +206,9 @@ try {
       assert.notEqual(later.fact,info.fact);
       assert.notEqual(later.image,info.image);
       await screenshot(`next-fact-${width}`);
-      await evaluate(`document.querySelector('.generation-pause').click()`);
-      assert.equal(await evaluate(`document.getElementById('spinner').dataset.paused`),'true');
+      // 로딩 화면은 멈추는 화면이 아니다(2026-10-06 Bumm님 결정 118) — 멈춤 단추가 없고 넘김이 계속된다
+      assert.equal(await evaluate(`document.querySelector('.generation-pause')`),null,'멈춤 단추 없음');
+      assert.equal(await evaluate(`document.getElementById('spinner').dataset.paused`),'false');
     }
     await evaluate('window.__releaseWait()');
     for(let i=0;i<100;i++){await wait(100);if(await evaluate("!!document.querySelector('.completion-notice')"))break;}

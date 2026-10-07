@@ -30,10 +30,10 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [reduced, setReduced] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
-  const [paused, setPaused] = useState(false);
   const [scenes] = useState(createWaitSequence);
   const [sceneIndex, setSceneIndex] = useState(0);
-  const still = reduced || paused;
+  // 로딩 화면은 멈추는 화면이 아니다(2026-10-06 Bumm님 결정 118) — 자동 넘김은 «움직임 줄이기» 설정에서만 멈춘다.
+  const still = reduced;
   const scene = scenes[sceneIndex];
 
   useEffect(() => {
@@ -69,7 +69,6 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
       <div className="generation-content">
         <div className="generation-film waiting-art-frame" data-art={scene.id}>
           <img className="generation-robot-film" data-active="true" src={scene.image} width={704} height={704} alt={scene.theme} />
-          {!reduced && <button type="button" className="generation-pause" aria-label={paused ? "자동 넘김 재생" : "자동 넘김 일시 정지"} onClick={() => setPaused(value => !value)}>{paused ? "▷" : "Ⅱ"}</button>}
         </div>
         <h1 ref={heading} tabIndex={-1} id="generationTitle" className="generation-copy-stack">
           {scenes.map(({ id, title }, index) => <span key={id} className="generation-copy" data-active={index === sceneIndex} aria-hidden={index !== sceneIndex}>{title}</span>)}
