@@ -62,9 +62,11 @@ def dark_hull(crop, core):
 
 TONGUE_HUE = 0.12          # (초록-파랑)/(빨강-파랑). 혀(분홍빛 빨강) 0.07 안팎, 눈빛 가장자리(주황) 0.2 넘음 — 08번 실측
 MOUTH_GROW = 5             # 찾은 입 둘레를 이만큼 넓혀 메운다(흐린 입 윤곽·입술 선까지)
+TONGUE_REACH = 0.45        # 입 자리 모드: 혀 조각 무게중심이 원화 입 자리에서 얼굴 상자 높이의 이 배수 안(04번 혀는 0.36~0.37배)
 MOUTH_REACH = 0.35         # --mouth-frames: 원화 입 자리에서 얼굴 상자 높이의 이 배수 안만 입으로 본다
 MOUTH_BLACK = 6            # --mouth-frames: 검은 벌린 입 안쪽 밝기(06번 0~6, 얼굴판 10~30)
 DARK_THICK = 6             # --mouth-frames: 검은 입 두께(반지름) 하한(원화 미소선 4.5 이하, 06번 벌린 입 8~10)
+DARK_RIM = 0.06            # --mouth-frames: 검은 입이 얼굴판 가장자리 4화소 띠에 걸쳐도 되는 비율(06번 112번 벌린 입 0.043 — 0.03이면 놓쳤다)
 DARK_EDGE = 15             # --mouth-frames: 검은 입 둘레 띠의 평균 밝기 하한(06번 벌린 입 20~30, 04번 얼굴판 아래 그늘 10 아래)
 LINE_THICK = 4             # --mouth-frames: 하얗거나 회색인 입선 두께(반지름) 상한(입선 2~3, 반사광·김은 6 넘음)
 LINE_GROW = 3              # --mouth-frames: 입선만 지울 때 선 둘레를 넓히는 폭
@@ -130,8 +132,9 @@ def open_mouth(crop, core, mouth_at=None, lines_only=False):
             # 입 자리 모드: 원화 입 자리 둘레(MOUTH_REACH)의 6화소 이상 빨강 조각도 혀다 — 혀가 사라지는 순간 얼굴판 테두리에 남은 8화소
             # 조각이 12화소 기준에 걸려 그대로 남았다(04번 148번 실측). 둘레 밖의 작은 빨강(소품)은 그대로 12화소 기준
             cy, cx = (np.array(ndi.center_of_mass(np.ones(tlab.shape), tlab, idx)).reshape(-1, 2)).T
-            near = np.hypot(cy - mouth_at[1], cx - mouth_at[0]) <= MOUTH_REACH * (core[3] - core[1])
-            # 입 자리 모드의 혀는 모두 원화 입 자리 둘레만 — 얼굴 앞을 지나는 빨간 연필 끝(02번 1.5초)을 혀로 잡지 않게
+            near = np.hypot(cy - mouth_at[1], cx - mouth_at[0]) <= TONGUE_REACH * (core[3] - core[1])
+            # 입 자리 모드의 혀는 모두 원화 입 자리 둘레만. 다만 얼굴 앞을 지나는 빨간 연필 끝(02번 1.4~1.6초)은 거리로 갈리지 않아
+            # (입 자리에서 0.19배) 그 프레임은 --line-frames에서 빼고 넘긴다
             ok = near & (sizes >= 6) & (inside >= 0.5 * sizes)
         ok = np.flatnonzero(ok)
         if len(ok): tongue = np.isin(tlab, 1 + ok) if mouth_at is not None else tlab == 1 + int(ok[np.argmax(sizes[ok])])
@@ -177,7 +180,7 @@ def open_mouth(crop, core, mouth_at=None, lines_only=False):
         dlab, dn = ndi.label(dark); keep = []
         for j in range(1, dn + 1):
             m = dlab == j
-            if m.sum() < 20 or ndi.distance_transform_edt(m).max() < DARK_THICK or (m & rim_band).sum() > 0.03 * m.sum(): continue
+            if m.sum() < 20 or ndi.distance_transform_edt(m).max() < DARK_THICK or (m & rim_band).sum() > DARK_RIM * m.sum(): continue
             ring = ndi.binary_dilation(m, iterations=4) & ~ndi.binary_dilation(m, iterations=1) & visor & ~lit
             if ring.any() and v[ring].mean() >= DARK_EDGE: keep.append(j)
         dark = np.isin(dlab, keep)
