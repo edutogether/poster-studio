@@ -1,11 +1,12 @@
 # 대기 영상 한 편을 Veo 3.1 Fast(Vertex AI)로 만든다 — 유료다. 공식 가격표(720p·소리 없음) 초당 $0.08 → 8초 $0.64.
 #  · 첫 장면 = 승인 원화. 원화를 원래 크기 그대로 16:9 캔버스 가운데에 얹고 여백은 원화 배경색(테두리 중앙값)으로 채운다
 #    (시험 영상 04·11번과 같은 방식). 기본은 끝 장면도 원화로 지정하고, --no-last-frame이면 끝 장면을 지정하지 않는다.
+#    --last-image <그림>이면 끝 장면을 그 그림(스토리보드에 맞춰 새로 그린 원화, 2026-10-07 Bumm님 확정)으로 지정한다.
 #  · 지시문 = video-followup-2026-10-03/prompts/<장면>.txt 그대로(보관본 + 기록된 수정).
 #  · 비용 기록(<작업 폴더>/cost-log.jsonl)의 누적에 이번 요청을 더해 상한을 넘으면 요청하지 않는다. 재시도하지 않는다.
 #  · --confirm 없이는 요청하지 않는다(입력 그림·지시문만 만들어 보여 준다).
 #  · --negative면 얼굴 요소를 막는 부정 지시(negativePrompt)를 더한다 — 기본은 끈다(아래 NEGATIVE 주석).
-# 사용: python scripts/media/veo_generate.py <장면 01~12> <작업 폴더> --account <gcloud 계정> [--no-last-frame] [--negative] [--stop 15] --confirm
+# 사용: python scripts/media/veo_generate.py <장면 01~12> <작업 폴더> --account <gcloud 계정> [--no-last-frame | --last-image <그림>] [--negative] [--stop 15] --confirm
 import argparse, base64, json, os, shutil, subprocess, sys, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 import numpy as np
@@ -24,8 +25,10 @@ NEGATIVE = ('mouth, open mouth, smiling mouth, glowing white mouth, white smile 
             'eyebrows, nose, cheeks, blush, new facial features on the black face screen, text, letters, extra logos')
 
 
-def input_image(scene, out):
-    art = Image.open(os.path.join(ART, f'{scene}.png')).convert('RGBA')
+def input_image(scene, out, src=None):
+    """src가 있으면(끝 장면용 새 원화) 그 그림을 원래 원화와 같은 크기로 맞춰 같은 캔버스에 얹는다."""
+    base = Image.open(os.path.join(ART, f'{scene}.png'))
+    art = Image.open(src).convert('RGBA').resize(base.size, Image.LANCZOS) if src else base.convert('RGBA')
     a = np.asarray(art)
     if a[..., 3].min() < 255: raise SystemExit(f'{scene}: 원화에 투명한 곳이 있다 — 16:9 캔버스에 얹는 방식을 다시 정해야 한다')
     rgb = a[..., :3]
@@ -53,28 +56,31 @@ def call(url, token, body):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('scene'); ap.add_argument('work'); ap.add_argument('--account', required=True)
-    ap.add_argument('--no-last-frame', action='store_true'); ap.add_argument('--negative', action='store_true'); ap.add_argument('--stop', type=float, default=15.0); ap.add_argument('--confirm', action='store_true')
+    ap.add_argument('--no-last-frame', action='store_true'); ap.add_argument('--last-image'); ap.add_argument('--negative', action='store_true'); ap.add_argument('--stop', type=float, default=15.0); ap.add_argument('--confirm', action='store_true')
     a = ap.parse_args()
     scene = a.scene.zfill(2); d = os.path.join(a.work, scene); os.makedirs(d, exist_ok=True)
     log = os.path.join(a.work, 'cost-log.jsonl')
     tries = 1 + sum(1 for l in open(log, encoding='utf-8') if l.strip() and json.loads(l).get('장면') == scene) if os.path.exists(log) else 1
     name = f'try{tries}'
     info = input_image(scene, os.path.join(d, 'input-16x9.png'))
+    if a.last_image: input_image(scene, os.path.join(d, f'{name}-last-16x9.png'), a.last_image)
     prompt = open(os.path.join(PROMPTS, f'{scene}.txt'), encoding='utf-8').read().replace('\r\n', '\n')
     open(os.path.join(d, f'{name}-prompt.txt'), 'w', encoding='utf-8').write(prompt)
     cost = round(SECONDS * RATE, 2); before = spent(log)
-    print(f'장면 {scene} {name} · 입력 {info} · 끝 장면 지정 {"안 함" if a.no_last_frame else "원화"} · 이번 ${cost} · 누적 ${before} → ${before + cost:.2f} (멈춤 ${a.stop})')
+    print(f'장면 {scene} {name} · 입력 {info} · 끝 장면 지정 {"안 함" if a.no_last_frame else (a.last_image or "원화")} · 이번 ${cost} · 누적 ${before} → ${before + cost:.2f} (멈춤 ${a.stop})')
     if before + cost > a.stop: print('상한을 넘는다 — 요청하지 않는다'); sys.exit(4)
     if not a.confirm: print('--confirm 없음 — 요청하지 않았다'); sys.exit(0)
     token = subprocess.run([shutil.which('gcloud'), 'auth', 'print-access-token', a.account], capture_output=True, text=True, check=True).stdout.strip()
     img = {'bytesBase64Encoded': base64.b64encode(open(os.path.join(d, 'input-16x9.png'), 'rb').read()).decode(), 'mimeType': 'image/png'}
     inst = {'prompt': prompt, 'image': img}
-    if not a.no_last_frame: inst['lastFrame'] = img
+    if a.last_image:
+        inst['lastFrame'] = {'bytesBase64Encoded': base64.b64encode(open(os.path.join(d, f'{name}-last-16x9.png'), 'rb').read()).decode(), 'mimeType': 'image/png'}
+    elif not a.no_last_frame: inst['lastFrame'] = img
     base = f'https://{LOC}-aiplatform.googleapis.com/v1/projects/{PROJECT}/locations/{LOC}/publishers/google/models/{MODEL}'
     t0 = time.time()
     params = dict(PARAMS, negativePrompt=NEGATIVE) if a.negative else dict(PARAMS)
     st, op = call(f'{base}:predictLongRunning', token, {'instances': [inst], 'parameters': params})
-    rec = {'t': datetime.now(timezone.utc).isoformat(timespec='seconds'), '장면': scene, '시도': name, '모델': MODEL, '조건': params, '끝장면': not a.no_last_frame}
+    rec = {'t': datetime.now(timezone.utc).isoformat(timespec='seconds'), '장면': scene, '시도': name, '모델': MODEL, '조건': params, '끝장면': (os.path.basename(a.last_image) if a.last_image else (not a.no_last_frame))}
     if st != 200 or 'name' not in op:
         rec.update(단계='요청 실패', 상태=st, 오류=str(op.get('error', op))[:300], 비용=0); open(log, 'a', encoding='utf-8').write(json.dumps(rec, ensure_ascii=False) + '\n')
         print('요청 실패', st); sys.exit(1)
