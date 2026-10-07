@@ -1,5 +1,9 @@
 # CHANGELOG — Poster Studio
 
+## 2026-10-08 — 파비콘을 InKY 노란 카메라 하나로 고정 (Bumm님 결정 10/7, COMMON_STANDARDS §33, 팀장 지시)
+
+- 📷 이모지 파비콘과 탭 비활성 시 흑백 전환(`src/favicon.ts`)을 없애고, 공용 `_shared/favicons/inky-camera-64.png`를 그대로 복사한 `public/favicon-inky.png`를 `index.html`·`privacy.html`에 정적으로 걸었다. 새 검사(`test/favicon.test.js`)는 옛 코드에서 4건 모두 실패하는 것을 확인했다.
+
 ## 2026-10-07 — 운영 스위치·포스터 글꼴 자체 서빙·로컬 도구 정비 (팀장 지시, Bumm님 «진행할 건 싹 진행해»)
 
 - 부스 코드 스위치를 넣었다(**기본 꺼짐**). 꺼져 있으면 요청·화면이 그대로다. 화면 입력칸은 없고, 켜는 절차는 비공개 운영 문서에만 둔다. 새 비밀값 없이 배포된다.

@@ -1,54 +1,68 @@
-// favicon.js는 진짜 캔버스 픽셀 desaturate 로직(toGrayscale)을 갖고 있어
-// FakeCtx(항상 같은 fake toDataURL 반환)로는 검증할 수 없다 — 실제 캔버스
-// 파이프라인을 쓰는 templates-canvas.test.js와 같은 방식(@napi-rs/canvas)을 쓴다.
+/* ────────────────────────────────────────────────────────────────────
+   파비콘은 InKY 노란 카메라(필름 포함 전체 로고) 하나로 고정한다
+   (Bumm님 결정 2026-10-07, COMMON_STANDARDS §33).
+
+   예전에는 src/favicon.ts가 📷 이모지를 캔버스에 그려 꽂고, 탭이 비활성이면
+   흑백으로 바꿔치기했다. §33이 그 회색 전환을 폐기했으므로 이 검사가 두 가지를
+   못 박는다:
+   1. 각 HTML 페이지에 아이콘 링크가 정확히 하나, `/favicon-inky.png`를 가리킨다.
+   2. 어떤 소스도 실행 중에 아이콘 링크를 건드리지 않는다(탭 상태에 따른 교체 금지).
+   ──────────────────────────────────────────────────────────────────── */
 import { test, expect } from 'vitest';
-import { createCanvas } from '@napi-rs/canvas';
-import { loadApp } from './load-app.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
 
-test('renderColorFavicon: 64x64 캔버스에 이모지를 그려 데이터URL을 만든다', async () => {
-  const app = await loadApp({ createRealCanvas: createCanvas });
-  const canvas = app.renderColorFavicon();
-  expect(canvas.width).toBe(64);
-  expect(canvas.height).toBe(64);
+const ROOT = process.cwd();
+const ICON_HREF = '/favicon-inky.png';
+/* _shared/favicons/inky-camera-64.png 원본 그대로. 다시 자르거나 인코딩하면 값이 바뀐다. */
+const ICON_SHA256 = 'f74e7e0a1dc21be7f003d691ae308396ccdee10d2a681af85c7cff5cad6558d5';
+
+function iconLinks(html) {
+  return (html.match(/<link\b[^>]*>/gi) ?? []).filter((tag) => {
+    const rel = tag.match(/\brel\s*=\s*["']([^"']*)["']/i);
+    return rel && rel[1].toLowerCase().split(/\s+/).includes('icon');
+  });
+}
+
+for (const page of ['index.html', 'privacy.html']) {
+  test(`${page}: 아이콘 링크가 정확히 하나이고 ${ICON_HREF}를 가리킨다`, () => {
+    const links = iconLinks(fs.readFileSync(path.join(ROOT, page), 'utf8'));
+    expect(links, `${page}의 rel=icon 링크`).toHaveLength(1);
+    expect(links[0]).toMatch(new RegExp(`\\bhref\\s*=\\s*["']${ICON_HREF.replace('.', '\\.')}["']`));
+  });
+}
+
+test('public/favicon-inky.png가 공용 원본과 바이트 단위로 같다', () => {
+  const file = path.join(ROOT, 'public', 'favicon-inky.png');
+  expect(fs.existsSync(file), 'public/favicon-inky.png가 있어야 dist/로 복사돼 배포된다').toBe(true);
+  const sha = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  expect(sha).toBe(ICON_SHA256);
 });
 
-test('toGrayscale: RGB 픽셀을 휘도 공식으로 desaturate한다(R=G=B가 되고, 원래 밝기 근처로 남는다)', async () => {
-  const app = await loadApp({ createRealCanvas: createCanvas });
-  const canvas = app.renderColorFavicon();
-  const ctx = canvas.getContext('2d');
-  const before = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  // 순수 빨강 픽셀 하나를 심어서 desaturate 공식이 실제로 적용되는지 검증한다.
-  before.data[0] = 200; before.data[1] = 0; before.data[2] = 0; before.data[3] = 255;
-  ctx.putImageData(before, 0, 0);
+function sourceFiles(dir, exts) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return sourceFiles(full, exts);
+    return exts.some((ext) => entry.name.endsWith(ext)) ? [full] : [];
+  });
+}
 
-  const gray = app.toGrayscale(canvas);
-  const after = gray.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-  const expected = Math.round(200 * 0.299);
-  expect(after.data[0], 'R과 G가 같아야 한다(무채색)').toBe(after.data[1]);
-  expect(after.data[1], 'G와 B가 같아야 한다(무채색)').toBe(after.data[2]);
-  expect(after.data[0], '휘도 공식(R*0.299)대로 desaturate돼야 한다').toBe(expected);
-});
-
-test('updateFavicon: visibilityState/hasFocus 조합에 따라 올바른 아이콘 상수(COLOR_ICON/GRAY_ICON)를 고른다', async () => {
-  // 헤드리스 캔버스(@napi-rs/canvas)엔 컬러 이모지 글꼴이 없어 렌더된 픽셀 자체는
-  // 늘 비어있다 — 그래서 여기서는 "실제로 다른 그림이 나오는가"가 아니라
-  // "updateFavicon이 상태에 따라 올바른 분기(활성→컬러/비활성→흑백)를 타는가"를
-  // 검증한다. desaturate 공식 자체의 정확성은 위 toGrayscale 테스트가 이미 검증한다.
-  const app = await loadApp({ createRealCanvas: createCanvas });
-  const link = { rel: '', href: '' };
-  app.document.querySelector = () => link;
-
-  app.document.visibilityState = 'visible';
-  app.document.hasFocus = () => true;
-  app.updateFavicon();
-  expect(link.href).toBe(app.COLOR_ICON);
-
-  app.document.hasFocus = () => false;
-  app.updateFavicon();
-  expect(link.href).toBe(app.GRAY_ICON);
-
-  app.document.hasFocus = () => true;
-  app.document.visibilityState = 'hidden';
-  app.updateFavicon();
-  expect(link.href, '탭이 안 보이면 포커스가 있어도 흑백이어야 한다').toBe(app.GRAY_ICON);
+test('어떤 소스도 실행 중에 파비콘을 바꾸지 않는다', () => {
+  const files = [
+    ...sourceFiles(path.join(ROOT, 'src'), ['.ts', '.tsx', '.js']),
+    ...sourceFiles(path.join(ROOT, 'public'), ['.js'])
+  ];
+  // 🔴 대상이 0건이면 통과하지 않는다 — 경로가 바뀌어 아무것도 안 읽어도 초록불이 켜지면 안 된다.
+  expect(files.length).toBeGreaterThan(0);
+  const forbidden = [
+    /favicon/i,
+    /rel\s*~?=\s*\\?["']?\s*(?:shortcut\s+)?icon/i,
+    /\.rel\s*=\s*["'](?:shortcut\s+)?icon/i
+  ];
+  const offenders = files.filter((file) => {
+    const text = fs.readFileSync(file, 'utf8');
+    return forbidden.some((re) => re.test(text));
+  });
+  expect(offenders.map((f) => path.relative(ROOT, f).split(path.sep).join('/'))).toEqual([]);
 });

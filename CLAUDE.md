@@ -75,9 +75,9 @@ index.html    Vite 진입 HTML(저장소 루트). privacy.html도 루트에 있�
 src/          프론트엔드 소스(TypeScript + React 19)
               main.tsx(마운트) PosterStudio.tsx(촬영·API·출력) studio/StudioView.tsx(단계별 화면)
               constants.ts state.ts layout.ts templates.ts poster.ts
-              favicon.ts studio.css studio/(화면·이름 태그·스타일)
+              studio.css studio/(화면·이름 태그·스타일)
 public/       정적 자산. Vite가 dist/ 루트로 그대로 복사한다
-              boot-splash.js fonts/ poster-wall.webp logo-*.png
+              boot-splash.js fonts/ poster-wall.webp logo-*.png favicon-inky.png
 dist/         빌드 산출물 = 배포 폴더(firebase.json의 public). 커밋하지 않는다
 test/         vitest 91개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/    Cloud Functions — index.js 하나에 전부(미들웨어 체인·프롬프트·OpenAI·Firestore 카운터·스케줄러)

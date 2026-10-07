@@ -114,7 +114,7 @@ class FakeFormData {
   append(name, value) { this._entries.push([name, value]); }
 }
 
-/* createRealCanvas: templates-canvas.test.js/favicon.test.js가 @napi-rs/canvas의
+/* createRealCanvas: templates-canvas.test.js가 @napi-rs/canvas의
    createCanvas를 넘겨준다 — grain()이 만드는 오프스크린 캔버스가 진짜 캔버스
    ctx와 같은 구현체(realm)여야 createPattern()이 받아준다(가짜 캔버스 객체는
    타입 검사에서 거부됨). */
@@ -139,12 +139,9 @@ function makeFakeDocument(createRealCanvas) {
     fonts: { load: async () => {}, ready: Promise.resolve() },
     addEventListener() {},
     querySelector: () => null,
-    head: { appendChild() {} },
     // 인쇄 경로가 붙이는 #printArea를 테스트가 나중에 들여다볼 수 있도록
     // (실제로 인쇄가 열리는지·정리되는지 확인하려면) 없애지 않고 기록해둔다.
-    body: { appended: [], appendChild(el) { this.appended.push(el); } },
-    visibilityState: 'visible',
-    hasFocus: () => true
+    body: { appended: [], appendChild(el) { this.appended.push(el); } }
   };
 }
 
@@ -183,17 +180,16 @@ export async function loadApp({ createRealCanvas } = {}) {
      test/poster-studio.test.tsx가 jsdom 위에서 검증한다. 여기 남은 것은 화면과
      무관한 순수 모듈들뿐이다 — 그래서 app/dom/camera/api/print import를 뺐다.
      그 모듈들을 계속 불러오면 **화면에 연결되지도 않은 코드에 초록불이 켜진다.** */
-  const [stateMod, constantsMod, layoutMod, templatesMod, posterMod, faviconMod] = await Promise.all([
+  const [stateMod, constantsMod, layoutMod, templatesMod, posterMod] = await Promise.all([
     import('../src/state.js'),
     import('../src/constants.js'),
     import('../src/layout.js'),
     import('../src/templates.js'),
-    import('../src/poster.js'),
-    import('../src/favicon.js')
+    import('../src/poster.js')
   ]);
 
   const flat = { document, window: windowStub, navigator: navigatorStub };
-  Object.assign(flat, stateMod, constantsMod, layoutMod, templatesMod, posterMod, faviconMod);
+  Object.assign(flat, stateMod, constantsMod, layoutMod, templatesMod, posterMod);
 
   // app.fetch = mockFn 같은 기존 테스트 패턴이 실제 전역 fetch(=앱이 호출을
   // 읽어들이는 그 fetch)를 바꾸도록, 단순 값 복사가 아니라 getter/setter로

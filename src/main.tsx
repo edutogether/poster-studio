@@ -7,9 +7,6 @@
    children만 React가 소유한다 — 그래서 대조 스냅샷의 `main.app` 항목이
    전환 전후로 같은 요소를 가리킨다.
 
-   favicon.ts는 React 트리 밖의 document 전역(<link rel=icon>)만 다루므로
-   예전처럼 부수효과 import로 둔다 — 컴포넌트로 옮길 이유가 없다.
-
    스플래시는 여기서 건드리지 않는다(4단계). 마크업은 index.html에 정적으로 있고,
    타이밍은 style.css가, 노드 제거와 안전판은 public/boot-splash.js가 맡는다.
    ──────────────────────────────────────────────────────────────────── */
@@ -17,7 +14,6 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import PosterStudio from './PosterStudio.js';
 import { captureBoothCode } from './boothCode.js';
-import './favicon.js';
 
 captureBoothCode();
 const container = document.querySelector('main.app');

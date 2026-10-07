@@ -19,9 +19,9 @@ src/             프론트엔드 소스 (TypeScript + React 19)
   main.tsx       마운트         PosterStudio.tsx  화면·로직 전부
   layout.ts      폰트·캔버스 도구  templates.ts      포스터 4종 템플릿
   poster.ts      포스터 조립     useLayoutMatch.ts 좌우 높이 맞춤
-  constants.ts / state.ts / favicon.ts / style.css
+  constants.ts / state.ts / style.css
 public/          정적 자산 — Vite가 dist/ 루트로 그대로 복사한다
-  boot-splash.js  fonts/  poster-wall.webp  logo-*.png  og.jpg(공유 카드 그림)
+  boot-splash.js  fonts/  poster-wall.webp  logo-*.png  og.jpg(공유 카드 그림)  favicon-inky.png(파비콘)
 dist/            빌드 산출물 = 배포 폴더 (Firebase Hosting — https://poster.edutogether.kr)
                  커밋하지 않는다
 test/            vitest 68개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다

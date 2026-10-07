@@ -92,6 +92,15 @@
   라이브에 그대로 서빙된다(`vitest.config.js`가 실제로 그랬음, 2026-09-07 발견).
   파일 추가 후 `curl https://poster.edutogether.kr/<파일명>`이 404인지 확인할 것.
 
+## 파비콘 (2026-10-07 Bumm님 결정, `COMMON_STANDARDS.md` §33)
+- 파비콘은 **InKY 노란 카메라(필름까지 포함한 전체 로고) 하나**다 — `public/favicon-inky.png`,
+  `_shared/favicons/inky-camera-64.png`를 바이트 그대로 복사한 것(다시 자르거나 인코딩하지 않는다).
+  `index.html`·`privacy.html`에 `<link rel="icon" … href="/favicon-inky.png">`가 하나씩 있다.
+- 🟠 **정적이다. 탭 상태(비활성·포커스)에 따라 바꾸지 않는다.** 예전 `src/favicon.ts`의 📷 이모지 +
+  비활성 흑백 전환은 §33으로 폐기·삭제했다. `test/favicon.test.js`가 링크 하나·파일 지문·
+  실행 중 교체 코드 0건을 고정한다.
+- 캐시: 고정 이름 `public/` 자산이라 `immutable`을 걸지 않는다(Hosting 기본 `max-age=3600`).
+
 ## 데이터
 - 개인정보·미성년자 데이터: **있음.** 아동 얼굴 사진(웹캠 촬영)이 OpenAI(미국) 서버로 전송된다.
   영화 제목·홍보 문구도 프롬프트에 포함돼 함께 전송된다.

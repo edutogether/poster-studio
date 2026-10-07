@@ -5,7 +5,7 @@
    충분했다. 모듈들이 getElementById로 몇 개를 집어 핸들러를 붙이는 게 전부였기
    때문이다. React는 진짜 DOM 트리를 만들고 다시 그리므로 그 가짜로는 안 된다.
    **2026-09-07의 "jsdom 안 쓴다" 판단을 뒤집는 게 아니라 범위를 나눈 것이다** —
-   순수 로직 테스트(layout/templates/favicon)는 그대로 node 환경에서 돌고,
+   순수 로직 테스트(layout/templates)는 그대로 node 환경에서 돌고,
    컴포넌트 테스트만 파일 단위로 jsdom을 쓴다(`@vitest-environment jsdom`).
 
    캔버스는 @napi-rs/canvas를 jsdom에 붙이지 않고 **기존 FakeCtx를 재사용**한다.
