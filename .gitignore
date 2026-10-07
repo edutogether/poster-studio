@@ -14,3 +14,5 @@ functions/.env.*
 # dist/가 정식 배포 폴더가 된 뒤에도 산출물 자체는 커밋하지 않는다.
 .claude/worktrees/
 dist/
+# 영상 보정 도구(scripts/media)가 서로를 불러 쓰면 파이썬이 바이트코드 캐시를 만든다
+__pycache__/
