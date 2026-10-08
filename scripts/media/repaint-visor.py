@@ -27,7 +27,10 @@
   ⑤ 얼굴판 가장자리 윤기가 먹히지 않았을 것(보정 전 윤기 화소가 GLOSS_DROP 넘게 어두워진 것이 GLOSS_N개 이상이면 실패) — ③은 칠하는 곳
      밖만, ②는 윤곽 덩어리만 봐서 칠하는 곳 안의 테두리 빛이 톱니처럼 먹힌 것을 놓쳤다(03번 74~96번).
   원화 얼굴판을 맞추지 못한 프레임(겹침 FIT_MIN 미만)은 칠하지 않고 «사람 확인»으로 낸다.
-  --selftest는 가짜 흰 입·어두운 미소선·테두리 홈·지운 눈·먹인 테두리 윤기를 그려 넣어 다섯 다 걸리는지 본다. 자기검사는 «보정한 결과»에 --source와 함께
+  ⑥(① 안에서) 얼굴판 볼록 다각형 안에 갇힌 빨간 덩어리(혀)·흰 덩어리(이)를 «가림»과 상관없이 센다(enclosed_marks) — 가림으로 빼서
+     04번 빨간 혀·06번 벌린 입이 ① 0으로 통과했다(2026-10-08). 검사만 한다 — 칠하게 해 보니(15차) 혀는 옅게 남고 테두리 윤기(⑤)를
+     먹였고, 이를 지운 자리엔 검은 입 모양이 남았다. 이만큼 큰 입은 후보정이 아니라 다시 만들 대상이다.
+  --selftest는 가짜 흰 입·빨간 혀·어두운 미소선·테두리 홈·지운 눈·먹인 테두리 윤기를 그려 넣어 모두 걸리는지 본다. 자기검사는 «보정한 결과»에 --source와 함께
   돌린다 — 보정 전 프레임에는 원화 미소선이 이미 있어서, 그 옆에 가짜 선을 그리면 둘이 한 굵은 띠가 되어 «가는 선»이 아니게 된다.
 종료코드: 0 통과 · 1 실패 · 3 실패는 없고 «사람 확인»만 있음 · 2 대상 없음
 사용: python scripts/media/repaint-visor.py <장면> <원본 프레임> <출력 폴더> [--frames 1-192] [--faces 1,2] [--zone mouth|full] [--keep-smile] [--compare 폴더]
@@ -519,6 +522,43 @@ def repaint(crop, visor, paint, keep, h, keep_smile, mouth_xy, narrow=False, sha
     return fix.harmonic_fill(crop, target, visor & ~eye_light & (crop.max(2) < 100))
 
 
+def enclosed_marks(crop, visor, keep, mouth_xy, h, p):
+    """⑥ 얼굴판 안의 빨간 덩어리(혀·벌린 입)와 흰 덩어리(이) → (빨강, 흰 것).
+    얼굴판 덩어리(어두운 것) 밖이거나 가림 둘레라 도구가 «얼굴판을 가린 소품»으로 보고 칠하지도, 검사 ①로 세지도 않았다 — 04번 5.0~7.3초
+    빨간 혀, 06번 4.6~5.3초 벌린 입이 그대로 남았는데 검사 ①은 0이었다(2026-10-08 0.25초 시트로 찾음). 입 자리 타원을 얼굴 높이 0.15배
+    넓힌 곳에 닿고 15화소 이상인 것만 센다.
+    빨강 = G < 60이고 R이 B보다 50 넘게 큼(혀 실측 R 129~140·G 4~5). 주황 눈빛의 바깥 번짐도 G가 낮은 어두운 빨강이라(07번 30번: 두 눈 둘레
+    480화소) 눈빛 2화소 안에 닿은 덩어리는 뺀다. 혀는 얼굴판 아래 가장자리에 걸치므로(04번 134번: 52%만 볼록 다각형 안) 40% 이상 다각형 안이면
+    센다 — 안테나 공(0%)·연필은 거의 밖이다.
+    흰 것 = 세 채널 모두 190 이상, 눈빛·눈 점 둘레(3화소)가 아니고, 둘레 1~6화소의 90% 이상이 얼굴판 검정(밝기 < 70)인 덩어리 — 이는 검은 입
+    속에 갇혀 있고(06번 0.95~0.97), 얼굴 앞을 지나는 슬레이트 흰 칸은 둘레에 흰 칸·손가락이 섞인다(03번 0.82 이하). 검은 칸 사이에 낀
+    슬레이트 흰 칸은 둘레가 검정이라 이 기준을 넘었다(03번 111·113번) — 흰 덩어리는 볼록 다각형 가장자리 3화소에도 닿지 않아야 한다
+    (이는 입 속 깊이 있고, 슬레이트는 얼굴 밖에서 들어와 가장자리를 지난다)."""
+    hull = gate.hull_mask(visor)
+    a = crop.astype(np.int32); r, g, b = a[..., 0], a[..., 1], a[..., 2]; v = a.max(2)
+    warm = warm_of(crop, visor)
+    near_eye = ndi.binary_dilation(warm | keep, iterations=3)
+    glow = ndi.binary_dilation(warm | keep, iterations=2)
+    near_mouth = ndi.binary_dilation(mouth_area(crop.shape[:2], mouth_xy, h, p), iterations=max(2, int(0.15 * h)))
+    inside = ndi.binary_erosion(hull, iterations=3)
+    red_out = np.zeros(visor.shape, bool); white_out = np.zeros(visor.shape, bool)
+    lab, _ = ndi.label((r > 90) & (g < 60) & (r - b > 50))
+    for j, sl in enumerate(ndi.find_objects(lab), 1):
+        m = lab[sl] == j
+        if m.sum() < 15 or (m & glow[sl]).any() or not (m & near_mouth[sl]).any(): continue
+        if (m & hull[sl]).sum() < 0.4 * m.sum(): continue
+        red_out[sl] |= m
+    lab, _ = ndi.label((a.min(2) >= 190) & ~near_eye)
+    for j, sl in enumerate(ndi.find_objects(lab), 1):
+        m = lab[sl] == j
+        if m.sum() < 15 or (m & ~inside[sl]).any() or not (m & near_mouth[sl]).any(): continue
+        mm = np.zeros(visor.shape, bool); mm[sl] = m
+        ring = ndi.binary_dilation(mm, iterations=6) & ~ndi.binary_dilation(mm, iterations=1)
+        if (ring & (v < 70)).sum() < 0.9 * ring.sum(): continue
+        white_out |= mm
+    return red_out, white_out
+
+
 def mouth_area(shape, mouth_xy, h, p):
     """입 자리 = 맞춘 기울기·배율의 MOUTH_CORE 타원. 옆얼굴(가로 배율 NARROW 미만)은 얼굴 높이 0.3배 원."""
     yy, xx = np.mgrid[:shape[0], :shape[1]]; dx, dy = xx - mouth_xy[0], yy - mouth_xy[1]
@@ -579,7 +619,11 @@ def scan(files, faces, zone, keep_smile, inject=None):
             h = core[3] - core[1]
             gloss_all[big[1]:big[3], big[0]:big[2]] |= rim_gloss(crop, visor, h, opened_of(crop, visor, h, narrow)[2])
             nb, nd, ob, od = check_frame(crop, visor, paint, keep, occ, h, keep_smile, mouth, rec['p'])
-            if nb >= BRIGHT_N or nd >= DARK_N: res['mouth'].append({'frame': i, 'face': fi + 1, 'bright': nb, 'dark': nd})
+            # ⑥ 갇힌 빨강·흰 덩어리는 «가림»과 상관없이 센다 — 가림으로 빼서 04·06의 혀·벌린 입이 0으로 통과했다
+            er, ew = enclosed_marks(crop, visor, keep, mouth, h, rec['p']) if not keep_smile else (np.zeros(visor.shape, bool),) * 2
+            nr, nw = int(er.sum()), int(ew.sum())
+            if nb >= BRIGHT_N or nd >= DARK_N or nr >= BRIGHT_N or nw >= BRIGHT_N:
+                res['mouth'].append({'frame': i, 'face': fi + 1, 'bright': nb, 'dark': nd, 'red': nr, 'white': nw})
             elif ob >= BRIGHT_N or od >= DARK_N: res['occluded'].append({'frame': i, 'face': fi + 1, 'bright': ob, 'dark': od})
             paint_all[big[1]:big[3], big[0]:big[2]] |= paint
             warm_n += int((warm_of(crop, visor) & visor).sum())
@@ -699,6 +743,9 @@ def main():
                         mx, my = xx0 + big[0], yy0 + big[1]
                 im = Image.fromarray(rgb.copy()); d = ImageDraw.Draw(im)
                 if i == ROLE['white']: d.arc([mx - 0.12 * h, my - 0.1 * h, mx + 0.12 * h, my + 0.05 * h], 20, 160, fill=(245, 245, 245), width=4)
+                # ⑥ 빨간 혀(04번 실측 색)는 «지운 눈» 프레임의 입 자리에 — 흰 입 프레임에 같이 그리면 얼굴판 모양이 바뀌어 흰 입이 테두리 윤기로
+                # 빠졌다(06번 13번 «놓침»). 눈을 덮는 것과 입 자리는 떨어져 있어 서로 섞이지 않는다
+                if i == ROLE['eye']: d.ellipse([mx - 0.07 * h, my - 0.025 * h, mx + 0.07 * h, my + 0.025 * h], fill=(150, 8, 6))
                 # 어두운 미소선 자기검사는 그려 넣지 않고 «보정 전 프레임의 입 자리를 그대로 되돌린다» — 진짜로 남은 미소선과 같은 모양이다.
                 # 검정 호를 그리면 거의 검은 얼굴판 위에서는 대비가 없어(원화 미소선은 윤기 위에서만 보인다) 검사가 아니라 그림 때문에
                 # «놓침»이 나왔다(03번 25번·07번 17번, 세 번 고쳐도 같음 → 방식을 바꿈)
@@ -748,7 +795,8 @@ def main():
                    f'테두리 홈({N_}) ②': any(o['frame'] in (N_ - 1, N_, N_ + 1) for o in r['outline']),
                    f'테두리 홈({N_}) ③': any(o['frame'] == N_ for o in r['rim_changed']),
                    f'지운 눈({E_}) ④': any(o['frame'] == E_ for o in r['eye_lost']),
-                   f'먹인 테두리 윤기({G_}) ⑤': any(o['frame'] == G_ for o in r['gloss_lost'])}
+                   f'먹인 테두리 윤기({G_}) ⑤': any(o['frame'] == G_ for o in r['gloss_lost']),
+                   f'빨간 혀({E_}) ⑥': any(x['frame'] == E_ and x.get('red', 0) >= BRIGHT_N for x in r['mouth'])}
             for k, ok in got.items(): print(f'자기검사 · {k}: {"걸림" if ok else "놓침"}')
             return 0 if all(got.values()) else 1
         if r['mouth'] or r['outline'] or r['rim_changed'] or r['eye_lost'] or r['gloss_lost']: return 1
