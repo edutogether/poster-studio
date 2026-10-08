@@ -8,7 +8,8 @@
 
 입력: <검토 폴더>/points.json (version 2)
   {"updated": "2026-10-08 19:30", "cost": {"spent", "next", "next_what"}, "decisions": [{"title", "why", "options": [{"label", "star", "desc"}], "files": [{"label", "path"}]}],
-   "items": [{"id", "state": "통과|고치는 중|대표님 결정 대기|다시 생성 대기", "verdict", "fixed", "concern", "ask",
+   "items": [{"id", "state": "통과|대표님 확인 요청|고치는 중|대표님 결정 대기|다시 생성 대기", "verdict", "fixed", "concern", "ask",
+              "checklist": [{"item", "ok": true|false|null(사람 확인), "evidence", "image"}],
               "latest": {"video", "frames", "label"} | null, "latest_note",
               "ab": {"label", "before", "after", "face_before", "face_after", "caps": [{"label", "before", "after"}]} | null,
               "keyframes": [{"label", "image"}], "raw_video",
@@ -23,7 +24,8 @@ from PIL import Image
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 ASSETS = os.path.join(ROOT, '_docs', 'intents', '2026-09-30-studio-design-integration', 'loading-approved-2026-10-01', 'assets')
 FPS = 24
-STATE_CLASS = {'통과': 'pass', '고치는 중': 'work', '대표님 결정 대기': 'ask', '다시 생성 대기': 'regen'}
+STATE_CLASS = {'통과': 'pass', '대표님 확인 요청': 'req', '고치는 중': 'work', '대표님 결정 대기': 'ask', '다시 생성 대기': 'regen'}
+CHECK = {True: ('맞음', 'ok'), False: ('아님', 'look'), None: ('사람 확인', 'human')}
 e = html.escape
 
 
@@ -111,6 +113,19 @@ def main():
                         f'<td>{e(p["what"])}</td><td>{e(p["why"])}</td><td>{cap}</td></tr>')
         points_html = (f'<table><thead><tr><th>지점</th><th>구분</th><th>무엇</th><th>왜 봐야 하나</th><th>캡처</th></tr></thead>'
                        f'<tbody>{"".join(rows)}</tbody></table>') if rows else ''
+        # 체크리스트 — Bumm님 지적 전부를 항목마다 맞음/아님/사람 확인과 근거로(2026-10-08 Bumm님: 세션이 «통과»를 스스로 붙이지 않는다)
+        check_html = ''
+        if it.get('checklist'):
+            rows = []
+            for k, c in enumerate(it['checklist']):
+                word, rc = CHECK[c.get('ok')]
+                cap = ''
+                if c.get('image'):
+                    ext = os.path.splitext(c['image'])[1]
+                    cap = f'<a href="{e(copy(out, c["image"], "check", f"{n}-{k}{ext}"))}" target="_blank">캡처</a>'
+                rows.append(f'<tr class="{rc}"><td>{e(c["item"])}</td><td><b>{word}</b></td><td>{e(c.get("evidence", ""))}</td><td>{cap}</td></tr>')
+            check_html = ('<h3>체크리스트 — 대표님 지적 전부</h3><table class="check"><thead><tr><th>항목</th><th>판정</th><th>근거(몇 초)</th>'
+                          f'<th>캡처</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
         files = ' · '.join(f'<a href="{e(f["path"])}" target="_blank">{e(f["label"])}</a>' for f in it.get('files', []))
         # 이전 판(접힘)
         older = ''
@@ -127,6 +142,7 @@ def main():
         sections.append(f'''<section id="s{n}" data-video="{1 if it.get('latest') else 0}">
 <h2>V{n} · {e(theme)} <span class="state {cls}">{e(st)}</span></h2>
 <p class="verdict">{e(it.get('verdict', ''))}</p>
+{check_html}
 <div class="pair top"><div>{latest_html}</div><div><h3>원화</h3>{media(f"art/{n}.png", still=True)}</div></div>
 {kf_html}{ab_html}{judge_html}{points_html}
 {f'<p class="files">관련 파일: {files}</p>' if files else ''}{older}
@@ -161,7 +177,7 @@ main{max-width:1500px;margin:0 auto;padding:16px 20px 80px}
 section{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:18px 0}
 h2{margin:0 0 4px;font-size:20px}h2 small{font-size:13px;color:#666;font-weight:400;margin-left:8px}h3{margin:14px 0 6px;font-size:15px}h4{margin:6px 0;font-size:13px;color:#555}h5{margin:4px 0;font-size:12px;color:#777}
 .state{font-size:13px;padding:2px 10px;border-radius:999px;white-space:nowrap}
-.state.pass{background:#e3f6e5;color:#1b5e20}.state.work{background:#e3f2fd;color:#0d47a1}.state.ask{background:#fff3cd;color:#7a5200}.state.regen{background:#fde7e9;color:#8b1a1a}
+.state.pass{background:#e3f6e5;color:#1b5e20}.state.req{background:#ede7f6;color:#4527a0}.state.work{background:#e3f2fd;color:#0d47a1}.state.ask{background:#fff3cd;color:#7a5200}.state.regen{background:#fde7e9;color:#8b1a1a}
 .note{padding:28px 16px;border:1px dashed var(--line);border-radius:8px;color:#444;background:#fafafa}
 .verdict{margin:4px 0 8px;color:#444}
 .pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}.pair.kf{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
@@ -174,7 +190,7 @@ body[data-bg=check] .stage{background:conic-gradient(#ddd 25%,#fff 0 50%,#ddd 0 
 .stage.art{background:#fff!important}
 .tools{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;align-items:center}.tools button{font:inherit;padding:4px 10px}.time{margin-left:8px;font-variant-numeric:tabular-nums}
 table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
-tr.look td{background:var(--look)}tr.ok td{background:var(--ok)}button.seek{font:inherit;padding:2px 8px}
+tr.look td{background:var(--look)}tr.ok td{background:var(--ok)}tr.human td{background:#fff3cd}button.seek{font:inherit;padding:2px 8px}
 .dec{border:1px solid #f0d58a;background:#fffaf0;border-radius:10px;padding:8px 14px;margin:10px 0}.dec h3{margin:6px 0}.dec li{margin:6px 0}.dec li.star b{color:#7a5200}
 details{margin-top:12px}summary{cursor:pointer;color:#555}.cap{margin:10px 0}.files{font-size:14px}
 </style></head>
