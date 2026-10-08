@@ -1,5 +1,9 @@
 # CHANGELOG — Poster Studio
 
+## 2026-10-09 — 배포 도구를 잠금 파일로 설치 (팀장 지시)
+
+- CI 배포 잡이 `firebase-tools`(15.32.1 그대로)를 `tools/deploy/package-lock.json`대로 설치해 그 바이너리로 배포한다. 전에는 실행할 때마다 `npx`로 받았다. 설치는 자격증명 단계 앞이고, 버전이 다르면 배포 전에 멈춘다.
+
 ## 2026-10-08 — 파비콘을 InKY 노란 카메라 하나로 고정 (Bumm님 결정 10/7, COMMON_STANDARDS §33, 팀장 지시)
 
 - 📷 이모지 파비콘과 탭 비활성 시 흑백 전환(`src/favicon.ts`)을 없애고, 공용 `_shared/favicons/inky-camera-64.png`를 그대로 복사한 `public/favicon-inky.png`를 `index.html`·`privacy.html`에 정적으로 걸었다. 새 검사(`test/favicon.test.js`)는 옛 코드에서 4건 모두 실패하는 것을 확인했다.

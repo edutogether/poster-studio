@@ -110,6 +110,16 @@ jobs:
           node-version: '22'
       - run: npm ci
         working-directory: functions
+      # 배포 도구는 잠금 파일(tools/deploy/package-lock.json)대로 설치해 그 바이너리로 배포한다(2026-10-09) —
+      # npx는 도구 버전만 고정하고 하위 의존성은 실행할 때마다 새로 받았다. 설치 스크립트는 끈다(잠금 파일 밖에서
+      # 바이너리를 내려받는 선택 의존성이 있다). 자격증명 단계보다 앞에서 받고, 버전이 다르면 여기서 멈춘다.
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: tools/deploy
+      - name: 배포 도구 버전 확인
+        run: |
+          V=$(tools/deploy/node_modules/.bin/firebase --version)
+          echo "firebase-tools $V"
+          if [ "$V" != "15.32.1" ]; then echo "::error::배포 도구 버전이 15.32.1이 아닙니다($V)"; exit 1; fi
       # 부스 코드 스위치(2026-10-07, 기본 꺼짐). 값은 저장소에 두지 않고 저장소 설정의 변수·비밀값에서
       # 배포할 때만 넣는다. 꺼져 있으면 아무것도 쓰지 않고, 켜졌는데 값이 틀리면 여기서 배포를 멈춘다.
       - name: 부스 코드 설정
@@ -125,7 +135,7 @@ jobs:
       # 조회, secrets.get — firebase-tools가 배포 시점에 필요) 둘 다 있어야 한다.
       # Secret Accessor 하나만으로는 secrets.get이 없어서 배포가 403으로 막힌다
       # (2026-08-29 실제로 겪고 원인 확인함).
-      - run: npx --yes firebase-tools@15.32.1 deploy --only functions --project inky-poster-studio --non-interactive
+      - run: tools/deploy/node_modules/.bin/firebase deploy --only functions --project inky-poster-studio --non-interactive
       # 5차 감사 발견: API_BASE/ALLOWED_ORIGINS/BOOTH_TOKEN 3곳이 수동 동기화 지점이라
       # 하나만 어긋나도 부스 전체가 조용히 401로 죽을 수 있다. 배포 직후 실제로
       # 클라이언트에 박힌 부스토큰으로 라이브 /generate를 호출해 401이 아닌지
@@ -202,10 +212,20 @@ jobs:
             fi
           done
           echo "dist 점검 통과"
+      # 배포 도구는 잠금 파일(tools/deploy/package-lock.json)대로 설치해 그 바이너리로 배포한다(2026-10-09) —
+      # npx는 도구 버전만 고정하고 하위 의존성은 실행할 때마다 새로 받았다. 설치 스크립트는 끈다(잠금 파일 밖에서
+      # 바이너리를 내려받는 선택 의존성이 있다). 자격증명 단계보다 앞에서 받고, 버전이 다르면 여기서 멈춘다.
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: tools/deploy
+      - name: 배포 도구 버전 확인
+        run: |
+          V=$(tools/deploy/node_modules/.bin/firebase --version)
+          echo "firebase-tools $V"
+          if [ "$V" != "15.32.1" ]; then echo "::error::배포 도구 버전이 15.32.1이 아닙니다($V)"; exit 1; fi
       - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
-      - run: npx --yes firebase-tools@15.32.1 deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive
+      - run: tools/deploy/node_modules/.bin/firebase deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive
       # 배포 직후 라이브 확인. **주소가 두 개이고 둘 다 살아 있어야 한다**(2026-09-10):
       #   poster.edutogether.kr  정식 주소 — 사람에게 주는 주소
       #   poster-studio.web.app  이미 나간 QR·링크가 죽으면 안 되므로 유지

@@ -1,0 +1,8 @@
+{
+  "name": "poster-studio-deploy-tools",
+  "private": true,
+  "description": "CI 배포에만 쓰는 도구. 잠금 파일(package-lock.json)로 설치한다 — .github/workflows/deploy.yml 참고.",
+  "devDependencies": {
+    "firebase-tools": "15.32.1"
+  }
+}
