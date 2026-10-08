@@ -58,15 +58,21 @@ MOUTH_CORE = (0.36, 0.16)   # 입 자리 둘레 타원(맞춘 기울기·배율�
                             # 자국만 찾아 메우면 원화 미소선의 어두운 몸통이 옅게 남아 밝기를 올리면 입 모양이 보였다(03번 4~6번 실측)
 NARROW = 0.65      # 맞춘 가로 배율이 이보다 작으면(옆얼굴) 얼굴판 전체를 다시 칠하지 않고 눈에 띄는 자국 둘레만 칠한다 — 좁은 얼굴판을
                    # 통째로 열림으로 칠하면 가장자리 윤기가 지워져 각진 얼룩이 생겼다(07번 64번 실측)
+PLATE_MARGIN = 0.0    # 얼굴판 = 어두운 덩어리 ∩ 맞춘 원화 모양을 얼굴 높이의 이 배만큼 넓힌 것(--plate-margin). 기본 0(2화소).
+                      # 07번은 0.08 — 고개를 돌리는 동안 맞춤이 덜 맞아 가장자리 미소선이 얼굴판 밖이 되었다(118번). 얼굴 앞을 소품이
+                      # 지나가는 장면(03번 슬레이트·손가락)에서는 넓히면 소품의 검은 줄·손가락 틈이 얼굴판에 이어져 번졌다(110·113번) —
+                      # 소품을 색으로 가르면 손가락(크림색)과 머리 껍데기를 가를 수 없어, 장면마다 확인하고 켠다
 FIT_MIN = 0.5      # 맞춘 원화 얼굴판과 지금 얼굴판의 겹침(교집합÷합집합)이 이보다 낮으면 칠하지 않고 «사람 확인»
 FIT_LIMITS = [(-35.0, 35.0), (0.25, 1.3), (0.7, 1.3)]   # 기울기(도)·가로 배율(옆얼굴까지)·세로 배율
 PROP_AREA = 0.04   # 얼굴판 볼록 다각형 깊이(6화소 안) 들어온 어둡지 않은 덩어리가 얼굴 높이 제곱의 이 배 이상이면 얼굴 앞의 소품
 OCC_THICK, OCC_BAND = 0.04, 8                 # 얼굴판을 가린 소품 = 원화 모양 안의 얼굴판 아닌 덩어리 중 두께가 얼굴 높이의 0.04배 이상인 것
 # 검사 기준
 BRIGHT_C, BRIGHT_V, BRIGHT_N = 35, 90, 15     # ① 둘레보다 35 넘게 밝고 90 이상인 화소가 15개 이상이면 «눈 아닌 밝은 것»
-DARK_C, DARK_N, DARK_K = 10, 25, 0.1         # ① 닫힘(얼굴 높이의 0.1배)보다 10 넘게 어두운 화소가 25개 이상이면 «어두운 선(미소선·입)».
+DARK_C, DARK_N, DARK_K = 20, 25, 0.1         # ① 닫힘(얼굴 높이의 0.1배)보다 10 넘게 어두운 화소가 25개 이상이면 «어두운 선(미소선·입)».
                                               #   닫힘을 칠할 때처럼 0.2배로 크게 잡으면 얼굴판의 넓은 그늘까지 미소선과 한 덩어리로 잡혀
-                                              #   «두꺼운 그늘»로 빠졌다(자기검사 20번 실측: 1924화소 한 덩어리)
+                                              #   «두꺼운 그늘»로 빠졌다(자기검사 20번 실측: 1924화소 한 덩어리).
+                                              #   차이 기준 20(07번 실측: 고치기 전 미소선 157~258화소, 고친 뒤 0~9화소 — 10이면 고친 뒤에도
+                                              #   얼굴판 윤기 사이 그늘이 14~63화소 잡혔다)
 OUTLINE_PX, OUTLINE_X = 0.6, 3.0              # ② 앞뒤 둘 다와 다른 정도(화소)가 0.6 넘고 그 장면 중앙값의 3배 넘으면 «얼굴선 무너짐»
 EYE_LOSS = 0.1                                # ④ 얼굴판 안 주황 화소가 보정 전보다 이 비율 넘게 줄면 «눈 지워짐»
 
@@ -221,9 +227,10 @@ def plate_of(crop, raw, placed, centers, h, mouth):
     closed = ndi.binary_closing(base, iterations=2) | (ndi.binary_closing(np.pad(base, 6), structure=disk(5))[6:-6, 6:-6] & near)
     # 옆얼굴에서는 입이 머리 윤곽 끝(흰 바탕과 맞닿은 곳)에 걸려 닫기로도 구멍이 되지 않았다(07번 60·62번). 얼굴판은 볼록하므로
     # 입 자리 둘레에서는 볼록 다각형까지 얼굴판으로 본다(원화 모양 안만)
-    closed |= gate.hull_mask(base) & near & ndi.binary_dilation(placed, iterations=2)
+    closed |= gate.hull_mask(base) & near & ndi.binary_dilation(placed, iterations=max(2, int(PLATE_MARGIN * h)))
     filled = ndi.binary_fill_holes(closed)
-    within = ndi.binary_dilation(placed, iterations=2)
+    # 맞춘 원화 모양에서 2화소(장면 설정 PLATE_MARGIN이 있으면 얼굴 높이의 그 배)까지 얼굴판으로 본다 — 까닭은 PLATE_MARGIN 주석
+    within = ndi.binary_dilation(placed, iterations=max(2, int(PLATE_MARGIN * h)))
     return filled & within, filled & ~base & within & near
 
 
@@ -322,6 +329,9 @@ def zones(crop, org, core, ref, p, keep_hull, zone, cur_hull):
     # 앞뒤 프레임 눈 모양은 이 프레임 눈 가까이(얼굴 높이의 0.15배 — 눈 감을 때 드러나는 껍질 크기)까지만 쓴다. 고개를 빨리 돌리는 동안에는
     # 앞뒤 프레임의 눈이 얼굴판 곳곳으로 번져 칠할 곳이 거의 남지 않았다(07번 58번: 칠하는 곳 4098화소 중 3566화소가 «남기는 곳»)
     if cur_hull.any(): keep &= ndi.binary_dilation(cur_hull, structure=disk(max(1, int(0.15 * h))))
+    # 입 자리(mouth_area)에서는 앞뒤 프레임 눈 모양을 쓰지 않는다 — 이 프레임의 눈(둘레 EYE_GLOW)만 남긴다. 고개를 돌리는 동안 앞뒤 눈
+    # 모양이 입 자리를 덮어 미소선이 «남기는 곳»에 들었다(07번 118·120번)
+    keep &= ~mouth_area(keep.shape, mouth, h, p) | (ndi.binary_dilation(cur_hull, iterations=EYE_GLOW) if cur_hull.any() else cur_hull)
     # 앞뒤 프레임 눈 모양을 합친 «남기는 곳»에 이 프레임의 흰 입끝이 걸리면 그것은 남기지 않는다(07번 52번: 오른눈 옆 흰 입끝이 남음).
     # 이 프레임의 눈 둘레(3화소)는 눈 가운데 흰빛이라 그대로 둔다
     c = crop.astype(np.int32); vv = c.max(2); sat = (vv - c.min(2)) / np.maximum(vv, 1)
@@ -434,11 +444,19 @@ def repaint(crop, visor, paint, keep, h, keep_smile, mouth_xy, narrow=False, sha
         # 두 단계로 찾는다: 옅은 것까지(DARK_FILL) 잡으면 미소선 끝이 얼굴판 가장자리 그늘과 한 덩어리가 되어 «두꺼운 그늘»로 빠졌고,
         # 검사 기준(DARK_C)으로 한 번 더 잡으면 그 끝이 따로 잡힌다(07번 22·30번 실측: 오른눈 아래 미소선 끝이 남음)
         darkhole = thin_dark(d > DARK_FILL, mouth_xy, h) | thin_dark(d >= DARK_C, mouth_xy, h)
+        # 고개를 돌리는 동안에는 앞뒤 프레임 눈 모양을 합친 «남기는 곳»이 눈 바로 아래의 미소선까지 덮어 위에서 못 찾았다(07번 118번).
+        # 그래서 이 프레임의 눈빛(주황을 3화소 넓히고 ∩ 안쪽까지 닫은 것)만 0으로 두고 한 번 더 찾는다. 이렇게 찾은 것은 «남기는 곳»
+        # 안이라도 칠한다(눈빛 둘레는 빼고)
+        eye_now = ndi.binary_closing(ndi.binary_dilation(warm_of(crop, visor), iterations=3), iterations=4)
+        closed2 = np.stack([ndi.grey_closing(np.where(eye_now, 0, opened[..., c]), size=(kd, kd)) for c in range(3)], -1)
+        late = thin_dark((closed2.max(2) - opened.max(2)) >= DARK_C, mouth_xy, h) & ~eye_now
+        darkhole |= late
     # 얼굴판 표면에서 튀는 것(열림보다 MARK_BRIGHT 넘게 밝은 것, 닫힘보다 어두운 가는 것)과 그 둘레 2화소만 바꾸고, 둘레의 원래 얼굴판
     # 화소로 라플라스 보간해 메운다. 칠하는 곳 전체를 열림 값으로 바꾸면 열림이 «가장 어두운 쪽»을 따라가서 입 자리가 둘레보다
     # 어두운 입 모양 그림자로 남았다(07번 58번 실측: 둘레 13~25인데 3~10으로 칠함)
     marks = ((crop.max(2).astype(np.float64) - opened.max(2)) >= MARK_BRIGHT) | darkhole
     target = paint & ~keep & ndi.binary_dilation(marks, iterations=2)
+    if not keep_smile: target |= paint & ndi.binary_dilation(late, iterations=2) & ~eye_now
     if shape is not None and not narrow and not keep_smile:
         th, sx, sy = shape; c, s_ = math.cos(math.radians(th)), math.sin(math.radians(th))
         yy, xx = np.mgrid[:crop.shape[0], :crop.shape[1]]; dx, dy = xx - mouth_xy[0], yy - mouth_xy[1]
@@ -454,8 +472,19 @@ def repaint(crop, visor, paint, keep, h, keep_smile, mouth_xy, narrow=False, sha
     return fix.harmonic_fill(crop, target, visor & ~eye_light)
 
 
-def check_frame(crop, visor, paint, keep, occ, h, keep_smile, mouth_xy):
-    """① 반환: (밝은 것, 어두운 선, 가림 둘레의 밝은 것, 가림 둘레의 어두운 선) 화소 수"""
+def mouth_area(shape, mouth_xy, h, p):
+    """입 자리 = 맞춘 기울기·배율의 MOUTH_CORE 타원. 옆얼굴(가로 배율 NARROW 미만)은 얼굴 높이 0.3배 원."""
+    yy, xx = np.mgrid[:shape[0], :shape[1]]; dx, dy = xx - mouth_xy[0], yy - mouth_xy[1]
+    if p[1] < NARROW: return np.hypot(dx, dy) <= 0.3 * h
+    c, s_ = math.cos(math.radians(p[0])), math.sin(math.radians(p[0]))
+    u, w = c * dx + s_ * dy, -s_ * dx + c * dy
+    return (u / (MOUTH_CORE[0] * h * p[1])) ** 2 + (w / (MOUTH_CORE[1] * h * p[2])) ** 2 <= 1
+
+
+def check_frame(crop, visor, paint, keep, occ, h, keep_smile, mouth_xy, p):
+    """① 반환: (밝은 것, 어두운 선, 가림 둘레의 밝은 것, 가림 둘레의 어두운 선) 화소 수.
+    어두운 선은 입 자리(mouth_area) 안만 본다 — 얼굴판 전체를 보면 눈 둘레의 원래 그늘과 옆얼굴의 좁은 얼굴판 그늘을 «미소선»으로
+    잡았다(07번 3·150·185·89·99번 실측). 밝은 것은 칠하는 곳 전체를 본다."""
     v = extend_visor(crop.astype(np.float64), visor).max(2)
     local = ndi.median_filter(v, size=31)
     bright = paint & ~keep & (v - local >= BRIGHT_C) & (v >= BRIGHT_V)
@@ -463,7 +492,7 @@ def check_frame(crop, visor, paint, keep, occ, h, keep_smile, mouth_xy):
     if not keep_smile:
         k = max(5, int(DARK_K * h) | 1)
         closed = ndi.grey_closing(np.where(keep, 0, v), size=(k, k))   # 눈은 0으로(repaint와 같은 기준)
-        d = thin_dark(paint & ~keep & ((closed - v) >= DARK_C), mouth_xy, h)
+        d = thin_dark(paint & ~keep & mouth_area(v.shape, mouth_xy, h, p) & ((closed - v) >= DARK_C), mouth_xy, h)
         lab, n = ndi.label(d)
         if n:
             sizes = ndi.sum(d, lab, range(1, n + 1))
@@ -495,12 +524,16 @@ def scan(files, faces, zone, keep_smile, inject=None):
                 res['misfit'].append({'frame': i, 'face': fi + 1, 'iou': 0}); continue
             visor, paint, keep, occ, mouth, _ = z
             h = core[3] - core[1]
-            nb, nd, ob, od = check_frame(crop, visor, paint, keep, occ, h, keep_smile, mouth)
+            nb, nd, ob, od = check_frame(crop, visor, paint, keep, occ, h, keep_smile, mouth, rec['p'])
             if nb >= BRIGHT_N or nd >= DARK_N: res['mouth'].append({'frame': i, 'face': fi + 1, 'bright': nb, 'dark': nd})
             elif ob >= BRIGHT_N or od >= DARK_N: res['occluded'].append({'frame': i, 'face': fi + 1, 'bright': ob, 'dark': od})
             paint_all[big[1]:big[3], big[0]:big[2]] |= paint
             warm_n += int((warm_of(crop, visor) & visor).sum())
-            full = np.zeros(rgb.shape[:2], bool); full[big[1]:big[3], big[0]:big[2]] = visor
+            # ② 윤곽은 어두운 얼굴판 덩어리를 맞춘 원화 모양으로 자른 것으로 잰다 — 입 자리를 볼록 다각형까지 넓힌 칠하기용 얼굴판으로 재면
+            # 옆얼굴에서 넓힌 모양이 프레임마다 달라 «무너짐»으로 잡혔다(07번 89·99·122번)
+            rawv = visor_of(crop, core)
+            outline_m = ndi.binary_fill_holes(rawv & ndi.binary_dilation(render(rec['p'], ref, rawv.shape, org), iterations=2)) if rawv is not None else visor
+            full = np.zeros(rgb.shape[:2], bool); full[big[1]:big[3], big[0]:big[2]] = outline_m
             masks.setdefault(fi, []).append((i, full, b))
         res['paint'][i] = paint_all; res['warm'][i] = warm_n
     # ② 윤곽: 프레임 t가 앞(t-1)과도 뒤(t+1)와도 다르면(둘 중 작은 값) 순간적으로 무너졌다 돌아온 것이다. 고개를 돌리는 움직임은
@@ -560,8 +593,11 @@ def main():
     ap.add_argument('--frames', default=''); ap.add_argument('--faces', default=''); ap.add_argument('--zone', default='mouth', choices=['mouth', 'full'])
     ap.add_argument('--keep-smile', action='store_true'); ap.add_argument('--compare'); ap.add_argument('--check', action='store_true')
     ap.add_argument('--source'); ap.add_argument('--json'); ap.add_argument('--selftest', action='store_true')
+    ap.add_argument('--plate-margin', type=float, default=0.0)
     a = ap.parse_args()
     SCENE = a.scene.zfill(2)
+    global PLATE_MARGIN
+    PLATE_MARGIN = a.plate_margin
     regions = REGIONS[:] = load_regions(SCENE)
     faces = [int(x) - 1 for x in a.faces.split(',')] if a.faces else list(range(len(regions)))
     files = sorted(glob.glob(os.path.join(a.src, '*.png')))
@@ -571,20 +607,32 @@ def main():
         inject = None
         if a.selftest:
             if not a.source: ap.error('--selftest는 --source(보정 전 프레임)와 함께 돌린다')
-            s = np.asarray(Image.open(files[0])).shape[1] / Image.open(os.path.join(gate.ART_DIR, f'{SCENE}.png')).width
-            first = [[int(round(c * s)) for c in regions[f]['face']] for f in faces][0]
-            boxes = {}
-            def inject(i, rgb, items):            # 10·20·30·40번 프레임에 가짜 흰 입·어두운 미소선·테두리 홈·지운 눈을 그린다
-                if i not in (10, 20, 30, 40): return rgb
-                if items: boxes[i] = items[0][1]
-                b = boxes.get(i, first); fi = faces[0]; h = b[3] - b[1]
-                mx = regions[fi]['mouth'][0] * s - regions[fi]['face'][0] * s + b[0]; my = regions[fi]['mouth'][1] * s - regions[fi]['face'][1] * s + b[1]
+            # 가짜 자국은 앞을 보는 프레임(원화 얼굴판과 잘 맞고 가로 배율 0.85 이상)에 그린다 — 고개를 돌린 프레임에 그리면 입 자리가
+            # 얼굴판 가장자리에 걸려 «소품»으로 갈렸고(07번 10번), 상자 아래쪽에 그린 홈은 얼굴판에 닿지 않았다(07번 30번)
+            pre = follow(files, faces)
+            good = [i for i in range(5, len(files) - 4) if (pre.get((i, faces[0])) or {}).get('iou', 0) >= 0.9 and pre[(i, faces[0])]['p'][1] >= 0.85]
+            roles = []
+            for i in good:
+                if not roles or i - roles[-1] >= 8: roles.append(i)
+                if len(roles) == 4: break
+            if len(roles) < 4: print('자기검사: 앞을 보는 프레임이 넷이 안 된다 — 이 장면으로는 자기검사를 할 수 없다', file=sys.stderr); return 2
+            ROLE = dict(zip(('white', 'dark', 'notch', 'eye'), roles)); boxes = {}
+            print('자기검사 프레임: ' + ' · '.join(f'{k} {v}번' for k, v in ROLE.items()))
+            def inject(i, rgb, items):            # 흰 입·어두운 미소선·테두리 홈·지운 눈을 그린다
+                if i not in roles: return rgb
+                fi = faces[0]; rec = pre[(i, fi)]; ref = art_ref(fi, np.asarray(rgb).shape[1] / Image.open(os.path.join(gate.ART_DIR, f'{SCENE}.png')).width)
+                if items: boxes[i] = items[0][1]          # 같은 프레임은 몇 번 불려도 같은 자리에 그린다(③ 검사는 상자 없이 부른다)
+                mx, my = fwd(rec['p'], ref, ref['mouth'])[0]; b = boxes.get(i, ref['box']); h = b[3] - b[1]
                 im = Image.fromarray(rgb.copy()); d = ImageDraw.Draw(im)
-                if i == 10: d.arc([mx - 0.2 * h, my - 0.15 * h, mx + 0.2 * h, my + 0.1 * h], 20, 160, fill=(245, 245, 245), width=4)
-                if i == 20: d.arc([mx - 0.2 * h, my - 0.15 * h, mx + 0.2 * h, my + 0.1 * h], 20, 160, fill=(0, 0, 0), width=6)
-                if i == 30: d.ellipse([b[0] + 0.35 * (b[2] - b[0]), b[3] - 0.12 * h, b[0] + 0.65 * (b[2] - b[0]), b[3] + 0.12 * h], fill=(230, 215, 200))
+                if i == ROLE['white']: d.arc([mx - 0.2 * h, my - 0.15 * h, mx + 0.2 * h, my + 0.1 * h], 20, 160, fill=(245, 245, 245), width=4)
+                if i == ROLE['dark']: d.arc([mx - 0.2 * h, my - 0.15 * h, mx + 0.2 * h, my + 0.1 * h], 20, 160, fill=(0, 0, 0), width=6)
+                if i == ROLE['notch']:                # 입 아래 얼굴판 아래 가장자리에 크림색 홈
+                    big, core = gate.expand(b, rgb.shape); vis = visor_of(rgb[big[1]:big[3], big[0]:big[2]], core)
+                    col = vis[:, int(round(mx)) - big[0]] if vis is not None else None
+                    yb = big[1] + int(np.nonzero(col)[0].max()) if col is not None and col.any() else int(my + 0.3 * h)
+                    w = b[2] - b[0]; d.ellipse([mx - 0.15 * w, yb - 0.1 * h, mx + 0.15 * w, yb + 0.1 * h], fill=(230, 215, 200))
                 out = np.asarray(im)
-                if i == 40:                          # 눈 하나를 얼굴판 검정으로 덮는다
+                if i == ROLE['eye']:                  # 눈 하나를 얼굴판 검정으로 덮는다
                     out = out.copy()
                     big, core = gate.expand(b, rgb.shape); crop = out[big[1]:big[3], big[0]:big[2]]
                     vis = visor_of(crop, core)
@@ -603,11 +651,12 @@ def main():
         for name, rows in human:
             if rows: print(f'  사람 확인 · {name}: {fr(rows)}')
         if a.selftest:
-            got = {'흰 입(10)': any(x['frame'] == 10 and x['bright'] >= BRIGHT_N for x in r['mouth']),
-                   '어두운 미소선(20)': any(x['frame'] == 20 and x['dark'] >= DARK_N for x in r['mouth']),
-                   '테두리 홈(30) ②': any(o['frame'] in (29, 30, 31) for o in r['outline']),
-                   '테두리 홈(30) ③': any(o['frame'] == 30 for o in r['rim_changed']),
-                   '지운 눈(40) ④': any(o['frame'] == 40 for o in r['eye_lost'])}
+            W_, D_, N_, E_ = ROLE['white'], ROLE['dark'], ROLE['notch'], ROLE['eye']
+            got = {f'흰 입({W_})': any(x['frame'] == W_ and x['bright'] >= BRIGHT_N for x in r['mouth']),
+                   f'어두운 미소선({D_})': any(x['frame'] == D_ and x['dark'] >= DARK_N for x in r['mouth']),
+                   f'테두리 홈({N_}) ②': any(o['frame'] in (N_ - 1, N_, N_ + 1) for o in r['outline']),
+                   f'테두리 홈({N_}) ③': any(o['frame'] == N_ for o in r['rim_changed']),
+                   f'지운 눈({E_}) ④': any(o['frame'] == E_ for o in r['eye_lost'])}
             for k, ok in got.items(): print(f'자기검사 · {k}: {"걸림" if ok else "놓침"}')
             return 0 if all(got.values()) else 1
         if r['mouth'] or r['outline'] or r['rim_changed'] or r['eye_lost']: return 1
