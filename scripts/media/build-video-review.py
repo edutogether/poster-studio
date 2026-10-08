@@ -11,6 +11,7 @@
    "items": [{"id", "state": "통과|고치는 중|대표님 결정 대기|다시 생성 대기", "verdict", "fixed", "concern", "ask",
               "latest": {"video", "frames", "label"} | null, "latest_note",
               "ab": {"label", "before", "after", "face_before", "face_after", "caps": [{"label", "before", "after"}]} | null,
+              "keyframes": [{"label", "image"}], "raw_video",
               "judge": [{"label", "video" | "image"}], "points": [{"t", "what", "why", "kind"}], "files": [{"label", "path"}],
               "older": [{"label", "video"}]}]}
   경로는 저장소 기준(files의 path만 검토 폴더 기준). 영상·캡처는 검토 폴더 안으로 복사한다.
@@ -79,6 +80,14 @@ def main():
                          f'<div><h5>고치기 전</h5>{media(b, still=True)}</div><div><h5>고친 뒤</h5>{media(a, still=True)}</div></div></div>')
             ab_html = (f'<h3>고치기 전 / 고친 뒤 — {e(ab.get("label", ""))}</h3><div class="pair">{"".join(cells)}</div>{face}'
                        + (f'<details class="caps"><summary>캡처 {len(ab.get("caps", []))}장(원본 화소, 얼굴 4배)</summary>{caps}</details>' if caps else ''))
+        # 키프레임 → 생성 원본(키프레임 방식, 2026-10-08 Bumm님)
+        kf_html = ''
+        if it.get('keyframes'):
+            cells = ''.join(f'<div><h4>{e(k["label"])}</h4>{media(copy(out, k["image"], "kf", f"{n}-K{j + 1}.png"), still=True)}</div>'
+                            for j, k in enumerate(it['keyframes']))
+            kf_html = f'<h3>키프레임 원화 K1~K{len(it["keyframes"])}</h3><div class="pair kf">{cells}</div>'
+            if it.get('raw_video'):
+                kf_html += f'<h3>생성 원본(키프레임 사이를 이은 것, 얼굴 보정·누끼 전)</h3>{media(copy(out, it["raw_video"], "kf", f"{n}-raw.mp4"))}'
         # 판단용
         judge_html = ''
         if it.get('judge'):
@@ -119,7 +128,7 @@ def main():
 <h2>V{n} · {e(theme)} <span class="state {cls}">{e(st)}</span></h2>
 <p class="verdict">{e(it.get('verdict', ''))}</p>
 <div class="pair top"><div>{latest_html}</div><div><h3>원화</h3>{media(f"art/{n}.png", still=True)}</div></div>
-{ab_html}{judge_html}{points_html}
+{kf_html}{ab_html}{judge_html}{points_html}
 {f'<p class="files">관련 파일: {files}</p>' if files else ''}{older}
 </section>''')
     dec = []
@@ -152,7 +161,7 @@ h2{margin:0 0 4px;font-size:20px}h2 small{font-size:13px;color:#666;font-weight:
 .state.pass{background:#e3f6e5;color:#1b5e20}.state.work{background:#e3f2fd;color:#0d47a1}.state.ask{background:#fff3cd;color:#7a5200}.state.regen{background:#fde7e9;color:#8b1a1a}
 .note{padding:28px 16px;border:1px dashed var(--line);border-radius:8px;color:#444;background:#fafafa}
 .verdict{margin:4px 0 8px;color:#444}
-.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}.pair.kf{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
 .stage{border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:760px}
 .stage video,.stage img{display:block;width:100%;height:auto}
 .stage.zoomed video{width:200%;image-rendering:pixelated}

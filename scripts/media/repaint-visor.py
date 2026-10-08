@@ -650,6 +650,9 @@ def main():
                 if len(roles) == 4: break
             if len(roles) < 4: print('자기검사: 앞을 보는 프레임이 넷이 안 된다 — 이 장면으로는 자기검사를 할 수 없다', file=sys.stderr); return 2
             ROLE = dict(zip(('white', 'dark', 'notch', 'eye'), roles)); boxes = {}
+            # 지운 눈은 눈이 가장 크게 뜬 프레임에 — 눈을 감는 프레임은 주황이 몇 화소뿐이라 덮어도 «눈 지워짐» 기준을 못 넘었다(03번 43번)
+            far = [i for i in good if all(abs(i - j) >= 8 for j in roles[:3])]
+            if far: ROLE['eye'] = roles[3] = max(far, key=lambda i: len(pre[(i, faces[0])]['eyes']))
             print('자기검사 프레임: ' + ' · '.join(f'{k} {v}번' for k, v in ROLE.items()))
             def inject(i, rgb, items):            # 흰 입·어두운 미소선·테두리 홈·지운 눈을 그린다
                 if i not in roles: return rgb
@@ -659,31 +662,36 @@ def main():
                 # 가짜 입은 입 자리 안에서 눈·가장자리에서 가장 먼 곳에 그린다 — 원화 입 자리에 그대로 그리면 07번처럼 입이 눈 바로 옆인
                 # 장면에서 눈 둘레(남기는 곳)·가장자리와 겹쳐, 검사가 아니라 그림 자리 때문에 «놓침»이 나왔다
                 big, core = gate.expand(b, rgb.shape); cr = np.asarray(rgb)[big[1]:big[3], big[0]:big[2]]; vis0 = visor_of(cr, core)
-                if vis0 is not None:
+                if vis0 is not None and i != ROLE['dark']:   # 되돌리는 원래 입은 원래 입 자리 그대로
                     ok = mouth_area(vis0.shape, (mx - big[0], my - big[1]), h, rec['p']) & ndi.binary_erosion(vis0, iterations=max(1, int(0.12 * h)))
                     ok &= ~ndi.binary_dilation(warm_of(cr, vis0), iterations=max(1, int(0.12 * h)))
-                    # 어두운 미소선은 둘레 얼굴판이 밝기 35 이상인 곳에 그린다 — 거의 검은(10~20) 곳에 검정 선을 그리면 원화 미소선과 달리
-                    # 대비가 없어 «선»이 아니다(07번 17번: 검사 기준 20을 못 넘음). 원화 미소선은 둘레보다 20 넘게 어둡다(실측)
-                    lit = ok & (ndi.median_filter(cr.max(2), size=15) >= 35)
-                    if i == ROLE['dark'] and lit.any(): ok = lit
                     if ok.any():
                         dd = ndi.distance_transform_edt(ok); yy0, xx0 = np.unravel_index(int(np.argmax(dd)), dd.shape)
                         mx, my = xx0 + big[0], yy0 + big[1]
                 im = Image.fromarray(rgb.copy()); d = ImageDraw.Draw(im)
                 if i == ROLE['white']: d.arc([mx - 0.12 * h, my - 0.1 * h, mx + 0.12 * h, my + 0.05 * h], 20, 160, fill=(245, 245, 245), width=4)
-                if i == ROLE['dark']: d.arc([mx - 0.12 * h, my - 0.1 * h, mx + 0.12 * h, my + 0.05 * h], 20, 160, fill=(0, 0, 0), width=6)
+                # 어두운 미소선 자기검사는 그려 넣지 않고 «보정 전 프레임의 입 자리를 그대로 되돌린다» — 진짜로 남은 미소선과 같은 모양이다.
+                # 검정 호를 그리면 거의 검은 얼굴판 위에서는 대비가 없어(원화 미소선은 윤기 위에서만 보인다) 검사가 아니라 그림 때문에
+                # «놓침»이 나왔다(03번 25번·07번 17번, 세 번 고쳐도 같음 → 방식을 바꿈)
                 if i == ROLE['notch']:                # 입 아래 얼굴판 아래 가장자리에 크림색 홈
                     big, core = gate.expand(b, rgb.shape); vis = visor_of(rgb[big[1]:big[3], big[0]:big[2]], core)
                     col = vis[:, int(round(mx)) - big[0]] if vis is not None else None
                     yb = big[1] + int(np.nonzero(col)[0].max()) if col is not None and col.any() else int(my + 0.3 * h)
                     w = b[2] - b[0]; d.ellipse([mx - 0.15 * w, yb - 0.1 * h, mx + 0.15 * w, yb + 0.1 * h], fill=(230, 215, 200))
                 out = np.asarray(im)
+                if i == ROLE['dark']:
+                    src = np.asarray(Image.open(sorted(glob.glob(os.path.join(a.source, '*.png')))[i - 1]).convert('RGB'))
+                    big, core = gate.expand(b, rgb.shape)
+                    ma = np.zeros(out.shape[:2], bool)
+                    ma[big[1]:big[3], big[0]:big[2]] = mouth_area((big[3] - big[1], big[2] - big[0]), (mx - big[0], my - big[1]), h, rec['p'])
+                    out = out.copy(); out[ma] = src[ma]
                 if i == ROLE['eye']:                  # 눈 하나를 얼굴판 검정으로 덮는다
                     out = out.copy()
                     big, core = gate.expand(b, rgb.shape); crop = out[big[1]:big[3], big[0]:big[2]]
                     vis = visor_of(crop, core)
                     if vis is not None:
-                        warm = warm_of(crop, vis); lab, n = ndi.label(warm)
+                        # 얼굴판 볼록 다각형 안의 주황만 — 머리 옆 금색 귀 고리가 가장 큰 주황이면 그걸 덮어 «눈 지움»이 되지 않았다(03번 43번)
+                        warm = warm_of(crop, vis) & gate.hull_mask(vis); lab, n = ndi.label(warm)
                         if n:
                             j = 1 + int(np.argmax(ndi.sum(warm, lab, range(1, n + 1))))
                             crop[ndi.binary_dilation(lab == j, iterations=2)] = (12, 10, 10)
@@ -699,7 +707,7 @@ def main():
         if a.selftest:
             W_, D_, N_, E_ = ROLE['white'], ROLE['dark'], ROLE['notch'], ROLE['eye']
             got = {f'흰 입({W_})': any(x['frame'] == W_ and x['bright'] >= BRIGHT_N for x in r['mouth']),
-                   f'어두운 미소선({D_})': any(x['frame'] == D_ and x['dark'] >= DARK_N for x in r['mouth']),
+                   f'되돌린 원래 입({D_})': any(x['frame'] == D_ for x in r['mouth']),
                    f'테두리 홈({N_}) ②': any(o['frame'] in (N_ - 1, N_, N_ + 1) for o in r['outline']),
                    f'테두리 홈({N_}) ③': any(o['frame'] == N_ for o in r['rim_changed']),
                    f'지운 눈({E_}) ④': any(o['frame'] == E_ for o in r['eye_lost'])}
