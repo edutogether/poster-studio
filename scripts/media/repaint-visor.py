@@ -47,9 +47,9 @@ ZONE = 0.45        # 원화 입 자리에서 얼굴 상자 높이의 이 배수 
 SIZE = 0.2         # 열림·닫힘 크기 = 얼굴 상자 높이의 이 배수(입선·미소선·벌린 입보다 크고 넓은 윤기보다 작게)
 DARK_FILL = 6      # 닫힘이 원래보다 이만큼 넘게 밝으면 어두운 입 자리로 보고 메운다
 MIN_EYE = 0.3      # (원화 눈 자리에서 하나도 못 찾을 때) 눈 = 가장 큰 주황 덩어리의 이 배수 이상인 덩어리(최대 2개)
-EYE_NEAR = 0.28    # 맞춘 원화 눈 자리에서 얼굴 높이의 이 배수 안에 무게중심이 있는 주황 덩어리는 모두 눈이다 — «가장 큰 둘»만 남기면
+EYE_NEAR = 0.35    # 맞춘 원화 눈 자리에서 얼굴 높이의 이 배수 안에 무게중심이 있는 주황 덩어리는 모두 눈이다 — «가장 큰 둘»만 남기면
                    # 눈을 감을 때 한 눈이 점 두 개로 갈라져 나머지 점이 지워졌다(03번 12·15번 실측). 0.2배로는 눈을 감은 점이 ∩ 끝에 있어
-                   # 원화 눈 무게중심(∩ 가운데)에서 멀어 빠졌다(03번 15번 실측)
+                   # 원화 눈 무게중심(∩ 가운데)에서 멀어 빠졌다(03번 15번 실측). 0.28배로도 고개를 돌린 채 눈을 감으면 안쪽 점이 빠졌다(03번 102번)
 EYE_GLOW = 9       # 눈 둘레 빛 번짐 — 칠하지 않는다
 BLINK_WIN = 8      # 앞뒤 이만큼 프레임의 눈 모양을 합쳐 남긴다 — 눈을 감는 동안 드러나는 둥근 눈 껍질이 칠하는 곳 경계에 잘려
                    # 각진 검은 자국이 남았다(03번 12·15번 실측)
@@ -60,6 +60,7 @@ NARROW = 0.65      # 맞춘 가로 배율이 이보다 작으면(옆얼굴) 얼�
                    # 통째로 열림으로 칠하면 가장자리 윤기가 지워져 각진 얼룩이 생겼다(07번 64번 실측)
 FIT_MIN = 0.5      # 맞춘 원화 얼굴판과 지금 얼굴판의 겹침(교집합÷합집합)이 이보다 낮으면 칠하지 않고 «사람 확인»
 FIT_LIMITS = [(-35.0, 35.0), (0.25, 1.3), (0.7, 1.3)]   # 기울기(도)·가로 배율(옆얼굴까지)·세로 배율
+PROP_AREA = 0.04   # 얼굴판 볼록 다각형 깊이(6화소 안) 들어온 어둡지 않은 덩어리가 얼굴 높이 제곱의 이 배 이상이면 얼굴 앞의 소품
 OCC_THICK, OCC_BAND = 0.04, 8                 # 얼굴판을 가린 소품 = 원화 모양 안의 얼굴판 아닌 덩어리 중 두께가 얼굴 높이의 0.04배 이상인 것
 # 검사 기준
 BRIGHT_C, BRIGHT_V, BRIGHT_N = 35, 90, 15     # ① 둘레보다 35 넘게 밝고 90 이상인 화소가 15개 이상이면 «눈 아닌 밝은 것»
@@ -207,8 +208,9 @@ def plate_of(crop, raw, placed, centers, h, mouth):
     eyes = np.zeros(raw.shape, bool)
     if n:
         cents = ndi.center_of_mass(warm, lab, range(1, n + 1))
-        eyes = np.isin(lab, [j for j, (cy, cx) in enumerate(cents, 1)
-                             if min(math.hypot(cx - ax, cy - ay) for ax, ay in centers) <= EYE_NEAR * h])
+        inside = ndi.sum(gate.hull_mask(raw & ndi.binary_dilation(placed, iterations=2)), lab, range(1, n + 1)) / np.maximum(ndi.sum(warm, lab, range(1, n + 1)), 1)
+        eyes = np.isin(lab, [j for j, (cy, cx) in enumerate(cents, 1) if inside[j - 1] >= 0.5
+                             and min(math.hypot(cx - ax, cy - ay) for ax, ay in centers) <= EYE_NEAR * h])
     # 눈 둘레 빛 번짐(EYE_GLOW)까지 넣는다 — 눈만 넣으면 빛 번짐 고리가 얼굴판 밖으로 남아 같은 일이 났다(07번 1번)
     eyes = ndi.binary_dilation(eyes, iterations=EYE_GLOW) if eyes.any() else eyes
     # 닫아 메운다 — 입끝이 얼굴판 가장자리에 닿으면 구멍이 아니라 «밖»이 되어 칠하지 못했다(07번 58~62번 실측: 옆얼굴에서 흰 입끝이 남음).
@@ -217,12 +219,15 @@ def plate_of(crop, raw, placed, centers, h, mouth):
     yy, xx = np.mgrid[:raw.shape[0], :raw.shape[1]]
     near = np.hypot(yy - mouth[1], xx - mouth[0]) <= 0.3 * h
     closed = ndi.binary_closing(base, iterations=2) | (ndi.binary_closing(np.pad(base, 6), structure=disk(5))[6:-6, 6:-6] & near)
+    # 옆얼굴에서는 입이 머리 윤곽 끝(흰 바탕과 맞닿은 곳)에 걸려 닫기로도 구멍이 되지 않았다(07번 60·62번). 얼굴판은 볼록하므로
+    # 입 자리 둘레에서는 볼록 다각형까지 얼굴판으로 본다(원화 모양 안만)
+    closed |= gate.hull_mask(base) & near & ndi.binary_dilation(placed, iterations=2)
     filled = ndi.binary_fill_holes(closed)
     within = ndi.binary_dilation(placed, iterations=2)
     return filled & within, filled & ~base & within & near
 
 
-def eye_hull(crop, visor, centers, h):
+def eye_hull(crop, visor, centers, h, raw):
     """맞춘 원화 두 눈 자리마다, 그 가까이(EYE_NEAR)에 무게중심이 있는 주황 덩어리를 모아 볼록 다각형으로 감싼다. 눈은 ∩ 모양이라
     빛이 안쪽에도 고인다(03번: 덩어리만 남기면 눈 안쪽이 검게 파였다)."""
     warm = warm_of(crop, visor)
@@ -230,16 +235,28 @@ def eye_hull(crop, visor, centers, h):
     out = np.zeros(visor.shape, bool)
     if not n: return out
     cents = ndi.center_of_mass(warm, lab, range(1, n + 1))
+    # 얼굴판 볼록 다각형 밖에 절반 넘게 있는 주황(머리 옆 금색 귀 고리 등)은 눈이 아니다 — 눈 가까이에 있으면 눈 무리에 들어가 가장 큰
+    # 덩어리가 되어, 눈 감을 때의 작은 점들이 «작은 조각»으로 빠져 지워졌다(03번 15·102번 실측)
+    # 어두운 얼굴판 덩어리(raw)를 맞춘 원화 모양으로 자른 것의 볼록 다각형으로 잰다 — 눈을 넣은 얼굴판으로 재면 귀 고리가 눈으로
+    # 들어간 뒤라 소용없었고, 자르지 않은 raw는 검은 귀 원판까지 이어져 그 위의 금색 고리가 안쪽으로 잡혔다(03번 15번)
+    inside = ndi.sum(gate.hull_mask(raw), lab, range(1, n + 1)) / np.maximum(ndi.sum(warm, lab, range(1, n + 1)), 1)
     groups = [[] for _ in centers]
     for j, (cy, cx) in enumerate(cents, 1):
+        if inside[j - 1] < 0.5: continue
         d = [math.hypot(cx - ax, cy - ay) for ax, ay in centers]; k = int(np.argmin(d))
         if d[k] <= EYE_NEAR * h: groups[k].append(j)
     if not any(groups):
         e = top_eyes(crop, visor); l2, n2 = ndi.label(e)
         for j in range(1, n2 + 1): out |= gate.hull_mask(l2 == j)
         return out
+    # 눈마다 가장 큰 덩어리의 0.15배(최소 4화소) 이상인 덩어리만 감싼다 — 입 가장자리에 비친 주황 몇 화소까지 눈에 묶이면 볼록
+    # 다각형이 입까지 넓어져 흰 입이 «남기는 곳»에 들었다(07번 58번 실측). 눈 감을 때 갈라진 점 둘은 크기가 비슷해 함께 남는다
+    sizes = ndi.sum(warm, lab, range(1, n + 1))
     for g in groups:
-        if g: out |= gate.hull_mask(np.isin(lab, g))
+        if not g: continue
+        big = max(sizes[j - 1] for j in g)
+        g = [j for j in g if sizes[j - 1] >= max(4, 0.15 * big)]
+        out |= gate.hull_mask(np.isin(lab, g))
     return out
 
 
@@ -264,7 +281,7 @@ def follow(files, faces, inject=None):
             if score >= FIT_MIN:
                 centers = fwd(p, ref, ref['eyes']) - org
                 visor, _ = plate_of(crop, raw, render(p, ref, raw.shape, org), centers, core[3] - core[1], fwd(p, ref, ref['mouth'])[0] - org)
-                hull = eye_hull(crop, visor, centers, core[3] - core[1])
+                hull = eye_hull(crop, visor, centers, core[3] - core[1], raw & ndi.binary_dilation(render(p, ref, raw.shape, org), iterations=2))
                 rec['eyes'] = inv(p, ref, np.argwhere(hull)[:, ::-1] + org)
             track[(i, fi)] = rec
     return track
@@ -294,7 +311,9 @@ def zones(crop, org, core, ref, p, keep_hull, zone, cur_hull):
     paint = ndi.binary_erosion(visor, iterations=RIM)
     # 테두리 띠 안이라도 입 자리 둘레에서 얼굴판에 둘러싸인 밝은 것(가장자리에 닿은 흰 입끝)은 칠한다. 어두운 테두리 화소와
     # 테두리의 중간 밝기 화소는 건드리지 않는다
-    rim_marks = holes & ~paint & (crop.max(2) >= 150) & ~warm_of(crop, visor)
+    # 얼굴판 덩어리의 구멍으로 이미 메워진 흰 입(테두리 띠 안에 걸친 것)도 같다 — «구멍»만 보면 빠졌다(07번 60번: 입 끝 18화소가 남음)
+    yy0, xx0 = np.mgrid[:visor.shape[0], :visor.shape[1]]
+    rim_marks = (holes | (visor & (np.hypot(yy0 - mouth[1], xx0 - mouth[0]) <= 0.3 * h))) & ~paint & (crop.max(2) >= 150) & ~warm_of(crop, visor)
     paint |= ndi.binary_dilation(rim_marks, iterations=1) & visor
     if zone == 'mouth':
         yy, xx = np.mgrid[:visor.shape[0], :visor.shape[1]]
@@ -306,8 +325,35 @@ def zones(crop, org, core, ref, p, keep_hull, zone, cur_hull):
     # 앞뒤 프레임 눈 모양을 합친 «남기는 곳»에 이 프레임의 흰 입끝이 걸리면 그것은 남기지 않는다(07번 52번: 오른눈 옆 흰 입끝이 남음).
     # 이 프레임의 눈 둘레(3화소)는 눈 가운데 흰빛이라 그대로 둔다
     c = crop.astype(np.int32); vv = c.max(2); sat = (vv - c.min(2)) / np.maximum(vv, 1)
-    stray = keep & ~ndi.binary_dilation(cur_hull, iterations=3) & (vv >= 150) & (sat < 0.25)
-    if stray.any(): keep = keep & ~ndi.binary_dilation(stray, iterations=1)
+    # 흰 입의 옅은 가장자리(밝기 100 이상)까지 — 150 이상만 빼면 입 끝 둘레의 회색 점이 남았다(07번 56·58번 실측)
+    # 주황 빛 둘레(3화소)에 붙은 흰 것은 눈 점의 흰 심이다 — 이 프레임 눈 모양에서 빠진 눈 점까지 «흰 입 끝»으로 보고 지웠다(03번 12·102·138번)
+    stray = keep & ~ndi.binary_dilation(cur_hull, iterations=3) & (vv >= 100) & (sat < 0.35) & ~ndi.binary_dilation(warm_of(crop, visor), iterations=3)
+    if stray.any(): keep = keep & ~ndi.binary_dilation(stray, iterations=2)
+    # 이 프레임의 눈 모양 추적에서 빠진 눈 점이 있어도 지우지 않게, 원화 눈 자리 가까이(얼굴 높이의 0.45배)의 얼굴판 안 주황 덩어리
+    # (6화소 이상)는 둘레 3화소와 함께 늘 남긴다 — 고개를 돌린 채 눈 감을 때 안쪽 점이 빠져 가운데가 검게 칠해졌다(03번 12·102번)
+    warm = warm_of(crop, visor); wl2, wn2 = ndi.label(warm)
+    if wn2:
+        centers = fwd(p, ref, ref['eyes']) - org
+        hull_raw = gate.hull_mask(raw & ndi.binary_dilation(placed, iterations=2))
+        sz = ndi.sum(warm, wl2, range(1, wn2 + 1)); ins = ndi.sum(hull_raw, wl2, range(1, wn2 + 1)) / np.maximum(sz, 1)
+        cs = ndi.center_of_mass(warm, wl2, range(1, wn2 + 1))
+        ok = [j for j, (cy, cx) in enumerate(cs, 1) if sz[j - 1] >= 6 and ins[j - 1] >= 0.5
+              and min(math.hypot(cx - ax, cy - ay) for ax, ay in centers) <= 0.45 * h]
+        if ok:
+            okm = np.isin(wl2, ok); keep = keep | ndi.binary_dilation(okm, iterations=3)
+        # 눈을 감을 때의 눈 점은 거의 흰 덩어리이고 주황은 가장자리에 1~3화소짜리로 흩어져 있어 위 덩어리로 잡히지 않는다(03번 12번:
+        # 145화소 흰 덩어리의 심이 검게 칠해졌다). 원화 눈 자리 가까이(0.45배)에서 둘레의 20% 이상이 주황에 2화소 안으로 닿은
+        # 작은(얼굴 높이 제곱의 0.02배 이하) 밝은 덩어리는 눈 점으로 남긴다. 흰 입은 주황에 거의 닿지 않아 남지 않는다
+        bl, bn = ndi.label((crop.max(2) >= 100) & visor)
+        near_w = ndi.binary_dilation(warm, iterations=2)
+        for j, sl in enumerate(ndi.find_objects(bl), 1):
+            m = bl[sl] == j
+            if m.sum() > 0.02 * h * h: continue
+            per = m & ~ndi.binary_erosion(m)
+            if (per & near_w[sl]).sum() < 0.2 * per.sum(): continue
+            cy, cx = ndi.center_of_mass(m)
+            if min(math.hypot(cx + sl[1].start - ax, cy + sl[0].start - ay) for ax, ay in centers) > 0.45 * h: continue
+            mm = np.zeros(keep.shape, bool); mm[sl] = m; keep |= ndi.binary_dilation(mm, iterations=2)
     # 얼굴 앞을 지나는 큰 흰 물체(슬레이트 흰 줄 등)는 칠하지 않는다 — 열림이 흰 줄을 지워 가장자리가 깎였다(03번 113번)
     v = crop.max(2).astype(np.int32); r, b = crop[..., 0].astype(np.int32), crop[..., 2].astype(np.int32)
     white = (v >= 140) & ~((r > 170) & (r - b > 60))
@@ -317,15 +363,24 @@ def zones(crop, org, core, ref, p, keep_hull, zone, cur_hull):
     # 그대로 남았다(01번 151~171번 실측). 소품(슬레이트 흰 줄·손가락 마디)은 얼굴판 가장자리를 넘어 밖과 이어진다
     # 로봇 머리의 크림색 껍데기도 크고 하얗지만 얼굴판 둘레를 감싼 것이지 얼굴 앞을 가린 것이 아니다 — 이것까지 넣으면 얼굴판 가장자리
     # 7화소를 통째로 칠하지 않아 가장자리에 닿은 입이 남았고, 검사에서는 가장자리 전체가 «가림 둘레»가 되었다(12번: 114프레임).
-    # 그래서 맞춘 원화 얼굴판 모양 안쪽(3화소 안)까지 들어온 것만 소품으로 본다
+    # 그래서 얼굴판을 감싼 볼록 다각형 안쪽(3화소 안)까지 들어온 것만 소품으로 본다. 맞춘 원화 모양을 기준으로 하면 옆얼굴처럼
+    # 맞춤이 덜 맞을 때 원화 모양이 머리 껍데기까지 덮어 껍데기가 소품이 되었다(07번 60번: 흰 입 끝 18화소가 칠하는 곳에서 빠짐)
     inner = ndi.binary_erosion(visor, iterations=2)
-    into = ndi.binary_erosion(placed, iterations=3)
+    into = ndi.binary_erosion(gate.hull_mask(visor), iterations=3)
     for j, sl in enumerate(ndi.find_objects(wl), 1):
         m = wl[sl] == j
         if 2 * thickness(m) < 0.05 * h: continue
         if not (m & ~inner[sl]).any(): continue
         if not (m & into[sl]).any(): continue
         big_white[sl] |= m
+    # 흰 줄뿐 아니라 회색·검은 줄을 포함한 소품 전체(어둡지 않은 덩어리)가 얼굴판 볼록 다각형 안으로 깊이(6화소 안쪽에 얼굴 높이 제곱의
+    # PROP_AREA배 이상) 들어오면 소품이다 — 입 자리 둘레를 볼록 다각형까지 얼굴판으로 넓히자 슬레이트 회색 면이 칠하는 곳에 들었다
+    # (03번 110·134·140번). 입은 작아서 머리 껍데기와 이어져도 이 넓이를 넘지 않는다
+    deep = ndi.binary_erosion(gate.hull_mask(visor), iterations=6)
+    nl, _ = ndi.label((v >= gate.DARK) & ~((r > 170) & (r - b > 60)))
+    for j, sl in enumerate(ndi.find_objects(nl), 1):
+        m = nl[sl] == j
+        if (m & deep[sl]).sum() >= PROP_AREA * h * h and (m & ~inner[sl]).any(): big_white[sl] |= m
     paint &= ~ndi.binary_dilation(big_white, iterations=7)   # 흰 줄 둘레의 가는 윤기(슬레이트 윗면 모서리)까지 — 3화소면 깎였다(03번 129번)
     # 얼굴판을 가린 소품(검사에서만 쓴다): 원화 모양 안인데 얼굴판이 아닌 두꺼운 덩어리
     gap = placed & ~visor
@@ -394,7 +449,8 @@ def repaint(crop, visor, paint, keep, h, keep_smile, mouth_xy, narrow=False, sha
         target &= np.hypot(yy - mouth_xy[1], xx - mouth_xy[0]) <= 0.3 * h
     if not target.any(): return crop.copy()
     # 보간의 경계는 얼굴판 화소 중 눈빛(주황)만 뺀다 — «남기는 곳» 전체를 빼면 둘레가 모두 남기는 곳인 입은 경계가 없어 메워지지 않았다
-    eye_light = ndi.binary_dilation(warm_of(crop, visor), iterations=2)
+    # 눈 점의 흰 심(채도가 낮아 주황으로 안 잡힘)도 뺀다 — 경계에 넣으면 그 밝기가 메운 곳으로 번져 눈 옆에 흰 얼룩이 생겼다(03번 12번)
+    eye_light = ndi.binary_dilation(warm_of(crop, visor) | (keep & (crop.max(2) >= 100)), iterations=2)
     return fix.harmonic_fill(crop, target, visor & ~eye_light)
 
 
@@ -491,7 +547,8 @@ def run_check(files, faces, zone, keep_smile, source=None, inject=None):
             if changed.sum(): out['rim_changed'].append({'frame': i, 'px': int(changed.sum())})
             fitted = lambda r: not any(m['frame'] == i for m in r['misfit'])
             if not (fitted(src) and fitted(res)): continue          # 얼굴판을 못 맞춘 프레임은 «사람 확인»으로 이미 낸다
-            if src['warm'][i] and res['warm'].get(i, 0) < (1 - EYE_LOSS) * src['warm'][i]:
+            # 눈을 거의 다 감은 프레임은 주황 화소가 몇 개뿐이라 비율만 보면 한두 화소 차이로 걸렸다(03번 139~142번) — 8화소 넘게 줄어야 한다
+            if src['warm'][i] - res['warm'].get(i, 0) > max(8, EYE_LOSS * src['warm'][i]):
                 out['eye_lost'].append({'frame': i, 'before': src['warm'][i], 'after': res['warm'].get(i, 0)})
     return out
 
