@@ -7,7 +7,7 @@
 «고치는 중»으로 적는다.
 
 입력: <검토 폴더>/points.json (version 2)
-  {"updated": "2026-10-08 19:30", "decisions": [{"title", "why", "options": [{"label", "star", "desc"}], "files": [{"label", "path"}]}],
+  {"updated": "2026-10-08 19:30", "cost": {"spent", "next", "next_what"}, "decisions": [{"title", "why", "options": [{"label", "star", "desc"}], "files": [{"label", "path"}]}],
    "items": [{"id", "state": "통과|고치는 중|대표님 결정 대기|다시 생성 대기", "verdict", "fixed", "concern", "ask",
               "latest": {"video", "frames", "label"} | null, "latest_note",
               "ab": {"label", "before", "after", "face_before", "face_after", "caps": [{"label", "before", "after"}]} | null,
@@ -137,7 +137,10 @@ def main():
                        f'<br><span>{e(o.get("desc", ""))}</span></li>' for o in d['options'])
         fl = ' · '.join(f'<a href="{e(f["path"])}" target="_blank">{e(f["label"])}</a>' for f in d.get('files', []))
         dec.append(f'<div class="dec"><h3>{e(d["title"])}</h3><p>{e(d.get("why", ""))}</p><ol>{opts}</ol>{f"<p>보기: {fl}</p>" if fl else ""}</div>')
-    head = (f'<section id="decisions"><h2>대표님 결정 대기 <small>갱신 {e(data.get("updated", ""))}</small></h2>'
+    cost = data.get('cost') or {}
+    cost_html = (f'<section id="cost"><h2>비용 <small>Veo 3.1 Fast · 8초 $0.64 · 4초 $0.32 · 상한 없음(2026-10-08 Bumm님)</small></h2>'
+                 f'<p>지금까지 누적 <b>${cost.get("spent", 0):.2f}</b> · 다음 예정 <b>${cost.get("next", 0):.2f}</b> — {e(cost.get("next_what", ""))}</p></section>') if cost else ''
+    head = cost_html + (f'<section id="decisions"><h2>대표님 결정 대기 <small>갱신 {e(data.get("updated", ""))}</small></h2>'
             f'{"".join(dec) or "<p>없음</p>"}</section>'
             '<section id="table"><h2>편별 표</h2><table><thead><tr><th>번호</th><th>편 이름</th><th>지금 상태</th><th>이번에 고친 것</th>'
             f'<th>남은 걱정</th><th>대표님께 여쭐 것</th><th>열기</th></tr></thead><tbody>{"".join(table)}</tbody></table></section>')

@@ -3,11 +3,13 @@
 #    (시험 영상 04·11번과 같은 방식). 기본은 끝 장면도 원화로 지정하고, --no-last-frame이면 끝 장면을 지정하지 않는다.
 #    --last-image <그림>이면 끝 장면을 그 그림(스토리보드에 맞춰 새로 그린 원화, 2026-10-07 Bumm님 확정)으로 지정한다.
 #  · 지시문 = video-followup-2026-10-03/prompts/<장면>.txt 그대로(보관본 + 기록된 수정).
-#  · 비용 기록(<작업 폴더>/cost-log.jsonl)의 누적에 이번 요청을 더해 상한을 넘으면 요청하지 않는다. 재시도하지 않는다.
+#  · 비용 기록(<작업 폴더>/cost-log.jsonl)의 누적에 이번 요청을 더해 보여 준다(--stop을 주면 그 금액을 넘는 요청은 하지 않는다). 재시도하지 않는다.
 #  · --confirm 없이는 요청하지 않는다(입력 그림·지시문만 만들어 보여 준다).
 #  · --negative면 얼굴 요소를 막는 부정 지시(negativePrompt)를 더한다 — 기본은 끈다(아래 NEGATIVE 주석).
-# 멈춤선 기본값 $30(2026-10-08 Bumm님: $20 → $30. 그 전에 «막히면 안 되니 넉넉히 올려만 놓자»로 $15 → $20 — 결제 쪽 하드 리밋이 아니라 대표님과 정한 멈춤선).
-# 사용: python scripts/media/veo_generate.py <장면 01~12> <작업 폴더> --account <gcloud 계정> [--no-last-frame | --last-image <그림>] [--negative] [--stop 30] --confirm
+# 비용 상한 없음(2026-10-08 Bumm님: «비용 상한 없애고, 그냥 다음에는 얼마 정도 든다 이것만 계속 알려 줘. 너무 많이 든다 싶으면 내가 멈출게.»).
+#  대신 생성을 시작하기 전마다 «무엇을 몇 번 · 예상 $X · 누적 $Y»를 팀장에게 보낸다. 한 번 실행은 요청 한 번뿐이고 재시도하지 않는다(끝없이 도는 것을 막는 장치).
+#  --stop을 주면 그 금액을 넘는 요청은 하지 않는다(선택).
+# 사용: python scripts/media/veo_generate.py <장면 01~12> <작업 폴더> --account <gcloud 계정> [--no-last-frame | --last-image <그림>] [--negative] [--stop 금액] --confirm
 import argparse, base64, json, os, shutil, subprocess, sys, time, urllib.request, urllib.error
 from datetime import datetime, timezone
 import numpy as np
@@ -57,7 +59,7 @@ def call(url, token, body):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('scene'); ap.add_argument('work'); ap.add_argument('--account', required=True)
-    ap.add_argument('--no-last-frame', action='store_true'); ap.add_argument('--last-image'); ap.add_argument('--negative', action='store_true'); ap.add_argument('--stop', type=float, default=30.0); ap.add_argument('--confirm', action='store_true')
+    ap.add_argument('--no-last-frame', action='store_true'); ap.add_argument('--last-image'); ap.add_argument('--negative', action='store_true'); ap.add_argument('--stop', type=float, default=None); ap.add_argument('--confirm', action='store_true')
     # 한 장면을 짧은 영상 여럿으로 이어 붙일 때(11번: 원화 → 안기 4초 + 안기 → 안아 올림 4초): 첫 장면 그림·길이·지시문을 따로 준다
     ap.add_argument('--first-image'); ap.add_argument('--seconds', type=int, choices=[4, 6, 8], default=SECONDS); ap.add_argument('--prompt-file')
     a = ap.parse_args()
@@ -70,8 +72,8 @@ def main():
     prompt = open(a.prompt_file or os.path.join(PROMPTS, f'{scene}.txt'), encoding='utf-8').read().replace('\r\n', '\n')
     open(os.path.join(d, f'{name}-prompt.txt'), 'w', encoding='utf-8').write(prompt)
     cost = round(a.seconds * RATE, 2); before = spent(log)
-    print(f'장면 {scene} {name} · 입력 {info} · 끝 장면 지정 {"안 함" if a.no_last_frame else (a.last_image or "원화")} · 이번 ${cost} · 누적 ${before} → ${before + cost:.2f} (멈춤 ${a.stop})')
-    if before + cost > a.stop: print('상한을 넘는다 — 요청하지 않는다'); sys.exit(4)
+    print(f'장면 {scene} {name} · 입력 {info} · 끝 장면 지정 {"안 함" if a.no_last_frame else (a.last_image or "원화")} · 이번 ${cost} · 누적 ${before} → ${before + cost:.2f}' + (f' (멈춤 ${a.stop})' if a.stop is not None else ''))
+    if a.stop is not None and before + cost > a.stop: print('정한 금액을 넘는다 — 요청하지 않는다'); sys.exit(4)
     if not a.confirm: print('--confirm 없음 — 요청하지 않았다'); sys.exit(0)
     token = subprocess.run([shutil.which('gcloud'), 'auth', 'print-access-token', a.account], capture_output=True, text=True, check=True).stdout.strip()
     img = {'bytesBase64Encoded': base64.b64encode(open(os.path.join(d, f'{name}-first-16x9.png'), 'rb').read()).decode(), 'mimeType': 'image/png'}
