@@ -64,15 +64,18 @@ PLATE_MARGIN = 0.0    # 얼굴판 = 어두운 덩어리 ∩ 맞춘 원화 모양
                       # 소품을 색으로 가르면 손가락(크림색)과 머리 껍데기를 가를 수 없어, 장면마다 확인하고 켠다
 FIT_MIN = 0.5      # 맞춘 원화 얼굴판과 지금 얼굴판의 겹침(교집합÷합집합)이 이보다 낮으면 칠하지 않고 «사람 확인»
 FIT_LIMITS = [(-35.0, 35.0), (0.25, 1.3), (0.7, 1.3)]   # 기울기(도)·가로 배율(옆얼굴까지)·세로 배율
+PROP_DEPTH = 0.1   # 얼굴판 밖에서 들어온 밝은 덩어리가 얼굴판 가장자리에서 얼굴 높이의 이 배 넘게 들어오면 소품
 PROP_AREA = 0.04   # 얼굴판 볼록 다각형 깊이(6화소 안) 들어온 어둡지 않은 덩어리가 얼굴 높이 제곱의 이 배 이상이면 얼굴 앞의 소품
 OCC_THICK, OCC_BAND = 0.04, 8                 # 얼굴판을 가린 소품 = 원화 모양 안의 얼굴판 아닌 덩어리 중 두께가 얼굴 높이의 0.04배 이상인 것
 # 검사 기준
+RIM_GLOSS = 0.06                              # ① 얼굴판 가장자리 윤기 띠의 깊이(얼굴 높이의 배수)
 BRIGHT_C, BRIGHT_V, BRIGHT_N = 35, 90, 15     # ① 둘레보다 35 넘게 밝고 90 이상인 화소가 15개 이상이면 «눈 아닌 밝은 것»
-DARK_C, DARK_N, DARK_K = 20, 25, 0.1         # ① 닫힘(얼굴 높이의 0.1배)보다 10 넘게 어두운 화소가 25개 이상이면 «어두운 선(미소선·입)».
+DARK_C, DARK_N, DARK_K = 20, 60, 0.1         # ① 닫힘(얼굴 높이의 0.1배)보다 10 넘게 어두운 화소가 25개 이상이면 «어두운 선(미소선·입)».
                                               #   닫힘을 칠할 때처럼 0.2배로 크게 잡으면 얼굴판의 넓은 그늘까지 미소선과 한 덩어리로 잡혀
                                               #   «두꺼운 그늘»로 빠졌다(자기검사 20번 실측: 1924화소 한 덩어리).
                                               #   차이 기준 20(07번 실측: 고치기 전 미소선 157~258화소, 고친 뒤 0~9화소 — 10이면 고친 뒤에도
-                                              #   얼굴판 윤기 사이 그늘이 14~63화소 잡혔다)
+                                              #   얼굴판 윤기 사이 그늘이 14~63화소 잡혔다). 화소 수 기준 60: 고친 뒤 최대 27화소(07번 164번,
+                                              #   2.5배 밝기로 봐도 선이 없음), 고치기 전 최소 157화소, 자기검사 가짜 미소선 약 300화소
 OUTLINE_PX, OUTLINE_X = 0.6, 3.0              # ② 앞뒤 둘 다와 다른 정도(화소)가 0.6 넘고 그 장면 중앙값의 3배 넘으면 «얼굴선 무너짐»
 EYE_LOSS = 0.1                                # ④ 얼굴판 안 주황 화소가 보정 전보다 이 비율 넘게 줄면 «눈 지워짐»
 
@@ -391,6 +394,24 @@ def zones(crop, org, core, ref, p, keep_hull, zone, cur_hull):
     for j, sl in enumerate(ndi.find_objects(nl), 1):
         m = nl[sl] == j
         if (m & deep[sl]).sum() >= PROP_AREA * h * h and (m & ~inner[sl]).any(): big_white[sl] |= m
+    # 얼굴판 밖에서 들어와 얼굴판 가장자리로부터 얼굴 높이의 PROP_DEPTH배 넘게 깊이 들어온 밝은 덩어리(회색 슬레이트 면 등)도 소품이다 —
+    # 크기·두께만 보면 흰 줄 사이 회색 면이 빠졌다(03번 110·133번). 옆얼굴에서 가장자리에 걸친 입 끝은 이만큼 깊지 않다
+    depth = ndi.distance_transform_edt(visor)
+    hv = gate.hull_mask(visor)
+    ll, _ = ndi.label((v >= BRIGHT_V) & ~((r > 170) & (r - b > 60)) & ~big_white)
+    for j, sl in enumerate(ndi.find_objects(ll), 1):
+        m = ll[sl] == j
+        if (m & ~hv[sl]).any() and (depth[sl][m].max() if m.any() else 0) >= PROP_DEPTH * h: big_white[sl] |= m
+    # 얼굴판 구멍으로 메워진 밝은 덩어리 중 소품인 것: 크림색(손가락·손 — 흰 입은 무채색)이거나, 입 자리 타원 밖에 무게중심이 있는
+    # 크고 두꺼운 것(슬레이트 흰 칸). 칠하면 소품이 얼굴판 색으로 깎였다(03번 110·113번 실측: 눈 옆 슬레이트 칸이 대각선으로 잘림)
+    ml = mouth_area(visor.shape, mouth, h, p)
+    pl, _ = ndi.label((v >= 140) & ~((r > 170) & (r - b > 60)) & visor & ~big_white)
+    for j, sl in enumerate(ndi.find_objects(pl), 1):
+        m = pl[sl] == j
+        if m.sum() < 12: continue
+        cream = np.median((r[sl] - b[sl])[m]) >= 18
+        cy, cx = ndi.center_of_mass(m); cy, cx = int(cy) + sl[0].start, int(cx) + sl[1].start
+        if cream or (not ml[cy, cx] and m.sum() >= 0.01 * h * h and 2 * thickness(m) >= 0.05 * h): big_white[sl] |= m
     paint &= ~ndi.binary_dilation(big_white, iterations=7)   # 흰 줄 둘레의 가는 윤기(슬레이트 윗면 모서리)까지 — 3화소면 깎였다(03번 129번)
     # 얼굴판을 가린 소품(검사에서만 쓴다): 원화 모양 안인데 얼굴판이 아닌 두꺼운 덩어리
     gap = placed & ~visor
@@ -469,7 +490,9 @@ def repaint(crop, visor, paint, keep, h, keep_smile, mouth_xy, narrow=False, sha
     # 보간의 경계는 얼굴판 화소 중 눈빛(주황)만 뺀다 — «남기는 곳» 전체를 빼면 둘레가 모두 남기는 곳인 입은 경계가 없어 메워지지 않았다
     # 눈 점의 흰 심(채도가 낮아 주황으로 안 잡힘)도 뺀다 — 경계에 넣으면 그 밝기가 메운 곳으로 번져 눈 옆에 흰 얼룩이 생겼다(03번 12번)
     eye_light = ndi.binary_dilation(warm_of(crop, visor) | (keep & (crop.max(2) >= 100)), iterations=2)
-    return fix.harmonic_fill(crop, target, visor & ~eye_light)
+    # 밝은 화소(밝기 100 이상)도 경계에서 뺀다 — 얼굴 앞 슬레이트의 흰 칸·손가락 끝이 얼굴판 구멍으로 메워져 경계가 되면 그 흰빛이 메운 곳으로
+    # 번졌다(03번 110·133번 실측). 얼굴판 자체의 경계는 어두운 화소로 충분하다
+    return fix.harmonic_fill(crop, target, visor & ~eye_light & (crop.max(2) < 100))
 
 
 def mouth_area(shape, mouth_xy, h, p):
@@ -488,6 +511,12 @@ def check_frame(crop, visor, paint, keep, occ, h, keep_smile, mouth_xy, p):
     v = extend_visor(crop.astype(np.float64), visor).max(2)
     local = ndi.median_filter(v, size=31)
     bright = paint & ~keep & (v - local >= BRIGHT_C) & (v >= BRIGHT_V)
+    # 얼굴판 아래 가장자리의 윤기(크림색 테두리가 비친 띠)는 원화에도 있는 것이다 — 가장자리에서 얼굴 높이의 RIM_GLOSS배 안에만 있는
+    # 얇은 밝은 덩어리는 입으로 세지 않는다(03번 15·80·100번 실측: 아래 가장자리 띠가 «밝은 것»으로 잡혔다)
+    dv = ndi.distance_transform_edt(visor); bl, bn = ndi.label(bright)
+    for j, sl in enumerate(ndi.find_objects(bl), 1):
+        m = bl[sl] == j
+        if dv[sl][m].max() <= RIM_GLOSS * h: bright[sl] &= ~m
     dark = np.zeros(bright.shape, bool)
     if not keep_smile:
         k = max(5, int(DARK_K * h) | 1)
@@ -610,7 +639,11 @@ def main():
             # 가짜 자국은 앞을 보는 프레임(원화 얼굴판과 잘 맞고 가로 배율 0.85 이상)에 그린다 — 고개를 돌린 프레임에 그리면 입 자리가
             # 얼굴판 가장자리에 걸려 «소품»으로 갈렸고(07번 10번), 상자 아래쪽에 그린 홈은 얼굴판에 닿지 않았다(07번 30번)
             pre = follow(files, faces)
-            good = [i for i in range(5, len(files) - 4) if (pre.get((i, faces[0])) or {}).get('iou', 0) >= 0.9 and pre[(i, faces[0])]['p'][1] >= 0.85]
+            # 보정 전에도 윤곽이 움직이는 프레임(앞뒤 3프레임)은 고르지 않는다 — 거기 그린 홈은 «보정 전에도 같은 움직임»(사람 확인)으로
+            # 갈려 ②가 실패로 세지 않았다(07번 54번)
+            moving = {o['frame'] + d for o in scan(sorted(glob.glob(os.path.join(a.source, '*.png'))), faces, a.zone, a.keep_smile)['outline'] for d in range(-3, 4)}
+            good = [i for i in range(5, len(files) - 4) if i not in moving and (pre.get((i, faces[0])) or {}).get('iou', 0) >= 0.9
+                    and pre[(i, faces[0])]['p'][1] >= 0.85]
             roles = []
             for i in good:
                 if not roles or i - roles[-1] >= 8: roles.append(i)
@@ -623,9 +656,22 @@ def main():
                 fi = faces[0]; rec = pre[(i, fi)]; ref = art_ref(fi, np.asarray(rgb).shape[1] / Image.open(os.path.join(gate.ART_DIR, f'{SCENE}.png')).width)
                 if items: boxes[i] = items[0][1]          # 같은 프레임은 몇 번 불려도 같은 자리에 그린다(③ 검사는 상자 없이 부른다)
                 mx, my = fwd(rec['p'], ref, ref['mouth'])[0]; b = boxes.get(i, ref['box']); h = b[3] - b[1]
+                # 가짜 입은 입 자리 안에서 눈·가장자리에서 가장 먼 곳에 그린다 — 원화 입 자리에 그대로 그리면 07번처럼 입이 눈 바로 옆인
+                # 장면에서 눈 둘레(남기는 곳)·가장자리와 겹쳐, 검사가 아니라 그림 자리 때문에 «놓침»이 나왔다
+                big, core = gate.expand(b, rgb.shape); cr = np.asarray(rgb)[big[1]:big[3], big[0]:big[2]]; vis0 = visor_of(cr, core)
+                if vis0 is not None:
+                    ok = mouth_area(vis0.shape, (mx - big[0], my - big[1]), h, rec['p']) & ndi.binary_erosion(vis0, iterations=max(1, int(0.12 * h)))
+                    ok &= ~ndi.binary_dilation(warm_of(cr, vis0), iterations=max(1, int(0.12 * h)))
+                    # 어두운 미소선은 둘레 얼굴판이 밝기 35 이상인 곳에 그린다 — 거의 검은(10~20) 곳에 검정 선을 그리면 원화 미소선과 달리
+                    # 대비가 없어 «선»이 아니다(07번 17번: 검사 기준 20을 못 넘음). 원화 미소선은 둘레보다 20 넘게 어둡다(실측)
+                    lit = ok & (ndi.median_filter(cr.max(2), size=15) >= 35)
+                    if i == ROLE['dark'] and lit.any(): ok = lit
+                    if ok.any():
+                        dd = ndi.distance_transform_edt(ok); yy0, xx0 = np.unravel_index(int(np.argmax(dd)), dd.shape)
+                        mx, my = xx0 + big[0], yy0 + big[1]
                 im = Image.fromarray(rgb.copy()); d = ImageDraw.Draw(im)
-                if i == ROLE['white']: d.arc([mx - 0.2 * h, my - 0.15 * h, mx + 0.2 * h, my + 0.1 * h], 20, 160, fill=(245, 245, 245), width=4)
-                if i == ROLE['dark']: d.arc([mx - 0.2 * h, my - 0.15 * h, mx + 0.2 * h, my + 0.1 * h], 20, 160, fill=(0, 0, 0), width=6)
+                if i == ROLE['white']: d.arc([mx - 0.12 * h, my - 0.1 * h, mx + 0.12 * h, my + 0.05 * h], 20, 160, fill=(245, 245, 245), width=4)
+                if i == ROLE['dark']: d.arc([mx - 0.12 * h, my - 0.1 * h, mx + 0.12 * h, my + 0.05 * h], 20, 160, fill=(0, 0, 0), width=6)
                 if i == ROLE['notch']:                # 입 아래 얼굴판 아래 가장자리에 크림색 홈
                     big, core = gate.expand(b, rgb.shape); vis = visor_of(rgb[big[1]:big[3], big[0]:big[2]], core)
                     col = vis[:, int(round(mx)) - big[0]] if vis is not None else None
