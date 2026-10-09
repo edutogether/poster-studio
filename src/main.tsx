@@ -8,7 +8,7 @@
    전환 전후로 같은 요소를 가리킨다.
 
    스플래시는 여기서 건드리지 않는다(4단계). 마크업은 index.html에 정적으로 있고,
-   타이밍은 style.css가, 노드 제거와 안전판은 public/boot-splash.js가 맡는다.
+   타이밍은 src/studio/splash.css가, 노드 제거와 안전판은 public/boot-splash.js가 맡는다.
    ──────────────────────────────────────────────────────────────────── */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

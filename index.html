@@ -31,6 +31,12 @@
        포스터 글꼴(fonts/poster.css — Black Han Sans·Noto Serif KR·Anton·Bebas Neue)은 2026-10-07에
        구글 폰트가 주던 파일·조각 규칙 그대로 옮겼다. 브라우저는 그리는 글자가 든 조각만 받는다.
        다시 받는 방법: scripts/fonts/fetch-poster-fonts.mjs -->
+  <!-- 스플래시 글자가 쓰는 두 굵기(제목 800 · 부제 400)를 문서를 읽자마자 받는다(2026-10-09).
+       Studio 글꼴은 block이라 이 파일이 오기 전에는 글자를 다른 글꼴로 그리지 않는다 — 미리 받으면 그 기다림이
+       거의 0이 된다. 주소는 src/studio/style.css의 @font-face와 글자 하나까지 같아야 한 번만 받는다.
+       crossorigin은 같은 출처여도 글꼴 미리 받기에 꼭 필요하다(없으면 두 번 받는다). -->
+  <link rel="preload" href="/fonts/subset/Pretendard-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/subset/Pretendard-Regular.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="fonts/poster.css" />
   <link rel="stylesheet" href="fonts/pretendard.css" />
   <link rel="stylesheet" href="/src/studio.css" />
@@ -39,7 +45,7 @@
   <!-- 부트 스플래시 — _shared/standards/splash-standard.md 규격(2026-09-09 4단계).
        **마크업은 여기 정적으로 둔다.** React가 그리면 번들을 받아 실행할 때까지 빈
        화면이 보인다(표준 §7: 다른 앱이 실제로 겪은 회귀다).
-       **타이밍은 CSS 애니메이션이 잡는다**(style.css의 splashOut) — JS 타이머로 재면
+       **타이밍은 CSS 애니메이션이 잡는다**(src/studio/splash.css의 splashOut — 스플래시는 그 파일 한 곳에서만 정의한다) — JS 타이머로 재면
        번들 로드 시점부터 재는 셈이라 회선·기기마다 달라진다. 예전 구현이 그랬다.
        JS(boot-splash.js)는 시간을 재지 않고 **끝났는지만 보고 노드를 치운다.** -->
   <div id="splash">
