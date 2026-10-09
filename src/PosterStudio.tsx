@@ -15,6 +15,7 @@ import {
 import { buildPosters, makePlaceholderArt } from "./poster.js";
 import { boothCodeHeaders } from "./boothCode.js";
 import StudioView from "./studio/StudioView.js";
+import { SCENE_MS } from "./studio/GenerationWait.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
 
@@ -22,6 +23,15 @@ import type { Meta, Poster } from "./state.js";
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
    아이는 그대로 끝"이 되는 문제가 있어 절충한 값. 다시 촬영하면 초기화된다. */
 const MAX_GENERATIONS_PER_PHOTO = 2;
+
+/* 샘플 모드(2026-10-09 Bumm님 «샘플 포스터를 보더라도 40초(8초짜리 로딩 영상 5개)의 로딩 화면 이후 포스터 고르는 화면으로»).
+   사내 클로즈 베타 동안 라이브에서 촬영·AI 없이 흐름 전체를 보여 준다. 켜고 끄는 스위치는 저장소 루트
+   `.env.production`의 VITE_SAMPLE_MODE 한 줄이다(부스 코드를 켤 무렵 0으로 되돌린다).
+   켜져 있으면 «샘플 포스터 보기»가 촬영을 대신하고, 진짜 생성과 같은 로딩 화면을 장면 5개 동안 보인 뒤
+   포스터 고르기로 간다. 카메라 권한 요청·AI 호출·서버 요청은 하나도 일어나지 않는다(테스트로 고정).
+   ⚠ 스위치를 끈 빌드에도 샘플 원화 파일(약 2.6MB)은 dist/assets에 남는다 — 빌드 도구가 그림을 코드 정리보다
+   먼저 내보내기 때문이다(2026-10-09 두 방식으로 빌드해 확인). 앱은 그 파일을 부르지 않는다. */
+const SAMPLE_WAIT_SCENES = 5;
 
 /** 화면 입력값 수집. 비어 있는 영화 제목은 준비 화면과 같은 예시로 채운다. */
 export function getMeta(mode: string): Meta {
@@ -57,7 +67,7 @@ function drawPlaceholder(pctx: CanvasRenderingContext2D) {
 }
 
 export default function PosterStudio() {
-  const designPreview = import.meta.env.DEV && import.meta.env.VITE_POSTER_DESIGN_PREVIEW === "1";
+  const sampleMode = import.meta.env.VITE_SAMPLE_MODE === "1";
   const [mode, setMode] = useState("solo");
   /* 초기 문구("카메라를 켜고 사진을 촬영해 주세요.")는 페이지 맨 아래 ※ 영역으로
      옮겼다(2026-09-09 대표 지시). **요소는 남긴다** — 오류·진행 상황이 뜨는 자리다.
@@ -126,9 +136,9 @@ export default function PosterStudio() {
     if (!pctx) return;
     drawPlaceholder(pctx);
     /* 첫 의미있는 화면이 그려졌다 — 스플래시의 시계를 흐르게 한다(로드 게이트 B).
-       **여기서 스플래시를 숨기지 않는다.** 숨기는 타이밍은 style.css의 splashOut이
+       **여기서 스플래시를 숨기지 않는다.** 숨기는 타이밍은 src/studio/splash.css의 splashOut이
        잡고, 이 신호는 '언제부터 재기 시작할지'만 정한다. 그래서 번들이 늦게 붙어도
-       사용자는 항상 1800ms 동안 온전한 브랜드 화면을 보고, 걷힌 뒤에는 덜 그려진
+       사용자는 항상 막대 두 바퀴(2300ms, §27) 동안 온전한 브랜드 화면을 보고, 걷힌 뒤에는 덜 그려진
        화면이 아니라 완성된 첫 화면을 본다. */
     document.body.classList.add("app-ready");
   }, []);
@@ -145,7 +155,7 @@ export default function PosterStudio() {
      되는 것보다, 페이지를 여는 순간 문제를 아는 게 낫다. 실패해도 촬영은 막지
      않는다(연결이 잠깐 불안정했을 수도 있으므로 fail-open). */
   useEffect(() => {
-    if (designPreview) return;
+    if (sampleMode) return;
     let alive = true;
     (async () => {
       try {
@@ -184,6 +194,8 @@ export default function PosterStudio() {
   }, []);
 
   const startCamera = useCallback(() => {
+    // 샘플 모드에서는 카메라 권한을 아예 묻지 않는다 — 버튼을 숨기는 것만으로는 막았다고 할 수 없다.
+    if (sampleMode) return Promise.resolve();
     if (cameraOpening.current) return cameraOpening.current;
     const epoch = cameraEpoch.current;
     const opening = (async () => {
@@ -210,7 +222,7 @@ export default function PosterStudio() {
       })
       .catch(() => {});
     return opening;
-  }, []);
+  }, [sampleMode]);
 
   const onStart = async () => {
     try {
@@ -301,6 +313,22 @@ export default function PosterStudio() {
     }
   };
 
+  /* 로딩 화면의 «기다린 시간 · N초»(체감 대기 개선). 진짜 생성과 샘플이 같은 것을 쓴다 — 두 벌로 두면
+     한쪽만 고치는 사고가 난다. 돌려준 함수를 부르면 멈추고 문구를 되돌린다. */
+  const startElapsed = () => {
+    const started = Date.now();
+    const tick = setInterval(() => {
+      const el = spinTextRef.current;
+      if (el)
+        el.textContent = `기다린 시간 · ${Math.round((Date.now() - started) / 1000)}초`;
+    }, 1000);
+    return () => {
+      clearInterval(tick);
+      if (spinTextRef.current)
+        spinTextRef.current.textContent = "AI가 그리는 중…";
+    };
+  };
+
   const applyPosters = (built: Poster[]) => {
     setPosters(built);
     setSelected(0);
@@ -359,13 +387,7 @@ export default function PosterStudio() {
     form.append("genre", meta.genre);
     form.append("mode", meta.mode);
 
-    const started = Date.now();
-    const tick = setInterval(() => {
-      // 경과 시간 표시(체감 대기 개선)
-      const el = spinTextRef.current;
-      if (el)
-        el.textContent = `기다린 시간 · ${Math.round((Date.now() - started) / 1000)}초`;
-    }, 1000);
+    const stopElapsed = startElapsed();
     const ctrl = new AbortController(); // 요청 시간 제한(부스 무한 멈춤 방지)
     const timer = setTimeout(() => ctrl.abort(), 150_000);
     try {
@@ -396,9 +418,7 @@ export default function PosterStudio() {
       setFallbackShown(true);
     } finally {
       clearTimeout(timer);
-      clearInterval(tick);
-      if (spinTextRef.current)
-        spinTextRef.current.textContent = "AI가 그리는 중…";
+      stopElapsed();
       isGeneratingRef.current = false;
       setGenerating(false);
       setSpinning(false);
@@ -424,24 +444,34 @@ export default function PosterStudio() {
     }
   };
 
-  // 로컬 디자인 작업은 같은 원화 한 장으로 실제 8개 틀을 렌더한다.
-  const onDesignPreview = async () => {
-    if (!designPreview || isGeneratingRef.current) return;
+  /* 샘플 모드: 촬영 대신 같은 원화 한 장으로 8개 틀을 만든다. 진짜 생성과 같은 로딩 화면을 장면 5개 동안
+     보인 뒤 결과로 간다. 조판은 로딩 화면 뒤에서 같이 돌린다 — 진짜 생성도 응답을 받은 뒤 로딩 화면이 떠 있는
+     동안 조판한다. 원화는 샘플 모드에서 이 단추를 누를 때만 받는다. */
+  const onSample = async () => {
+    if (!sampleMode || isGeneratingRef.current) return;
     stopCamera();
     isGeneratingRef.current = true;
     setGenerating(true);
     setStatus("");
     setFallbackShown(false);
+    setSpinning(true);
+    const stopElapsed = startElapsed();
+    const waited = new Promise((resolve) => setTimeout(resolve, SAMPLE_WAIT_SCENES * SCENE_MS));
     try {
-      const sampleURL = "/src/studio/design-sample.png";
+      const { default: sampleArt } = await import("./studio/design-sample.png");
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
-      applyPosters(await buildPosters([sampleURL], meta));
+      const built = await buildPosters([sampleArt], meta);
+      await waited;
+      applyPosters(built);
+      setCompletionId(value => value + 1);
     } catch {
       setStatus("샘플 포스터를 불러오지 못했어요. 다시 눌러주세요.");
     } finally {
+      stopElapsed();
       isGeneratingRef.current = false;
       setGenerating(false);
+      setSpinning(false);
     }
   };
 
@@ -503,10 +533,10 @@ export default function PosterStudio() {
       onStart={onStart}
       cameraReadyId={cameraReadyId}
       onStop={() => { stopCamera(); setPhase("idle"); setStatus(""); }}
-      designPreview={designPreview}
-      onShot={designPreview ? onDesignPreview : onShot}
+      sampleMode={sampleMode}
+      onShot={sampleMode ? onSample : onShot}
       onRetake={onRetake}
-      onGenerate={designPreview ? onDesignPreview : onGenerate}
+      onGenerate={sampleMode ? onSample : onGenerate}
       onFallback={onFallback}
       onPrint={onPrint}
       onNewPerson={onNewPerson}

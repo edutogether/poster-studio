@@ -39,7 +39,7 @@ export interface StudioViewProps {
   onStop: Action;
   cameraReadyId: number;
   onShot: Action;
-  designPreview?: boolean;
+  sampleMode?: boolean;
   onRetake: Action;
   onGenerate: Action;
   onFallback: Action;
@@ -495,7 +495,7 @@ export default function StudioView(p: StudioViewProps) {
             <img id="snapshot" src={p.snapshotURL ?? undefined} className={p.phase === "shot" ? "" : "hidden"} alt="촬영 사진"/>
             <div id="camHint" className={p.phase === "idle" ? "camHint camera-example-caption" : "camHint hidden"}>
               <span className="camera-example-label">{p.mode === "group" ? "이렇게, 모두의 얼굴이 보이게" : "이렇게, 얼굴과 어깨가 보이게"}</span>
-              <button type="button" id="startBtn" className="camera-start-button" onClick={p.onStart} disabled={locked}>카메라 켜기 <StudioIcon name="camera"/></button>
+              {!p.sampleMode && <button type="button" id="startBtn" className="camera-start-button" onClick={p.onStart} disabled={locked}>카메라 켜기 <StudioIcon name="camera"/></button>}
             </div>
             {p.phase === "live" && <>
               <span className="camera-live-indicator"><i aria-hidden="true"/>실시간 미리보기</span>
@@ -532,7 +532,7 @@ export default function StudioView(p: StudioViewProps) {
           </aside>
           <div className="action-dock camera-actions">
             <button type="button" className="back-button" aria-label="이전 단계로" disabled={locked} onClick={() => go(1)}><span aria-hidden="true">←</span> 이전</button>
-            <button id="shotBtn" type="button" className="primary-button" hidden={p.phase === "shot"} disabled={locked} onClick={p.onShot}><StudioIcon name="camera"/>{p.designPreview ? '샘플 포스터 보기' : p.capturing ? '촬영 중…' : '3초 뒤 사진 찍기'}</button>
+            <button id="shotBtn" type="button" className="primary-button" hidden={p.phase === "shot"} disabled={locked} onClick={p.onShot}><StudioIcon name="camera"/>{p.sampleMode ? '샘플 포스터 보기' : p.capturing ? '촬영 중…' : '3초 뒤 사진 찍기'}</button>
             <button id="generateBtn" type="button" className="primary-button" hidden={p.phase !== "shot"} disabled={p.generating} onClick={p.onGenerate}>이 사진으로 만들기 <StudioIcon name="arrow"/></button>
           </div>
         </div>

@@ -5,6 +5,8 @@ import "./generation-wait.css";
 import "./waiting-art.css";
 
 const OPENING_KEY = "poster-studio-wait-opening";
+/** 로딩 화면 한 장면(그림·제목·상식 한 세트)이 머무는 시간. 샘플 모드의 대기 길이도 이것으로 센다. */
+export const SCENE_MS = 8_000;
 let lastOpeningId = -1;
 function shuffled(length: number) {
   const values = Array.from({ length }, (_, i) => i);
@@ -55,7 +57,7 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
 
   useEffect(() => {
     if (still) return;
-    const timer = window.setInterval(() => setSceneIndex(value => (value + 1) % scenes.length), 8_000);
+    const timer = window.setInterval(() => setSceneIndex(value => (value + 1) % scenes.length), SCENE_MS);
     return () => window.clearInterval(timer);
   }, [still, scenes.length]);
 
