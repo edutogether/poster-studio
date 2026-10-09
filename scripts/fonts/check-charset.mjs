@@ -69,9 +69,10 @@ const refFiles = [
 ];
 const stale = []; let refs = 0;
 for (const f of refFiles) {
-  // 주석 속 파일 이름은 주소가 아니다.
-  const t = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
-  for (const m of t.matchAll(/subset\/Pretendard-[A-Za-z]+\.woff2(\?v=[0-9a-f]+)?/g)) {
+  // 주소로 쓰인 자리만 센다 — 바로 뒤에 따옴표나 닫는 괄호가 온다(url('…'), url("…"), url(…), href="…").
+  // 주석 속 파일 이름(뒤에 글자가 이어진다)은 주소가 아니다.
+  const t = fs.readFileSync(f, 'utf8');
+  for (const m of t.matchAll(/subset\/Pretendard-[A-Za-z]+\.woff2(\?v=[0-9a-f]+)?(?=['")])/g)) {
     refs++;
     if (m[1] !== `?v=${VER}`) stale.push(`${path.relative(ROOT, f)}: ${m[0]}`);
   }
