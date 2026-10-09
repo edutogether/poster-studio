@@ -45,7 +45,9 @@ const need = [...charset()];
 const missing = need.filter((c) => !have.has(c));
 
 if (missing.length) {
-  console.error(`서브셋 폰트에 없는 글자 ${missing.length}자: ${missing.join('')}`);
+  // 띄어쓰기처럼 눈에 안 보이는 글자는 코드로 적는다 — 빈칸으로 찍히면 무엇이 빠졌는지 알 수 없다.
+  const shown = missing.map((c) => (/\s/.test(c) ? `U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}(띄어쓰기)` : c));
+  console.error(`서브셋 폰트에 없는 글자 ${missing.length}자: ${shown.join(' ')}`);
   console.error('문구가 바뀌었습니다. `npm run fonts:charset` 후 서브셋을 다시 만들고 커밋하세요.');
   console.error('(안 고치면 그 글자가 화면에 □ 로 나옵니다.)');
   process.exit(1);

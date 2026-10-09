@@ -1,5 +1,10 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-09 — 라이브는 샘플 모드다 (11/7쯤 되돌릴 것)
+
+- 🔴 **지금 라이브(두 주소)는 샘플 모드다** — 촬영·AI 생성 대신 «샘플 포스터 보기» → 로딩 화면 40초 → 포스터 고르기. 스위치는 `.env.production`의 `VITE_SAMPLE_MODE` 한 줄이고, **부스 코드를 켤 무렵(11/7쯤) `0`으로 바꿔 master에 올리면** CI가 실제 모드로 다시 배포한다. 개발 서버에서 샘플 모드를 보려면 `.env.development.local`에 같은 줄을 둔다(옛 `VITE_POSTER_DESIGN_PREVIEW`는 없어졌다).
+- 스플래시 글꼴: 서브셋에 띄어쓰기를 넣었고 화면 글꼴 Studio는 `block` + 미리 받기다. 실측 도구는 `scripts/verify/splash-live.mjs`, 샘플 흐름 확인은 `scripts/verify/design-sample-flow.mjs <주소>`. 상세는 `_docs/CHANGELOG.md` 같은 날짜.
+
 ## 2026-10-03 — 로컬 디자인 통합과 출시 기준점
 
 - Bumm님이 이 채팅에서 현재 로컬 변경의 커밋·푸시·배포·프리즈 태그까지 직접 승인했다. PR #4에 스플래시·촬영/확인 배치·로딩 12세트·8종 결과 디자인·전체 이름·승인 기록과 제작 자료를 함께 보존한다. 개발 샘플 건너뛰기는 로컬 전용이다.

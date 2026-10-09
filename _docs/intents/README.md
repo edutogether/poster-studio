@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-10-09 | [splash-font-and-sample-mode](2026-10-09-splash-font-and-sample-mode/intent.md) | 2 | in-progress | 스플래시 글꼴 고정(띄어쓰기 서브셋·block·미리 받기)·라이브 샘플 모드 스위치 |
 | 2026-10-07 | [ops-hardening](2026-10-07-ops-hardening/intent.md) | 2 | done | 부스 코드 스위치(기본 꺼짐)·포스터 글꼴 자체 서빙·로컬 도구 정비 |
 | 2026-09-30 | [studio-design-integration](2026-09-30-studio-design-integration/intent.md) | 2 | in-progress | 확정한 디자인에 기존 촬영·AI 생성·네 포스터·저장·인쇄 연결, 배포 준비 |
 | 2026-09-27 | [react-19.3](2026-09-27-react-19.3/intent.md) | 2 | done | react·react-dom·타입 두 개만 19.3.0으로. 화면·포스터 픽셀 전/후 대조 0건이 배포 조건 |

@@ -83,10 +83,16 @@ export function collectStrings(root = ROOT) {
   return out;
 }
 
-/** 정렬된 고유 글자 문자열. 공백·제어문자는 뺀다(폰트에 필요 없다). */
+/** 정렬된 고유 글자 문자열. 제어문자(줄바꿈·탭 등)는 뺀다.
+
+    🔴 **띄어쓰기(U+0020)는 뺄 수 없다**(2026-10-09). 띄어쓰기도 글꼴이 그리는 글자다 — 폭이 그 글꼴에서
+    나온다. 예전에는 «공백은 폰트에 필요 없다»며 32 이하를 다 빼서 서브셋에 띄어쓰기가 없었고, 그러면
+    브라우저는 화면의 모든 띄어쓰기를 **다음 글꼴(PretendardFull, 굵기당 약 780KB)**에서 가져온다.
+    라이브 첫 방문마다 그 전체 글꼴 세 벌이 스플래시 도중에 내려받아졌고, 도착하는 순간 띄어쓰기 폭이
+    바뀌어 스플래시 제목이 331.8px → 334.2px로 흔들렸다(scripts/verify/splash-live.mjs로 실측). */
 export function charset() {
   const set = new Set();
-  for (const s of collectStrings()) for (const ch of s) if (ch.codePointAt(0) > 32) set.add(ch);
+  for (const s of collectStrings()) for (const ch of s) if (ch.codePointAt(0) >= 32) set.add(ch);
   // 기본 라틴/숫자/구두점은 어차피 작으니 통째로 넣어 둔다 — 문구가 바뀌어도 잘 안 깨진다.
   for (let c = 0x21; c <= 0x7e; c++) set.add(String.fromCharCode(c));
   return [...set].sort().join('');

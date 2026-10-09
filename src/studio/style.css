@@ -1,20 +1,26 @@
+/* 화면 글꼴 — 스플래시 첫 프레임부터 같은 글꼴로 그린다(2026-10-09 Bumm님 «글꼴이 다른 걸로 떴다가 바뀐다»).
+   block: 글꼴이 오기 전에는 글자를 다른 글꼴로 그리지 않고 기다렸다가, 온 글꼴로 처음부터 그린다.
+   예전 optional은 짧은 대기(약 100ms) 안에 못 받으면 **그 페이지 내내 대체 글꼴**로 그렸다 — 느린 회선
+   첫 방문이면 다음 글꼴(PretendardFull, block)로 넘어가 글자가 안 보이다가(깜빡임) 맑은 고딕으로 떴다가
+   Pretendard로 바뀌었다. 지금은 서브셋이 굵기당 약 46KB이고 스플래시가 쓰는 두 굵기(400·800)를
+   index.html이 미리 받으므로(preload) 기다림이 거의 없다. 서브셋에 띄어쓰기도 넣었다(charset.mjs). */
 @font-face {
   font-family: Studio;
   src: url("/fonts/subset/Pretendard-Regular.woff2");
   font-weight: 400;
-  font-display: optional;
+  font-display: block;
 }
 @font-face {
   font-family: Studio;
   src: url("/fonts/subset/Pretendard-Bold.woff2");
   font-weight: 700;
-  font-display: optional;
+  font-display: block;
 }
 @font-face {
   font-family: Studio;
   src: url("/fonts/subset/Pretendard-ExtraBold.woff2");
   font-weight: 800;
-  font-display: optional;
+  font-display: block;
 }
 :root {
   --paper: #fff;

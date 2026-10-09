@@ -644,24 +644,39 @@ describe('인쇄', () => {
 });
 
 
-describe('로컬 포스터 디자인 작업',()=>{
-  test('촬영 없이 샘플 한 장으로 8개 틀을 열고 외부 요청을 보내지 않는다',async()=>{
-    vi.stubEnv('DEV',true);vi.stubEnv('VITE_POSTER_DESIGN_PREVIEW','1');
+/* 샘플 모드(2026-10-09 Bumm님) — 라이브 사내 클로즈 베타. 스위치는 .env.production의 VITE_SAMPLE_MODE.
+   화면 고지와 같은 급의 약속이다: 카메라 권한을 묻지 않고, 서버에 아무것도 보내지 않는다. */
+describe('샘플 모드',()=>{
+  test('카메라 권한·서버 요청 없이 진짜 생성과 같은 로딩 화면을 40초 보인 뒤 8개 틀을 연다',async()=>{
+    vi.stubEnv('VITE_SAMPLE_MODE','1');
     const f=installFetch();
     await act(async()=>{renderApp();});
     await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
     expect(el('shotBtn').textContent).toContain('샘플 포스터 보기');
+    expect(document.getElementById('startBtn')).toBeNull();   // 카메라 켜기 단추가 없다
+    vi.useFakeTimers();
     await act(async()=>{el<HTMLButtonElement>('shotBtn').click();});
+    const spinner=()=>document.getElementById('spinner') as HTMLDialogElement|null;
+    expect(spinner()!.open).toBe(true);
+    await act(async()=>{await vi.advanceTimersByTimeAsync(8_000);});
+    expect(spinner()!.dataset.scene).toBe('1');   // 진짜 생성과 같은 화면 — 8초마다 장면이 넘어간다
+    await act(async()=>{await vi.advanceTimersByTimeAsync(31_000);});
+    expect(spinner()!.open).toBe(true);   // 39초: 아직 닫히지 않는다(조판은 이미 끝났어도 40초를 채운다)
+    expect(document.querySelector('.generation-elapsed')!.textContent).toBe('기다린 시간 · 39초');
+    expect(document.body.dataset.step).toBe('2');
+    await act(async()=>{await vi.advanceTimersByTimeAsync(1_000);});
+    vi.useRealTimers();
     await waitFor(()=>expect(document.body.dataset.step).toBe('3'));
+    expect(spinner()).toBeNull();
     expect(document.querySelectorAll('.style-option')).toHaveLength(TEMPLATES.length);
+    expect(document.querySelector('.completion-notice strong')!.textContent).toBe('완성 !');
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
-    expect(f.calls).toHaveLength(0);
-    expect(document.getElementById('spinner')).toBeNull();
+    expect(f.calls).toHaveLength(0);   // /health도 /generate도 없다
   });
-  test('배포 환경에서는 디자인 설정이 있어도 촬영 버튼을 유지한다',async()=>{
-    vi.stubEnv('DEV',false);vi.stubEnv('VITE_POSTER_DESIGN_PREVIEW','1');
+  test('스위치가 꺼져 있으면(0) 촬영 단추와 카메라 켜기를 그대로 둔다',async()=>{
+    vi.stubEnv('VITE_SAMPLE_MODE','0');
     await act(async()=>{renderApp();});
-    expect(el('shotBtn').textContent).not.toContain('샘플 포스터 보기');
     expect(el('shotBtn').textContent).toBe('3초 뒤 사진 찍기');
+    expect(document.getElementById('startBtn')).not.toBeNull();
   });
 });
