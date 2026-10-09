@@ -20,7 +20,7 @@ OUT = os.path.join(FONTS, 'subset')
 CHARSET = os.path.join(ROOT, 'scripts', 'fonts', 'subset-charset.txt')
 
 # UI가 쓰는 굵기만. 900(Black)은 캔버스 전용이라 서브셋에 넣지 않는다
-# (style.css의 font-weight를 전수 확인함: 500/600/700/800 + 기본 400).
+# (2026-09-09 당시 style.css의 font-weight를 전수 확인함: 500/600/700/800 + 기본 400. 지금 화면 스타일은 src/studio/*.css).
 WEIGHTS = ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']
 
 
