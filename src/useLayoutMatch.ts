@@ -23,7 +23,7 @@
 import { useLayoutEffect } from 'react';
 import type { RefObject } from 'react';
 
-export const TWO_COL_MIN_WIDTH = 900; // style.css의 @media (max-width:900px)와 같은 값
+export const TWO_COL_MIN_WIDTH = 900; // 옛 src/style.css(2026-10-09 삭제)의 @media (max-width:900px)와 같은 값
 
 /** 테스트가 재사용할 수 있게 순수 계산부만 떼어 둔다. 반환값이 곧 꽂을 height다. */
 export function heightToApply(innerWidth: number, leftHeight: number): string {
