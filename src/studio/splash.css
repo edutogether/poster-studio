@@ -138,6 +138,21 @@ body:has(#splash)::after {
   }
 }
 
+/* 글꼴 게이트(2026-10-09) — public/boot-splash.js가 스플래시 글꼴(Studio 800·400)이 아직 없을 때만
+   .fonts-wait를 붙이고, 오면 뗀다. 그동안 내용을 숨기고 모든 시계(유지·로고·막대)를 멈춘다 —
+   글자 없는 프레임도, 글자가 나타나며 로고·막대가 들썩이는 프레임도 없다. 시계가 멈춰 있으므로
+   §27 두 바퀴 하한은 내용이 보인 뒤부터 센다. 스크립트가 안 돌면 클래스가 안 붙어 예전처럼 보인다.
+   선택자를 .logo·.sbar i까지 적는 이유: 그쪽 animation 축약형의 선택자가 더 구체적이라
+   `#splash.fonts-wait *`로는 멈춤이 이기지 못한다. */
+#splash.fonts-wait > * {
+  visibility: hidden;
+}
+#splash.fonts-wait,
+#splash.fonts-wait .logo,
+#splash.fonts-wait .sbar i {
+  animation-play-state: paused;
+}
+
 /* 표준 개정 2차 — **장식 애니메이션만 끄고 유지·페이드 타이밍은 남긴다.**
    스플래시의 유지까지 없애면 덜 그려진 화면을 가려주는 역할이 사라져,
    로드 게이트로 막으려던 문제가 그대로 되돌아온다. */

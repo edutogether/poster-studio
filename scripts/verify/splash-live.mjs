@@ -55,6 +55,7 @@ const RECORDER = `
       const logo = s.querySelector('.logo img'); const edu = s.querySelector('.splash-education-logo');
       log.push({ t: now, op: Number(cs.opacity), tx, nameW: name ? name.getBoundingClientRect().width : null,
         tagW: tag ? tag.getBoundingClientRect().width : null,
+        cvis: name ? getComputedStyle(name).visibility : null,
         f800: document.fonts ? document.fonts.check('800 20px Studio') : null,
         f400: document.fonts ? document.fonts.check('400 20px Studio') : null,
         logo: !!(logo && logo.complete && logo.naturalWidth), edu: !!(edu && edu.complete && edu.naturalWidth),
@@ -163,7 +164,9 @@ function analyse(v) {
   // 막대가 멈췄는가: 막대는 1.15초에 266px을 간다 — 33ms(두 프레임) 넘게 같은 자리면 멈춘 것
   const stalls = []; for (let i = 1; i < vis.length; i++) { if (vis[i].tx !== null && vis[i].tx === vis[i - 1].tx && vis[i].t - vis[i - 1].t > 33) stalls.push(Math.round(vis[i].t)); }
   const widths = [...new Set(vis.map((x) => x.nameW && x.nameW.toFixed(1)))].filter(Boolean);
-  const swap = []; for (let i = 1; i < vis.length; i++) if (vis[i].nameW && vis[i - 1].nameW && Math.abs(vis[i].nameW - vis[i - 1].nameW) > 1) swap.push({ at: Math.round(vis[i].t), from: vis[i - 1].nameW.toFixed(1), to: vis[i].nameW.toFixed(1) });
+  // 제목 폭이 바뀌는 순간은 글자가 보일 때만 센다 — 글꼴 게이트(.fonts-wait)로 숨겨 둔 동안의 배치 변화는 화면에 안 나온다.
+  const shown = vis.filter((x) => x.cvis !== 'hidden');
+  const swap = []; for (let i = 1; i < shown.length; i++) if (shown[i].nameW && shown[i - 1].nameW && Math.abs(shown[i].nameW - shown[i - 1].nameW) > 1) swap.push({ at: Math.round(shown[i].t), from: shown[i - 1].nameW.toFixed(1), to: shown[i].nameW.toFixed(1) });
   const firstVis = vis[0]?.t ?? null;
   const logoLate = vis.filter((x) => !x.logo).length, eduLate = vis.filter((x) => !x.edu).length;
   const main = v.trace.filter((e) => e.name === 'RunTask' && e.ph === 'X' && e.dur > 50000);
@@ -178,7 +181,9 @@ function analyse(v) {
     label: v.label, firstVisibleMs: firstVis && Math.round(firstVis), appReadyMs: marks.appReady && Math.round(marks.appReady), splashRemovedMs: marks.splashRemoved && Math.round(marks.splashRemoved),
     shownMs: firstVis && marks.splashRemoved ? Math.round(marks.splashRemoved - firstVis) : null,
     frames: vis.length, gapsOver50ms: gaps, barStalls: stalls.length, titleWidths: widths, titleWidthChanges: swap,
-    f800AtFirst: vis[0]?.f800, f800AtEnd: vis[vis.length - 1]?.f800, logoNotDrawnFrames: logoLate, eduLogoNotDrawnFrames: eduLate,
+    f800AtFirst: vis[0]?.f800, f800AtEnd: vis[vis.length - 1]?.f800,
+    contentHiddenMs: vis.length && shown.length ? Math.round(shown[0].t - vis[0].t) : null,
+    shownWithoutFontFrames: shown.filter((x) => x.f800 === false).length, logoNotDrawnFrames: logoLate, eduLogoNotDrawnFrames: eduLate,
     fonts: Object.fromEntries(Object.entries(marks).filter(([k]) => k.startsWith('font:')).map(([k, t]) => [k, Math.round(t)])),
     longTasksDuringSplash: longTasks,
     drawnFrames: draws.length, drawGapsOver50ms: drawGaps, droppedFrames: dropped,
