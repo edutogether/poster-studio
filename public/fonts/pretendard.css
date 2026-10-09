@@ -24,35 +24,35 @@
   font-weight: 400;
   font-style: normal;
   font-display: optional;
-  src: url('subset/Pretendard-Regular.woff2') format('woff2');
+  src: url('subset/Pretendard-Regular.woff2?v=d4c80b08de') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 500;
   font-style: normal;
   font-display: optional;
-  src: url('subset/Pretendard-Medium.woff2') format('woff2');
+  src: url('subset/Pretendard-Medium.woff2?v=d4c80b08de') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 600;
   font-style: normal;
   font-display: optional;
-  src: url('subset/Pretendard-SemiBold.woff2') format('woff2');
+  src: url('subset/Pretendard-SemiBold.woff2?v=d4c80b08de') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 700;
   font-style: normal;
   font-display: optional;
-  src: url('subset/Pretendard-Bold.woff2') format('woff2');
+  src: url('subset/Pretendard-Bold.woff2?v=d4c80b08de') format('woff2');
 }
 @font-face {
   font-family: 'Pretendard';
   font-weight: 800;
   font-style: normal;
   font-display: optional;
-  src: url('subset/Pretendard-ExtraBold.woff2') format('woff2');
+  src: url('subset/Pretendard-ExtraBold.woff2?v=d4c80b08de') format('woff2');
 }
 
 /* ── 캔버스(인쇄되는 포스터) 전용 전체 폰트 ──────────────────────────

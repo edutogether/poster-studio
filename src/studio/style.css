@@ -6,19 +6,19 @@
    index.html이 미리 받으므로(preload) 기다림이 거의 없다. 서브셋에 띄어쓰기도 넣었다(charset.mjs). */
 @font-face {
   font-family: Studio;
-  src: url("/fonts/subset/Pretendard-Regular.woff2");
+  src: url("/fonts/subset/Pretendard-Regular.woff2?v=d4c80b08de");
   font-weight: 400;
   font-display: block;
 }
 @font-face {
   font-family: Studio;
-  src: url("/fonts/subset/Pretendard-Bold.woff2");
+  src: url("/fonts/subset/Pretendard-Bold.woff2?v=d4c80b08de");
   font-weight: 700;
   font-display: block;
 }
 @font-face {
   font-family: Studio;
-  src: url("/fonts/subset/Pretendard-ExtraBold.woff2");
+  src: url("/fonts/subset/Pretendard-ExtraBold.woff2?v=d4c80b08de");
   font-weight: 800;
   font-display: block;
 }

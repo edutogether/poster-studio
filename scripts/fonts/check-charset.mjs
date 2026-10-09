@@ -12,6 +12,7 @@
    ──────────────────────────────────────────────────────────────────── */
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { charset } from './charset.mjs';
 
@@ -52,4 +53,37 @@ if (missing.length) {
   console.error('(안 고치면 그 글자가 화면에 □ 로 나옵니다.)');
   process.exit(1);
 }
-console.log(`서브셋 글자 검사 통과 — 필요한 ${need.length}자가 모두 들어 있습니다.`);
+
+/* 🔴 서브셋 주소의 판(?v=)이 지금 서브셋 내용과 맞는지 본다(2026-10-09).
+   서브셋은 파일 이름이 고정이고 30일 캐시라(firebase.json의 woff2 규칙), 다시 만들어도 이미 받은 브라우저는
+   **옛 파일을 30일 동안 그대로 쓴다** — 띄어쓰기를 넣은 날 실제로 그랬다. 그래서 모든 주소에 서브셋 내용에서 나온
+   판을 붙이고, 서브셋을 다시 만들었는데 주소를 안 바꿨으면 여기서 실패한다(사람이 기억하는 게 아니라 검사가 잡는다). */
+const digest = crypto.createHash('sha256');
+for (const w of WEIGHTS) digest.update(fs.readFileSync(path.join(SUBSET_DIR, `Pretendard-${w}.woff2`)));
+const VER = digest.digest('hex').slice(0, 10);
+const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
+const refFiles = [
+  path.join(ROOT, 'index.html'), path.join(ROOT, 'privacy.html'),
+  ...walk(path.join(ROOT, 'public/fonts')).filter((f) => f.endsWith('.css')),
+  ...walk(path.join(ROOT, 'src')).filter((f) => /\.(css|ts|tsx)$/.test(f)),
+];
+const stale = []; let refs = 0;
+for (const f of refFiles) {
+  // 주석 속 파일 이름은 주소가 아니다.
+  const t = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+  for (const m of t.matchAll(/subset\/Pretendard-[A-Za-z]+\.woff2(\?v=[0-9a-f]+)?/g)) {
+    refs++;
+    if (m[1] !== `?v=${VER}`) stale.push(`${path.relative(ROOT, f)}: ${m[0]}`);
+  }
+}
+if (!refs) {
+  console.error('서브셋 글꼴 주소를 하나도 못 찾았습니다 — 찾는 자리가 틀리면 이 검사는 아무것도 지키지 못합니다.');
+  process.exit(1);
+}
+if (stale.length) {
+  console.error(`서브셋 글꼴 주소의 판이 지금 서브셋과 다릅니다(맞는 판: ?v=${VER}) — ${stale.length}곳:`);
+  for (const s of stale) console.error(`  ${s}`);
+  console.error('주소를 전부 위 판으로 바꾸세요. 안 바꾸면 이미 받은 브라우저가 옛 서브셋을 30일 동안 씁니다.');
+  process.exit(1);
+}
+console.log(`서브셋 글자 검사 통과 — 필요한 ${need.length}자가 모두 들어 있습니다. 서브셋 주소 ${refs}곳 모두 판 ?v=${VER}.`);
