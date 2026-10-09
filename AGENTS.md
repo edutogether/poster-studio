@@ -25,6 +25,7 @@
 - 업로드는 플랫폼의 `rawBody`를 busboy로 파싱한다. `/generate` 순서인 `markRequestStart → checkBoothToken → checkBoothCode → generateWindowGate → parseMultipart → requirePhoto → rateLimit → ipRateLimit → checkPhotoGenerationLimit → dailyBudgetCap`을 유지한다. 생성 성공·실패뿐 아니라 파싱 오류·429 차단에서도 임시 사진을 삭제하고 촬영 후 카메라 트랙을 해제한다.
 - 타임아웃 체인 120초(OpenAI 1회) < 125초(재시도·폴백 포함 요청 총시간) < 140초(Functions) < 150초(클라이언트)를 함께 유지한다. 변경 시 `scripts/loadtest.mjs`의 관련 값도 맞춘다.
 - IP 제한은 `clientIpForRateLimit()`의 XFF 마지막 항목을 유지한다. 전역 150건/10분·IP별 50건/10분·사진별 생성 2회·KST 하루 4000건의 트랜잭션 검증을 유지한다. 실패한 AI 요청의 카운터가 자동 복구된다고 가정하지 않는다. 부스토큰은 클라이언트와 Secret Manager를 함께 맞춘다.
+- **라이브는 샘플 모드일 수 있다**: `.env.production`의 `VITE_SAMPLE_MODE=1`이면 배포 빌드가 촬영·AI 대신 «샘플 포스터 보기 → 로딩 40초 → 포스터 고르기»로 동작하고 카메라·서버 요청을 하지 않는다(2026-10-09 클로즈 베타, 부스 코드를 켤 무렵 `0`으로 되돌린다). 테스트는 `test/poster-studio.test.tsx`의 «샘플 모드».
 - 부스 코드 스위치(기본 꺼짐)는 서버 `checkBoothCode`·화면 `src/boothCode.ts`·배포 `scripts/ci/booth-code-env.mjs` 세 자리가 같은 코드 형식을 쓴다. 한 곳만 바꾸지 않는다. 켜고 끄는 절차와 코드 값은 공개 저장소에 쓰지 않는다.
 - CORS는 정식 주소 `https://poster.edutogether.kr`와 기존 주소 `https://poster-studio.web.app`을 유지하며 허용 출처 정규식의 앵커·점 이스케이프를 풀지 않는다.
 - `/generate`는 실제 비용·운영 카운터를 소모한다. 검사에 OpenAI·Firestore 실호출을 넣지 않고 가짜 응답으로 검증한다. `public/`의 파일은 배포로 공개된다.

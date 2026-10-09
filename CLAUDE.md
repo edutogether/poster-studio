@@ -51,11 +51,11 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 
 ## 명령
 ```bash
-cd functions && npm ci && npm test    # vitest 71개
+cd functions && npm ci && npm test    # vitest 91개
 cd functions && npm run lint          # eslint
 cd functions && npm run format        # prettier (functions에만 있음)
 
-npm ci && npm test                    # vitest 91개 (저장소 루트 = 프론트엔드 루트)
+npm ci && npm test                    # vitest 153개 (저장소 루트 = 프론트엔드 루트)
 npm run lint                          # eslint
 npm run typecheck                     # TS strict
 npm run build                         # -> dist/ (배포되는 것)
@@ -79,7 +79,7 @@ src/          프론트엔드 소스(TypeScript + React 19)
 public/       정적 자산. Vite가 dist/ 루트로 그대로 복사한다
               boot-splash.js fonts/ poster-wall.webp logo-*.png favicon-inky.png
 dist/         빌드 산출물 = 배포 폴더(firebase.json의 public). 커밋하지 않는다
-test/         vitest 91개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
+test/         vitest 153개 — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/    Cloud Functions — index.js 하나에 전부(미들웨어 체인·프롬프트·OpenAI·Firestore 카운터·스케줄러)
 scripts/      loadtest.mjs(부하테스트, --dry 먼저) fonts/(서브셋) verify/(전환 대조 도구)
 _docs/        저장소 문서(배포 대상 아님) — ops/ intents/ CHANGELOG.md
@@ -90,6 +90,8 @@ _docs/        저장소 문서(배포 대상 아님) — ops/ intents/ CHANGELOG
 (`vitest.config.js`가 실제로 그랬음). 자세한 함정은 `AGENTS.md`.
 
 ## 알아야 할 것
+- 🔴 **2026-10-09부터 라이브는 샘플 모드다**(사내 클로즈 베타) — `.env.production`의 `VITE_SAMPLE_MODE=1`.
+  촬영·AI 생성 대신 «샘플 포스터 보기 → 로딩 40초 → 포스터 고르기». **부스 코드를 켤 무렵(11/7쯤) `0`으로 되돌린다.**
 - **실비용 발생**: OpenAI 이미지 생성 API가 장당 약 $0.04(medium 화질). API 키는 Firebase Secret Manager 보관 — 절대 코드/커밋에 직접 작성 금지.
 - **인터넷 필수** — AI 생성에 필요, 끊기면 생성 자체가 안 됨(로컬 폴백 없음. 단 "AI 없이 계속하기" 버튼으로 인쇄까지는 가능).
 - **운영 규모(2026-09-11 대표·현장 확정)**: **노트북 6대 = 가동 4대 + 항시 대기 2대**,
