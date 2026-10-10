@@ -1,7 +1,7 @@
 /* 스플래시 실측 — 끊김·깜빡임·글꼴 바뀜을 프레임 단위로 잰다(2026-10-09, Bumm님 «어떨 땐 뚝뚝 끊기고, 어떨 땐 깜빡이고,
    어떨 땐 글꼴이 다른 걸로 떴다가 바뀐다»).
 
-     node scripts/verify/splash-live.mjs <주소> <결과 폴더> [--runs 3] [--cpu 4] [--net slow4g] [--record] [--width 2560 --height 1440]
+     node scripts/verify/splash-live.mjs <주소> <결과 폴더> [--runs 3] [--cpu 4] [--net slow4g] [--record] [--width 2560 --height 1440] [--scale 3]
 
    한 바퀴 = 새 프로필로 첫 방문 1번 + 같은 프로필로 재방문 1번. --runs만큼 반복한다.
    페이지 안에서 requestAnimationFrame마다 적는 것: 스플래시 불투명도, 막대 위치(transform), 제목 너비(글꼴이 바뀌면
@@ -27,6 +27,8 @@ const NET = opt('--net', '');
 const NETS = { slow4g: { latency: 150, downloadThroughput: 1.6e6 / 8, uploadThroughput: 750e3 / 8 } };
 if (NET && !NETS[NET]) { console.error(`--net은 ${Object.keys(NETS).join('·')} 중 하나`); process.exit(2); }
 const W = Number(opt('--width', 1366)), H = Number(opt('--height', 768));
+// --scale: 화면 배율(휴대폰은 3). 폭이 768 미만이면 휴대폰으로 흉내 낸다 — 녹화는 배율을 곱한 원본 화소로 받는다.
+const SCALE = Number(opt('--scale', 1)), MOBILE = W < 768;
 if (!url) { console.error('사용: node scripts/verify/splash-live.mjs <주소> <결과 폴더> [--runs N] [--cpu N] [--net slow4g] [--record]'); process.exit(2); }
 await fs.mkdir(outDir, { recursive: true });
 const wait = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
@@ -72,7 +74,9 @@ async function session(profile) {
   const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', [
     '--headless=new', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--mute-audio',
     '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
-    `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, `--window-size=${W},${H}`, 'about:blank'
+    `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, `--window-size=${W},${H}`,
+    // 화면 흉내(setDeviceMetricsOverride)의 배율만으로는 녹화 프레임이 CSS 화소 크기로 온다 — 창 자체를 그 배율로 띄워야 원본 화소로 받는다.
+    ...(SCALE !== 1 ? [`--force-device-scale-factor=${SCALE}`] : []), 'about:blank'
   ], { windowsHide: true, stdio: 'ignore' });
   let target;
   for (let i = 0; i < 60 && !target; i++) {
@@ -96,7 +100,7 @@ async function visit(S, label) {
   const { send, events } = S;
   events.length = 0;
   await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable');
-  await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
+  await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: SCALE, mobile: MOBILE });
   await send('Emulation.setCPUThrottlingRate', { rate: CPU });
   if (NET) await send('Network.emulateNetworkConditions', { offline: false, ...NETS[NET] });
   await send('DOM.enable'); await send('CSS.enable');
@@ -104,7 +108,7 @@ async function visit(S, label) {
   await send('Tracing.start', { categories: 'devtools.timeline,disabled-by-default-devtools.timeline,disabled-by-default-devtools.timeline.frame,blink.user_timing', transferMode: 'ReportEvents' });
   const frames = [];
   if (RECORD) {
-    await send('Page.startScreencast', { format: 'png', maxWidth: W, maxHeight: H, everyNthFrame: 1 });
+    await send('Page.startScreencast', { format: 'png', maxWidth: W * SCALE, maxHeight: H * SCALE, everyNthFrame: 1 });
   }
   const onFrame = async (m) => {
     if (m.method === 'Page.screencastFrame') {
