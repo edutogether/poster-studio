@@ -8,14 +8,12 @@ const OPENING_KEY = "poster-studio-wait-opening";
 /** 로딩 화면 한 장면(그림·제목·상식 한 세트)이 머무는 시간. 샘플 모드의 대기 길이도 이것으로 센다. */
 export const SCENE_MS = 8_000;
 let lastOpeningId = -1;
+/* 자리마다 균등한 32비트 난수 열쇠를 하나씩 뽑아 그 크기 순서로 늘어놓는다. 난수를 나누거나 곱해 범위를
+   줄이지 않으므로 치우침이 없다(예전 «나눈 뒤 내림»은 2^32가 자리 수로 안 나눠떨어져 아주 조금 치우쳤다).
+   열쇠가 같을 확률은 12장 기준 약 1/6,500만이고, 같으면 원래 순서를 따른다(정렬이 안정적이다). */
 function shuffled(length: number) {
-  const values = Array.from({ length }, (_, i) => i);
-  for (let i = length - 1; i > 0; i--) {
-    const random = crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
-    const j = Math.floor(random * (i + 1));
-    [values[i], values[j]] = [values[j], values[i]];
-  }
-  return values;
+  const keys = crypto.getRandomValues(new Uint32Array(length));
+  return Array.from({ length }, (_, i) => i).sort((a, b) => (keys[a] < keys[b] ? -1 : keys[a] > keys[b] ? 1 : 0));
 }
 // 그림·제목·상식을 한 세트로 섞는다. 포스터 조판의 Math.random과 독립적이다.
 export function createWaitSequence() {

@@ -122,6 +122,20 @@ try {
     if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails));
     return r.result.value;
   };
+  /* 값이 필요한 페이지 코드는 값을 코드 문자열에 끼워 넣지 않고 인자로 넘긴다 — 제목 같은 입력값에 따옴표·
+     </script>가 섞여도 코드가 되지 않는다. 함수 본문은 이 파일에 고정된 글이다. */
+  const callWith = async (functionDeclaration, arg) => {
+    const { result: win } = await send("Runtime.evaluate", { expression: "window" });
+    const r = await send("Runtime.callFunctionOn", {
+      objectId: win.objectId,
+      functionDeclaration,
+      arguments: [{ value: arg }],
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails));
+    return r.result.value;
+  };
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Network.enable");
@@ -190,9 +204,9 @@ try {
       }return original(url,options);};
       window.__texts=[];const draw=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(t,...args){window.__texts.push(t);return draw.call(this,t,...args);};
     })()`);
-    await evaluate(`document.querySelector('[data-mode="${c.mode}"]').click()`);
+    await callWith("(mode)=>{[...document.querySelectorAll('[data-mode]')].find((b)=>b.dataset.mode===mode).click();}", c.mode);
     await wait(80);
-    await evaluate(`(()=>{const c=${JSON.stringify(c)};document.getElementById('movieTitle').value=c.title;document.getElementById(c.mode==='solo'?'studentName':'groupName').value=c.person;document.getElementById('genre').value=c.genre;document.getElementById('prepareNextBtn').click();})()`);
+    await callWith("(c)=>{document.getElementById('movieTitle').value=c.title;document.getElementById(c.mode==='solo'?'studentName':'groupName').value=c.person;document.getElementById('genre').value=c.genre;document.getElementById('prepareNextBtn').click();}", c);
     await wait(80);
     assert.ok((await evaluate("document.getElementById('shotBtn').textContent")).includes('3초 뒤 사진 찍기'),'운영 빌드는 샘플 건너뛰기 비활성');
     await evaluate("document.getElementById('startBtn').click()");

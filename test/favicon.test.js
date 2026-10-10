@@ -30,7 +30,7 @@ for (const page of ['index.html', 'privacy.html']) {
   test(`${page}: 아이콘 링크가 정확히 하나이고 ${ICON_HREF}를 가리킨다`, () => {
     const links = iconLinks(fs.readFileSync(path.join(ROOT, page), 'utf8'));
     expect(links, `${page}의 rel=icon 링크`).toHaveLength(1);
-    expect(links[0]).toMatch(new RegExp(`\\bhref\\s*=\\s*["']${ICON_HREF.replace(/[.?]/g, '\\$&')}["']`));
+    expect(links[0].match(/\bhref\s*=\s*["']([^"']*)["']/i)?.[1]).toBe(ICON_HREF);
   });
 }
 
