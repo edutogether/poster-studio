@@ -35,7 +35,7 @@ const server = http.createServer((req, res) => {
   fs.createReadStream(file).pipe(res);
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const url = `http://127.0.0.1:${server.address().port}/sim.html?v=${videos.map(encodeURIComponent).join(',')}`;
+const url = `http://127.0.0.1:${server.address().port}/sim.html`;
 
 let failed = false;
 for (const cond of conds.length ? conds : Object.keys(CONDS)) {
@@ -70,7 +70,10 @@ for (const cond of conds.length ? conds : Object.keys(CONDS)) {
   await CONDS[cond](send);
   await send('Page.navigate', { url });
   await wait(1500);
-  const log = (await send('Runtime.evaluate', { expression: 'window.__run()', awaitPromise: true, returnByValue: true })).result.value;
+  // 영상 목록은 코드 문자열에 끼워 넣지 않고 함수 인자로 넘긴다
+  const win = (await send('Runtime.evaluate', { expression: 'window' })).result.objectId;
+  const log = (await send('Runtime.callFunctionOn', { objectId: win, functionDeclaration: 'function (list) { return this.__run(list); }',
+    arguments: [{ value: videos }], awaitPromise: true, returnByValue: true })).result.value;
   const rows = log.map((x) => ({
     영상: x.scene, 길이초: x.durationS ?? null, 재생시작ms: x.playingAt == null ? null : Math.round(x.playingAt),
     끝까지봄: x.ended, 끝프레임에서머문초: x.ended && x.lastFrameAt != null ? +((x.unmountAt - x.lastFrameAt) / 1000).toFixed(3) : 0,

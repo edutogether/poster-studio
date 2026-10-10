@@ -6,8 +6,8 @@
 // 결정 대기 가지(codex/claude-handoff-20261005)의 GenerationWait·WaitingArtwork와 같은 방식으로 튼다:
 // 장면이 바뀌면 영상 요소를 새로 붙이고 src를 넣은 뒤 바로 play(), 8초마다 다음 장면, loop 없음,
 // 4초 안에 'playing'이 없으면 실패(앱은 원화 정지 화면으로 돌아간다). 다음 영상은 미리 받지 않는다(가지는 다음 «원화»만 미리 받는다).
-// 영상 목록은 ?v=경로,경로… (run.mjs가 survey.json에서 만들어 넘긴다).
-const files = new URLSearchParams(location.search).get('v').split(',');
+// 영상 목록은 run.mjs가 survey.json에서 읽어 __run의 인자로 넘긴다(페이지 주소에서 읽지 않는다).
+let files = [];
 window.__log = [];
 let current = null;
 function mount(i) {
@@ -27,8 +27,8 @@ function mount(i) {
   current = { cleanup() { clearTimeout(timer); rec.unmountAt = performance.now() - rec.mountAt; rec.currentTimeAtSwitch = v.currentTime; rec.ended = v.ended;
     v.pause(); v.removeAttribute('src'); v.load(); v.remove(); window.__log.push(rec); } };
 }
-window.__run = () => new Promise((resolve) => {
-  let i = 0; mount(0);
+window.__run = (list) => new Promise((resolve) => {
+  files = list; let i = 0; mount(0);
   const t = setInterval(() => { i++; if (i >= files.length) { clearInterval(t); current.cleanup(); current = null; resolve(window.__log); return; } mount(i); }, 8000);
 });
 </script></body></html>
