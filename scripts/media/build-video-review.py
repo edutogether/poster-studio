@@ -21,7 +21,7 @@
               "candidate": {"video", "label"} — 확인이 안 끝난 편의 «지금 최신 후보»(앱에 연결하지 않음),
               "decide": {"line", "star", "cost"} | "look": "확인 요청 편에서 무엇을 보면 되나"}],
    "splash": {"intro", "conditions": [{"label", "device", "source", "change",
-              "before": {"video", "slow", "note", "label"}, "after": {"video", "slow", "note", "label"}}]}}
+              "before": {"video", "slow", "note", "label"}, "after": {...}, "after2": {...} — 2차 수정이 있는 조건만}]}}
   경로는 저장소 기준(files의 path만 검토 폴더 기준). 영상·캡처는 검토 폴더 안으로 복사한다.
 사용: python scripts/media/build-video-review.py <검토 폴더>   → <검토 폴더>/index.html
 """
@@ -202,7 +202,8 @@ def splash_section(out, sp):
     blocks = []
     for k, c in enumerate(sp['conditions']):
         cells = []
-        for key, word in (('before', '수정 전'), ('after', '수정 후')):
+        sides = (('before', '수정 전'), ('after', '수정 후(1차)'), ('after2', '수정 후(2차)')) if c.get('after2') else (('before', '수정 전'), ('after', '수정 후'))
+        for key, word in sides:
             v = c[key]; ext = os.path.splitext(v['video'])[1]
             src = copy(out, v['video'], 'splash', f'{k + 1:02d}-{key}{ext}')
             slow = copy(out, v['slow'], 'splash', f'{k + 1:02d}-{key}-x025{ext}') if v.get('slow') else ''
