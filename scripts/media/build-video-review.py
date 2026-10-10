@@ -1,7 +1,10 @@
 """대기 영상 12편 검토 페이지를 만든다 — Bumm님이 브라우저로 열어 보고 판단하는 로컬 HTML 한 장. 보고의 정본은 이 페이지다
 (2026-10-08 Bumm님: «정신없이 이렇게 보내지 말고, 그 사이트를 업데이트해»).
 
-맨 위: 갱신 시각 · «대표님 결정 대기» 칸 · 편별 표(번호 · 편 이름 · 지금 상태 · 이번에 고친 것 · 남은 걱정 · 대표님께 여쭐 것 · 열기).
+맨 위: 갱신 시각 · «12편 한눈에»(상태 · 지금 최신 후보 · 결정할 것 한 줄 · ⭐ 추천 · 비용, 확인 요청 편은 «무엇을 보면 되나») ·
+«대표님 결정 대기» 칸 · 편별 표(번호 · 편 이름 · 지금 상태 · 이번에 고친 것 · 남은 걱정 · 대표님께 여쭐 것 · 열기).
+맨 아래: 스플래시 «극한 상황» 전/후(2026-10-10 Bumm님 «채팅 속 작은 화면으로는 판단이 안 된다») — 조건마다 수정 전·수정 후를
+나란히가 아니라 **따로따로** 크게 재생한다(합성·축소본 없음, 원본 화소 1:1·전체 화면·0.25배속 영상).
 편마다: «지금 최신판»(투명 WebM, 바탕을 바꿔 가며 보는 플레이어 — 확인이 끝난 판만) → «고치기 전 / 고친 뒤»(전체·얼굴 3배 영상, 캡처를
 나란히) → 판단용 영상 → 짚을 곳 표(누르면 그 초로 이동) → 맨 아래 접힌 «이전 판». 확인이 안 끝난 편은 최신판 자리에 덜 된 결과를 넣지 않고
 «고치는 중»으로 적는다.
@@ -14,7 +17,11 @@
               "ab": {"label", "before", "after", "face_before", "face_after", "caps": [{"label", "before", "after"}]} | null,
               "keyframes": [{"label", "image"}], "raw_video",
               "judge": [{"label", "video" | "image"}], "points": [{"t", "what", "why", "kind"}], "files": [{"label", "path"}],
-              "older": [{"label", "video"}]}]}
+              "older": [{"label", "video"}],
+              "candidate": {"video", "label"} — 확인이 안 끝난 편의 «지금 최신 후보»(앱에 연결하지 않음),
+              "decide": {"line", "star", "cost"} | "look": "확인 요청 편에서 무엇을 보면 되나"}],
+   "splash": {"intro", "conditions": [{"label", "device", "source", "change",
+              "before": {"video", "slow", "note", "label"}, "after": {"video", "slow", "note", "label"}}]}}
   경로는 저장소 기준(files의 path만 검토 폴더 기준). 영상·캡처는 검토 폴더 안으로 복사한다.
 사용: python scripts/media/build-video-review.py <검토 폴더>   → <검토 폴더>/index.html
 """
@@ -50,7 +57,7 @@ def main():
     if data.get('version') != 2: raise SystemExit('points.json version 2가 아니다')
     sets = {s['id']: s for s in json.load(open(os.path.join(ASSETS, 'sets.json'), encoding='utf-8'))}
     os.makedirs(os.path.join(out, 'art'), exist_ok=True)
-    table, sections = [], []
+    table, sections, glance = [], [], []
     for it in sorted(data['items'], key=lambda x: x['id']):
         n = f"{it['id']:02d}"; theme = sets[it['id']]['theme']; st = it['state']
         shutil.copyfile(os.path.join(ASSETS, f'{n}.png'), os.path.join(out, 'art', f'{n}.png'))
@@ -61,6 +68,14 @@ def main():
             latest_html = (f'<h3>지금 최신판 — {e(it["latest"].get("label", ""))}</h3>{media(v, alpha=True)}'
                            '<div class="tools"><button class="fr" data-d="-1">◀ 1프레임</button><button class="fr" data-d="1">1프레임 ▶</button>'
                            '<button class="slow">느리게(0.25배)</button><button class="zoom">2배 확대</button><span class="time">0.00초</span></div>')
+        elif it.get('candidate'):
+            ext = os.path.splitext(it['candidate']['video'])[1]
+            v = copy(out, it['candidate']['video'], 'candidates', f'{n}{ext}')
+            latest_html = (f'<h3>지금 최신 후보 — {e(it["candidate"].get("label", ""))} <span class="state {STATE_CLASS.get(st, "")}">{e(st)}</span></h3>'
+                           f'{media(v, alpha=ext == ".webm")}'
+                           '<div class="tools"><button class="fr" data-d="-1">◀ 1프레임</button><button class="fr" data-d="1">1프레임 ▶</button>'
+                           '<button class="slow">느리게(0.25배)</button><button class="zoom">2배 확대</button><span class="time">0.00초</span></div>'
+                           f'<p class="cand-note">{e(it.get("latest_note") or "")}</p>')
         else:
             latest_html = f'<h3>지금 최신판</h3><div class="note {STATE_CLASS.get(st, "")}">{e(it.get("latest_note") or st)}</div>'
         # 고치기 전 / 고친 뒤
@@ -139,7 +154,20 @@ def main():
         table.append(f'<tr><td><a href="#s{n}">V{n}</a></td><td>{e(theme)}</td><td><span class="state {cls}">{e(st)}</span></td>'
                      f'<td>{e(it.get("fixed", ""))}</td><td>{e(it.get("concern", ""))}</td><td>{e(it.get("ask", ""))}</td>'
                      f'<td><a href="#s{n}">이 편으로</a>{" · " + files if files else ""}</td></tr>')
-        sections.append(f'''<section id="s{n}" data-video="{1 if it.get('latest') else 0}">
+        # 12편 한눈에 — 결정할 것 한 줄·추천·비용, 확인 요청 편은 무엇을 보면 되나
+        cand = it.get('latest') or it.get('candidate')
+        if it.get('decide'):
+            todo = f'{e(it["decide"]["line"])}<br><b>⭐ {e(it["decide"]["star"])}</b>'
+            cost_ = e(it['decide'].get('cost', ''))
+        elif it.get('look'):
+            todo = f'<b>볼 것</b> {e(it["look"])}'
+            cost_ = '$0'
+        else:
+            todo, cost_ = '없음', '$0'
+        cand_link = f'<a href="#s{n}">{e(cand.get("label") or "보기")}</a>' if cand else '없음'
+        glance.append(f'<tr><td><a href="#s{n}">V{n}</a></td><td>{e(theme)}</td><td><span class="state {cls}">{e(st)}</span></td>'
+                      f'<td>{cand_link}</td><td>{todo}</td><td>{cost_}</td></tr>')
+        sections.append(f'''<section id="s{n}" data-video="{1 if (it.get('latest') or it.get('candidate')) else 0}">
 <h2>V{n} · {e(theme)} <span class="state {cls}">{e(st)}</span></h2>
 <p class="verdict">{e(it.get('verdict', ''))}</p>
 {check_html}
@@ -156,13 +184,39 @@ def main():
     cost = data.get('cost') or {}
     cost_html = (f'<section id="cost"><h2>비용 <small>Veo 3.1 Fast · 8초 $0.64 · 4초 $0.32 · 상한 없음(2026-10-08 Bumm님)</small></h2>'
                  f'<p>지금까지 누적 <b>${cost.get("spent", 0):.2f}</b> · 다음 예정 <b>${cost.get("next", 0):.2f}</b> — {e(cost.get("next_what", ""))}</p></section>') if cost else ''
-    head = cost_html + (f'<section id="decisions"><h2>대표님 결정 대기 <small>갱신 {e(data.get("updated", ""))}</small></h2>'
+    glance_html = ('<section id="glance"><h2>① 대기 영상 12편 한눈에 <small>앱에는 연결하지 않음 · 영상은 원본 해상도·소리 없음</small></h2>'
+                   '<table><thead><tr><th>번호</th><th>편 이름</th><th>상태</th><th>지금 최신 후보</th><th>결정할 것 · ⭐ 추천 (확인 요청 편은 볼 것)</th>'
+                   f'<th>비용</th></tr></thead><tbody>{"".join(glance)}</tbody></table></section>')
+    head = glance_html + cost_html + (f'<section id="decisions"><h2>대표님 결정 대기 <small>갱신 {e(data.get("updated", ""))}</small></h2>'
             f'{"".join(dec) or "<p>없음</p>"}</section>'
             '<section id="table"><h2>편별 표</h2><table><thead><tr><th>번호</th><th>편 이름</th><th>지금 상태</th><th>이번에 고친 것</th>'
             f'<th>남은 걱정</th><th>대표님께 여쭐 것</th><th>열기</th></tr></thead><tbody>{"".join(table)}</tbody></table></section>')
-    page = TEMPLATE.replace('{{UPDATED}}', e(data.get('updated', ''))).replace('{{SECTIONS}}', head + '\n' + '\n'.join(sections))
+    page = TEMPLATE.replace('{{UPDATED}}', e(data.get('updated', ''))).replace('{{SECTIONS}}', head + '\n' + '\n'.join(sections) + splash_section(out, data.get('splash')))
     open(os.path.join(out, 'index.html'), 'w', encoding='utf-8').write(page)
     print(os.path.join(out, 'index.html'))
+
+
+def splash_section(out, sp):
+    """스플래시 «극한 상황» 전/후 — 조건마다 수정 전·수정 후를 따로따로, 크게. 영상은 그대로 복사한다(다시 인코딩·축소 안 함)."""
+    if not sp: return ''
+    blocks = []
+    for k, c in enumerate(sp['conditions']):
+        cells = []
+        for key, word in (('before', '수정 전'), ('after', '수정 후')):
+            v = c[key]; ext = os.path.splitext(v['video'])[1]
+            src = copy(out, v['video'], 'splash', f'{k + 1:02d}-{key}{ext}')
+            slow = copy(out, v['slow'], 'splash', f'{k + 1:02d}-{key}-x025{ext}') if v.get('slow') else ''
+            tall = ' tall' if c.get('device') == '휴대폰' else ''
+            cells.append(f'''<div class="sp-one">
+<h4>{word} <small>{e(v.get('label', ''))}</small></h4>
+<div class="big{tall}"><video src="{e(src)}" data-normal="{e(src)}" data-slow="{e(slow)}" controls preload="metadata" playsinline muted></video></div>
+<div class="tools"><button class="speed">0.25배속 영상으로</button><button class="one">원본 화소 1:1</button><button class="full">전체 화면</button><span class="time">0.00초</span></div>
+<p class="what">{e(v.get('note', ''))}</p></div>''')
+        blocks.append(f'''<div class="sp-cond" id="sp{k + 1:02d}"><h3>{k + 1}. {e(c['label'])} <small>{e(c.get('device', ''))} · {e(c.get('source', ''))}</small></h3>
+<p class="change"><b>달라진 것</b> {e(c.get('change', ''))}</p>{''.join(cells)}</div>''')
+    nav = ' · '.join(f'<a href="#sp{k + 1:02d}">{k + 1}. {e(c["label"])}</a>' for k, c in enumerate(sp['conditions']))
+    return (f'<section id="splash" class="splash"><h2>② 스플래시 «극한 상황» 전/후 <small>조건마다 수정 전 → 수정 후, 따로따로</small></h2>'
+            f'<p>{e(sp.get("intro", ""))}</p><p class="nav">{nav}</p>{"".join(blocks)}</section>')
 
 
 TEMPLATE = r'''<!doctype html>
@@ -193,9 +247,18 @@ table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{b
 tr.look td{background:var(--look)}tr.ok td{background:var(--ok)}tr.human td{background:#fff3cd}button.seek{font:inherit;padding:2px 8px}
 .dec{border:1px solid #f0d58a;background:#fffaf0;border-radius:10px;padding:8px 14px;margin:10px 0}.dec h3{margin:6px 0}.dec li{margin:6px 0}.dec li.star b{color:#7a5200}
 details{margin-top:12px}summary{cursor:pointer;color:#555}.cap{margin:10px 0}.files{font-size:14px}
+.cand-note{font-size:14px;color:#555;margin:4px 0}header a{margin-right:6px}
+section.splash{max-width:none;margin-left:calc(50% - 50vw + 20px);margin-right:calc(50% - 50vw + 20px)}
+.sp-cond{border-top:2px solid var(--line);padding-top:10px;margin-top:22px}.sp-one{margin:14px 0 26px}
+.change{background:#eef6ff;border-radius:8px;padding:8px 12px}.what{margin:6px 0;font-size:15px}
+.big{border:1px solid var(--line);border-radius:8px;overflow:auto;background:#fff}
+.big video{display:block;width:100%;height:auto}.big.tall video{width:auto;max-width:100%;height:92vh;margin:0 auto}
+.big.one video{max-width:none!important;height:auto!important}
+.nav{line-height:2}
 </style></head>
 <body data-bg="check">
 <header><h1>대기 영상 12편 검토</h1><span class="upd">갱신 {{UPDATED}}</span>
+<a href="#glance">① 대기 영상 12편</a><a href="#splash">② 스플래시 전/후</a>
 <button id="playAll">최신판을 처음부터 순서대로 재생</button>
 <label>바탕 <select id="bg"><option value="check">체크무늬</option><option value="white">흰색</option><option value="yellow">노랑</option><option value="gray">회색</option><option value="black">검정</option></select></label>
 <span>주황 줄 = «봐야 할 곳» · 초록 줄 = 확인한 곳. 시간을 누르면 그 장면에서 멈춥니다.</span></header>
@@ -209,6 +272,14 @@ for(const sec of $$('section[data-video="1"]')){const v=$('.top video',sec);if(!
   for(const b of $$('.fr',sec))b.onclick=()=>{v.pause();v.currentTime=Math.max(0,v.currentTime+(+b.dataset.d)/24);};
   $('.slow',sec).onclick=e=>{v.playbackRate=v.playbackRate===1?0.25:1;e.target.textContent=v.playbackRate===1?'느리게(0.25배)':'보통 속도';};
   $('.zoom',sec).onclick=e=>{const s=v.parentElement;s.classList.toggle('zoomed');e.target.textContent=s.classList.contains('zoomed')?'원래 크기':'2배 확대';};}
+for(const one of $$('.sp-one')){const v=$('video',one),box=$('.big',one),t=$('.time',one);
+  v.addEventListener('timeupdate',()=>t.textContent=v.currentTime.toFixed(2)+'초');
+  $('.speed',one).onclick=e=>{if(!v.dataset.slow)return;const slow=v.getAttribute('src')===v.dataset.slow,at=v.currentTime;
+    v.src=slow?v.dataset.normal:v.dataset.slow;v.addEventListener('loadedmetadata',()=>{v.currentTime=slow?at/4:at*4;},{once:true});
+    e.target.textContent=slow?'0.25배속 영상으로':'보통 속도 영상으로';};
+  $('.one',one).onclick=e=>{const on=box.classList.toggle('one');v.style.width=on?(v.videoWidth/devicePixelRatio)+'px':'';
+    e.target.textContent=on?'화면에 맞춤':'원본 화소 1:1';};
+  $('.full',one).onclick=()=>v.requestFullscreen&&v.requestFullscreen();}
 $('#playAll').onclick=()=>{const vids=$$('section[data-video="1"] .top .stage:not(.art) video');let i=0;
   const play=()=>{if(i>=vids.length)return;const v=vids[i];v.currentTime=0;v.scrollIntoView({block:'center'});v.play();v.onended=()=>{v.onended=null;i++;play();};};play();};
 </script></body></html>'''
