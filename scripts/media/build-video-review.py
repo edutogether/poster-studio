@@ -32,6 +32,8 @@
    "common": [문제], "notes": [문장], "items": [{"id", "video", "alpha", "kf", "kf_files": [출발, 도착](저장소 기준), "length", "len_short",
    "made", "short", "problems": [문제]}]}
   문제 = {"sev": "🔴|🟠|🟡|🟢|상태", "new": bool, "what", "when", "fix", "cost"}
+<검토 폴더>/keyframes.json(있으면) — 편별 키프레임 줄 + 통일성 점검(kf-uniformity.json, scripts/media/keyframe-uniformity.py). 맨 위.
+<검토 폴더>/galleries.json(있으면) — 원본 그림 묶음 칸(맨 위). {"galleries": [{"id", "title", "intro", "items": [{"label", "image"}]}]}
 사용: python scripts/media/build-video-review.py <검토 폴더>   → <검토 폴더>/index.html
 """
 import html, json, os, shutil, sys
@@ -200,11 +202,11 @@ def main():
     glance_html = ('<section id="glance"><h2>① 대기 영상 12편 한눈에 <small>앱에는 연결하지 않음 · 영상은 원본 해상도·소리 없음</small></h2>'
                    '<table><thead><tr><th>번호</th><th>편 이름</th><th>상태</th><th>지금 최신 후보</th><th>결정할 것 · ⭐ 추천 (확인 요청 편은 볼 것)</th>'
                    f'<th>비용</th></tr></thead><tbody>{"".join(glance)}</tbody></table></section>')
-    head = survey_head(survey, sets, out) + glance_html + cost_html + (f'<section id="decisions"><h2>대표님 결정 대기 <small>갱신 {e(data.get("updated", ""))}</small></h2>'
+    head = keyframes_html(out) + galleries_html(out) + survey_head(survey, sets, out) + glance_html + cost_html + (f'<section id="decisions"><h2>대표님 결정 대기 <small>갱신 {e(data.get("updated", ""))}</small></h2>'
             f'{"".join(dec) or "<p>없음</p>"}</section>'
             '<section id="table"><h2>편별 표</h2><table><thead><tr><th>번호</th><th>편 이름</th><th>지금 상태</th><th>이번에 고친 것</th>'
             f'<th>남은 걱정</th><th>대표님께 여쭐 것</th><th>열기</th></tr></thead><tbody>{"".join(table)}</tbody></table></section>')
-    page = TEMPLATE.replace('{{UPDATED}}', e(data.get('updated', ''))).replace('{{SECTIONS}}', head + '\n' + '\n'.join(sections) + splash_section(out, data.get('splash')))
+    page = TEMPLATE.replace('{{UPDATED}}', e(data.get('updated', ''))).replace('{{GNAV}}', galleries_nav(out)).replace('{{SECTIONS}}', head + '\n' + '\n'.join(sections) + splash_section(out, data.get('splash')))
     open(os.path.join(out, 'index.html'), 'w', encoding='utf-8').write(page)
     print(os.path.join(out, 'index.html'))
 
@@ -218,6 +220,53 @@ def problem_row(p, lead=''):
     when = f'<br><small>{e(p["when"])}</small>' if p.get('when') else ''
     return (f'<tr class="sev-{cls}">{lead}<td>{e(p["what"])}{new}{when}</td><td class="sv">{word}</td>'
             f'<td>{e(p.get("fix", ""))}</td><td>{e(p.get("cost", ""))}</td></tr>')
+
+
+def galleries_html(out):
+    """<검토 폴더>/galleries.json(있으면) — 원본 그림 묶음(예: 2026-10-10 ChatGPT 캐릭터 기준 그림·키프레임)을 맨 위에 칸으로.
+    {"galleries": [{"id", "title", "intro", "items": [{"label", "image"}]}]} — image는 검토 폴더 기준 경로, 누르면 원본."""
+    p = os.path.join(out, 'galleries.json')
+    if not os.path.exists(p): return ''
+    html_ = []
+    for g in json.load(open(p, encoding='utf-8'))['galleries']:
+        for it in g['items']:
+            if not os.path.exists(os.path.join(out, it['image'])): raise SystemExit(f'없는 그림: {it["image"]}')
+        figs = ''.join(f'<figure><div class="stage art"><a href="{e(it["image"])}" target="_blank"><img src="{e(it["image"])}" alt=""></a></div>'
+                       f'<figcaption>{e(it["label"])}</figcaption></figure>' for it in g['items'])
+        html_.append(f'<section id="{e(g["id"])}"><h2>{e(g["title"])}</h2><p>{e(g.get("intro", ""))}</p><div class="grid5">{figs}</div></section>')
+    return ''.join(html_)
+
+
+def keyframes_html(out):
+    """<검토 폴더>/keyframes.json(있으면) — 편별 키프레임을 같은 크기로 한 줄에 놓고(통일성 대조표), kf-uniformity.json
+    (scripts/media/keyframe-uniformity.py)의 수치를 표로. 기준을 넘은 칸은 «사람 확인»으로 칠한다."""
+    p = os.path.join(out, 'keyframes.json')
+    if not os.path.exists(p): return ''
+    up = os.path.join(out, 'kf-uniformity.json')
+    uni = json.load(open(up, encoding='utf-8')) if os.path.exists(up) else {}
+    cols = ['배경밝기차', '배경색온도차', '크기변화%', '가운데이동%', '선명도배율', '몸체ΔE', '눈빛ΔE', '색분포겹침']
+    blocks = []
+    for sc in json.load(open(p, encoding='utf-8'))['scenes']:
+        for it in sc['items']:
+            if not os.path.exists(os.path.join(out, it['image'])): raise SystemExit(f'없는 그림: {it["image"]}')
+        strip = ''.join(f'<figure><a href="{e(it["image"])}" target="_blank"><img src="{e(it["image"])}" alt=""></a>'
+                        f'<figcaption>{e(it["label"])}</figcaption></figure>' for it in sc['items'])
+        rows = ''
+        for r in uni.get(sc['id'], []):
+            cells = ''.join(f'<td class="{"flag" if c in r["확인"] else ""}">{"—" if r.get(c) is None else r[c]}</td>' for c in cols)
+            rows += f'<tr><td>{e(r["label"])}</td>{cells}<td>{"사람 확인: " + ", ".join(r["확인"]) if r["확인"] else "맞음"}</td></tr>'
+        table = (f'<table class="uni"><thead><tr><th>키프레임</th>{"".join(f"<th>{c}</th>" for c in cols)}<th>판정</th></tr></thead>'
+                 f'<tbody>{rows}</tbody></table>') if rows else '<p>통일성 수치 없음 — keyframe-uniformity.py를 먼저 돌린다.</p>'
+        blocks.append(f'<div class="kfscene" id="kf{e(sc["id"])}"><h3>{e(sc["title"])}</h3><div class="kfstrip">{strip}</div>{table}</div>')
+    return ('<section id="keyframes"><h2>⑥ 키프레임 — 통일성 점검 <small>같은 크기로 나란히 · 원화(첫 칸) 대비 수치 · 누르면 원본</small></h2>'
+            '<p>기준: 배경 밝기·색온도 차 2 이하, 크기 변화 10% 이하, 가운데 이동 5% 이하, 선명도 배율 0.6~1.67, 몸체 ΔE 5 이하, 눈 빛 ΔE 8 이하, '
+            '색 분포 겹침 0.85 이상. 넘으면 «사람 확인»(자세가 바뀌면 크기·가운데는 정당하게 달라질 수 있다).</p>' + ''.join(blocks) + '</section>')
+
+
+def galleries_nav(out):
+    p = os.path.join(out, 'galleries.json')
+    if not os.path.exists(p): return ''
+    return ''.join(f'<a href="#{e(g["id"])}">{e(g["title"].split(" — ")[0])}</a>' for g in json.load(open(p, encoding='utf-8'))['galleries'])
 
 
 def playback_table(out):
@@ -379,11 +428,13 @@ tr.sev-r td{background:#FFF1F2}tr.sev-o td{background:#FEF3C7}tr.sev-y td{backgr
 td.sv{white-space:nowrap}td.fail{background:#FFF1F2}.newtag{font-size:12px;background:#E0F2FE;color:#0369A1;border-radius:6px;padding:0 6px;margin-left:6px;white-space:nowrap}
 .sv-block{border:1px solid #c7d2fe;border-radius:10px;padding:4px 14px 10px;margin:10px 0;background:#fcfcff}.sv-src{font-size:13px;color:#666;margin:4px 0}
 figure{margin:0}figcaption{font-size:13px;color:#444;margin-top:2px}.grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.kfstrip{display:flex;gap:6px;overflow-x:auto}.kfstrip figure{flex:0 0 220px}.kfstrip img{width:220px;height:220px;display:block;border:1px solid var(--line);border-radius:6px;background:#fff}
+table.uni td.flag{background:#FEF3C7;font-weight:600}.kfscene{margin:14px 0 22px}
 .grid9{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}.notes li{margin:4px 0}
 </style></head>
 <body data-bg="check">
 <header><h1>대기 영상 12편 검토</h1><span class="upd">갱신 {{UPDATED}}</span>
-<a href="#survey">⓪ 전수 조사(10/10)</a><a href="#glance">① 대기 영상 12편</a><a href="#splash">② 스플래시 전/후</a>
+<a href="#keyframes">⑥ 키프레임</a>{{GNAV}}<a href="#survey">⓪ 전수 조사(10/10)</a><a href="#glance">① 대기 영상 12편</a><a href="#splash">② 스플래시 전/후</a>
 <button id="playAll">최신판을 처음부터 순서대로 재생</button>
 <label>바탕 <select id="bg"><option value="check">체크무늬</option><option value="white">흰색</option><option value="yellow">노랑</option><option value="gray">회색</option><option value="black">검정</option></select></label>
 <span>주황 줄 = «봐야 할 곳» · 초록 줄 = 확인한 곳. 시간을 누르면 그 장면에서 멈춥니다.</span></header>
