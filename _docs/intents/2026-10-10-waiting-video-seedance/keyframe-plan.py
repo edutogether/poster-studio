@@ -54,7 +54,7 @@ SCENES = {
                (4, '닫힌 슬레이트를 높이 들어 보인다', 'the robot lifts the closed clapperboard up high, showing it to the viewer'),
                (5, '슬레이트를 가슴 높이로 내린다', 'the robot lowers the closed clapperboard back to chest height'),
                (6, '손으로 막대를 천천히 들어 연다', "the robot's hand lifts the hinged striped stick open again by hand - the stick is half open"),
-               (7, '막대가 원화만큼 열린다', 'the hinged stick is open as in the attached artwork and the robot holds the clapperboard almost exactly as in the attached artwork'),
+               (7, '막대가 원화만큼 열린다', 'the hinged stick is open as in the attached artwork and the robot holds the clapperboard almost exactly as in the attached artwork; no motion lines, no spark marks and no drawn effects anywhere'),
            ]},
     '04': {'title': '포스터 소개', 'keep': 'the poster (the fireworks logo, the two children and the dog) exactly the same',
            'change': "the robot's pose changes",
@@ -71,7 +71,7 @@ SCENES = {
            'change': "the robot's pose and the footprints in the sand change (the sand never rises or sprays)",
            'shots': [
                (1, '두 손을 신발 뒤축에 하나씩 넣어 모래 위에 든다', 'the robot slips one hand into the heel of each shoe - red shoe on one hand, blue shoe on the other - holding them just above the sand like feet'),
-               (2, '빨간 신발로 모래를 밟아 첫 발자국', 'the robot presses the red shoe down onto the sand at the left, leaving one shoe print where it stepped'),
+               (2, '빨간 신발로 모래를 밟아 첫 발자국', 'the robot presses the red shoe down onto the smooth sand at the left end, leaving exactly ONE shoe print where it stepped - the rest of the sand stays perfectly smooth'),
                (3, '파란 신발로 다음 걸음, 발자국 둘', 'the robot steps the blue shoe ahead onto the sand; there are now two shoe prints, only where the shoes stepped'),
                (4, '빨간 신발 셋째 걸음, 발자국 셋', 'the robot steps the red shoe ahead again; three shoe prints in a walking line'),
                (5, '파란 신발 넷째 걸음, 발자국 넷', 'the robot steps the blue shoe ahead; four shoe prints in a walking line across the sand'),
@@ -96,7 +96,7 @@ SCENES = {
                (1, '두 손으로 화음을 누른다', 'the robot presses a chord on the keys with both hands, fingers spread'),
                (2, '오른손이 건반 오른쪽으로 달린다', "the robot's right hand runs up the keyboard to the right, body leaning slightly the same way"),
                (3, '고개를 들어 악보를 본다', 'the robot lifts its head to read the sheet music, hands still on the keys'),
-               (4, '다시 건반을 보며 연주, 고개 끄덕', 'the robot looks back down at the keys and plays with both hands, head nodding to the beat'),
+               (4, '다시 건반을 보며 연주, 고개 끄덕', 'the robot looks back down at the keys and plays with both hands, head nodding down a little to the beat - the head stays in the same side view as in the attached artwork, not turned toward the viewer'),
                (5, '연주하며 몸을 왼쪽으로 흔든다', 'the robot sways its upper body gently to the left while playing'),
                (6, '두 손을 건반 위로 살짝 든다', 'the robot lifts both hands a little above the keys for a big final chord'),
                (7, '화음을 누르며 원화 자세로', 'the robot presses the final chord - almost exactly the pose in the attached artwork'),
@@ -131,7 +131,7 @@ SCENES = {
                (1, '손잡고 한 걸음 더 걷는다', 'holding hands, the mother and child take one more step together, the other feet forward now'),
                (2, '멈춰서 서로 마주 본다', 'they stop and look at each other - the mother turns her head down toward the child, the child looks up'),
                (3, '엄마가 몸을 숙여 두 손을 아이에게', 'the mother bends down and reaches both hands toward the child, who raises its arms'),
-               (4, '엄마가 아이를 안아 올린다(얼굴 겹치지 않음)', "the mother lifts the child up in a hug, holding it beside her head so both visors are fully visible and the two faces never overlap"),
+               (4, '엄마가 아이를 안아 올린다(얼굴 겹치지 않음)', "the mother lifts the child up in a hug, holding it out to the side at her shoulder so that there is clear empty space between the two heads - both visors fully visible, the two heads and faces never touching or overlapping"),
                (5, '안은 채 살짝 돈다', 'the mother holds the child up happily and turns a little, both faces visible, never overlapping'),
                (6, '아이를 땅에 내려놓는다', 'the mother sets the child back down on the ground, both feet on the floor'),
                (7, '다시 손잡고 걷기 시작한다', 'they hold hands again and start walking - almost exactly the pose in the attached artwork'),
@@ -208,12 +208,32 @@ def seedance_prompt(scene):
             'no camera movement or shake, no frozen frames, no added text or logos. No audio.')
 
 
+# 바로 앞 장면을 둘째 그림으로 함께 붙여 그린 장(10/10~11 다시 그림) — 원화만 붙이면 발자국 수·조각 자리가 장마다 달라졌다.
+# (편, 초): (둘째로 붙인 그림, 그 그림에 대한 말, 지시를 바꿔 쓴 경우 그 지시). 첫째 그림은 언제나 원화(K0-NN)다.
+PREV = {
+    ('05', 3): ('ps-kf-05-t2', 'keep its shoe print exactly where it is in the sand and add the new blue-shoe print just ahead of it', None),
+    ('05', 4): ('ps-kf-05-t3', 'keep its two shoe prints exactly where they are in the sand and add the new red-shoe print just ahead of them', None),
+    ('05', 5): ('ps-kf-05-t4', 'keep its three shoe prints exactly where they are in the sand and add the new blue-shoe print just ahead of them', None),
+    ('05', 6): ('ps-kf-05-t5', 'keep its four shoe prints exactly where they are in the sand and add no new ones', None),
+    ('05', 7): ('ps-kf-05-t5', 'keep its four shoe prints exactly where they are in the sand and add no new ones',
+                'the robot holds the pair of shoes by their heels in one hand and puts its other hand to its ear disc to listen, as in the first image'),
+    ('05', 8): ('ps-kf-05-t5', 'copy its four shoe prints exactly where they are in the sand and add no new ones',
+                'final frame: exactly the pose of the first image, and the four shoe prints remain in the sand in a walking line'),
+    ('12', 6): ('ps-kf-12-end', 'its board is complete - the sun-and-flowers tile sits fully in its cell, flat and flush exactly like every other tile; keep the board exactly like that', None),
+    ('12', 7): ('ps-kf-12-end', 'its board is complete - the sun-and-flowers tile sits fully in its cell, flat and flush exactly like every other tile; keep the board exactly like that', None),
+}
+
+
 def prompt(scene, t):
     sc = SCENES[scene]
     action = dict((s[0], s[2]) for s in sc['shots'])[t]
     head = f'Keyframe {scene}-t{t}.' if t < 8 else f'Keyframe {scene}-end.'
-    return (f'{head} Edit THIS newly attached original artwork (not the previous result): {action}. '
-            f"{sc.get('face', FACE)} " + TAIL.format(keep=sc['keep'], change=sc['change']))
+    tail = f"{sc.get('face', FACE)} " + TAIL.format(keep=sc['keep'], change=sc['change'])
+    if (scene, t) in PREV:
+        prev, note, override = PREV[(scene, t)]
+        return (f'{head} Edit the FIRST attached image, the original artwork (not the previous result): {override or action}. '
+                f'The SECOND attached image shows the moment just before: {note}. {tail}')
+    return f'{head} Edit THIS newly attached original artwork (not the previous result): {action}. {tail}'
 
 
 def best(folder, scene, t):
