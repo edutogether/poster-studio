@@ -1,5 +1,13 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-10 — 저장소 정리 뒤 상태
+
+- 작업 폴더는 최신 master다. 대기 영상 도구(`scripts/media/`)·기록(`_docs/intents/2026-09-30-studio-design-integration/`)도 master에 있다.
+- 🟠 **화면 변경 4건은 master·라이브에 없고 원격 가지 `codex/claude-handoff-20261005`에만 있다** — 상단 영화제 로고 크기, 헤더 로고를 누르면 처음으로,
+  포스터 선택 화면 정렬, 대기 영상 재생 연결(그리고 그것에 기대는 검사·도구). 옮길지는 Bumm님 결정 대기다. 옮길 때는 master 기준으로 다시 짜고 화면 캡처로 확인한다(그 가지는 master보다 44커밋 뒤라 그대로 합치면 부스 코드·파비콘·스플래시 수정이 되돌아간다).
+- 대기 영상 검토 페이지: `.cache/video-review-20261007/index.html`(작업 폴더 로컬, 생성 도구 `scripts/media/build-video-review.py`).
+- 다음: Higgsfield(Seedance) 영상 작업 — Bumm님 지시(10/10), 크레딧 약 2,000 안.
+
 ## 2026-10-09 — 라이브는 샘플 모드다 (11/7쯤 되돌릴 것)
 
 - 🔴 **지금 라이브(두 주소)는 샘플 모드다** — 촬영·AI 생성 대신 «샘플 포스터 보기» → 로딩 화면 40초 → 포스터 고르기. 스위치는 `.env.production`의 `VITE_SAMPLE_MODE` 한 줄이고, **부스 코드를 켤 무렵(11/7쯤) `0`으로 바꿔 master에 올리면** CI가 실제 모드로 다시 배포한다. 개발 서버에서 샘플 모드를 보려면 `.env.development.local`에 같은 줄을 둔다(옛 `VITE_POSTER_DESIGN_PREVIEW`는 없어졌다).
