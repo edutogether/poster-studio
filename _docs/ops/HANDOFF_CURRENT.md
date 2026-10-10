@@ -7,6 +7,7 @@
   포스터 선택 화면 정렬, 대기 영상 재생 연결(그리고 그것에 기대는 검사·도구). 옮길지는 Bumm님 결정 대기다. 옮길 때는 master 기준으로 다시 짜고 화면 캡처로 확인한다(그 가지는 master보다 44커밋 뒤라 그대로 합치면 부스 코드·파비콘·스플래시 수정이 되돌아간다).
 - 대기 영상 검토 페이지: `.cache/video-review-20261007/index.html`(작업 폴더 로컬, 생성 도구 `scripts/media/build-video-review.py`).
 - 다음: Higgsfield(Seedance) 영상 작업 — Bumm님 지시(10/10), 크레딧 약 2,000 안.
+- **행사(11/14)까지 남은 것과 Bumm님 결정 10건은 [`completion-plan-1114.md`](completion-plan-1114.md)**에 순서대로 있다.
 
 ## 2026-10-09 — 라이브는 샘플 모드다 (11/7쯤 되돌릴 것)
 
