@@ -15,7 +15,7 @@ const ROOT = process.cwd();
 const GATE = fs.readFileSync(path.join(ROOT, 'public/splash-font-gate.js'), 'utf8');
 const BOOT = fs.readFileSync(path.join(ROOT, 'public/boot-splash.js'), 'utf8');
 const CSS = fs.readFileSync(path.join(ROOT, 'src/studio/splash.css'), 'utf8');
-const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').replace(/<!--[^]*?-->/g, '');
+const HTML = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 function installFonts(loaded: boolean, load: () => Promise<unknown>) {
   const check = vi.fn(() => loaded);
@@ -82,12 +82,16 @@ describe('스플래시 글꼴 게이트', () => {
     for (const sel of ['.splash-fonts-wait #splash,', '.splash-fonts-wait #splash .logo,', '.splash-fonts-wait #splash .sbar i']) expect(paused).toContain(sel);
   });
 
-  test('자리: 게이트는 파일로(인라인 아님) <body> 안 스플래시 마크업보다 위에 있고, 게이트는 한 곳에만 있다', () => {
-    const body = HTML.slice(HTML.indexOf('<body>'));
-    const gate = body.indexOf('<script src="/splash-font-gate.js"></script>');
-    expect(gate).toBeGreaterThan(-1);
-    expect(gate).toBeLessThan(body.indexOf('<div id="splash">'));
-    expect(body.slice(0, gate).trim()).toBe('<body>');   // 그 앞에 그려질 것이 없다
+  test('자리: 게이트는 파일로(인라인 아님) <body>의 첫 요소이고 스플래시보다 앞이며, 게이트는 한 곳에만 있다', () => {
+    // 문자열을 다듬지 않고 문서 구조로 읽는다(주석은 요소가 아니라 저절로 빠진다)
+    const doc = new DOMParser().parseFromString(HTML, 'text/html');
+    const first = doc.body.firstElementChild as HTMLScriptElement;
+    expect(first.tagName).toBe('SCRIPT');
+    expect(first.getAttribute('src')).toBe('/splash-font-gate.js');
+    expect(first.textContent).toBe('');   // 인라인이 아니다(CSP script-src 'self')
+    const splash = doc.getElementById('splash')!;
+    expect(first.compareDocumentPosition(splash) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();   // 그 앞에 그려질 것이 없다
+    expect([...doc.querySelectorAll('script[src="/splash-font-gate.js"]')]).toHaveLength(1);
     expect(BOOT).not.toMatch(/fonts-wait|document\.fonts/);
   });
 });
