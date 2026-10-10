@@ -3,12 +3,12 @@
   "baseUrl": "https://poster.edutogether.kr",
   "screens": [
     {
-      "name": "첫 화면 (촬영·포스터 정보)",
+      "name": "첫 화면 (영화 준비)",
       "path": "/",
       "expect": [
         "InKY Poster Studio",
-        "사진 한 장으로 — 내가 영화의 주인공이 된다",
-        "AI 포스터 만들기"
+        "오늘의 주인공, 등장 !",
+        "주인공이 될 순간 만들러 가기"
       ]
     }
   ],
