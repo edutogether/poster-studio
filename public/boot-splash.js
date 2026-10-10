@@ -12,11 +12,11 @@
      2) 아래 안전판은 **번들이 끝내 안 왔을 때**를 위한 것이라, 번들 안에 있으면
         정작 필요한 상황에서 실행되지 않는다(§5.4의 '빈 게이트').
 
-   JS가 하는 일은 세 가지뿐이고 모두 '시간을 재는 것'이 아니라 '조건을 보는 것'이다:
+   JS가 하는 일은 두 가지뿐이고 둘 다 '시간을 재는 것'이 아니라 '조건을 보는 것'이다:
      - 애니메이션이 끝났으면 노드를 지운다(남아 있으면 body:has(#splash)가 계속
        매치돼 배경 의사요소가 안 돌아온다).
      - 스플래시가 멈춘 채(app-ready 미도달) 너무 오래 지나면 강제로 흐르게 한다.
-     - 스플래시 글꼴이 아직 없으면 올 때까지 내용을 숨기고 시계를 멈춘다(글꼴 게이트, 아래). */
+   글꼴 게이트는 여기가 아니라 public/splash-font-gate.js다 — 스플래시보다 먼저 돌아야 해서 옮겼다(2026-10-10). */
 (function () {
   var el = document.getElementById('splash');
   if (!el) return;
@@ -34,22 +34,6 @@
   if (el.getAnimations && el.getAnimations().length &&
       el.getAnimations().every(function (a) { return a.playState === 'finished'; })) {
     remove();
-  }
-
-  /* 글꼴 게이트(2026-10-09, Bumm님 «어떨 땐 깜빡이고, 어떨 땐 글꼴이 다른 걸로 떴다가 바뀐다»).
-     스플래시 글자를 그릴 두 굵기(index.html이 미리 받는 Studio 800·400)가 아직 없으면 .fonts-wait를 붙여
-     내용을 숨기고 모든 시계를 멈췄다가(splash.css), 글꼴이 오면 뗀다 — 내용은 그 글꼴로 한 번에 나타난다.
-     이게 없으면 느린 회선 첫 방문에서 약 0.3초 동안 글자 없이 로고·막대만 보이다가, 글자가 나타나는 순간
-     줄 높이가 바뀌어 로고·막대가 들썩였다(라이브 녹화로 확인).
-     ⚠ 막히는 쪽으로 실패하지 않는다: 이 스크립트가 안 돌면 클래스가 안 붙어 예전처럼 보이고, 글꼴이 끝내
-     안 와도 3초(Studio의 font-display: block 대기와 같은 길이) 뒤에는 뗀다. */
-  var SPLASH_FONTS = ['800 1em Studio', '400 1em Studio'];
-  if (document.fonts && document.fonts.check && document.fonts.load &&
-      !SPLASH_FONTS.every(function (f) { return document.fonts.check(f); })) {
-    el.classList.add('fonts-wait');
-    var release = function () { el.classList.remove('fonts-wait'); };
-    Promise.all(SPLASH_FONTS.map(function (f) { return document.fonts.load(f); })).then(release, release);
-    window.setTimeout(release, 3000);
   }
 
   /* 안전판. 정지형 게이트라 app-ready가 안 붙으면 스플래시가 계속 멈춰 있는데,
