@@ -157,6 +157,7 @@
   2026-09-07에 라이브에서 실제로 뚫리는 것을 재현했다. `clientIpForRateLimit()`(맨 오른쪽)만 쓴다.
 - **부스토큰(`src/constants.ts`) 변경과 Secret Manager 갱신을 다른 커밋으로 쪼개지 않는다.** 그 사이 전 부스가 401.
 - **`npm audit fix --force`를 `functions/`에서 돌리지 않는다.** firebase-functions 메이저 다운그레이드를 유발한다.
+- 🟡 **배포 도구(`tools/deploy`)의 `npm audit` 9건은 그대로 둔다**(2026-10-10 팀장 결정, Voice Cinema와 같음). firebase-tools 15.32.1 아래 braces(고친 판 없음)·basic-ftp·@opentelemetry/core(메이저를 바꿔야 해 쓰는 쪽이 깨짐)이고, GitHub가 개발 의존성으로 자동으로 닫았으며 CI 배포에만 쓰인다. **12월 말 분기 감사나 firebase-tools 새 판 때 다시 본다.** 그 아래 uuid만 `overrides`로 11.1.1(Dependabot)이다 — npm audit이 권하는 firebase-tools 14.23.0 되돌림은 쓰지 않는다.
 - **테스트에서 실제 OpenAI·Firestore를 호출하지 않는다.** 주입 지점이 이미 있다(`_setClientForTesting` 등).
 - **촬영 후 카메라 스트림을 켜둔 채 두지 않는다.** 최소수집 원칙 위반이고 아동 대상이라 더 중요하다
   (`camera.js`의 `getTracks().stop()` — 6차 감사에서 고친 것).
