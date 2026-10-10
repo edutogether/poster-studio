@@ -62,10 +62,11 @@ def main():
     if not scenes: print('편 0개', file=sys.stderr); return 2
     res = {}
     for sc in scenes:
-        ms = [measure(os.path.join(out, it['image'])) for it in sc['items']]
+        items = [it for it in sc['items'] if not it.get('missing')]   # 아직 안 그린 칸(«missing»)은 건너뛴다
+        ms = [measure(os.path.join(out, it['image'])) for it in items]
         base = ms[0]
         rows = []
-        for it, m in zip(sc['items'], ms):
+        for it, m in zip(items, ms):
             dE = lambda a, b_: None if a is None or b_ is None else round(float(np.sqrt(((a - b_) ** 2).sum())), 1)
             row = {'label': it['label'],
                    '배경밝기차': round(m['배경L'] - base['배경L'], 2), '배경색온도차': round(m['배경b'] - base['배경b'], 2),

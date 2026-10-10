@@ -224,15 +224,18 @@ def problem_row(p, lead=''):
 
 def galleries_html(out):
     """<검토 폴더>/galleries.json(있으면) — 원본 그림 묶음(예: 2026-10-10 ChatGPT 캐릭터 기준 그림·키프레임)을 맨 위에 칸으로.
-    {"galleries": [{"id", "title", "intro", "items": [{"label", "image"}]}]} — image는 검토 폴더 기준 경로, 누르면 원본."""
+    {"galleries": [{"id", "title", "intro", "items": [{"label", "image" | "video"}]}]} — 검토 폴더 기준 경로, 그림은 누르면 원본."""
     p = os.path.join(out, 'galleries.json')
     if not os.path.exists(p): return ''
     html_ = []
     for g in json.load(open(p, encoding='utf-8'))['galleries']:
         for it in g['items']:
-            if not os.path.exists(os.path.join(out, it['image'])): raise SystemExit(f'없는 그림: {it["image"]}')
-        figs = ''.join(f'<figure><div class="stage art"><a href="{e(it["image"])}" target="_blank"><img src="{e(it["image"])}" alt=""></a></div>'
-                       f'<figcaption>{e(it["label"])}</figcaption></figure>' for it in g['items'])
+            src = it.get('video') or it['image']
+            if not os.path.exists(os.path.join(out, src)): raise SystemExit(f'없는 파일: {src}')
+        figs = ''.join((f'<figure><div class="stage art"><video src="{e(it["video"])}" controls preload="metadata" playsinline muted></video></div>'
+                        if it.get('video') else
+                        f'<figure><div class="stage art"><a href="{e(it["image"])}" target="_blank"><img src="{e(it["image"])}" alt=""></a></div>')
+                       + f'<figcaption>{e(it["label"])}</figcaption></figure>' for it in g['items'])
         html_.append(f'<section id="{e(g["id"])}"><h2>{e(g["title"])}</h2><p>{e(g.get("intro", ""))}</p><div class="grid5">{figs}</div></section>')
     return ''.join(html_)
 
@@ -248,8 +251,9 @@ def keyframes_html(out):
     blocks = []
     for sc in json.load(open(p, encoding='utf-8'))['scenes']:
         for it in sc['items']:
-            if not os.path.exists(os.path.join(out, it['image'])): raise SystemExit(f'없는 그림: {it["image"]}')
-        strip = ''.join(f'<figure><a href="{e(it["image"])}" target="_blank"><img src="{e(it["image"])}" alt=""></a>'
+            if not it.get('missing') and not os.path.exists(os.path.join(out, it['image'])): raise SystemExit(f'없는 그림: {it["image"]}')
+        strip = ''.join(f'<figure class="missing"><div>아직 안 그림</div><figcaption>{e(it["label"])}</figcaption></figure>' if it.get('missing') else
+                        f'<figure><a href="{e(it["image"])}" target="_blank"><img src="{e(it["image"])}" alt=""></a>'
                         f'<figcaption>{e(it["label"])}</figcaption></figure>' for it in sc['items'])
         rows = ''
         for r in uni.get(sc['id'], []):
@@ -257,7 +261,13 @@ def keyframes_html(out):
             rows += f'<tr><td>{e(r["label"])}</td>{cells}<td>{"사람 확인: " + ", ".join(r["확인"]) if r["확인"] else "맞음"}</td></tr>'
         table = (f'<table class="uni"><thead><tr><th>키프레임</th>{"".join(f"<th>{c}</th>" for c in cols)}<th>판정</th></tr></thead>'
                  f'<tbody>{rows}</tbody></table>') if rows else '<p>통일성 수치 없음 — keyframe-uniformity.py를 먼저 돌린다.</p>'
-        blocks.append(f'<div class="kfscene" id="kf{e(sc["id"])}"><h3>{e(sc["title"])}</h3><div class="kfstrip">{strip}</div>{table}</div>')
+        pf = sc.get('preflight')   # «영상 만들기 전 확인»(10/10 Bumm님: 그림과 글을 세팅해 보여 드리고 허락을 받은 뒤 만든다)
+        pre = ('<details class="preflight" open><summary>영상 만들기 전 확인 — 이 그림과 아래 글 그대로 만든다(허락 전 생성 0)</summary>'
+               f'<p><b>시나리오</b> {e(pf["scenario"])}</p>'
+               '<table class="uni"><tbody>' + ''.join(f'<tr><th>{e(k)}</th><td>{e(v)}</td></tr>' for k, v in pf['settings'].items()) + '</tbody></table>'
+               f'<p><b>Seedance 프롬프트 전문</b></p><pre class="prompt">{e(pf["prompt"])}</pre>'
+               '<p><b>뒤처리(0원)</b></p><ol>' + ''.join(f'<li>{e(x)}</li>' for x in pf['post']) + '</ol></details>') if pf else ''
+        blocks.append(f'<div class="kfscene" id="kf{e(sc["id"])}"><h3>{e(sc["title"])}</h3><div class="kfstrip">{strip}</div>{table}{pre}</div>')
     return ('<section id="keyframes"><h2>⑥ 키프레임 — 통일성 점검 <small>같은 크기로 나란히 · 원화(첫 칸) 대비 수치 · 누르면 원본</small></h2>'
             '<p>기준: 배경 밝기·색온도 차 2 이하, 크기 변화 10% 이하, 가운데 이동 5% 이하, 선명도 배율 0.6~1.67, 몸체 ΔE 5 이하, 눈 빛 ΔE 8 이하, '
             '색 분포 겹침 0.85 이상. 넘으면 «사람 확인»(자세가 바뀌면 크기·가운데는 정당하게 달라질 수 있다).</p>' + ''.join(blocks) + '</section>')
@@ -430,6 +440,7 @@ td.sv{white-space:nowrap}td.fail{background:#FFF1F2}.newtag{font-size:12px;backg
 figure{margin:0}figcaption{font-size:13px;color:#444;margin-top:2px}.grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .kfstrip{display:flex;gap:6px;overflow-x:auto}.kfstrip figure{flex:0 0 220px}.kfstrip img{width:220px;height:220px;display:block;border:1px solid var(--line);border-radius:6px;background:#fff}
 table.uni td.flag{background:#FEF3C7;font-weight:600}.kfscene{margin:14px 0 22px}
+.kfstrip figure.missing div{width:220px;height:220px;display:flex;align-items:center;justify-content:center;border:2px dashed var(--line);border-radius:6px;color:#B45309;font-weight:600}.preflight{margin-top:10px;border:2px solid #6366F1;border-radius:10px;padding:8px 14px}.preflight summary{font-weight:700;color:#4F46E5;cursor:pointer}pre.prompt{white-space:pre-wrap;background:#F8FAFC;border:1px solid var(--line);border-radius:6px;padding:8px;font-size:13px}
 .grid9{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}.notes li{margin:4px 0}
 </style></head>
 <body data-bg="check">
