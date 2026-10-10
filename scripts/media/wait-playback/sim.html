@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>대기 영상 재생 시험</title>
+<style>body{margin:0;background:#fff}.box{position:relative;width:704px;height:704px}video{position:absolute;inset:0;width:704px;height:704px}</style></head>
+<body><div class="box" id="box"></div>
+<script>
+// 결정 대기 가지(codex/claude-handoff-20261005)의 GenerationWait·WaitingArtwork와 같은 방식으로 튼다:
+// 장면이 바뀌면 영상 요소를 새로 붙이고 src를 넣은 뒤 바로 play(), 8초마다 다음 장면, loop 없음,
+// 4초 안에 'playing'이 없으면 실패(앱은 원화 정지 화면으로 돌아간다). 다음 영상은 미리 받지 않는다(가지는 다음 «원화»만 미리 받는다).
+// 영상 목록은 ?v=경로,경로… (run.mjs가 survey.json에서 만들어 넘긴다).
+const files = new URLSearchParams(location.search).get('v').split(',');
+window.__log = [];
+let current = null;
+function mount(i) {
+  if (current) current.cleanup();
+  const v = document.createElement('video');
+  v.muted = true; v.playsInline = true; v.preload = 'auto';
+  const rec = { scene: files[i], mountAt: performance.now(), playingAt: null, endedAt: null, failedAt: null, lastMediaTime: 0, lastPresented: 0, lastFrameAt: null, durationS: null };
+  const timer = setTimeout(() => { if (rec.playingAt == null) rec.failedAt = performance.now() - rec.mountAt; }, 4000);
+  v.addEventListener('playing', () => { if (rec.playingAt == null) rec.playingAt = performance.now() - rec.mountAt; });
+  v.addEventListener('ended', () => { rec.endedAt = performance.now() - rec.mountAt; });
+  v.addEventListener('loadedmetadata', () => { rec.durationS = v.duration; });
+  const onFrame = (now, meta) => { rec.lastMediaTime = meta.mediaTime; rec.lastPresented = meta.presentedFrames; rec.lastFrameAt = performance.now() - rec.mountAt; v.requestVideoFrameCallback(onFrame); };
+  v.requestVideoFrameCallback(onFrame);
+  v.src = files[i];
+  document.getElementById('box').appendChild(v);
+  v.play().catch(() => { rec.failedAt = rec.failedAt ?? (performance.now() - rec.mountAt); });
+  current = { cleanup() { clearTimeout(timer); rec.unmountAt = performance.now() - rec.mountAt; rec.currentTimeAtSwitch = v.currentTime; rec.ended = v.ended;
+    v.pause(); v.removeAttribute('src'); v.load(); v.remove(); window.__log.push(rec); } };
+}
+window.__run = () => new Promise((resolve) => {
+  let i = 0; mount(0);
+  const t = setInterval(() => { i++; if (i >= files.length) { clearInterval(t); current.cleanup(); current = null; resolve(window.__log); return; } mount(i); }, 8000);
+});
+</script></body></html>

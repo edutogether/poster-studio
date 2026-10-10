@@ -23,6 +23,15 @@
    "splash": {"intro", "conditions": [{"label", "device", "source", "change",
               "before": {"video", "slow", "note", "label"}, "after": {...}, "after2": {...} — 2차 수정이 있는 조건만}]}}
   경로는 저장소 기준(files의 path만 검토 폴더 기준). 영상·캡처는 검토 폴더 안으로 복사한다.
+<검토 폴더>/survey.json(있으면) — 2026-10-10 전수 조사(팀장 지시 «7초/8초 이유 + 영상별 문제 전수»): 맨 위 «⓪ 전수 조사»(7초·8초 이유 ·
+  앱 실제 재생 시험 · 영상/길이/제작/문제/심각도/고치는 방법/비용 표)와 편마다 «전수 조사» 칸(재생 · 길이·제작 · 문제 목록 ·
+  0~8초 프레임 · 첫·끝 프레임 대 원화 · 4초 이음매). 프레임·수치는 <검토 폴더>/analysis/(NN/ 원본 화소 PNG, metrics.json —
+  scripts/media/survey-waiting-videos.py가 만든다)와 analysis/playback-<조건>.json(scripts/media/wait-playback/run.mjs)에서 읽고,
+  survey.json의 영상 경로는 검토 폴더 기준이다.
+  {"updated", "why78": {"conclusion", "cause", "rule", "bigger"}, "playback": {"how", "rows": [{"cond", "start", "result"}]},
+   "common": [문제], "notes": [문장], "items": [{"id", "video", "alpha", "kf", "kf_files": [출발, 도착](저장소 기준), "length", "len_short",
+   "made", "short", "problems": [문제]}]}
+  문제 = {"sev": "🔴|🟠|🟡|🟢|상태", "new": bool, "what", "when", "fix", "cost"}
 사용: python scripts/media/build-video-review.py <검토 폴더>   → <검토 폴더>/index.html
 """
 import html, json, os, shutil, sys
@@ -56,6 +65,9 @@ def main():
     data = json.load(open(os.path.join(out, 'points.json'), encoding='utf-8'))
     if data.get('version') != 2: raise SystemExit('points.json version 2가 아니다')
     sets = {s['id']: s for s in json.load(open(os.path.join(ASSETS, 'sets.json'), encoding='utf-8'))}
+    sv_path = os.path.join(out, 'survey.json')
+    survey = json.load(open(sv_path, encoding='utf-8')) if os.path.exists(sv_path) else None
+    sv_items = {s['id']: s for s in survey['items']} if survey else {}
     os.makedirs(os.path.join(out, 'art'), exist_ok=True)
     table, sections, glance = [], [], []
     for it in sorted(data['items'], key=lambda x: x['id']):
@@ -170,6 +182,7 @@ def main():
         sections.append(f'''<section id="s{n}" data-video="{1 if (it.get('latest') or it.get('candidate')) else 0}">
 <h2>V{n} · {e(theme)} <span class="state {cls}">{e(st)}</span></h2>
 <p class="verdict">{e(it.get('verdict', ''))}</p>
+{survey_block(out, n, sv_items[it['id']]) if it['id'] in sv_items else ''}
 {check_html}
 <div class="pair top"><div>{latest_html}</div><div><h3>원화</h3>{media(f"art/{n}.png", still=True)}</div></div>
 {kf_html}{ab_html}{judge_html}{points_html}
@@ -187,13 +200,118 @@ def main():
     glance_html = ('<section id="glance"><h2>① 대기 영상 12편 한눈에 <small>앱에는 연결하지 않음 · 영상은 원본 해상도·소리 없음</small></h2>'
                    '<table><thead><tr><th>번호</th><th>편 이름</th><th>상태</th><th>지금 최신 후보</th><th>결정할 것 · ⭐ 추천 (확인 요청 편은 볼 것)</th>'
                    f'<th>비용</th></tr></thead><tbody>{"".join(glance)}</tbody></table></section>')
-    head = glance_html + cost_html + (f'<section id="decisions"><h2>대표님 결정 대기 <small>갱신 {e(data.get("updated", ""))}</small></h2>'
+    head = survey_head(survey, sets, out) + glance_html + cost_html + (f'<section id="decisions"><h2>대표님 결정 대기 <small>갱신 {e(data.get("updated", ""))}</small></h2>'
             f'{"".join(dec) or "<p>없음</p>"}</section>'
             '<section id="table"><h2>편별 표</h2><table><thead><tr><th>번호</th><th>편 이름</th><th>지금 상태</th><th>이번에 고친 것</th>'
             f'<th>남은 걱정</th><th>대표님께 여쭐 것</th><th>열기</th></tr></thead><tbody>{"".join(table)}</tbody></table></section>')
     page = TEMPLATE.replace('{{UPDATED}}', e(data.get('updated', ''))).replace('{{SECTIONS}}', head + '\n' + '\n'.join(sections) + splash_section(out, data.get('splash')))
     open(os.path.join(out, 'index.html'), 'w', encoding='utf-8').write(page)
     print(os.path.join(out, 'index.html'))
+
+
+SEV = {'🔴': ('r', '🔴 심각'), '🟠': ('o', '🟠 중간'), '🟡': ('y', '🟡 낮음'), '🟢': ('g', '🟢 문제 없음'), '상태': ('s', '상태')}
+
+
+def problem_row(p, lead=''):
+    cls, word = SEV[p['sev']]
+    new = '<span class="newtag">새로</span>' if p.get('new') and p['sev'] != '🟢' else ''
+    when = f'<br><small>{e(p["when"])}</small>' if p.get('when') else ''
+    return (f'<tr class="sev-{cls}">{lead}<td>{e(p["what"])}{new}{when}</td><td class="sv">{word}</td>'
+            f'<td>{e(p.get("fix", ""))}</td><td>{e(p.get("cost", ""))}</td></tr>')
+
+
+def playback_table(out):
+    """analysis/playback-<조건>.json(scripts/media/wait-playback/run.mjs) → 편별 재생 시험 표. 없으면 빈 문자열."""
+    conds = [(c, w) for c, w in (('fast', '보통 회선'), ('cpu4', '느린 노트북(CPU 4배)'), ('slow4g', '느린 회선(1.6Mbps)'))
+             if os.path.exists(os.path.join(out, 'analysis', f'playback-{c}.json'))]
+    if not conds: return ''
+    runs = {c: json.load(open(os.path.join(out, 'analysis', f'playback-{c}.json'), encoding='utf-8'))['rows'] for c, _ in conds}
+
+    def cell(r):
+        if r['원화로돌아감ms'] is not None: return f'<td class="fail">4초 안에 못 틀어 원화로({r["원화로돌아감ms"]}ms)</td>'
+        tail = f'끝 프레임에서 {r["끝프레임에서머문초"]:.2f}초 머묾' if r['끝까지봄'] else f'마지막 {r["못본초"]:.2f}초 못 봄'
+        return f'<td>시작 {r["재생시작ms"]}ms · {tail}</td>'
+    first = runs[conds[0][0]]
+    body = ''.join(f'<tr><td>{e(r["영상"])}</td><td>{r["길이초"]:.3f}초</td>' + ''.join(cell(runs[c][k]) for c, _ in conds) + '</tr>'
+                   for k, r in enumerate(first))
+    return ('<details><summary>편별 재생 시험 숫자(analysis/playback-*.json)</summary><table><thead><tr><th>영상</th><th>길이</th>'
+            + ''.join(f'<th>{w}</th>' for _, w in conds) + f'</tr></thead><tbody>{body}</tbody></table></details>')
+
+
+def survey_head(sv, sets, out):
+    """맨 위 «⓪ 전수 조사» — 7초·8초 이유, 앱 실제 재생 시험, 영상/길이/제작/문제/심각도/고치는 방법/비용 표."""
+    if not sv: return ''
+    w, pb = sv['why78'], sv['playback']
+    items = sorted(sv['items'], key=lambda x: x['id'])
+    groups = {}
+    for it in items: groups.setdefault(it['len_short'].split('(')[1].rstrip(')'), []).append(f"{it['id']:02d}")
+    split = ' · '.join(f'<b>{k}프레임({int(k) / 24:.3f}초)</b> {"·".join(v)}' for k, v in sorted(groups.items()))
+    prow = ''.join(f'<tr><td>{e(r["cond"])}</td><td>{e(r["start"])}</td><td>{e(r["result"])}</td></tr>' for r in pb['rows'])
+    rows = []
+    for it in items:
+        n, ps = f"{it['id']:02d}", it['problems']
+        for k, p in enumerate(ps):
+            lead = (f'<td rowspan="{len(ps)}"><a href="#s{n}">V{n}</a><br>{e(sets[it["id"]]["theme"])}</td>'
+                    f'<td rowspan="{len(ps)}">{e(it["len_short"])}</td><td rowspan="{len(ps)}">{e(it["short"])}</td>') if k == 0 else ''
+            rows.append(problem_row(p, lead))
+    cs = sv.get('common', [])
+    for k, p in enumerate(cs):
+        lead = f'<td rowspan="{len(cs)}" colspan="3"><b>앱 재생 방식(12편 공통)</b></td>' if k == 0 else ''
+        rows.append(problem_row(p, lead))
+    notes = ''.join(f'<li>{e(x)}</li>' for x in sv.get('notes', []))
+    return (f'<section id="survey" class="survey"><h2>⓪ 10/10 전수 조사 — 7초·8초인 이유와 영상별 문제 <small>갱신 {e(sv.get("updated", ""))} · 유료 생성 0건, 분석만</small></h2>'
+            f'<div class="why"><h3>왜 어떤 영상은 7초고 어떤 영상은 8초인가</h3><p class="lead">{e(w["conclusion"])}</p><p>{split}</p>'
+            f'<ul><li><b>원인</b> {e(w["cause"])}</li><li><b>8초 기준</b> {e(w["rule"])}</li><li><b>더 큰 문제</b> {e(w["bigger"])}</li></ul></div>'
+            f'<h3>앱에서는 어떻게 보이나 — 실제 재생 시험</h3><p>{e(pb["how"])}</p>'
+            f'<table><thead><tr><th>조건</th><th>재생 시작까지</th><th>8초에 넘길 때</th></tr></thead><tbody>{prow}</tbody></table>{playback_table(out)}'
+            '<h3>영상별 문제 — 영상 / 길이 / 제작 / 문제 / 심각도 / 고치는 방법 / 비용</h3>'
+            '<table class="svt"><thead><tr><th>영상</th><th>길이(프레임)</th><th>제작</th><th>문제 · 몇 초</th><th>심각도</th><th>고치는 방법</th><th>비용</th></tr></thead>'
+            f'<tbody>{"".join(rows)}</tbody></table><ul class="notes">{notes}</ul></section>')
+
+
+def survey_block(out, n, it):
+    """편마다 «전수 조사» 칸 — 재생 · 길이·제작 · 문제 목록 · 0~8초 프레임 · 첫·끝 프레임 대 원화 · 4초 이음매(원본 화소 PNG, 누르면 원본)."""
+    a = os.path.join(out, 'analysis', n)
+    m = json.load(open(os.path.join(out, 'analysis', 'metrics.json'), encoding='utf-8'))[n]  # 키프레임 대비 수치까지 합친 쪽
+    frames = sorted((f for f in os.listdir(a) if f.startswith('t') and f.endswith('.png')), key=lambda f: int(f.rsplit('-', 1)[1][:3]))
+    if not frames: raise SystemExit(f'analysis/{n}에 프레임이 없다')
+    rel = lambda f: f'analysis/{n}/{f}'
+    if not os.path.exists(os.path.join(out, it['video'])): raise SystemExit(f'없는 영상: {it["video"]}')
+
+    def fig(f, cap):
+        return f'<figure><div class="stage art"><a href="{e(rel(f))}" target="_blank"><img src="{e(rel(f))}" alt=""></a></div><figcaption>{cap}</figcaption></figure>'
+
+    def de(key):
+        v = m.get(key)
+        return f'ΔE {v["평균_ΔE"]:.1f}' if v else ''
+    probs = ''.join(problem_row(p) for p in it['problems'])
+    strip = ''.join(fig(f, e(f[1:].rsplit('-', 1)[0] + ' · ' + str(int(f.rsplit('-', 1)[1][:3])) + '번')) for f in frames)
+    last = frames[-1]; nl = int(last.rsplit('-', 1)[1][:3])
+    ends = [fig('still.png', '앱 정지 화면(지금 라이브 원화)')]
+    if it.get('kf'): ends.append(fig('kf-first.png', f'생성에 넣은 출발 키프레임 · 앱 원화 대비 {de("출발키프레임_대_앱원화")}'))
+    ends.append(fig(frames[0], f'첫 프레임(1번) · 앱 원화 대비 {de("첫프레임_대_원화")}'
+                    + (f' · 출발 키프레임 대비 {de("첫프레임_대_출발키프레임")}' if it.get('kf') else '')))
+    ends.append(fig(last, f'끝 프레임({nl}번) · 앱 원화 대비 {de("끝프레임_대_원화")}'
+                    + (f' · 도착 키프레임 대비 {de("끝프레임_대_도착키프레임")}' if it.get('kf') else '')))
+    if it.get('kf'): ends.append(fig('kf-last.png', '생성에 넣은 도착 키프레임'))
+    diffs = [fig('diff-first.png', '첫 프레임 ↔ 앱 원화'), fig('diff-last.png', '끝 프레임 ↔ 앱 원화')]
+    if it.get('kf'): diffs += [fig('diff-kf-first.png', '첫 프레임 ↔ 출발 키프레임'), fig('diff-kf-last.png', '끝 프레임 ↔ 도착 키프레임')]
+    seam = ''
+    if it.get('kf') and m.get('이음매(96↔97)'):
+        s = m['이음매(96↔97)']
+        seam = (f'<h4>4.00초 이음매 — 4초 두 구간을 이어 붙인 자리 · 변화 {s["변화"]} = 이 편 평소({m["프레임변화_중앙값"]})의 {s["중앙값배"]}배</h4>'
+                f'<div class="pair">{fig("seam-096.png", "앞 구간 마지막(96번, 3.96초)")}{fig("seam-097.png", "뒤 구간 첫 프레임(97번, 4.00초)")}</div>')
+    alpha = f' · 누끼 넓이 {m["알파넓이_범위%"][0]}~{m["알파넓이_범위%"][1]}%' if m.get('알파넓이_범위%') else ''
+    stats = f'프레임 변화 중앙값 {m["프레임변화_중앙값"]} · 밝기 최대 프레임 차 {m["밝기_최대프레임차"]}/255{alpha}'
+    return (f'<div class="sv-block"><h3>10/10 전수 조사</h3>'
+            f'<div class="pair top2"><div><div class="stage{"" if it.get("alpha") else " art"}"><video src="{e(it["video"])}" controls preload="metadata" playsinline muted></video></div>'
+            f'<p class="sv-src">재생 파일 {e(it["video"])}</p></div>'
+            f'<div><p><b>길이</b> {e(it["length"])}</p><p><b>제작</b> {e(it["made"])}</p><p><b>측정</b> {e(stats)}</p>'
+            '<table class="svt"><thead><tr><th>문제 · 몇 초</th><th>심각도</th><th>고치는 방법</th><th>비용</th></tr></thead>'
+            f'<tbody>{probs}</tbody></table></div></div>'
+            f'<h4>첫·끝 프레임 대 원화 <small>ΔE = 색 차이(통과한 08은 1.6~1.9 · 클수록 다름) · 누르면 원본 704×704</small></h4><div class="grid5">{"".join(ends)}</div>'
+            f'{seam}<details><summary>차이 지도(밝을수록 다른 곳)</summary><div class="grid5">{"".join(diffs)}</div></details>'
+            f'<details><summary>0~8초 1초마다 프레임 {len(frames)}장(원본 화소)</summary><div class="grid9">{strip}</div></details></div>')
 
 
 def splash_section(out, sp):
@@ -256,10 +374,16 @@ section.splash{max-width:none;margin-left:calc(50% - 50vw + 20px);margin-right:c
 .big video{display:block;width:100%;height:auto}.big.tall video{width:auto;max-width:100%;height:92vh;margin:0 auto}
 .big.one video{max-width:none!important;height:auto!important}
 .nav{line-height:2}
+section.survey{border:2px solid #6366F1}.why{background:#EEF2FF;border-radius:10px;padding:8px 16px}.why .lead{font-size:16px;font-weight:600;color:#4F46E5}
+tr.sev-r td{background:#FFF1F2}tr.sev-o td{background:#FEF3C7}tr.sev-y td{background:#FFFBEB}tr.sev-g td{background:#ECFDF5}tr.sev-s td{background:#f4f4f4}
+td.sv{white-space:nowrap}td.fail{background:#FFF1F2}.newtag{font-size:12px;background:#E0F2FE;color:#0369A1;border-radius:6px;padding:0 6px;margin-left:6px;white-space:nowrap}
+.sv-block{border:1px solid #c7d2fe;border-radius:10px;padding:4px 14px 10px;margin:10px 0;background:#fcfcff}.sv-src{font-size:13px;color:#666;margin:4px 0}
+figure{margin:0}figcaption{font-size:13px;color:#444;margin-top:2px}.grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.grid9{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}.notes li{margin:4px 0}
 </style></head>
 <body data-bg="check">
 <header><h1>대기 영상 12편 검토</h1><span class="upd">갱신 {{UPDATED}}</span>
-<a href="#glance">① 대기 영상 12편</a><a href="#splash">② 스플래시 전/후</a>
+<a href="#survey">⓪ 전수 조사(10/10)</a><a href="#glance">① 대기 영상 12편</a><a href="#splash">② 스플래시 전/후</a>
 <button id="playAll">최신판을 처음부터 순서대로 재생</button>
 <label>바탕 <select id="bg"><option value="check">체크무늬</option><option value="white">흰색</option><option value="yellow">노랑</option><option value="gray">회색</option><option value="black">검정</option></select></label>
 <span>주황 줄 = «봐야 할 곳» · 초록 줄 = 확인한 곳. 시간을 누르면 그 장면에서 멈춥니다.</span></header>
