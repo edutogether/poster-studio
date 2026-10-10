@@ -2,7 +2,9 @@
    node scripts/verify/release-baseline.mjs [라이브 URL]
    헤드리스 실제 빌드 확인. 카메라는 캔버스 스트림, AI는 고정 응답이며
    네트워크 계층에서도 모든 외부 주소를 차단한다. 실제 과금·촬영·인쇄는 없다.
-   로컬 실행에서 5개 입력 × 8개 디자인을 저장하고 라이브 실행은 저장 지문과 대조한다. */
+   로컬 실행에서 5개 입력 × 8개 디자인을 저장하고 라이브 실행은 저장 지문과 대조한다.
+   ⚠ 촬영 흐름을 누르므로 **실제 모드 빌드**가 필요하다. 배포 빌드는 샘플 모드일 수 있으니(.env.production의
+   VITE_SAMPLE_MODE) 로컬은 `VITE_SAMPLE_MODE=0 npx vite build` 뒤에 돌린다(2026-10-10). */
 import fs from "node:fs/promises";
 import path from "node:path";
 import http from "node:http";
@@ -122,6 +124,20 @@ try {
     if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails));
     return r.result.value;
   };
+  /* 값이 필요한 페이지 코드는 값을 코드 문자열에 끼워 넣지 않고 인자로 넘긴다 — 제목 같은 입력값에 따옴표·
+     </script>가 섞여도 코드가 되지 않는다. 함수 본문은 이 파일에 고정된 글이다. */
+  const callWith = async (functionDeclaration, arg) => {
+    const { result: win } = await send("Runtime.evaluate", { expression: "window" });
+    const r = await send("Runtime.callFunctionOn", {
+      objectId: win.objectId,
+      functionDeclaration,
+      arguments: [{ value: arg }],
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails));
+    return r.result.value;
+  };
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Network.enable");
@@ -190,11 +206,13 @@ try {
       }return original(url,options);};
       window.__texts=[];const draw=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(t,...args){window.__texts.push(t);return draw.call(this,t,...args);};
     })()`);
-    await evaluate(`document.querySelector('[data-mode="${c.mode}"]').click()`);
+    await callWith("(mode)=>{[...document.querySelectorAll('[data-mode]')].find((b)=>b.dataset.mode===mode).click();}", c.mode);
     await wait(80);
-    await evaluate(`(()=>{const c=${JSON.stringify(c)};document.getElementById('movieTitle').value=c.title;document.getElementById(c.mode==='solo'?'studentName':'groupName').value=c.person;document.getElementById('genre').value=c.genre;document.getElementById('prepareNextBtn').click();})()`);
+    await callWith("(c)=>{document.getElementById('movieTitle').value=c.title;document.getElementById(c.mode==='solo'?'studentName':'groupName').value=c.person;document.getElementById('genre').value=c.genre;document.getElementById('prepareNextBtn').click();}", c);
     await wait(80);
-    assert.ok((await evaluate("document.getElementById('shotBtn').textContent")).includes('3초 뒤 사진 찍기'),'운영 빌드는 샘플 건너뛰기 비활성');
+    const shotLabel = await evaluate("document.getElementById('shotBtn').textContent");
+    assert.ok(!shotLabel.includes('샘플 포스터 보기'), '샘플 모드 빌드다 — VITE_SAMPLE_MODE=0으로 다시 빌드한 뒤 돌린다(이 도구는 실제 촬영 흐름을 본다)');
+    assert.ok(shotLabel.includes('3초 뒤 사진 찍기'), '촬영 단추 문구가 «3초 뒤 사진 찍기»가 아니다');
     await evaluate("document.getElementById('startBtn').click()");
     for(let i=0;i<60;i++){if(await evaluate("document.getElementById('video').videoWidth>0"))break;await wait(100);}
     assert.ok(await evaluate("document.getElementById('video').videoWidth>0"));

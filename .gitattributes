@@ -46,3 +46,7 @@ scripts/**/*.mjs              text eol=lf
 *.webp   -text
 *.woff   -text
 *.woff2  -text
+
+# ④ 셸 스크립트(2026-10-07, scripts/media/matte/*.sh). 윈도 체크아웃(core.autocrlf=true)에서 CRLF가 되면
+#    WSL·리눅스 bash가 줄 끝의 CR 때문에 첫 줄부터 멈춘다. 줄끝이 실행을 바꾸는 파일이라 LF로 못박는다.
+*.sh     text eol=lf
