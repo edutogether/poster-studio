@@ -1,0 +1,457 @@
+{
+ "01": {
+  "title": "이젤 그림",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "붓을 그림에서 떼어 팔레트의 주황 물감을 찍는다",
+    "지시": "Keyframe 01-t1. Edit THIS newly attached original artwork (not the previous result): the robot lifts the brush from the canvas and dips its tip into the orange paint on the palette, looking at the palette. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the easel, the painting (the picture itself stays exactly the same - any new stroke is the same color as the spot it touches), and the palette with its paint colors exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "주황 붓으로 그림 속 주황 꽃길을 칠한다",
+    "지시": "Keyframe 01-t2. Edit THIS newly attached original artwork (not the previous result): the robot touches the orange-loaded brush to the curved orange flower path of the garden logo in the painting, painting a short stroke along it. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the easel, the painting (the picture itself stays exactly the same - any new stroke is the same color as the spot it touches), and the palette with its paint colors exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "주황 꽃길을 따라 계속 칠한다",
+    "지시": "Keyframe 01-t3. Edit THIS newly attached original artwork (not the previous result): the robot keeps painting further along the orange flower path, brush and head following the curve. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the easel, the painting (the picture itself stays exactly the same - any new stroke is the same color as the spot it touches), and the palette with its paint colors exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "팔레트로 돌아가 초록 물감을 찍는다",
+    "지시": "Keyframe 01-t4. Edit THIS newly attached original artwork (not the previous result): the robot brings the brush back to the palette and dips its tip into the green paint. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the easel, the painting (the picture itself stays exactly the same - any new stroke is the same color as the spot it touches), and the palette with its paint colors exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "초록 붓으로 둥근 초록 덤불을 칠한다",
+    "지시": "Keyframe 01-t5. Edit THIS newly attached original artwork (not the previous result): the robot touches the green-loaded brush to the round green hedge of the garden logo in the painting. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the easel, the painting (the picture itself stays exactly the same - any new stroke is the same color as the spot it touches), and the palette with its paint colors exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "초록 덤불 둘레를 칠하며 고개를 살짝 기울인다",
+    "지시": "Keyframe 01-t6. Edit THIS newly attached original artwork (not the previous result): the robot paints around the round green hedge, head tilted slightly as it looks closely. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the easel, the painting (the picture itself stays exactly the same - any new stroke is the same color as the spot it touches), and the palette with its paint colors exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "붓을 원화 자리로 가져간다",
+    "지시": "Keyframe 01-t7. Edit THIS newly attached original artwork (not the previous result): the robot moves the brush back toward the spot where it touches the canvas in the attached artwork - almost the same pose, a moment before. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the easel, the painting (the picture itself stays exactly the same - any new stroke is the same color as the spot it touches), and the palette with its paint colors exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   }
+  ]
+ },
+ "02": {
+  "title": "책상 색칠",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "빨간 색연필로 빨간 꽃길을 칠한다",
+    "지시": "Keyframe 02-t1. Edit THIS newly attached original artwork (not the previous result): the robot colors the red flower path of the logo in the drawing with the red pencil in its hand. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the slanted drawing board with its harbor drawing (exactly the same), the desk, the chair, the pencil cup with its small logo, and the colored pencils lying on the desk exactly where they are; only the robot's pose and which pencil it holds change. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "빨간 색연필을 책상 위에 내려놓는다",
+    "지시": "Keyframe 02-t2. Edit THIS newly attached original artwork (not the previous result): the robot puts the red pencil down on the desk next to the other pencils; its hand is now empty. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the slanted drawing board with its harbor drawing (exactly the same), the desk, the chair, the pencil cup with its small logo, and the colored pencils lying on the desk exactly where they are; only the robot's pose and which pencil it holds change. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "파란 색연필을 집어 든다",
+    "지시": "Keyframe 02-t3. Edit THIS newly attached original artwork (not the previous result): the robot picks up the blue pencil from the desk; the red pencil now lies on the desk. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the slanted drawing board with its harbor drawing (exactly the same), the desk, the chair, the pencil cup with its small logo, and the colored pencils lying on the desk exactly where they are; only the robot's pose and which pencil it holds change. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "파란 색연필로 파란 바다를 칠한다",
+    "지시": "Keyframe 02-t4. Edit THIS newly attached original artwork (not the previous result): the robot colors the blue sea in the drawing with the blue pencil. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the slanted drawing board with its harbor drawing (exactly the same), the desk, the chair, the pencil cup with its small logo, and the colored pencils lying on the desk exactly where they are; only the robot's pose and which pencil it holds change. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "파란 색연필을 책상에 내려놓는다",
+    "지시": "Keyframe 02-t5. Edit THIS newly attached original artwork (not the previous result): the robot puts the blue pencil back down on the desk; its hand is empty. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the slanted drawing board with its harbor drawing (exactly the same), the desk, the chair, the pencil cup with its small logo, and the colored pencils lying on the desk exactly where they are; only the robot's pose and which pencil it holds change. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "빨간 색연필을 다시 집는다",
+    "지시": "Keyframe 02-t6. Edit THIS newly attached original artwork (not the previous result): the robot picks the red pencil up again from the desk. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the slanted drawing board with its harbor drawing (exactly the same), the desk, the chair, the pencil cup with its small logo, and the colored pencils lying on the desk exactly where they are; only the robot's pose and which pencil it holds change. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "빨간 색연필을 빨간 꽃길로 가져간다",
+    "지시": "Keyframe 02-t7. Edit THIS newly attached original artwork (not the previous result): the robot brings the red pencil back to the red flower path - almost the same pose as the attached artwork, a moment before. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the slanted drawing board with its harbor drawing (exactly the same), the desk, the chair, the pencil cup with its small logo, and the colored pencils lying on the desk exactly where they are; only the robot's pose and which pencil it holds change. Square 1:1, no text."
+   }
+  ]
+ },
+ "03": {
+  "title": "슬레이트",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "슬레이트를 조금 들어 올려 준비한다",
+    "지시": "Keyframe 03-t1. Edit THIS newly attached original artwork (not the previous result): the robot raises the open clapperboard a little higher, ready to clap. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clapperboard with its small logo exactly where they are; only the robot's pose and the clapperboard's hinged stick change. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "막대를 «탁» 닫는다",
+    "지시": "Keyframe 03-t2. Edit THIS newly attached original artwork (not the previous result): the robot snaps the hinged striped stick shut - the clapperboard is now closed. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clapperboard with its small logo exactly where they are; only the robot's pose and the clapperboard's hinged stick change. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "닫힌 슬레이트를 든 채 고개를 끄덕인다",
+    "지시": "Keyframe 03-t3. Edit THIS newly attached original artwork (not the previous result): holding the closed clapperboard, the robot gives a small nod. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clapperboard with its small logo exactly where they are; only the robot's pose and the clapperboard's hinged stick change. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "닫힌 슬레이트를 높이 들어 보인다",
+    "지시": "Keyframe 03-t4. Edit THIS newly attached original artwork (not the previous result): the robot lifts the closed clapperboard up high, showing it to the viewer. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clapperboard with its small logo exactly where they are; only the robot's pose and the clapperboard's hinged stick change. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "슬레이트를 가슴 높이로 내린다",
+    "지시": "Keyframe 03-t5. Edit THIS newly attached original artwork (not the previous result): the robot lowers the closed clapperboard back to chest height. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clapperboard with its small logo exactly where they are; only the robot's pose and the clapperboard's hinged stick change. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "손으로 막대를 천천히 들어 연다",
+    "지시": "Keyframe 03-t6. Edit THIS newly attached original artwork (not the previous result): the robot's hand lifts the hinged striped stick open again by hand - the stick is half open. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clapperboard with its small logo exactly where they are; only the robot's pose and the clapperboard's hinged stick change. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "막대가 원화만큼 열린다",
+    "지시": "Keyframe 03-t7. Edit THIS newly attached original artwork (not the previous result): the hinged stick is open as in the attached artwork and the robot holds the clapperboard almost exactly as in the attached artwork. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clapperboard with its small logo exactly where they are; only the robot's pose and the clapperboard's hinged stick change. Square 1:1, no text."
+   }
+  ]
+ },
+ "04": {
+  "title": "포스터 소개",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "고개를 돌려 포스터를 본다",
+    "지시": "Keyframe 04-t1. Edit THIS newly attached original artwork (not the previous result): the robot turns its head to look at the poster, its other hand still holding the top of the poster. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the poster (the fireworks logo, the two children and the dog) exactly the same exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "위쪽 불꽃 로고를 가리킨다",
+    "지시": "Keyframe 04-t2. Edit THIS newly attached original artwork (not the previous result): the robot points with its free hand at the fireworks logo at the top of the poster. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the poster (the fireworks logo, the two children and the dog) exactly the same exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "아래쪽 아이 둘과 강아지를 가리킨다",
+    "지시": "Keyframe 04-t3. Edit THIS newly attached original artwork (not the previous result): the robot points down at the two children and the dog watching the fireworks at the bottom of the poster. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the poster (the fireworks logo, the two children and the dog) exactly the same exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "신나서 팔을 번쩍 든다",
+    "지시": "Keyframe 04-t4. Edit THIS newly attached original artwork (not the previous result): excited, the robot raises its free arm high with an open hand, body bouncing slightly, the other hand still holding the poster top. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the poster (the fireworks logo, the two children and the dog) exactly the same exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "보는 사람 쪽으로 돌아선다",
+    "지시": "Keyframe 04-t5. Edit THIS newly attached original artwork (not the previous result): the robot turns back toward the viewer, free hand coming down. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the poster (the fireworks logo, the two children and the dog) exactly the same exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "손바닥을 펴 내밀기 시작한다",
+    "지시": "Keyframe 04-t6. Edit THIS newly attached original artwork (not the previous result): the robot starts to open its free hand palm-up toward the viewer. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the poster (the fireworks logo, the two children and the dog) exactly the same exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "원화의 손바닥 내민 자세에 거의 닿는다",
+    "지시": "Keyframe 04-t7. Edit THIS newly attached original artwork (not the previous result): the robot presents the poster with its palm open toward the viewer - almost exactly the pose in the attached artwork. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the poster (the fireworks logo, the two children and the dog) exactly the same exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   }
+  ]
+ },
+ "05": {
+  "title": "모래 발자국 소리",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "두 손을 신발 뒤축에 하나씩 넣어 모래 위에 든다",
+    "지시": "Keyframe 05-t1. Edit THIS newly attached original artwork (not the previous result): the robot slips one hand into the heel of each shoe - red shoe on one hand, blue shoe on the other - holding them just above the sand like feet. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue slip-on shoes (no laces) exactly where they are; only the robot's pose and the footprints in the sand change (the sand never rises or sprays). Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "빨간 신발로 모래를 밟아 첫 발자국",
+    "지시": "Keyframe 05-t2. Edit THIS newly attached original artwork (not the previous result): the robot presses the red shoe down onto the sand at the left, leaving one shoe print where it stepped. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue slip-on shoes (no laces) exactly where they are; only the robot's pose and the footprints in the sand change (the sand never rises or sprays). Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "파란 신발로 다음 걸음, 발자국 둘",
+    "지시": "Keyframe 05-t3. Edit THIS newly attached original artwork (not the previous result): the robot steps the blue shoe ahead onto the sand; there are now two shoe prints, only where the shoes stepped. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue slip-on shoes (no laces) exactly where they are; only the robot's pose and the footprints in the sand change (the sand never rises or sprays). Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "빨간 신발 셋째 걸음, 발자국 셋",
+    "지시": "Keyframe 05-t4. Edit THIS newly attached original artwork (not the previous result): the robot steps the red shoe ahead again; three shoe prints in a walking line. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue slip-on shoes (no laces) exactly where they are; only the robot's pose and the footprints in the sand change (the sand never rises or sprays). Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "파란 신발 넷째 걸음, 발자국 넷",
+    "지시": "Keyframe 05-t5. Edit THIS newly attached original artwork (not the previous result): the robot steps the blue shoe ahead; four shoe prints in a walking line across the sand. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue slip-on shoes (no laces) exactly where they are; only the robot's pose and the footprints in the sand change (the sand never rises or sprays). Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "두 손으로 신발을 들어 올린다",
+    "지시": "Keyframe 05-t6. Edit THIS newly attached original artwork (not the previous result): the robot lifts both shoes up off the sand with both hands, looking at the four shoe prints. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue slip-on shoes (no laces) exactly where they are; only the robot's pose and the footprints in the sand change (the sand never rises or sprays). Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "신발 한 쌍을 뒤축으로 들고 다른 손은 귀에",
+    "지시": "Keyframe 05-t7. Edit THIS newly attached original artwork (not the previous result): the robot holds the pair of shoes by their heels in one hand and puts its other hand to its ear disc to listen, as in the attached artwork; the four shoe prints stay in the sand. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue slip-on shoes (no laces) exactly where they are; only the robot's pose and the footprints in the sand change (the sand never rises or sprays). Square 1:1, no text."
+   },
+   {
+    "초": 8,
+    "연출": "끝: 원화 자세 + 모래에 발자국 넷",
+    "지시": "Keyframe 05-end. Edit THIS newly attached original artwork (not the previous result): final frame: exactly the pose of the attached artwork, and the four shoe prints remain in the sand in a walking line. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue slip-on shoes (no laces) exactly where they are; only the robot's pose and the footprints in the sand change (the sand never rises or sprays). Square 1:1, no text."
+   }
+  ]
+ },
+ "06": {
+  "title": "점토 로고 촬영",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "조각칼을 든 채 다른 손으로 로고 받침을 누른다",
+    "지시": "Keyframe 06-t1. Edit THIS newly attached original artwork (not the previous result): the robot keeps the thin sculpting tool in its right hand and with its other hand gently presses the bottom of the clay logo onto its round base. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clay logo on its round base, the table, the clay pieces, the tool cup, and the camera with its tripod (all three legs on the floor) exactly where they are; only the robot's pose and the camera's rear screen change. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "조각칼을 든 채 다른 손을 카메라로 뻗는다",
+    "지시": "Keyframe 06-t2. Edit THIS newly attached original artwork (not the previous result): still holding the thin sculpting tool in its right hand, the robot takes its other hand off the clay logo and reaches toward the camera on the tripod, head starting to turn toward the camera. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clay logo on its round base, the table, the clay pieces, the tool cup, and the camera with its tripod (all three legs on the floor) exactly where they are; only the robot's pose and the camera's rear screen change. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "셔터를 누른다",
+    "지시": "Keyframe 06-t3. Edit THIS newly attached original artwork (not the previous result): the robot presses the shutter button on top of the camera with one finger, its head turned toward the camera, the thin sculpting tool still in its right hand. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clay logo on its round base, the table, the clay pieces, the tool cup, and the camera with its tripod (all three legs on the floor) exactly where they are; only the robot's pose and the camera's rear screen change. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "카메라 화면으로 찍힌 사진을 본다",
+    "지시": "Keyframe 06-t4. Edit THIS newly attached original artwork (not the previous result): still holding the thin sculpting tool in its right hand, the robot leans toward the camera and looks at the camera's rear screen, which shows a small photo of the clay logo; its other hand rests on top of the camera. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clay logo on its round base, the table, the clay pieces, the tool cup, and the camera with its tripod (all three legs on the floor) exactly where they are; only the robot's pose and the camera's rear screen change. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "사진이 마음에 들어 두 손을 살짝 든다",
+    "지시": "Keyframe 06-t5. Edit THIS newly attached original artwork (not the previous result): the robot straightens up, pleased with the photo it just took - both hands lifted a little in joy, the thin sculpting tool still in its right hand, head turned back toward the clay logo; the camera's rear screen still shows a small photo of the clay logo. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clay logo on its round base, the table, the clay pieces, the tool cup, and the camera with its tripod (all three legs on the floor) exactly where they are; only the robot's pose and the camera's rear screen change. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "다시 로고로 돌아가 조각칼을 빨간 글자에 댄다",
+    "지시": "Keyframe 06-t6. Edit THIS newly attached original artwork (not the previous result): the robot leans back to the clay logo and brings the thin sculpting tool close to the red clay letter, its other hand resting on the clay; the camera's rear screen is dark again as in the artwork. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clay logo on its round base, the table, the clay pieces, the tool cup, and the camera with its tripod (all three legs on the floor) exactly where they are; only the robot's pose and the camera's rear screen change. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "원화처럼 빨간 글자를 다듬는다",
+    "지시": "Keyframe 06-t7. Edit THIS newly attached original artwork (not the previous result): the robot shapes the red clay letter with the thin sculpting tool - almost exactly the pose in the attached artwork, a moment before. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the clay logo on its round base, the table, the clay pieces, the tool cup, and the camera with its tripod (all three legs on the floor) exactly where they are; only the robot's pose and the camera's rear screen change. Square 1:1, no text."
+   }
+  ]
+ },
+ "07": {
+  "title": "피아노",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "두 손으로 화음을 누른다",
+    "지시": "Keyframe 07-t1. Edit THIS newly attached original artwork (not the previous result): the robot presses a chord on the keys with both hands, fingers spread. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the black upright piano, the sheet music on it and the piano bench exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "오른손이 건반 오른쪽으로 달린다",
+    "지시": "Keyframe 07-t2. Edit THIS newly attached original artwork (not the previous result): the robot's right hand runs up the keyboard to the right, body leaning slightly the same way. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the black upright piano, the sheet music on it and the piano bench exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "고개를 들어 악보를 본다",
+    "지시": "Keyframe 07-t3. Edit THIS newly attached original artwork (not the previous result): the robot lifts its head to read the sheet music, hands still on the keys. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the black upright piano, the sheet music on it and the piano bench exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "다시 건반을 보며 연주, 고개 끄덕",
+    "지시": "Keyframe 07-t4. Edit THIS newly attached original artwork (not the previous result): the robot looks back down at the keys and plays with both hands, head nodding to the beat. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the black upright piano, the sheet music on it and the piano bench exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "연주하며 몸을 왼쪽으로 흔든다",
+    "지시": "Keyframe 07-t5. Edit THIS newly attached original artwork (not the previous result): the robot sways its upper body gently to the left while playing. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the black upright piano, the sheet music on it and the piano bench exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "두 손을 건반 위로 살짝 든다",
+    "지시": "Keyframe 07-t6. Edit THIS newly attached original artwork (not the previous result): the robot lifts both hands a little above the keys for a big final chord. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the black upright piano, the sheet music on it and the piano bench exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "화음을 누르며 원화 자세로",
+    "지시": "Keyframe 07-t7. Edit THIS newly attached original artwork (not the previous result): the robot presses the final chord - almost exactly the pose in the attached artwork. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the black upright piano, the sheet music on it and the piano bench exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   }
+  ]
+ },
+ "09": {
+  "title": "새싹 물방울",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "카메라를 새싹 가까이 대고 찍는다",
+    "지시": "Keyframe 09-t1. Edit THIS newly attached original artwork (not the previous result): the robot leans in a little, holding the camera closer to the sprout, filming the single water drop at the leaf tip. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the backpack, the small black action camera in its hand (no water ever comes out of the camera), the sprout and its soil mound exactly where they are; only the robot's pose and the single water drop on the leaf tip change. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "잎끝 물방울이 커진다",
+    "지시": "Keyframe 09-t2. Edit THIS newly attached original artwork (not the previous result): the single water drop at the tip of the leaf grows a little rounder and heavier; the robot holds the camera very still. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the backpack, the small black action camera in its hand (no water ever comes out of the camera), the sprout and its soil mound exactly where they are; only the robot's pose and the single water drop on the leaf tip change. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "물방울이 잎끝에서 떨어진다",
+    "지시": "Keyframe 09-t3. Edit THIS newly attached original artwork (not the previous result): the single water drop has just let go of the leaf tip and is falling in the air just below the leaf. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the backpack, the small black action camera in its hand (no water ever comes out of the camera), the sprout and its soil mound exactly where they are; only the robot's pose and the single water drop on the leaf tip change. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "물방울이 흙에 닿는다",
+    "지시": "Keyframe 09-t4. Edit THIS newly attached original artwork (not the previous result): the single water drop lands on the soil mound with a tiny splash; the leaf tip is now dry. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the backpack, the small black action camera in its hand (no water ever comes out of the camera), the sprout and its soil mound exactly where they are; only the robot's pose and the single water drop on the leaf tip change. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "몸 전체로 크게 놀란다(눈은 그대로)",
+    "지시": "Keyframe 09-t5. Edit THIS newly attached original artwork (not the previous result): the robot is startled: its whole body jerks back, both arms flung up with the camera still in its hand, eyes still the same arc shape; no water drop on the leaf. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the backpack, the small black action camera in its hand (no water ever comes out of the camera), the sprout and its soil mound exactly where they are; only the robot's pose and the single water drop on the leaf tip change. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "놀람이 풀리며 팔을 내린다",
+    "지시": "Keyframe 09-t6. Edit THIS newly attached original artwork (not the previous result): the robot relaxes and lowers its arms, chuckling, still kneeling; no water drop on the leaf. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the backpack, the small black action camera in its hand (no water ever comes out of the camera), the sprout and its soil mound exactly where they are; only the robot's pose and the single water drop on the leaf tip change. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "다시 무릎 꿇고 새싹을 찍는다",
+    "지시": "Keyframe 09-t7. Edit THIS newly attached original artwork (not the previous result): the robot kneels and films the sprout again - almost the pose of the attached artwork, but there is no water drop on the leaf. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the backpack, the small black action camera in its hand (no water ever comes out of the camera), the sprout and its soil mound exactly where they are; only the robot's pose and the single water drop on the leaf tip change. Square 1:1, no text."
+   },
+   {
+    "초": 8,
+    "연출": "끝: 원화 자세 + 물방울 없음",
+    "지시": "Keyframe 09-end. Edit THIS newly attached original artwork (not the previous result): final frame: exactly the pose of the attached artwork, but the water drop is gone from the leaf tip. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the backpack, the small black action camera in its hand (no water ever comes out of the camera), the sprout and its soil mound exactly where they are; only the robot's pose and the single water drop on the leaf tip change. Square 1:1, no text."
+   }
+  ]
+ },
+ "10": {
+  "title": "요리",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "국자를 냄비 반대쪽으로 저어 간다",
+    "지시": "Keyframe 10-t1. Edit THIS newly attached original artwork (not the previous result): the robot stirs the soup, moving the wooden spoon to the far side of the red pot. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the solid wooden table (never transparent), the red pot with steam, the wooden spoon, the vegetables, the cutting board and the apron with its small logo exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "한 바퀴 계속 젓는다",
+    "지시": "Keyframe 10-t2. Edit THIS newly attached original artwork (not the previous result): the robot keeps stirring in a circle, the spoon on the near side of the pot now. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the solid wooden table (never transparent), the red pot with steam, the wooden spoon, the vegetables, the cutting board and the apron with its small logo exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "국자를 살짝 들자 김이 오른다",
+    "지시": "Keyframe 10-t3. Edit THIS newly attached original artwork (not the previous result): the robot lifts the spoon slightly and a soft wisp of steam rises from the pot (the steam passes in front of nothing on the face). Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the solid wooden table (never transparent), the red pot with steam, the wooden spoon, the vegetables, the cutting board and the apron with its small logo exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "냄비 쪽으로 몸을 숙여 냄새를 맡는다",
+    "지시": "Keyframe 10-t4. Edit THIS newly attached original artwork (not the previous result): the robot leans toward the pot to smell the soup, head tilted, the spoon resting in the pot. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the solid wooden table (never transparent), the red pot with steam, the wooden spoon, the vegetables, the cutting board and the apron with its small logo exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "맛있는 냄새에 몸을 살짝 흔든다",
+    "지시": "Keyframe 10-t5. Edit THIS newly attached original artwork (not the previous result): pleased by the smell, the robot sways happily, one hand on the pot handle. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the solid wooden table (never transparent), the red pot with steam, the wooden spoon, the vegetables, the cutting board and the apron with its small logo exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "다시 젓기 시작한다",
+    "지시": "Keyframe 10-t6. Edit THIS newly attached original artwork (not the previous result): the robot starts stirring again. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the solid wooden table (never transparent), the red pot with steam, the wooden spoon, the vegetables, the cutting board and the apron with its small logo exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "원화처럼 젓는다",
+    "지시": "Keyframe 10-t7. Edit THIS newly attached original artwork (not the previous result): the robot stirs the soup - almost exactly the pose in the attached artwork. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the solid wooden table (never transparent), the red pot with steam, the wooden spoon, the vegetables, the cutting board and the apron with its small logo exactly where they are; only the robot's pose changes. Square 1:1, no text."
+   }
+  ]
+ },
+ "11": {
+  "title": "엄마와 아이",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "손잡고 한 걸음 더 걷는다",
+    "지시": "Keyframe 11-t1. Edit THIS newly attached original artwork (not the previous result): holding hands, the mother and child take one more step together, the other feet forward now. Keep both robots' faces exactly like the attached artwork: each visor shows only its two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows, and the child's eyes are never reflected on the mother's visor. Their hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and both robots - the mother with the red knitted scarf and its small logo tag, the child with the blue scarf wrapped across its neck (no hanging ends) and blue shoes exactly where they are; only the poses change; the two robots stay in about the same area of the frame. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "멈춰서 서로 마주 본다",
+    "지시": "Keyframe 11-t2. Edit THIS newly attached original artwork (not the previous result): they stop and look at each other - the mother turns her head down toward the child, the child looks up. Keep both robots' faces exactly like the attached artwork: each visor shows only its two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows, and the child's eyes are never reflected on the mother's visor. Their hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and both robots - the mother with the red knitted scarf and its small logo tag, the child with the blue scarf wrapped across its neck (no hanging ends) and blue shoes exactly where they are; only the poses change; the two robots stay in about the same area of the frame. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "엄마가 몸을 숙여 두 손을 아이에게",
+    "지시": "Keyframe 11-t3. Edit THIS newly attached original artwork (not the previous result): the mother bends down and reaches both hands toward the child, who raises its arms. Keep both robots' faces exactly like the attached artwork: each visor shows only its two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows, and the child's eyes are never reflected on the mother's visor. Their hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and both robots - the mother with the red knitted scarf and its small logo tag, the child with the blue scarf wrapped across its neck (no hanging ends) and blue shoes exactly where they are; only the poses change; the two robots stay in about the same area of the frame. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "엄마가 아이를 안아 올린다(얼굴 겹치지 않음)",
+    "지시": "Keyframe 11-t4. Edit THIS newly attached original artwork (not the previous result): the mother lifts the child up in a hug, holding it beside her head so both visors are fully visible and the two faces never overlap. Keep both robots' faces exactly like the attached artwork: each visor shows only its two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows, and the child's eyes are never reflected on the mother's visor. Their hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and both robots - the mother with the red knitted scarf and its small logo tag, the child with the blue scarf wrapped across its neck (no hanging ends) and blue shoes exactly where they are; only the poses change; the two robots stay in about the same area of the frame. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "안은 채 살짝 돈다",
+    "지시": "Keyframe 11-t5. Edit THIS newly attached original artwork (not the previous result): the mother holds the child up happily and turns a little, both faces visible, never overlapping. Keep both robots' faces exactly like the attached artwork: each visor shows only its two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows, and the child's eyes are never reflected on the mother's visor. Their hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and both robots - the mother with the red knitted scarf and its small logo tag, the child with the blue scarf wrapped across its neck (no hanging ends) and blue shoes exactly where they are; only the poses change; the two robots stay in about the same area of the frame. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "아이를 땅에 내려놓는다",
+    "지시": "Keyframe 11-t6. Edit THIS newly attached original artwork (not the previous result): the mother sets the child back down on the ground, both feet on the floor. Keep both robots' faces exactly like the attached artwork: each visor shows only its two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows, and the child's eyes are never reflected on the mother's visor. Their hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and both robots - the mother with the red knitted scarf and its small logo tag, the child with the blue scarf wrapped across its neck (no hanging ends) and blue shoes exactly where they are; only the poses change; the two robots stay in about the same area of the frame. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "다시 손잡고 걷기 시작한다",
+    "지시": "Keyframe 11-t7. Edit THIS newly attached original artwork (not the previous result): they hold hands again and start walking - almost exactly the pose in the attached artwork. Keep both robots' faces exactly like the attached artwork: each visor shows only its two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows, and the child's eyes are never reflected on the mother's visor. Their hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and both robots - the mother with the red knitted scarf and its small logo tag, the child with the blue scarf wrapped across its neck (no hanging ends) and blue shoes exactly where they are; only the poses change; the two robots stay in about the same area of the frame. Square 1:1, no text."
+   }
+  ]
+ },
+ "12": {
+  "title": "퍼즐 판",
+  "shots": [
+   {
+    "초": 1,
+    "연출": "마지막 조각을 빈칸으로 곧장 밀어 넣는다",
+    "지시": "Keyframe 12-t1. Edit THIS newly attached original artwork (not the previous result): the robot pushes the tilted sun-and-flowers tile straight into its empty cell - half of it is already in. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the puzzle board on its wooden stand (every tile the same size and filling its cell completely) and the pencil cup with its small logo exactly where they are; only the robot's pose and the last tile change. Square 1:1, no text."
+   },
+   {
+    "초": 2,
+    "연출": "조각이 딱 맞게 들어간다",
+    "지시": "Keyframe 12-t2. Edit THIS newly attached original artwork (not the previous result): the sun-and-flowers tile is now fully in its cell, flat and flush with the others; the board is complete. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the puzzle board on its wooden stand (every tile the same size and filling its cell completely) and the pencil cup with its small logo exactly where they are; only the robot's pose and the last tile change. Square 1:1, no text."
+   },
+   {
+    "초": 3,
+    "연출": "두 손으로 조각을 꾹 눌러 편다",
+    "지시": "Keyframe 12-t3. Edit THIS newly attached original artwork (not the previous result): the robot presses the new tile flat with both hands. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the puzzle board on its wooden stand (every tile the same size and filling its cell completely) and the pencil cup with its small logo exactly where they are; only the robot's pose and the last tile change. Square 1:1, no text."
+   },
+   {
+    "초": 4,
+    "연출": "한 걸음 물러나 완성된 판을 본다",
+    "지시": "Keyframe 12-t4. Edit THIS newly attached original artwork (not the previous result): the robot steps back a little and looks up at the completed board. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the puzzle board on its wooden stand (every tile the same size and filling its cell completely) and the pencil cup with its small logo exactly where they are; only the robot's pose and the last tile change. Square 1:1, no text."
+   },
+   {
+    "초": 5,
+    "연출": "손뼉을 친다",
+    "지시": "Keyframe 12-t5. Edit THIS newly attached original artwork (not the previous result): the robot claps its hands happily, eyes the same arc shape. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the puzzle board on its wooden stand (every tile the same size and filling its cell completely) and the pencil cup with its small logo exactly where they are; only the robot's pose and the last tile change. Square 1:1, no text."
+   },
+   {
+    "초": 6,
+    "연출": "완성된 로고를 가리킨다",
+    "지시": "Keyframe 12-t6. Edit THIS newly attached original artwork (not the previous result): the robot points at the big logo on the completed board. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the puzzle board on its wooden stand (every tile the same size and filling its cell completely) and the pencil cup with its small logo exactly where they are; only the robot's pose and the last tile change. Square 1:1, no text."
+   },
+   {
+    "초": 7,
+    "연출": "판 가장자리로 손을 가져간다",
+    "지시": "Keyframe 12-t7. Edit THIS newly attached original artwork (not the previous result): the robot brings its hands back toward the edge of the board. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the puzzle board on its wooden stand (every tile the same size and filling its cell completely) and the pencil cup with its small logo exactly where they are; only the robot's pose and the last tile change. Square 1:1, no text."
+   },
+   {
+    "초": 8,
+    "연출": "끝: 원화 자세 + 조각이 다 끼워진 판",
+    "지시": "Keyframe 12-end. Edit THIS newly attached original artwork (not the previous result): final frame: exactly the pose of the attached artwork, but the sun-and-flowers tile is fully in place, so the board is complete. Keep the robot's face exactly like the attached artwork: only two glowing orange arc eyes in the same arc shape - no mouth, no teeth, no tongue, no smile line, no eyebrows. Its hands have black fingers with black fingertips and one cream thumb. Keep the exact same composition, camera angle, framing, scale and position of everything, the same pure white background, lighting and colors, and the puzzle board on its wooden stand (every tile the same size and filling its cell completely) and the pencil cup with its small logo exactly where they are; only the robot's pose and the last tile change. Square 1:1, no text."
+   }
+  ]
+ }
+}
