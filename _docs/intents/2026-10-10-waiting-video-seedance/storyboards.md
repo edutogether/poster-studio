@@ -380,6 +380,8 @@ The shot itself never moves: the framing stays exactly as in the start image for
 | 7 | 원화처럼 젓는다 |
 | 8 | 원화(처음 자세로 돌아옴) |
 
+**만든 편** — 10/11 빠른 모드로 만듦(작업 80b85d90, 판 9) — 화면 고정·얼굴 눈만 통과, 김이 숟가락에서 올라 얼굴판 앞을 지남 → Bumm님 판정 대기. 아래는 만들 때 넣은 문장 그대로다.
+
 **Seedance 프롬프트 전문**
 
 ```text
