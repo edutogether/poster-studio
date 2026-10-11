@@ -183,27 +183,83 @@ SEED_FACE_08 = ('The face stays exactly as in the start image the whole time: th
 SEED_FACE_11 = ('Each visor shows only its two glowing orange arc eyes the whole time - no mouth, no teeth, no tongue, no smile line, no eyebrows, '
                 "and the child's eyes are never reflected on the mother's visor; while hugging the two faces never overlap; "
                 'hands have black fingers with black fingertips and one cream thumb.')
-SEEDANCE = {'모델': 'Seedance 2.0 (seedance_2_0)', 'mode': 'std', '해상도': '720p', '화면비': '1:1', '길이': '8초',
+SEEDANCE = {'모델': 'Seedance 2.0 (seedance_2_0)', 'mode': 'fast — 빠른 모드(10/11 Bumm님 결정, 한 편씩 승인)', '해상도': '720p', '화면비': '1:1', '길이': '8초',
             '소리': '없음(generate_audio false)', '시작 그림(start_image)': '원화', '끝 그림(end_image)': '원화(05·09·12는 끝 그림)',
             '참고 그림(image_references)': '넣지 않음 — 넣으면 시작·끝 그림이 참고 목록으로 합쳐져 첫·끝이 고정되지 않았다(10/10 08 시험). 중간 키프레임은 아래 초별 연출 글로 준다',
-            '크레딧': '36(std) · 빠른 모드(fast)면 20'}
+            '크레딧': '20(빠른 모드) — 보통 모드(std)면 36'}
 POST = ['결과 크기(10/10 시험은 960×960) → 704×704로 줄임(앱 자리와 같은 크기)',
         '24fps로 정확히 192프레임: 첫 프레임은 원화와 같은 장면이라 버리고 2~193번을 쓴다(10/10 시험 결과 193프레임). 모자라면 끝 프레임을 늘린다',
         '처음·끝 6프레임(0.25초)을 원화(05·09·12의 끝은 끝 그림)로 겹쳐 넘겨 첫·끝 프레임이 원화와 화소까지 같게 한다 — 앱이 원화 정지 화면에서 영상으로 넘어갈 때 튀지 않게',
         '검사: scripts/media/review-generated-video.py(192프레임·첫/끝 ΔE·키프레임 따르기·튐·깜박임·노이즈·색) + check-face-elements.py(08은 입 그대로) — 걸린 것은 프레임을 사람이 본다']
 
 
-def seedance_prompt(scene):
-    sc = SCENES[scene]
+# 품질 기준 — Bumm님이 만든 영상을 보고 짚은 것과 세션이 본 걱정을 쌓아, 다음 편부터 모든 편의 프롬프트에 미리 넣는다
+# (10/11 팀장 지시: «뒤로 갈수록 실패가 줄게»). 번호는 늘리기만 하고 지우지 않는다.
+QUALITY = [
+    ('Q1', '01 Bumm님(10/11)', '물건·색의 대응이 영상 내내 바뀌지 않는다 — 찍은 물감 색 = 붓끝 색 = 칠해지는 색(01에서 초록을 찍었는데 주황이 묻어났다)'),
+    ('Q2', '01 세션 관찰(10/11)', '배경 소품은 제자리에 못 박는다 — 미끄러지거나 기울거나 크기·모양이 바뀌지 않고, 그림 속 그림은 새로 칠한 자국 말고는 그대로(01에서 0.5초쯤 이젤·그림이 옮겨졌다)'),
+    ('Q3', '01 세션 관찰(10/11)', '닿는 동작은 닿는다고 쓴다 — 붓끝·연필 끝·손가락이 실제로 표면에 닿는다(01에서 붓이 캔버스에 거의 닿지 않았다)'),
+]
+QUALITY_EN = ('Every object keeps the same identity, color, size and position from the first frame to the last unless the robot itself picks it up and moves it; '
+              'colors never swap between objects, and nothing appears from nowhere or vanishes. The props are locked in place: they never slide, tilt, rotate, '
+              'resize, bend or get redrawn - only the robot moves.')
+# 편마다 Q1~Q3를 그 장면 말로 옮긴 것(색 대응·닿는 동작). 01·08은 이미 만들어 확정된 편이라 넣지 않는다.
+RULES = {
+    '02': ('The red pencil always has a red tip and only ever adds red to the red flower path; the blue pencil always has a blue tip and only ever adds blue to the blue sea. '
+           'The other pencils lying on the desk keep their own colors and exact positions, and a pencil the robot puts down stays exactly where it was put. '
+           'While coloring, the pencil tip visibly touches the drawing on the slanted board. No pencil flies, floats or appears from nowhere.'),
+    '03': ("The striped hinged stick stays attached to the clapperboard at its hinge the whole time and keeps its black-and-white stripe pattern; "
+           "when it snaps shut it visibly hits the board, and it opens again only because the robot's hand lifts it."),
+    '04': ("The poster stays the same size in the robot's hand and its picture never changes; when the robot points, its fingertip points right at the part of the poster named."),
+    '05': ('The red shoe always stays red and on the same hand, the blue shoe always stays blue and on the other hand. Each shoe visibly presses into the sand; '
+           'a shoe print appears only where a shoe pressed and then stays exactly there - the sand never sprays, rises or smooths over.'),
+    '06': ("The thin sculpting tool stays in the robot's right hand the whole time and the red clay letter stays red. The fingertip visibly presses the shutter button, "
+           "and the tool tip touches the red clay letter when shaping it. The tripod's three legs stay on the floor."),
+    '07': ('While playing, the fingertips press down on the keys and touch them - they never hover above the keyboard except at 5-6s; the black and white keys keep their order.'),
+    '09': ("There is only one water drop: it forms at the leaf tip, falls straight down and lands on the soil mound. The camera stays black, stays in the robot's hand "
+           "and never sprays or drips water."),
+    '10': ("The pot stays red and the spoon stays wooden; while stirring, the spoon's bowl stays inside the pot. The vegetables keep their colors and places on the board, "
+           "and the table stays solid wood, never transparent."),
+    '11': ('The mother always wears the red knitted scarf and the child always wears the blue scarf and blue shoes - they never swap or change color. '
+           'When they hold hands, their hands are clearly joined.'),
+    '12': ("Every tile keeps its own picture and stays in its own cell; the sun-and-flowers tile goes into the one empty cell and then stays there flush. "
+           "The robot's hands touch the tile when pushing and pressing it."),
+}
+MADE = {'01': '10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', '08': '10/10 시험 영상(작업 94360a13) — 확정'}
+
+
+def _timeline(sc):
     shots = dict((t, en) for t, _, en in sc['shots'])
     steps = ' '.join(f'{t - 1}-{t}s: {shots[t]}.' for t in range(1, 8))
     end = (f"7-8s: {shots[8].replace('final frame: ', '')} - this is the end image." if 8 in shots
            else '7-8s: the robot settles smoothly back into exactly the opening pose - this is the end image, identical to the start image.')
+    return steps, end
+
+
+def seedance_prompt_v1(scene):
+    """01·08을 만들 때 쓴 원래 문장 — 확정된 편의 기록이라 바꾸지 않는다."""
+    sc = SCENES[scene]
+    steps, end = _timeline(sc)
     face = SEED_FACE_08 if scene == '08' else SEED_FACE_11 if scene == '11' else SEED_FACE
     return ('8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. '
             'The first frame is exactly the start image and the last frame is exactly the end image. '
             f"Same robot design, materials, colors and lighting throughout; {sc['keep']} stay exactly as they are. "
             f'Timeline - {steps} {end} {face} '
+            'Smooth, natural, continuous motion; no morphing, no teleporting, no reverse playback, no back-and-forth looping, '
+            'no camera movement or shake, no frozen frames, no added text or logos. No audio.')
+
+
+def seedance_prompt(scene):
+    """품질 기준(QUALITY)을 넣은 문장. 이미 만든 편(MADE)은 만들 때의 문장을 그대로 돌려준다."""
+    if scene in MADE: return seedance_prompt_v1(scene)
+    sc = SCENES[scene]
+    steps, end = _timeline(sc)
+    steps = steps.replace('the attached artwork', 'the start image')  # 영상 모델에는 «첨부한 원화»가 아니라 시작 그림이다
+    face = SEED_FACE_11 if scene == '11' else SEED_FACE
+    return ('8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. '
+            'The first frame is exactly the start image and the last frame is exactly the end image. '
+            f"Same robot design, materials, colors and lighting throughout; {sc['keep']} stay exactly as they are. {QUALITY_EN} "
+            f'Timeline - {steps} {end} {RULES[scene]} {face} '
             'Smooth, natural, continuous motion; no morphing, no teleporting, no reverse playback, no back-and-forth looping, '
             'no camera movement or shake, no frozen frames, no added text or logos. No audio.')
 
@@ -273,13 +329,16 @@ def storyboards(path):
              '> 이 문서는 `keyframe-plan.py`가 만든다 — 고칠 때는 그 파일을 고치고 다시 돌린다. 그림·수치는 검토 페이지 «⑥ 키프레임»에 있다.', '',
              '## 공통 설정', '', '| 항목 | 값 |', '|---|---|'] + [f'| {k} | {v} |' for k, v in SEEDANCE.items()] + [
              '', '## 뒤처리(0원, 편마다 똑같이)', ''] + [f'{i}. {p}' for i, p in enumerate(POST, 1)] + [
-             '', '## 크레딧', '', '- std 36 × 12편 = 432 · fast 20 × 12편 = 240 (08은 시험 영상이 이미 있음 — 다시 만들면 포함)',
+             '', '## 품질 기준(만든 영상에서 짚은 것 — 다음 편부터 모든 프롬프트에 미리 넣는다)', ''] + [f'- **{q}** ({src}) {txt}' for q, src, txt in QUALITY] + [
+             '', '영어로 모든 편에 붙는 문장(만든 편 01·08 제외):', '', '```text', QUALITY_EN, '```', '',
+             '## 크레딧', '', '- std 36 × 12편 = 432 · fast 20 × 12편 = 240 (08은 시험 영상이 이미 있음 — 다시 만들면 포함)',
              '- 영상 생성은 편마다 이 칸을 Bumm님께 보여 드리고 «해»를 받은 뒤에만 한다(10/10).', '']
     for sc in sorted(SCENES):
         v = SCENES[sc]
         lines += [f"## {sc} {v['title']}", '', f'**시나리오** — {SCENARIO[sc]}', '', '| 초 | 연출(키프레임) |', '|---|---|', '| 0 | 원화 |']
         lines += [f'| {t if t < 8 else "8(끝)"} | {ko} |' for t, ko, _ in v['shots']]
         if all(t < 8 for t, _, _ in v['shots']): lines.append('| 8 | 원화(처음 자세로 돌아옴) |')
+        if sc in MADE: lines += ['', f'**만든 편** — {MADE[sc]}. 아래는 만들 때 넣은 문장 그대로다.']
         lines += ['', '**Seedance 프롬프트 전문**', '', '```text', seedance_prompt(sc), '```', '']
         if sc != '08':
             lines += ['<details><summary>키프레임 그림 지시문(ChatGPT, 원화를 매번 첨부)</summary>', '']
