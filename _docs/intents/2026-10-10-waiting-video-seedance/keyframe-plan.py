@@ -203,11 +203,12 @@ QUALITY = [
     ('Q4', '02 Bumm님(10/11)', '도구·물건의 생김새가 실제와 맞는다 — 연필은 한쪽만 깎이고 반대쪽은 뭉툭, 붓·국자·조각칼은 손잡이와 날·끝이 한쪽씩(02에서 연필이 앞뒤 양쪽 다 깎여 있었다)'),
     ('Q5', '04 세션 관찰(10/11)', '감정이 큰 순간(신남·기쁨·놀람·웃음)에도 얼굴판은 주황 눈 두 개뿐 — 그 초 연출 문장 안에 «eyes only, no mouth»를 다시 쓴다(04에서 신나서 팔을 드는 3.0~4.75초에 분홍 입이 생겼고, 얼굴 검사 도구는 1프레임만 잡았다)'),
     ('Q6', '05 Bumm님(10/11)', '물건의 세부가 사라지지 않는다 — 끈·바느질·단추·줄무늬·작은 로고·무늬가 영상 중에 지워지거나 뭉개지지 않는다(05에서 신발끈이 다 사라짐)'),
-    ('Q7', '05 Bumm님(10/11)', '흔적은 실제처럼 — 발자국은 걷는 순서대로 왼발·오른발 번갈아, 신발 바닥 모양으로, 밟은 그 자리에. 붓 자국·물자국·김도 생긴 자리와 순서가 실제와 같다(05는 모양·위치가 어색). + 09 Bumm님(10/11): 물·흔적은 작게, 시작 그림과 끝 그림이 이어지게 — 끝에 남는 흔적 없음(09 다시 만든 판에서 물이 흘러 바닥 웅덩이가 끝까지 남았다)'),
+    ('Q7', '05 Bumm님(10/11)', '흔적은 실제처럼 — 발자국은 걷는 순서대로 왼발·오른발 번갈아, 신발 바닥 모양으로, 밟은 그 자리에. 붓 자국·물자국·김도 생긴 자리와 순서가 실제와 같다(05는 모양·위치가 어색). + 09 Bumm님(10/11): 물·흔적은 작게, 시작 그림과 끝 그림이 이어지게 — 끝에 남는 흔적 없음(09 다시 만든 판에서 물이 흘러 바닥 웅덩이가 끝까지 남았다). + 10 Bumm님(10/11): 흔적·효과는 정해진 자리에서만 — 김은 냄비 위에서만(10은 들어 올린 숟가락에서 김이 올라 얼굴판 앞을 지났다)'),
     ('Q8', '06 Bumm님(10/11)', '동작은 또렷하고 생기 있게 — 각 동작을 크게·분명히, 기뻐할 때는 몸 전체로. 단 소품 고정·얼굴 규칙은 그대로(06은 오류는 제일 없었지만 행동이 밋밋했다)'),
     ('Q9', '07 Bumm님(10/11)', '반복 동작은 위치를 바꿔 가며 — 같은 곳을 되풀이하지 않는다(07은 너무 같은 건반만 쳤다)'),
     ('Q10', '07 Bumm님(10/11)', '눈에 띄는 동작은 영상 뒷부분에 — 끝까지 볼거리가 있게(07의 악보 넘기기 같은 큰 동작을 뒤로)'),
     ('Q12', '09 세션 관찰(10/11)', '감정이 큰 순간 바로 다음 초(풀리기·손 흔들기)에도 얼굴 규칙을 다시 쓴다(09에서 놀란 뒤 풀리는 6.25~7.4초에 웃는 입이 생겼다)'),
+    ('Q13', '11 Bumm님(10/11)', '두 캐릭터가 가까이 있거나 안을 때도 머리·얼굴판은 맞닿거나 겹치지 않는다 — 두 얼굴 사이에 늘 빈틈(11은 안은 채 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿아 눈빛이 겹쳐 보였다)'),
 ]
 QUALITY_EN = ('Every object keeps the same identity, color, size and position from the first frame to the last unless the robot itself picks it up and moves it; '
               'colors never swap between objects, and nothing appears from nowhere or vanishes. The props are locked in place: they never slide, tilt, rotate, '
@@ -278,6 +279,8 @@ QUALITY_EN_Q11 = ('The shot itself never moves: the framing stays exactly as in 
                   'no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size.')
 QUALITY_EN_Q7B = ('Water, marks and traces stay small and subtle - a drop makes only a tiny damp spot, never a stream, puddle or spreading stain. '
                   'Nothing extra is left at the end: the last frame matches the end image exactly, with no leftover water, stain or mark that is not in the end image.')
+QUALITY_EN_V10 = ('Effects such as steam appear only from their stated source and never drift in front of a face. '
+                  'When two characters are close or hugging, their heads and visors never touch or overlap - a clear gap always stays between the two faces.')
 QUALITY_EN_Q67 = ('Small details never disappear or blur away: laces, stitching, seams, buttons, stripes, patterns and small printed logos on the props '
                   'stay exactly as in the start image the whole time. Every mark or trace the robot leaves looks real: it appears only at the exact spot that was touched, '
                   'in the order the touches happen, with the real shape of what made it, and then stays put.')
@@ -333,7 +336,7 @@ RULES = {
     '12': ("Every tile keeps its own picture and stays in its own cell; the sun-and-flowers tile goes into the one empty cell and then stays there flush. "
            "The robot's hands touch the tile when pushing and pressing it."),
 }
-# 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4, 4 = Q1~Q5, 5 = Q1~Q7, 6 = Q1~Q8, 7 = Q1~Q10, 8 = Q1~Q12, 9 = Q1~Q12 + Q7 보강(작은 흔적·끝에 남는 것 없음).
+# 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4, 4 = Q1~Q5, 5 = Q1~Q7, 6 = Q1~Q8, 7 = Q1~Q10, 8 = Q1~Q12, 9 = Q1~Q12 + Q7 보강(작은 흔적·끝에 남는 것 없음), 10 = 9 + Q7 효과 자리·Q13 얼굴판 맞닿음 없음.
 MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', 1),
         '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
         '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK, 그대로 확정', 3),
@@ -342,8 +345,8 @@ MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, �
         '06': ('10/11 빠른 모드로 만듦(작업 9be79fcb) — Bumm님 통과(«오류는 제일 없다»), 행동이 밋밋함 → Q8', 5),
         '07': ('10/11 빠른 모드로 만듦(작업 50b9a0fd) — Bumm님 통과(«지금까지 중 제일 낫다»), 같은 건반만 침·큰 동작을 뒤로 → Q9·Q10', 6),
         '09': ('10/11 빠른 모드로 만듦(작업 e5bdd295, 판 7) — 1~6.5초 화면이 확대됨(세션 문장 «camera closer» 탓)·6.25~7.4초 입 → Q11·Q12, Bumm님 «다시 만들기». 다시 만듦(작업 7d6594eb, 판 8) — Bumm님 통과, 확정(화면 고정 통과. 5.0~6.4초 작은 «오» 입·물이 흘러 바닥 웅덩이 → Q7 보강)', 8),
-        '10': ('10/11 빠른 모드로 만듦(작업 80b85d90, 판 9) — 화면 고정·얼굴 눈만 통과, 김이 숟가락에서 올라 얼굴판 앞을 지남 → Bumm님 판정 대기', 9),
-        '11': ('10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Bumm님 판정 대기', 9),
+        '10': ('10/11 빠른 모드로 만듦(작업 80b85d90, 판 9) — Bumm님 통과, 확정(화면 고정·얼굴 눈만. 김이 숟가락에서 올라 얼굴판 앞을 지남 → Q7 보강)', 9),
+        '11': ('10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, Bumm님 통과, 확정(화면 고정·얼굴 눈만. 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Q13)', 9),
         '12': ('10/11 빠른 모드로 만듦(작업 db76d612, 판 9) — 화면 고정·얼굴 눈만, 끝 장면이 끝 그림과 다름(판에서 떨어져 섬) → Bumm님 판정 대기', 9),
         '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
@@ -370,8 +373,8 @@ def seedance_prompt_v1(scene):
 
 
 def seedance_prompt(scene, version=None):
-    """품질 기준을 넣은 문장. 판(version)을 주지 않으면 이미 만든 편은 만들 때의 판, 나머지는 최신 판(9 = Q1~Q12 + Q7 보강)."""
-    if version is None: version = MADE[scene][1] if scene in MADE else 9
+    """품질 기준을 넣은 문장. 판(version)을 주지 않으면 이미 만든 편은 만들 때의 판, 나머지는 최신 판(10 = Q1~Q13 + Q7 보강)."""
+    if version is None: version = MADE[scene][1] if scene in MADE else 10
     if version == 1: return seedance_prompt_v1(scene)
     sc = SCENES[scene]
     steps, end = _timeline(sc)
@@ -394,7 +397,7 @@ def seedance_prompt(scene, version=None):
         parts = [re.sub(r'\.$', EMO_FACE + '.', st) if h else st for st, h in zip(parts, hit)]
         steps, end = ' '.join(parts[:-1]), parts[-1]
     face = SEED_FACE_11 if scene == '11' else SEED_FACE
-    quality = (QUALITY_EN_Q11 + ' ' if version >= 8 else '') + QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '') + (' ' + QUALITY_EN_Q67 if version >= 5 else '') + (' ' + QUALITY_EN_Q7B if version >= 9 else '') + (' ' + QUALITY_EN_Q8 if version >= 6 else '') + (' ' + QUALITY_EN_Q910 if version >= 7 else '')  # Q11(화면 고정)은 가장 중요해 맨 앞
+    quality = (QUALITY_EN_Q11 + ' ' if version >= 8 else '') + QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '') + (' ' + QUALITY_EN_Q67 if version >= 5 else '') + (' ' + QUALITY_EN_Q7B if version >= 9 else '') + (' ' + QUALITY_EN_V10 if version >= 10 else '') + (' ' + QUALITY_EN_Q8 if version >= 6 else '') + (' ' + QUALITY_EN_Q910 if version >= 7 else '')  # Q11(화면 고정)은 가장 중요해 맨 앞
     rules = RULES[scene] + (' ' + TOOLS[scene] if version >= 3 else '') + (' ' + DETAILS[scene] if version >= 5 and scene in DETAILS else '')
     if version >= 8:
         for a, b in PROP_WORDS_V8.get(scene, []):
@@ -474,7 +477,7 @@ def storyboards(path):
              '## 공통 설정', '', '| 항목 | 값 |', '|---|---|'] + [f'| {k} | {v} |' for k, v in SEEDANCE.items()] + [
              '', '## 뒤처리(0원, 편마다 똑같이)', ''] + [f'{i}. {p}' for i, p in enumerate(POST, 1)] + [
              '', '## 품질 기준(만든 영상에서 짚은 것 — 다음 편부터 모든 프롬프트에 미리 넣는다)', ''] + [f'- **{q}** ({src}) {txt}' for q, src, txt in QUALITY] + [
-             '', '영어로 아직 안 만든 편에 붙는 문장(맨 앞 Q11, 이어서 Q1~Q4·Q6~Q10·Q7 보강, Q5는 감정이 큰 초마다·Q12는 그 다음 초에도 «eyes only, no mouth»):', '', '```text', QUALITY_EN_Q11 + ' ' + QUALITY_EN + ' ' + QUALITY_EN_Q4 + ' ' + QUALITY_EN_Q67 + ' ' + QUALITY_EN_Q7B + ' ' + QUALITY_EN_Q8 + ' ' + QUALITY_EN_Q910, '```', '',
+             '', '영어로 아직 안 만든 편에 붙는 문장(맨 앞 Q11, 이어서 Q1~Q4·Q6~Q10·Q7 보강·Q13, Q5는 감정이 큰 초마다·Q12는 그 다음 초에도 «eyes only, no mouth»):', '', '```text', QUALITY_EN_Q11 + ' ' + QUALITY_EN + ' ' + QUALITY_EN_Q4 + ' ' + QUALITY_EN_Q67 + ' ' + QUALITY_EN_Q7B + ' ' + QUALITY_EN_V10 + ' ' + QUALITY_EN_Q8 + ' ' + QUALITY_EN_Q910, '```', '',
              '## 크레딧', '', '- std 36 × 12편 = 432 · fast 20 × 12편 = 240 (08은 시험 영상이 이미 있음 — 다시 만들면 포함)',
              '- 영상 생성은 편마다 이 칸을 Bumm님께 보여 드리고 «해»를 받은 뒤에만 한다(10/10).', '']
     for sc in sorted(SCENES):

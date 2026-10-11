@@ -33,16 +33,17 @@
 - **Q4** (02 Bumm님(10/11)) 도구·물건의 생김새가 실제와 맞는다 — 연필은 한쪽만 깎이고 반대쪽은 뭉툭, 붓·국자·조각칼은 손잡이와 날·끝이 한쪽씩(02에서 연필이 앞뒤 양쪽 다 깎여 있었다)
 - **Q5** (04 세션 관찰(10/11)) 감정이 큰 순간(신남·기쁨·놀람·웃음)에도 얼굴판은 주황 눈 두 개뿐 — 그 초 연출 문장 안에 «eyes only, no mouth»를 다시 쓴다(04에서 신나서 팔을 드는 3.0~4.75초에 분홍 입이 생겼고, 얼굴 검사 도구는 1프레임만 잡았다)
 - **Q6** (05 Bumm님(10/11)) 물건의 세부가 사라지지 않는다 — 끈·바느질·단추·줄무늬·작은 로고·무늬가 영상 중에 지워지거나 뭉개지지 않는다(05에서 신발끈이 다 사라짐)
-- **Q7** (05 Bumm님(10/11)) 흔적은 실제처럼 — 발자국은 걷는 순서대로 왼발·오른발 번갈아, 신발 바닥 모양으로, 밟은 그 자리에. 붓 자국·물자국·김도 생긴 자리와 순서가 실제와 같다(05는 모양·위치가 어색). + 09 Bumm님(10/11): 물·흔적은 작게, 시작 그림과 끝 그림이 이어지게 — 끝에 남는 흔적 없음(09 다시 만든 판에서 물이 흘러 바닥 웅덩이가 끝까지 남았다)
+- **Q7** (05 Bumm님(10/11)) 흔적은 실제처럼 — 발자국은 걷는 순서대로 왼발·오른발 번갈아, 신발 바닥 모양으로, 밟은 그 자리에. 붓 자국·물자국·김도 생긴 자리와 순서가 실제와 같다(05는 모양·위치가 어색). + 09 Bumm님(10/11): 물·흔적은 작게, 시작 그림과 끝 그림이 이어지게 — 끝에 남는 흔적 없음(09 다시 만든 판에서 물이 흘러 바닥 웅덩이가 끝까지 남았다). + 10 Bumm님(10/11): 흔적·효과는 정해진 자리에서만 — 김은 냄비 위에서만(10은 들어 올린 숟가락에서 김이 올라 얼굴판 앞을 지났다)
 - **Q8** (06 Bumm님(10/11)) 동작은 또렷하고 생기 있게 — 각 동작을 크게·분명히, 기뻐할 때는 몸 전체로. 단 소품 고정·얼굴 규칙은 그대로(06은 오류는 제일 없었지만 행동이 밋밋했다)
 - **Q9** (07 Bumm님(10/11)) 반복 동작은 위치를 바꿔 가며 — 같은 곳을 되풀이하지 않는다(07은 너무 같은 건반만 쳤다)
 - **Q10** (07 Bumm님(10/11)) 눈에 띄는 동작은 영상 뒷부분에 — 끝까지 볼거리가 있게(07의 악보 넘기기 같은 큰 동작을 뒤로)
 - **Q12** (09 세션 관찰(10/11)) 감정이 큰 순간 바로 다음 초(풀리기·손 흔들기)에도 얼굴 규칙을 다시 쓴다(09에서 놀란 뒤 풀리는 6.25~7.4초에 웃는 입이 생겼다)
+- **Q13** (11 Bumm님(10/11)) 두 캐릭터가 가까이 있거나 안을 때도 머리·얼굴판은 맞닿거나 겹치지 않는다 — 두 얼굴 사이에 늘 빈틈(11은 안은 채 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿아 눈빛이 겹쳐 보였다)
 
-영어로 아직 안 만든 편에 붙는 문장(맨 앞 Q11, 이어서 Q1~Q4·Q6~Q10·Q7 보강, Q5는 감정이 큰 초마다·Q12는 그 다음 초에도 «eyes only, no mouth»):
+영어로 아직 안 만든 편에 붙는 문장(맨 앞 Q11, 이어서 Q1~Q4·Q6~Q10·Q7 보강·Q13, Q5는 감정이 큰 초마다·Q12는 그 다음 초에도 «eyes only, no mouth»):
 
 ```text
-The shot itself never moves: the framing stays exactly as in the start image for all 8 seconds - no zoom, no push-in, no close-up, no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size. Every object keeps the same identity, color, size and position from the first frame to the last unless the robot itself picks it up and moves it; colors never swap between objects, and nothing appears from nowhere or vanishes. The props are locked in place: they never slide, tilt, rotate, resize, bend or get redrawn - only the robot moves. Every tool and object has its real, correct shape the whole time: one working end and one handle end - never two tips, mirrored ends, extra parts or duplicated pieces. Small details never disappear or blur away: laces, stitching, seams, buttons, stripes, patterns and small printed logos on the props stay exactly as in the start image the whole time. Every mark or trace the robot leaves looks real: it appears only at the exact spot that was touched, in the order the touches happen, with the real shape of what made it, and then stays put. Water, marks and traces stay small and subtle - a drop makes only a tiny damp spot, never a stream, puddle or spreading stain. Nothing extra is left at the end: the last frame matches the end image exactly, with no leftover water, stain or mark that is not in the end image. The acting is lively and clear, like a lovable animated character: every action is big, readable and full of energy, with clear anticipation and follow-through; when the robot is happy or excited it moves its whole body - shoulders, torso, head and arms together. The props still stay locked in place and the face rule still holds. Repeated actions never happen in exactly the same spot - each repetition moves to a clearly different place. The most eye-catching moment comes in the second half of the clip, so there is something new to watch until the very end.
+The shot itself never moves: the framing stays exactly as in the start image for all 8 seconds - no zoom, no push-in, no close-up, no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size. Every object keeps the same identity, color, size and position from the first frame to the last unless the robot itself picks it up and moves it; colors never swap between objects, and nothing appears from nowhere or vanishes. The props are locked in place: they never slide, tilt, rotate, resize, bend or get redrawn - only the robot moves. Every tool and object has its real, correct shape the whole time: one working end and one handle end - never two tips, mirrored ends, extra parts or duplicated pieces. Small details never disappear or blur away: laces, stitching, seams, buttons, stripes, patterns and small printed logos on the props stay exactly as in the start image the whole time. Every mark or trace the robot leaves looks real: it appears only at the exact spot that was touched, in the order the touches happen, with the real shape of what made it, and then stays put. Water, marks and traces stay small and subtle - a drop makes only a tiny damp spot, never a stream, puddle or spreading stain. Nothing extra is left at the end: the last frame matches the end image exactly, with no leftover water, stain or mark that is not in the end image. Effects such as steam appear only from their stated source and never drift in front of a face. When two characters are close or hugging, their heads and visors never touch or overlap - a clear gap always stays between the two faces. The acting is lively and clear, like a lovable animated character: every action is big, readable and full of energy, with clear anticipation and follow-through; when the robot is happy or excited it moves its whole body - shoulders, torso, head and arms together. The props still stay locked in place and the face rule still holds. Repeated actions never happen in exactly the same spot - each repetition moves to a clearly different place. The most eye-catching moment comes in the second half of the clip, so there is something new to watch until the very end.
 ```
 
 ## 크레딧
@@ -380,7 +381,7 @@ The shot itself never moves: the framing stays exactly as in the start image for
 | 7 | 원화처럼 젓는다 |
 | 8 | 원화(처음 자세로 돌아옴) |
 
-**만든 편** — 10/11 빠른 모드로 만듦(작업 80b85d90, 판 9) — 화면 고정·얼굴 눈만 통과, 김이 숟가락에서 올라 얼굴판 앞을 지남 → Bumm님 판정 대기. 아래는 만들 때 넣은 문장 그대로다.
+**만든 편** — 10/11 빠른 모드로 만듦(작업 80b85d90, 판 9) — Bumm님 통과, 확정(화면 고정·얼굴 눈만. 김이 숟가락에서 올라 얼굴판 앞을 지남 → Q7 보강). 아래는 만들 때 넣은 문장 그대로다.
 
 **Seedance 프롬프트 전문**
 
@@ -416,7 +417,7 @@ The shot itself never moves: the framing stays exactly as in the start image for
 | 7 | 다시 손잡고 걷기 시작한다 |
 | 8 | 원화(처음 자세로 돌아옴) |
 
-**만든 편** — 10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Bumm님 판정 대기. 아래는 만들 때 넣은 문장 그대로다.
+**만든 편** — 10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, Bumm님 통과, 확정(화면 고정·얼굴 눈만. 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Q13). 아래는 만들 때 넣은 문장 그대로다.
 
 **Seedance 프롬프트 전문**
 
