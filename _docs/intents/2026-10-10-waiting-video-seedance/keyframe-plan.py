@@ -201,12 +201,29 @@ QUALITY = [
     ('Q3', '01 세션 관찰(10/11)', '닿는 동작은 닿는다고 쓴다 — 붓끝·연필 끝·손가락이 실제로 표면에 닿는다(01에서 붓이 캔버스에 거의 닿지 않았다)'),
     ('Q4', '02 Bumm님(10/11)', '도구·물건의 생김새가 실제와 맞는다 — 연필은 한쪽만 깎이고 반대쪽은 뭉툭, 붓·국자·조각칼은 손잡이와 날·끝이 한쪽씩(02에서 연필이 앞뒤 양쪽 다 깎여 있었다)'),
     ('Q5', '04 세션 관찰(10/11)', '감정이 큰 순간(신남·기쁨·놀람·웃음)에도 얼굴판은 주황 눈 두 개뿐 — 그 초 연출 문장 안에 «eyes only, no mouth»를 다시 쓴다(04에서 신나서 팔을 드는 3.0~4.75초에 분홍 입이 생겼고, 얼굴 검사 도구는 1프레임만 잡았다)'),
+    ('Q6', '05 Bumm님(10/11)', '물건의 세부가 사라지지 않는다 — 끈·바느질·단추·줄무늬·작은 로고·무늬가 영상 중에 지워지거나 뭉개지지 않는다(05에서 신발끈이 다 사라짐)'),
+    ('Q7', '05 Bumm님(10/11)', '흔적은 실제처럼 — 발자국은 걷는 순서대로 왼발·오른발 번갈아, 신발 바닥 모양으로, 밟은 그 자리에. 붓 자국·물자국·김도 생긴 자리와 순서가 실제와 같다(05는 모양·위치가 어색)'),
 ]
 QUALITY_EN = ('Every object keeps the same identity, color, size and position from the first frame to the last unless the robot itself picks it up and moves it; '
               'colors never swap between objects, and nothing appears from nowhere or vanishes. The props are locked in place: they never slide, tilt, rotate, '
               'resize, bend or get redrawn - only the robot moves.')
 QUALITY_EN_Q4 = ('Every tool and object has its real, correct shape the whole time: one working end and one handle end - never two tips, '
                  'mirrored ends, extra parts or duplicated pieces.')
+QUALITY_EN_Q67 = ('Small details never disappear or blur away: laces, stitching, seams, buttons, stripes, patterns and small printed logos on the props '
+                  'stay exactly as in the start image the whole time. Every mark or trace the robot leaves looks real: it appears only at the exact spot that was touched, '
+                  'in the order the touches happen, with the real shape of what made it, and then stays put.')
+# Q6·Q7을 편마다 그 편의 세부·흔적 말로 옮긴 것(05 Bumm님 지적 뒤, 06부터).
+DETAILS = {
+    '06': ('The clay logo keeps every letter and its colors; the red clay letter changes only a little where the tool tip touches it. '
+           "The photo on the camera's rear screen shows the clay logo exactly as it stands on the table."),
+    '07': 'The sheet music keeps its printed notes; the piano keeps its wood grain and pedals; the bench keeps its cushion.',
+    '09': ('The backpack keeps its straps, zipper and stitching. The single falling water drop leaves one small wet dark spot exactly where it lands on the soil, '
+           'and the leaf tip is dry after the drop has fallen.'),
+    '10': ('The apron keeps its small logo and stitching; the vegetables keep their leaves and shapes. The steam rises only from the open top of the pot '
+           'and fades upward - it never comes from anywhere else.'),
+    '11': 'The knitted scarves keep their knit pattern and the small logo tag; the shoes keep their laces and stitching.',
+    '12': 'Every tile keeps its own printed picture and the board keeps its frame; the pencil cup keeps its small logo.',
+}
 # Q5: 이 낱말이 든 초(감정이 큰 순간)에는 얼굴 규칙을 그 문장 끝에 다시 붙인다.
 EMO = re.compile(r'excited|happ|pleased|startled|joy|laugh|chuckl|claps|bounc|delight|smil', re.I)
 EMO_FACE = ' - its visor still shows only the two glowing orange arc eyes, no mouth and no smile'
@@ -247,11 +264,12 @@ RULES = {
     '12': ("Every tile keeps its own picture and stays in its own cell; the sun-and-flowers tile goes into the one empty cell and then stays there flush. "
            "The robot's hands touch the tile when pushing and pressing it."),
 }
-# 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4, 4 = Q1~Q5.
+# 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4, 4 = Q1~Q5, 5 = Q1~Q7.
 MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', 1),
         '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
         '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK, 그대로 확정', 3),
         '04': ('10/11 빠른 모드로 만듦(작업 022b63ac) — 3.0~4.75초 입 생김 → Q5 넣어 새로 만들 것(Bumm님 10/11, 다시 만들기는 끝에 몰아서 승인)', 3),
+        '05': ('10/11 빠른 모드로 만듦(작업 f5f6055b) — Bumm님 통과(시간 때문에 그대로). 신발끈이 사라짐·발자국 모양·위치 어색 → 여유 있으면 새로 만들 후보', 4),
         '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
 
@@ -278,17 +296,18 @@ def seedance_prompt_v1(scene):
 
 def seedance_prompt(scene, version=None):
     """품질 기준을 넣은 문장. 판(version)을 주지 않으면 이미 만든 편은 만들 때의 판, 나머지는 최신 판(3 = Q1~Q4)."""
-    if version is None: version = MADE[scene][1] if scene in MADE else 4
+    if version is None: version = MADE[scene][1] if scene in MADE else 5
     if version == 1: return seedance_prompt_v1(scene)
     sc = SCENES[scene]
     steps, end = _timeline(sc)
     steps = steps.replace('the attached artwork', 'the start image')  # 영상 모델에는 «첨부한 원화»가 아니라 시작 그림이다
     if version >= 4: end = end.replace('the attached artwork', 'the start image')
+    if version >= 5: steps = steps.replace('as in the artwork', 'as in the start image')
     if version >= 4:  # Q5: 감정이 큰 초마다 얼굴 규칙을 그 자리에서 다시 말한다
         steps = ' '.join(re.sub(r'\.$', EMO_FACE + '.', st) if EMO.search(st) else st for st in re.split(r'(?<=\.) (?=\d-\ds:)', steps))
     face = SEED_FACE_11 if scene == '11' else SEED_FACE
-    quality = QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '')
-    rules = RULES[scene] + (' ' + TOOLS[scene] if version >= 3 else '')
+    quality = QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '') + (' ' + QUALITY_EN_Q67 if version >= 5 else '')
+    rules = RULES[scene] + (' ' + TOOLS[scene] if version >= 3 else '') + (' ' + DETAILS[scene] if version >= 5 and scene in DETAILS else '')
     return ('8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. '
             'The first frame is exactly the start image and the last frame is exactly the end image. '
             f"Same robot design, materials, colors and lighting throughout; {sc['keep']} stay exactly as they are. {quality} "
@@ -363,7 +382,7 @@ def storyboards(path):
              '## 공통 설정', '', '| 항목 | 값 |', '|---|---|'] + [f'| {k} | {v} |' for k, v in SEEDANCE.items()] + [
              '', '## 뒤처리(0원, 편마다 똑같이)', ''] + [f'{i}. {p}' for i, p in enumerate(POST, 1)] + [
              '', '## 품질 기준(만든 영상에서 짚은 것 — 다음 편부터 모든 프롬프트에 미리 넣는다)', ''] + [f'- **{q}** ({src}) {txt}' for q, src, txt in QUALITY] + [
-             '', '영어로 아직 안 만든 편에 붙는 문장(Q1~Q4, Q5는 감정이 큰 초마다 «eyes only, no mouth»):', '', '```text', QUALITY_EN + ' ' + QUALITY_EN_Q4, '```', '',
+             '', '영어로 아직 안 만든 편에 붙는 문장(Q1~Q4·Q6·Q7, Q5는 감정이 큰 초마다 «eyes only, no mouth»):', '', '```text', QUALITY_EN + ' ' + QUALITY_EN_Q4 + ' ' + QUALITY_EN_Q67, '```', '',
              '## 크레딧', '', '- std 36 × 12편 = 432 · fast 20 × 12편 = 240 (08은 시험 영상이 이미 있음 — 다시 만들면 포함)',
              '- 영상 생성은 편마다 이 칸을 Bumm님께 보여 드리고 «해»를 받은 뒤에만 한다(10/10).', '']
     for sc in sorted(SCENES):
