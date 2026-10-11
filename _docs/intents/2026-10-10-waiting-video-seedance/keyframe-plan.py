@@ -199,10 +199,28 @@ QUALITY = [
     ('Q1', '01 Bumm님(10/11)', '물건·색의 대응이 영상 내내 바뀌지 않는다 — 찍은 물감 색 = 붓끝 색 = 칠해지는 색(01에서 초록을 찍었는데 주황이 묻어났다)'),
     ('Q2', '01 세션 관찰(10/11)', '배경 소품은 제자리에 못 박는다 — 미끄러지거나 기울거나 크기·모양이 바뀌지 않고, 그림 속 그림은 새로 칠한 자국 말고는 그대로(01에서 0.5초쯤 이젤·그림이 옮겨졌다)'),
     ('Q3', '01 세션 관찰(10/11)', '닿는 동작은 닿는다고 쓴다 — 붓끝·연필 끝·손가락이 실제로 표면에 닿는다(01에서 붓이 캔버스에 거의 닿지 않았다)'),
+    ('Q4', '02 Bumm님(10/11)', '도구·물건의 생김새가 실제와 맞는다 — 연필은 한쪽만 깎이고 반대쪽은 뭉툭, 붓·국자·조각칼은 손잡이와 날·끝이 한쪽씩(02에서 연필이 앞뒤 양쪽 다 깎여 있었다)'),
 ]
 QUALITY_EN = ('Every object keeps the same identity, color, size and position from the first frame to the last unless the robot itself picks it up and moves it; '
               'colors never swap between objects, and nothing appears from nowhere or vanishes. The props are locked in place: they never slide, tilt, rotate, '
               'resize, bend or get redrawn - only the robot moves.')
+QUALITY_EN_Q4 = ('Every tool and object has its real, correct shape the whole time: one working end and one handle end - never two tips, '
+                 'mirrored ends, extra parts or duplicated pieces.')
+# Q4를 편마다 그 편의 도구 말로 옮긴 것(02 Bumm님 지적 뒤, 03부터).
+TOOLS = {
+    '03': 'The clapperboard is one board with a single hinged striped stick on top - one hinge, one stick, never two.',
+    '04': 'The poster is one flat printed sheet; the robot has one pointing finger per hand and normal hands.',
+    '05': 'Each slip-on shoe has one heel opening and one toe, a real shoe shape with no laces; the recorder has one microphone on top of one tripod.',
+    '06': ('The thin sculpting tool has a handle at one end and a small shaping tip at the other end only. The camera has one lens on the front, '
+           'one shutter button on top and one rear screen; the tripod has exactly three legs.'),
+    '07': 'The piano has one keyboard whose black keys come in the normal groups of two and three; the bench is one bench.',
+    '09': 'The small black action camera has one lens on its front; the sprout has the same leaves as in the start image.',
+    '10': ('The wooden spoon has one bowl at one end and a handle at the other; the knife, if seen, has one blade and one handle; '
+           'the red pot has one lid edge and its two side handles.'),
+    '11': 'Each scarf is one continuous piece; each robot has two arms, two hands and two feet.',
+    '12': ('Every tile is one square tile filling one cell; the pencils in the pencil cup are each sharpened at one end only, '
+           'with the sharpened tips pointing up out of the cup.'),
+}
 # 편마다 Q1~Q3를 그 장면 말로 옮긴 것(색 대응·닿는 동작). 01·08은 이미 만들어 확정된 편이라 넣지 않는다.
 RULES = {
     '02': ('The red pencil always has a red tip and only ever adds red to the red flower path; the blue pencil always has a blue tip and only ever adds blue to the blue sea. '
@@ -225,7 +243,10 @@ RULES = {
     '12': ("Every tile keeps its own picture and stays in its own cell; the sun-and-flowers tile goes into the one empty cell and then stays there flush. "
            "The robot's hands touch the tile when pushing and pressing it."),
 }
-MADE = {'01': '10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', '08': '10/10 시험 영상(작업 94360a13) — 확정'}
+# 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4.
+MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', 1),
+        '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
+        '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
 
 def _timeline(sc):
@@ -249,17 +270,20 @@ def seedance_prompt_v1(scene):
             'no camera movement or shake, no frozen frames, no added text or logos. No audio.')
 
 
-def seedance_prompt(scene):
-    """품질 기준(QUALITY)을 넣은 문장. 이미 만든 편(MADE)은 만들 때의 문장을 그대로 돌려준다."""
-    if scene in MADE: return seedance_prompt_v1(scene)
+def seedance_prompt(scene, version=None):
+    """품질 기준을 넣은 문장. 판(version)을 주지 않으면 이미 만든 편은 만들 때의 판, 나머지는 최신 판(3 = Q1~Q4)."""
+    if version is None: version = MADE[scene][1] if scene in MADE else 3
+    if version == 1: return seedance_prompt_v1(scene)
     sc = SCENES[scene]
     steps, end = _timeline(sc)
     steps = steps.replace('the attached artwork', 'the start image')  # 영상 모델에는 «첨부한 원화»가 아니라 시작 그림이다
     face = SEED_FACE_11 if scene == '11' else SEED_FACE
+    quality = QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '')
+    rules = RULES[scene] + (' ' + TOOLS[scene] if version >= 3 else '')
     return ('8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. '
             'The first frame is exactly the start image and the last frame is exactly the end image. '
-            f"Same robot design, materials, colors and lighting throughout; {sc['keep']} stay exactly as they are. {QUALITY_EN} "
-            f'Timeline - {steps} {end} {RULES[scene]} {face} '
+            f"Same robot design, materials, colors and lighting throughout; {sc['keep']} stay exactly as they are. {quality} "
+            f'Timeline - {steps} {end} {rules} {face} '
             'Smooth, natural, continuous motion; no morphing, no teleporting, no reverse playback, no back-and-forth looping, '
             'no camera movement or shake, no frozen frames, no added text or logos. No audio.')
 
@@ -330,7 +354,7 @@ def storyboards(path):
              '## 공통 설정', '', '| 항목 | 값 |', '|---|---|'] + [f'| {k} | {v} |' for k, v in SEEDANCE.items()] + [
              '', '## 뒤처리(0원, 편마다 똑같이)', ''] + [f'{i}. {p}' for i, p in enumerate(POST, 1)] + [
              '', '## 품질 기준(만든 영상에서 짚은 것 — 다음 편부터 모든 프롬프트에 미리 넣는다)', ''] + [f'- **{q}** ({src}) {txt}' for q, src, txt in QUALITY] + [
-             '', '영어로 모든 편에 붙는 문장(만든 편 01·08 제외):', '', '```text', QUALITY_EN, '```', '',
+             '', '영어로 아직 안 만든 편에 붙는 문장(Q1~Q3 + Q4):', '', '```text', QUALITY_EN + ' ' + QUALITY_EN_Q4, '```', '',
              '## 크레딧', '', '- std 36 × 12편 = 432 · fast 20 × 12편 = 240 (08은 시험 영상이 이미 있음 — 다시 만들면 포함)',
              '- 영상 생성은 편마다 이 칸을 Bumm님께 보여 드리고 «해»를 받은 뒤에만 한다(10/10).', '']
     for sc in sorted(SCENES):
@@ -338,7 +362,7 @@ def storyboards(path):
         lines += [f"## {sc} {v['title']}", '', f'**시나리오** — {SCENARIO[sc]}', '', '| 초 | 연출(키프레임) |', '|---|---|', '| 0 | 원화 |']
         lines += [f'| {t if t < 8 else "8(끝)"} | {ko} |' for t, ko, _ in v['shots']]
         if all(t < 8 for t, _, _ in v['shots']): lines.append('| 8 | 원화(처음 자세로 돌아옴) |')
-        if sc in MADE: lines += ['', f'**만든 편** — {MADE[sc]}. 아래는 만들 때 넣은 문장 그대로다.']
+        if sc in MADE: lines += ['', f'**만든 편** — {MADE[sc][0]}. 아래는 만들 때 넣은 문장 그대로다.']
         lines += ['', '**Seedance 프롬프트 전문**', '', '```text', seedance_prompt(sc), '```', '']
         if sc != '08':
             lines += ['<details><summary>키프레임 그림 지시문(ChatGPT, 원화를 매번 첨부)</summary>', '']
