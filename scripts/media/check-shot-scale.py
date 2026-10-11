@@ -8,7 +8,11 @@
 소품을 못 찾은 프레임(상관 < 0.8 — 확대로 소품이 화면 밖으로 잘린 경우 포함)은 통과가 아니라 실패다.
 옛 09에서 2배 넘게 확대된 프레임은 엉뚱한 자리가 상관 0.62~0.69로 잡혔다 — 진짜 소품은 0.88 이상이었다.
 
-사용: python scripts/media/check-shot-scale.py <영상> <x0,y0,x1,y1> [--step 6] [--tol 0.04] [--shift 0.03] [--min 0.8]
+움직이지 않는 소품이 없는 장면(예: 11 — 흰 바탕에 두 로봇만)은 --track으로 캐릭터의 단단한 부분(머리)을 준다.
+그때는 위치가 움직이는 것이 당연하므로 이동은 재기만 하고 판정하지 않으며, 배율만 본다. 머리가 돌아 못 찾은 프레임은
+그대로 실패로 남긴다 — 그 프레임은 사람이 프레임 시트로 본다.
+
+사용: python scripts/media/check-shot-scale.py <영상> <x0,y0,x1,y1> [--step 6] [--tol 0.04] [--shift 0.03] [--min 0.8] [--track]
       상자는 원본 영상 화소 기준(첫 프레임). 파이썬은 scipy가 있는 .cache/tools/rembg-venv를 쓴다.
 종료: 0 = 고정 · 1 = 확대·이동이 있거나 못 찾은 프레임이 있음 · 2 = 입력 오류(영상 없음·프레임 0개·상자가 화면 밖)
 """
@@ -67,10 +71,12 @@ def best_match(img, tpl0):
 
 def main(argv):
     opts = {'--step': 6, '--tol': 0.04, '--shift': 0.03, '--min': 0.8}
+    track = False
     pos = []
     it = iter(argv)
     for a in it:
-        if a in opts: opts[a] = type(opts[a])(next(it))
+        if a == '--track': track = True
+        elif a in opts: opts[a] = type(opts[a])(next(it))
         else: pos.append(a)
     if len(pos) != 2: print(__doc__); return 2
     video, box = pos
@@ -86,7 +92,7 @@ def main(argv):
     tpl0 = fr[0][1][by0:by1, bx0:bx1].astype(np.float32)
     cx0, cy0 = (bx0 + bx1) / 2, (by0 + by1) / 2
     bad = []
-    print(f'{video} · 소품 상자 {box} · {len(fr)}프레임({opts["--step"]}프레임마다) · 기준: 배율 차 ≤ {opts["--tol"]}, 이동 ≤ {opts["--shift"]:.0%}, 상관 ≥ {opts["--min"]}')
+    print(f'{video} · 소품 상자 {box} · {len(fr)}프레임({opts["--step"]}프레임마다) · 기준: 배율 차 ≤ {opts["--tol"]}, 이동 ≤ {opts["--shift"]:.0%}{" (--track: 이동은 판정하지 않음)" if track else ""}, 상관 ≥ {opts["--min"]}')
     print('번호   초     배율   이동    상관')
     for n, img in fr:
         peak, s, x, y = best_match(img, tpl0)
@@ -96,7 +102,7 @@ def main(argv):
         if peak < opts['--min']: why.append('못 찾음')
         else:
             if abs(s - 1) > opts['--tol']: why.append('확대' if s > 1 else '축소')
-            if shift > opts['--shift']: why.append('이동')
+            if shift > opts['--shift'] and not track: why.append('이동')
         if why: bad.append((n, why))
         print(f'{n:4d} {n / 24:5.2f} {s:6.3f} {shift:6.1%} {peak:6.3f}  {"· ".join(why)}')
     if bad:

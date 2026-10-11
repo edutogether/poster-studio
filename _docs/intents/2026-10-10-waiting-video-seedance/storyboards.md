@@ -416,6 +416,8 @@ The shot itself never moves: the framing stays exactly as in the start image for
 | 7 | 다시 손잡고 걷기 시작한다 |
 | 8 | 원화(처음 자세로 돌아옴) |
 
+**만든 편** — 10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Bumm님 판정 대기. 아래는 만들 때 넣은 문장 그대로다.
+
 **Seedance 프롬프트 전문**
 
 ```text
