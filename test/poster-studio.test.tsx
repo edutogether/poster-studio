@@ -29,6 +29,7 @@ let objectUrls: ReturnType<typeof installObjectURL>;
 beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});   // jsdom에는 load()가 없다(대기 영상 정리에서 부른다)
   canvasContexts = installCanvas();
   cam = installCamera();
   objectUrls = installObjectURL();

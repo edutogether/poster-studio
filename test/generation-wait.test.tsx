@@ -9,18 +9,19 @@ beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(0);
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});   // jsdom에는 load()가 없다
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 const headline = () => document.querySelector('#generationTitle [data-active="true"]')!.textContent;
 const fact = () => document.querySelector('.movie-fact h2[data-active="true"]')!.textContent;
 const activeImage = () => document.querySelector<HTMLImageElement>('.generation-robot-film[data-active="true"]')!;
 describe("포스터 생성 대기", () => {
-  test("확정 자료의 문구·원화와 실제 앱 12세트가 일치한다",()=>{
+  test("확정 자료의 문구와 실제 앱 12세트가 일치한다",()=>{
+    // 그림은 2026-10-12부터 대기 영상 첫 프레임이다 — test/waiting-video-assets.test.js가 목록의 해시로 확인한다.
     const approved=JSON.parse(fs.readFileSync('_docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/assets/sets.json','utf8'));
     for(const scene of waitingSets){
       const saved=approved.find((s:{id:number})=>s.id===scene.id);
       expect(scene.title).toBe(saved.title); expect(scene.fact).toEqual(saved.fact);
-      expect(fs.readFileSync('public'+scene.image)).toEqual(fs.readFileSync('_docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/assets/'+String(scene.id).padStart(2,'0')+'.webp'));
     }
   });
   test("같은 난수에서도 세션에 저장한 첫 세트를 다시 선택하지 않는다",()=>{
@@ -50,7 +51,7 @@ describe("포스터 생성 대기", () => {
     expect(dots.children.length).toBe(3);
     expect(dots.previousElementSibling?.id).toBe('generationTitle');
     expect(dots.nextElementSibling?.className).toBe('movie-fact');
-    expect(firstImage).toContain('/studio/waiting-approved-v1/');
+    expect(firstImage).toContain('/studio/waiting-v2/');
     const seen=new Set<number>();
     for(let i=0;i<12;i++){
       const id=Number(document.getElementById('spinner')?.dataset.setId);
@@ -89,7 +90,7 @@ describe("포스터 생성 대기", () => {
     vi.stubGlobal('matchMedia',()=>({matches:true}));
     render(<GenerationWait spinTextRef={createRef()}/>);const first=headline();
     act(()=>vi.advanceTimersByTime(24_000));expect(headline()).toBe(first);
-    expect(activeImage().src).toContain('/studio/waiting-approved-v1/');
+    expect(activeImage().src).toContain('/studio/waiting-v2/');
     expect(document.querySelector('video')).toBeNull();
     expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
   });

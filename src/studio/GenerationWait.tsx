@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { waitingSets } from "./waitingSets.js";
+import { approvedWaitingVideo } from "./waitingVideo.js";
+import WaitingArtwork from "./WaitingArtwork.js";
 import "./generation-wait.css";
 import "./waiting-art.css";
 
@@ -68,7 +70,7 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
     <dialog ref={dialog} id="spinner" className="generation-wait spinner" data-paused={still} data-scene={sceneIndex} data-set-id={scene.id} aria-labelledby="generationTitle" onCancel={event => event.preventDefault()}>
       <div className="generation-content">
         <div className="generation-film waiting-art-frame" data-art={scene.id}>
-          <img className="generation-robot-film" data-active="true" src={scene.image} width={704} height={704} alt={scene.theme} />
+          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} paused={still} reduced={reduced} />
         </div>
         <h1 ref={heading} tabIndex={-1} id="generationTitle" className="generation-copy-stack">
           {scenes.map(({ id, title }, index) => <span key={id} className="generation-copy" data-active={index === sceneIndex} aria-hidden={index !== sceneIndex}>{title}</span>)}
