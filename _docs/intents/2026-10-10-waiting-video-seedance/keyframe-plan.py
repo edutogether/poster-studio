@@ -210,8 +210,9 @@ QUALITY = [
     ('Q12', '09 세션 관찰(10/11)', '감정이 큰 순간 바로 다음 초(풀리기·손 흔들기)에도 얼굴 규칙을 다시 쓴다(09에서 놀란 뒤 풀리는 6.25~7.4초에 웃는 입이 생겼다)'),
     ('Q13', '11 Bumm님(10/11)', '두 캐릭터가 가까이 있거나 안을 때도 머리·얼굴판은 맞닿거나 겹치지 않는다 — 두 얼굴 사이에 늘 빈틈(11은 안은 채 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿아 눈빛이 겹쳐 보였다)'),
     ('Q14', '12 Bumm님(10/11)', '맞물리는 물건은 크기·가장자리가 정확히 맞는다 — 끼우는 조각·빈칸·판이 같은 크기, 들어가면 네 변이 옆 칸과 딱 맞고 빈 띠가 남지 않는다(12는 초반에 조각이 빈칸보다 작게 비켜 있어 오른쪽에 빈 자리가 남았다)'),
-    ('Q15', '12 Bumm님(10/11)', '모서리에 걸친 그림은 모서리에서 잘린 모양 그대로 — 조각 모서리의 해는 1/4 원으로 잘려 보여야 한다(12는 원화부터 해를 모서리 근처에 통째로 그렸다 → 시작·끝 그림을 고쳐 그림)'),
+    ('Q15', '12 Bumm님(10/11)', '모서리에 걸친 그림은 모서리에서 잘린 모양 그대로 — 조각 모서리의 해는 1/4 원으로 잘려 보여야 한다(12는 원화부터 해를 모서리 근처에 통째로 그렸다 → 시작·끝 그림을 고쳐 그림). + 12 Bumm님(10/11): 잘린 그림의 곡선·방향이 옆 칸 그림과 자연스럽게 이어진다(1/4 해가 왼쪽 칸 주황 로고 띠와 만나는 각도가 어색했다)'),
     ('Q16', '12 세션 관찰(10/11)', '끝 장면 자세는 끝 그림과 같아야 한다 — 마지막 두 초에 끝 그림 자세로 돌아오는 동작을 분명히 쓴다(12는 판에서 떨어져 선 채 끝나 끝 그림과 평균차 27.7)'),
+    ('Q17', '12 Bumm님(10/11)', '움직이는 건 정한 한 물건뿐, 나머지는 고정 — 바로 옆·아래 물건도 처음부터 끝까지 제자리(12 다시 만든 판에서 아래 하트 조각이 해 조각에 딸려 스윽 들어갔다. 원인은 시작 그림에서 든 조각이 아래 조각 윗부분을 덮고 있던 것)'),
 ]
 QUALITY_EN = ('Every object keeps the same identity, color, size and position from the first frame to the last unless the robot itself picks it up and moves it; '
               'colors never swap between objects, and nothing appears from nowhere or vanishes. The props are locked in place: they never slide, tilt, rotate, '
@@ -286,6 +287,15 @@ TIMELINE_V11 = {
            'the robot claps its hands happily several times, bouncing on its feet, eyes the same arc shape',
            'the robot points at the big logo on the completed board, then steps back in close beside the board and leans toward it, both hands back on the right edge of the board'],
 }
+TIMELINE_V12 = {
+    '12': ['the robot pushes the tilted sun-and-flowers tile straight into its own empty cell - the tile is exactly the size of the cell; the tile below that cell is already in place and does not move at all',
+           'the robot wiggles only the sun-and-flowers tile so its four edges line up with the cell; every other tile stays still',
+           'the sun-and-flowers tile slides fully into its cell, flat and flush with the others, no gap on any side; the board is complete',
+           'the robot presses the new tile flat, first with its left hand, then with its right hand',
+           'the robot steps back and looks up at the completed board',
+           'the robot claps its hands happily several times, bouncing on its feet, eyes the same arc shape',
+           'the robot points at the big logo on the completed board, then steps back in close beside the board and leans toward it, both hands back on the right edge of the board'],
+}
 PROP_WORDS_V8 = {'09': [('The camera stays black', "The robot's handheld action camera stays black")]}
 QUALITY_EN_Q11 = ('The shot itself never moves: the framing stays exactly as in the start image for all 8 seconds - no zoom, no push-in, no close-up, '
                   'no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size.')
@@ -296,6 +306,8 @@ QUALITY_EN_V10 = ('Effects such as steam appear only from their stated source an
 QUALITY_EN_V11 = ('Pieces that fit together match exactly: a piece, its empty slot and the board around it have the same size, and once the piece is in, '
                   'its four edges line up flush with its neighbors - no gap, no blank strip, no overlap. A picture that runs off the corner of a piece stays '
                   'cut off at that corner exactly as in the start image. In the last two seconds the character clearly moves back into exactly the pose of the end image.')
+QUALITY_EN_V12 = ('Only the one object the character is handling moves; every other object - including the pieces right next to it or below it - '
+                  'stays fixed in place, untouched, for the whole clip.')
 QUALITY_EN_Q67 = ('Small details never disappear or blur away: laces, stitching, seams, buttons, stripes, patterns and small printed logos on the props '
                   'stay exactly as in the start image the whole time. Every mark or trace the robot leaves looks real: it appears only at the exact spot that was touched, '
                   'in the order the touches happen, with the real shape of what made it, and then stays put.')
@@ -351,7 +363,7 @@ RULES = {
     '12': ("Every tile keeps its own picture and stays in its own cell; the sun-and-flowers tile goes into the one empty cell and then stays there flush. "
            "The robot's hands touch the tile when pushing and pressing it."),
 }
-# 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4, 4 = Q1~Q5, 5 = Q1~Q7, 6 = Q1~Q8, 7 = Q1~Q10, 8 = Q1~Q12, 9 = Q1~Q12 + Q7 보강(작은 흔적·끝에 남는 것 없음), 10 = 9 + Q7 효과 자리·Q13 얼굴판 맞닿음 없음, 11 = 10 + Q14~Q16(맞물림·모서리 그림·끝 자세).
+# 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4, 4 = Q1~Q5, 5 = Q1~Q7, 6 = Q1~Q8, 7 = Q1~Q10, 8 = Q1~Q12, 9 = Q1~Q12 + Q7 보강(작은 흔적·끝에 남는 것 없음), 10 = 9 + Q7 효과 자리·Q13 얼굴판 맞닿음 없음, 11 = 10 + Q14~Q16(맞물림·모서리 그림·끝 자세), 12 = 11 + Q17(정한 한 물건만 움직임).
 MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', 1),
         '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
         '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK, 그대로 확정', 3),
@@ -362,7 +374,7 @@ MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, �
         '09': ('10/11 빠른 모드로 만듦(작업 e5bdd295, 판 7) — 1~6.5초 화면이 확대됨(세션 문장 «camera closer» 탓)·6.25~7.4초 입 → Q11·Q12, Bumm님 «다시 만들기». 다시 만듦(작업 7d6594eb, 판 8) — Bumm님 통과, 확정(화면 고정 통과. 5.0~6.4초 작은 «오» 입·물이 흘러 바닥 웅덩이 → Q7 보강)', 8),
         '10': ('10/11 빠른 모드로 만듦(작업 80b85d90, 판 9) — Bumm님 통과, 확정(화면 고정·얼굴 눈만. 김이 숟가락에서 올라 얼굴판 앞을 지남 → Q7 보강)', 9),
         '11': ('10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, Bumm님 통과, 확정(화면 고정·얼굴 눈만. 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Q13)', 9),
-        '12': ('10/11 빠른 모드로 만듦(작업 db76d612, 판 9) — Bumm님 «진짜 틀림»(조각·빈칸 크기, 해가 모서리에 통째, 끝 자세) → Q14~Q16. 시작·끝 그림의 해를 1/4 원으로 고쳐(K0-12-v2·ps-kf-12-end-v2) 다시 만듦(작업 a217c337, 판 11) — 조각 꼭 맞음·화면 고정·얼굴 눈만, 끝 자세 조금 다름 → Bumm님 판정 대기', 11),
+        '12': ('10/11 빠른 모드로 만듦(작업 db76d612, 판 9) — Bumm님 «진짜 틀림»(조각·빈칸 크기, 해가 모서리에 통째, 끝 자세) → Q14~Q16. 시작·끝 그림의 해를 1/4 원으로 고쳐(K0-12-v2·ps-kf-12-end-v2) 다시 만듦(작업 a217c337, 판 11) — 조각 꼭 맞음·화면 고정·얼굴 눈만, 끝 자세 조금 다름. Bumm님 «별로»: 아래 조각이 딸려 들어감·해 곡선이 로고와 이어지는 각도 어색 → Q17, 시작·끝 그림 다시 고침, 다시 만들 목록(04·05·12, 승인 대기)', 11),
         '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
 
@@ -388,12 +400,13 @@ def seedance_prompt_v1(scene):
 
 
 def seedance_prompt(scene, version=None):
-    """품질 기준을 넣은 문장. 판(version)을 주지 않으면 이미 만든 편은 만들 때의 판, 나머지는 최신 판(11 = Q1~Q16 + Q7 보강)."""
-    if version is None: version = MADE[scene][1] if scene in MADE else 11
+    """품질 기준을 넣은 문장. 판(version)을 주지 않으면 이미 만든 편은 만들 때의 판, 나머지는 최신 판(12 = Q1~Q17 + Q7 보강)."""
+    if version is None: version = MADE[scene][1] if scene in MADE else 12
     if version == 1: return seedance_prompt_v1(scene)
     sc = SCENES[scene]
     steps, end = _timeline(sc)
-    timeline = TIMELINE_V11.get(scene) if version >= 11 else None
+    timeline = TIMELINE_V12.get(scene) if version >= 12 else None
+    timeline = timeline or (TIMELINE_V11.get(scene) if version >= 11 else None)
     timeline = timeline or (TIMELINE_V8.get(scene) if version >= 8 else None)
     timeline = timeline or (TIMELINE_V7.get(scene) if version >= 7 else None)
     if timeline:
@@ -413,7 +426,7 @@ def seedance_prompt(scene, version=None):
         parts = [re.sub(r'\.$', EMO_FACE + '.', st) if h else st for st, h in zip(parts, hit)]
         steps, end = ' '.join(parts[:-1]), parts[-1]
     face = SEED_FACE_11 if scene == '11' else SEED_FACE
-    quality = (QUALITY_EN_Q11 + ' ' if version >= 8 else '') + QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '') + (' ' + QUALITY_EN_Q67 if version >= 5 else '') + (' ' + QUALITY_EN_Q7B if version >= 9 else '') + (' ' + QUALITY_EN_V10 if version >= 10 else '') + (' ' + QUALITY_EN_V11 if version >= 11 else '') + (' ' + QUALITY_EN_Q8 if version >= 6 else '') + (' ' + QUALITY_EN_Q910 if version >= 7 else '')  # Q11(화면 고정)은 가장 중요해 맨 앞
+    quality = (QUALITY_EN_Q11 + ' ' if version >= 8 else '') + QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '') + (' ' + QUALITY_EN_Q67 if version >= 5 else '') + (' ' + QUALITY_EN_Q7B if version >= 9 else '') + (' ' + QUALITY_EN_V10 if version >= 10 else '') + (' ' + QUALITY_EN_V11 if version >= 11 else '') + (' ' + QUALITY_EN_V12 if version >= 12 else '') + (' ' + QUALITY_EN_Q8 if version >= 6 else '') + (' ' + QUALITY_EN_Q910 if version >= 7 else '')  # Q11(화면 고정)은 가장 중요해 맨 앞
     rules = RULES[scene] + (' ' + TOOLS[scene] if version >= 3 else '') + (' ' + DETAILS[scene] if version >= 5 and scene in DETAILS else '')
     if version >= 8:
         for a, b in PROP_WORDS_V8.get(scene, []):
@@ -493,7 +506,7 @@ def storyboards(path):
              '## 공통 설정', '', '| 항목 | 값 |', '|---|---|'] + [f'| {k} | {v} |' for k, v in SEEDANCE.items()] + [
              '', '## 뒤처리(0원, 편마다 똑같이)', ''] + [f'{i}. {p}' for i, p in enumerate(POST, 1)] + [
              '', '## 품질 기준(만든 영상에서 짚은 것 — 다음 편부터 모든 프롬프트에 미리 넣는다)', ''] + [f'- **{q}** ({src}) {txt}' for q, src, txt in QUALITY] + [
-             '', '영어로 아직 안 만든 편에 붙는 문장(맨 앞 Q11, 이어서 Q1~Q4·Q6~Q10·Q7 보강·Q13~Q16, Q5는 감정이 큰 초마다·Q12는 그 다음 초에도 «eyes only, no mouth»):', '', '```text', QUALITY_EN_Q11 + ' ' + QUALITY_EN + ' ' + QUALITY_EN_Q4 + ' ' + QUALITY_EN_Q67 + ' ' + QUALITY_EN_Q7B + ' ' + QUALITY_EN_V10 + ' ' + QUALITY_EN_V11 + ' ' + QUALITY_EN_Q8 + ' ' + QUALITY_EN_Q910, '```', '',
+             '', '영어로 아직 안 만든 편에 붙는 문장(맨 앞 Q11, 이어서 Q1~Q4·Q6~Q10·Q7 보강·Q13~Q17, Q5는 감정이 큰 초마다·Q12는 그 다음 초에도 «eyes only, no mouth»):', '', '```text', QUALITY_EN_Q11 + ' ' + QUALITY_EN + ' ' + QUALITY_EN_Q4 + ' ' + QUALITY_EN_Q67 + ' ' + QUALITY_EN_Q7B + ' ' + QUALITY_EN_V10 + ' ' + QUALITY_EN_V11 + ' ' + QUALITY_EN_V12 + ' ' + QUALITY_EN_Q8 + ' ' + QUALITY_EN_Q910, '```', '',
              '## 크레딧', '', '- std 36 × 12편 = 432 · fast 20 × 12편 = 240 (08은 시험 영상이 이미 있음 — 다시 만들면 포함)',
              '- 영상 생성은 편마다 이 칸을 Bumm님께 보여 드리고 «해»를 받은 뒤에만 한다(10/10).', '']
     for sc in sorted(SCENES):
