@@ -196,6 +196,7 @@ POST = ['결과 크기(10/10 시험은 960×960) → 704×704로 줄임(앱 자�
 # 품질 기준 — Bumm님이 만든 영상을 보고 짚은 것과 세션이 본 걱정을 쌓아, 다음 편부터 모든 편의 프롬프트에 미리 넣는다
 # (10/11 팀장 지시: «뒤로 갈수록 실패가 줄게»). 번호는 늘리기만 하고 지우지 않는다.
 QUALITY = [
+    ('Q11', '09 세션 관찰 → Bumm님 «가장 중요»(10/11)', '🔴 가장 중요한 기준. 화면(찍는 쪽 카메라)은 절대 움직이지 않는다 — 소품 카메라는 «로봇이 손에 든 액션캠»이라고 부르고, «가까이·각도·클로즈업» 같은 촬영 말을 쓰지 않는다. 로봇·소품 전체가 처음 구도 그대로 화면 안에 있다(09에서 «camera closer»를 화면 확대로 읽어 1~6.5초가 클로즈업이 됐다 — 로딩 화면에서 그림이 잘려 보인다)'),
     ('Q1', '01 Bumm님(10/11)', '물건·색의 대응이 영상 내내 바뀌지 않는다 — 찍은 물감 색 = 붓끝 색 = 칠해지는 색(01에서 초록을 찍었는데 주황이 묻어났다)'),
     ('Q2', '01 세션 관찰(10/11)', '배경 소품은 제자리에 못 박는다 — 미끄러지거나 기울거나 크기·모양이 바뀌지 않고, 그림 속 그림은 새로 칠한 자국 말고는 그대로(01에서 0.5초쯤 이젤·그림이 옮겨졌다)'),
     ('Q3', '01 세션 관찰(10/11)', '닿는 동작은 닿는다고 쓴다 — 붓끝·연필 끝·손가락이 실제로 표면에 닿는다(01에서 붓이 캔버스에 거의 닿지 않았다)'),
@@ -206,7 +207,6 @@ QUALITY = [
     ('Q8', '06 Bumm님(10/11)', '동작은 또렷하고 생기 있게 — 각 동작을 크게·분명히, 기뻐할 때는 몸 전체로. 단 소품 고정·얼굴 규칙은 그대로(06은 오류는 제일 없었지만 행동이 밋밋했다)'),
     ('Q9', '07 Bumm님(10/11)', '반복 동작은 위치를 바꿔 가며 — 같은 곳을 되풀이하지 않는다(07은 너무 같은 건반만 쳤다)'),
     ('Q10', '07 Bumm님(10/11)', '눈에 띄는 동작은 영상 뒷부분에 — 끝까지 볼거리가 있게(07의 악보 넘기기 같은 큰 동작을 뒤로)'),
-    ('Q11', '09 세션 관찰(10/11)', '화면(찍는 쪽 카메라)은 절대 움직이지 않는다 — 소품 카메라는 «로봇이 손에 든 액션캠»이라고 부르고, «가까이·각도·클로즈업» 같은 촬영 말을 쓰지 않는다. 로봇·소품 전체가 처음 구도 그대로 화면 안에 있다(09에서 «camera closer»를 화면 확대로 읽어 1~6.5초가 클로즈업이 됐다)'),
     ('Q12', '09 세션 관찰(10/11)', '감정이 큰 순간 바로 다음 초(풀리기·손 흔들기)에도 얼굴 규칙을 다시 쓴다(09에서 놀란 뒤 풀리는 6.25~7.4초에 웃는 입이 생겼다)'),
 ]
 QUALITY_EN = ('Every object keeps the same identity, color, size and position from the first frame to the last unless the robot itself picks it up and moves it; '
@@ -339,7 +339,7 @@ MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, �
         '05': ('10/11 빠른 모드로 만듦(작업 f5f6055b) — Bumm님 통과(시간 때문에 그대로). 신발끈이 사라짐·발자국 모양·위치 어색 → 여유 있으면 새로 만들 후보', 4),
         '06': ('10/11 빠른 모드로 만듦(작업 9be79fcb) — Bumm님 통과(«오류는 제일 없다»), 행동이 밋밋함 → Q8', 5),
         '07': ('10/11 빠른 모드로 만듦(작업 50b9a0fd) — Bumm님 통과(«지금까지 중 제일 낫다»), 같은 건반만 침·큰 동작을 뒤로 → Q9·Q10', 6),
-        '09': ('10/11 빠른 모드로 만듦(작업 e5bdd295) — 1~6.5초 화면이 확대됨(세션 문장 «camera closer» 탓)·6.25~7.4초 입 → Q11·Q12, 다시 만들지는 Bumm님 판정 대기', 7),
+        '09': ('10/11 빠른 모드로 만듦(작업 e5bdd295) — 1~6.5초 화면이 확대됨(세션 문장 «camera closer» 탓)·6.25~7.4초 입 → Q11·Q12, 다시 만들 목록 확정(Bumm님 10/11: 확대되면 로딩 화면에서 그림이 잘려 보임)', 7),
         '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
 
@@ -389,7 +389,7 @@ def seedance_prompt(scene, version=None):
         parts = [re.sub(r'\.$', EMO_FACE + '.', st) if h else st for st, h in zip(parts, hit)]
         steps, end = ' '.join(parts[:-1]), parts[-1]
     face = SEED_FACE_11 if scene == '11' else SEED_FACE
-    quality = QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '') + (' ' + QUALITY_EN_Q67 if version >= 5 else '') + (' ' + QUALITY_EN_Q8 if version >= 6 else '') + (' ' + QUALITY_EN_Q910 if version >= 7 else '') + (' ' + QUALITY_EN_Q11 if version >= 8 else '')
+    quality = (QUALITY_EN_Q11 + ' ' if version >= 8 else '') + QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '') + (' ' + QUALITY_EN_Q67 if version >= 5 else '') + (' ' + QUALITY_EN_Q8 if version >= 6 else '') + (' ' + QUALITY_EN_Q910 if version >= 7 else '')  # Q11(화면 고정)은 가장 중요해 맨 앞
     rules = RULES[scene] + (' ' + TOOLS[scene] if version >= 3 else '') + (' ' + DETAILS[scene] if version >= 5 and scene in DETAILS else '')
     if version >= 8:
         for a, b in PROP_WORDS_V8.get(scene, []):
@@ -469,7 +469,7 @@ def storyboards(path):
              '## 공통 설정', '', '| 항목 | 값 |', '|---|---|'] + [f'| {k} | {v} |' for k, v in SEEDANCE.items()] + [
              '', '## 뒤처리(0원, 편마다 똑같이)', ''] + [f'{i}. {p}' for i, p in enumerate(POST, 1)] + [
              '', '## 품질 기준(만든 영상에서 짚은 것 — 다음 편부터 모든 프롬프트에 미리 넣는다)', ''] + [f'- **{q}** ({src}) {txt}' for q, src, txt in QUALITY] + [
-             '', '영어로 아직 안 만든 편에 붙는 문장(Q1~Q4·Q6~Q11, Q5는 감정이 큰 초마다·Q12는 그 다음 초에도 «eyes only, no mouth»):', '', '```text', QUALITY_EN + ' ' + QUALITY_EN_Q4 + ' ' + QUALITY_EN_Q67 + ' ' + QUALITY_EN_Q8 + ' ' + QUALITY_EN_Q910 + ' ' + QUALITY_EN_Q11, '```', '',
+             '', '영어로 아직 안 만든 편에 붙는 문장(맨 앞 Q11, 이어서 Q1~Q4·Q6~Q10, Q5는 감정이 큰 초마다·Q12는 그 다음 초에도 «eyes only, no mouth»):', '', '```text', QUALITY_EN_Q11 + ' ' + QUALITY_EN + ' ' + QUALITY_EN_Q4 + ' ' + QUALITY_EN_Q67 + ' ' + QUALITY_EN_Q8 + ' ' + QUALITY_EN_Q910, '```', '',
              '## 크레딧', '', '- std 36 × 12편 = 432 · fast 20 × 12편 = 240 (08은 시험 영상이 이미 있음 — 다시 만들면 포함)',
              '- 영상 생성은 편마다 이 칸을 Bumm님께 보여 드리고 «해»를 받은 뒤에만 한다(10/10).', '']
     for sc in sorted(SCENES):
