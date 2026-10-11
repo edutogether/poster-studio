@@ -209,7 +209,7 @@ QUALITY_EN_Q4 = ('Every tool and object has its real, correct shape the whole ti
 # Q4를 편마다 그 편의 도구 말로 옮긴 것(02 Bumm님 지적 뒤, 03부터).
 TOOLS = {
     '03': 'The clapperboard is one board with a single hinged striped stick on top - one hinge, one stick, never two.',
-    '04': 'The poster is one flat printed sheet; the robot has one pointing finger per hand and normal hands.',
+    '04': 'The poster is one flat printed sheet with straight edges; when pointing, the robot extends one finger of a normal hand.',
     '05': 'Each slip-on shoe has one heel opening and one toe, a real shoe shape with no laces; the recorder has one microphone on top of one tripod.',
     '06': ('The thin sculpting tool has a handle at one end and a small shaping tip at the other end only. The camera has one lens on the front, '
            'one shutter button on top and one rear screen; the tripod has exactly three legs.'),
@@ -246,6 +246,7 @@ RULES = {
 # 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4.
 MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', 1),
         '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
+        '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK, 그대로 확정', 3),
         '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
 
