@@ -452,6 +452,8 @@ The shot itself never moves: the framing stays exactly as in the start image for
 | 7 | 판 가장자리로 손을 가져간다 |
 | 8(끝) | 끝: 원화 자세 + 조각이 다 끼워진 판 |
 
+**만든 편** — 10/11 빠른 모드로 만듦(작업 db76d612, 판 9) — 화면 고정·얼굴 눈만, 끝 장면이 끝 그림과 다름(판에서 떨어져 섬) → Bumm님 판정 대기. 아래는 만들 때 넣은 문장 그대로다.
+
 **Seedance 프롬프트 전문**
 
 ```text

@@ -82,6 +82,38 @@ Wide landscape 3:2 frame. No large blurred hands or arms in front of the lens. N
 
 > 다시 그린 장: P2(첫 판은 오른쪽 선반이 달라짐) · P0·P1(처음 빈 자리는 P2부터의 배경과 선반이 달라, P2에서 사람을 지워 빈 자리를 새로 만들고 P1을 다시 그림).
 
+### 개인 v4 고칠 계획(10/11 Bumm님 판정 «나쁘지 않다» — 그림 0, Chrome을 넘겨받은 뒤 그린다)
+
+**그대로 둔다**: 얼굴 · 청남방 · 흰 티 · 흑청 바지 · 의자 · 미술실 배경(v3).
+**고친다**: ① 시작을 «의자에 앉는 순간»으로 ② 목걸이를 실제 사진대로(지금은 검은 십자·클로버처럼 보임) ③ 체형 — 얼굴·골반에 맞는 자연스러운 20대 평균(흰 티에 자연스러운 곡선만, 허벅지는 조금 날씬하게, 노출·강조 없음) ④ P3 왼쪽 아래, 의자 등받이 왼쪽에 흐릿하게 비치는 얼룩을 지운다.
+
+- **방식**: v3의 각 장을 기준으로 **한 번씩만** 고친다. 앞 장을 고친 그림을 다시 고치지 않는다(v3에서 화질이 무너진 까닭). 붙이는 그림은 ① v3의 그 장 ② 목걸이 사진, 두 장뿐이다. 다 그린 뒤 배경은 v3처럼 빈 자리 그림(P0)과 합성해 고정한다(`scripts/media/clean-plate-composite.py` — 그림을 다시 그리는 것이 아니라 붙이는 것이다).
+- **P0(빈 의자)**: 영상 장면에서는 뺀다. 첫 장부터 사람이 의자 앞에 있으므로 영상의 시작 그림이 될 일이 없다. 다만 배경 합성의 기준 그림으로는 그대로 쓴다.
+- **목걸이 사진(후보, 아직 안 받음)**: 공식 판매 페이지(vancleefarpels.com, VCARA45800 «Vintage Alhambra pendant, 18K yellow gold, Onyx»)의 확대 사진 `rWXl_1YZTmipGvOt7-UprA.png`(3000×3000 PNG, 891,647바이트 — 클로버·금 알갱이 테두리·가는 체인이 한 장에 보임). 정면 전체 사진 `jIPnZwLARp6Fno7RGxW6iQ.png`(3000×3000, 593,412바이트)는 펜던트가 작아 고르지 않았다. 지시문에는 브랜드 이름을 쓰지 않는다.
+
+고치는 문장(모든 장 공통, FIRST = v3의 그 장, SECOND = 목걸이 사진):
+
+```text
+Edit the FIRST image and keep it as the base: the same photo, camera position, framing and zoom, background, light, chair, pose,
+face, hair and outfit. Change only these two things.
+1) Necklace: the pendant becomes exactly the necklace in the SECOND image - a small black onyx four-leaf clover motif with a fine
+beaded gold rim on a thin yellow-gold chain - at the same small real-life size, lying on the white T-shirt just below the collarbone.
+Copy its shape and its gold bead border exactly; no cross, no other pendant shape.
+2) Figure: a natural, average woman in her mid-twenties whose upper body matches her face and hips - under the fitted white T-shirt
+a gentle, natural bust curve (modest, not emphasized), and slightly slimmer thighs in the black jeans, in proportion with her slim face.
+Neat and modest, nothing revealing.
+Do not change anything else. Photorealistic, the same resolution and sharpness as the FIRST image. No text, no logos, no watermark.
+```
+
+| 새 번호 | 초(제안) | 바탕(v3) | 이 장에만 더하는 말 |
+|---|---|---|---|
+| S1 | 0.0 | P2 | `She is just sitting down: standing in front of the chair with her knees bending and her body lowering toward the seat, one hand resting on the front edge of the chair seat to steady herself, looking down at the seat. The chair stays exactly where it is.` |
+| P2 | 0.7 | P2 | — |
+| P3 | 1.5 | P3 | `Also remove the faint blurry translucent smudge just left of the chair back (over the easel legs at the lower left) and fill it with the background that is really there.` |
+| P4~P10 | 2.6~6.9 | 같은 번호 | — (P5는 위로 뻗은 손이 위 가장자리에 작고 선명하게 남는지 본다) |
+
+- [확인] 걸어 들어오는 1.1초가 빠져 영상이 약 7.4초로 짧아진다. 앱의 큰 숫자 3·2·1(지금 7.0·7.5·8.0초)을 같이 당길지, 기다리는 장면을 늘려 길이를 지킬지는 영상 지시문을 쓸 때 팀장께 여쭌다.
+
 ## 단체 — 약 14초
 
 **시나리오**(10/11 팀장 지시 — 실제 친구들이 사진 찍을 때처럼): 한 명이 의자에 앉아 정면을 보다가 고개만 문 쪽으로 돌려 친구들을 부른다. 둘이 걸어 들어와 의자 뒤에 서고, 문간에서 휴대폰만 보던 친구를 손짓으로 불러온다. «찍는다?» 앉은 친구가 몸을 숙여 노트북 키를 누르고(«삑»), 넷이 바짝 붙어 — 필터가 깔리며 큰 숫자 3·2·1, «하나, 둘, 셋!» 외치고 각자 다른 포즈. 찰칵 — 하얘졌다가 은은하게 돌아오며 멈춘 장면. **앉고 서는 자리는 처음 정한 그대로**(A 의자 · B 의자 뒤 왼쪽 · C 의자 뒤 오른쪽 · D 의자 오른쪽).
