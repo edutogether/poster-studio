@@ -251,7 +251,7 @@ RULES = {
 MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', 1),
         '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
         '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK, 그대로 확정', 3),
-        '04': ('10/11 빠른 모드로 만듦(작업 022b63ac) — 3.0~4.75초 입 생김, Bumm님 판정 대기', 3),
+        '04': ('10/11 빠른 모드로 만듦(작업 022b63ac) — 3.0~4.75초 입 생김 → Q5 넣어 새로 만들 것(Bumm님 10/11, 다시 만들기는 끝에 몰아서 승인)', 3),
         '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
 
@@ -283,6 +283,7 @@ def seedance_prompt(scene, version=None):
     sc = SCENES[scene]
     steps, end = _timeline(sc)
     steps = steps.replace('the attached artwork', 'the start image')  # 영상 모델에는 «첨부한 원화»가 아니라 시작 그림이다
+    if version >= 4: end = end.replace('the attached artwork', 'the start image')
     if version >= 4:  # Q5: 감정이 큰 초마다 얼굴 규칙을 그 자리에서 다시 말한다
         steps = ' '.join(re.sub(r'\.$', EMO_FACE + '.', st) if EMO.search(st) else st for st in re.split(r'(?<=\.) (?=\d-\ds:)', steps))
     face = SEED_FACE_11 if scene == '11' else SEED_FACE
