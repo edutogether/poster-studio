@@ -32,6 +32,9 @@ def shutter(sr=48000):
 
 def main(argv):
     args = [a for a in argv]
+    bed = None                                           # --bed <wav>: 생활 소리(lobby-ambience.py)를 원본 소리 아래에 깐다
+    if '--bed' in args:
+        i = args.index('--bed'); bed = args[i + 1]; del args[i:i + 2]
     opt = {'--shot': 7.45, '--flash': 0.15, '--freeze': 7.6}
     for k in list(opt):
         if k in args:
@@ -52,6 +55,10 @@ def main(argv):
             base = np.zeros(int(48000 * dur), np.float32)
         s = shutter(); i0 = int(48000 * shot)
         mix = base.copy()
+        if bed:
+            with wave.open(bed) as w: b = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
+            if len(b) < len(mix): b = np.pad(b, (0, len(mix) - len(b)))
+            mix = mix + b[:len(mix)]
         if len(mix) < i0 + len(s): mix = np.pad(mix, (0, i0 + len(s) - len(mix)))
         mix[i0:i0 + len(s)] += s
         mix = np.clip(mix, -1, 1)
