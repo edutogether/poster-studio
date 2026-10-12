@@ -365,6 +365,56 @@ REMAKE_V13['12'] = {
         'the robot points at the big logo on the completed board, then steps back in close beside the board and leans toward it, both hands back on the right edge of the board'],
     'rules': ("Every tile keeps its own picture and stays in its own cell; the sun-and-flowers tile goes into the one empty cell and then stays there flush. "
               "The robot's hands touch the tile when pushing and pressing it. The quarter sun on the last tile keeps its short yellow crayon rays the whole time.")}
+# 판 14 = 13 + 12 다섯 번째(10/13 Bumm님 ①안): 네 번째는 시작·끝이 거의 같고 «빈칸» 말이 있어 모델이 직소 빈자리를 지어냈다.
+# 시작 그림을 조각이 칸에 비스듬히 반쯤 걸친 모양(make12-tilt.py)으로 바꾸고 «빈칸·직소·들어간다» 말을 뺀다(replace는 완성된 문장에서 바꿀 말).
+REMAKE_V14 = {'03': {
+    'images': '시작·끝 = 원화 · 중간 그림 kf-03-v3/ps-kf3-03-L(왼쪽에 외침)·R(오른쪽에 외침)·C(앞을 보고 탁)',
+    'timeline': [
+        'the robot lifts the open clapperboard a little higher in front of its chest, getting ready',
+        'with a big, clear movement the robot turns its head and upper body toward the left side of the picture and excitedly calls out "Slate!" to the crew there without any sound: one hand is cupped right beside the edge of its face visor, the other hand holds the open clapperboard with its front still facing the camera',
+        'the robot turns its head and upper body clearly toward the right side of the picture and excitedly calls out to the crew there the same way, one hand cupped beside the edge of its visor, the clapperboard front still facing the camera',
+        'the robot faces the camera again and at 3.5 seconds snaps the striped stick shut with a firm clap - it visibly hits the board',
+        'the robot holds the closed clapperboard steady in front of its chest for a beat, front facing the camera',
+        "the robot's hand lifts the hinged striped stick open again by hand - the stick is half open",
+        'the hinged stick is open as in the start image and the robot holds the clapperboard almost exactly as in the start image'],
+    'rules': ("The striped hinged stick stays attached to the clapperboard at its hinge the whole time and keeps its black-and-white stripe pattern; "
+              "when it snaps shut it visibly hits the board, and it opens again only because the robot's hand lifts it. "
+              "The clapperboard always faces the camera with its front: the striped stick on top and the small logo on its front are always visible - it is never turned sideways or backwards. "
+              "The robot's own body has no logo, no letters and no marks anywhere - the only logo is the small one on the front of the clapperboard. "
+              "When calling out, the hand stays beside the visor and never covers it, and the visor still shows only the two eyes - no mouth. "
+              "No motion lines, no impact marks, no speech bubbles and no drawn effects anywhere.")},
+              '05': {
+    'images': '시작 = kf-05-v2/ps-kf2-05-start(끈 운동화) · 끝 = kf-05-v3/ps-kf3-05-end(발자국 넷을 작고 옅게, make05-end-light.py) · 중간 그림 kf-05-v3 K1(뒤꿈치 먼저)·K2(앞꿈치 굴림)·K3(번갈아)',
+    'keep': 'the wooden sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue lace-up sneakers with their white laces tied in small bows',
+    'timeline': [
+        'like a film sound-effects artist making footsteps, the robot slips one hand inside each sneaker like a glove - the red sneaker on one hand, the blue on the other - and leans its body forward over the sand right in front of the microphone, its head raised toward the viewer as if watching a film screen to keep the timing',
+        'step - the red sneaker sets down heel first on the sand and rolls forward onto its toe; the blue sneaker waits just above the sand',
+        'step - the blue sneaker sets down heel first a short step ahead and rolls onto its toe while the red sneaker lifts a little, low over the sand',
+        "step - the red sneaker sets down heel first a little further along and rolls onto its toe; the robot's body moves gently with the walking rhythm",
+        'step - the blue sneaker sets down heel first and rolls onto its toe; four small, light, alternating shoe prints now trail across the sand exactly as in the end image',
+        'the robot lifts both sneakers just off the sand and holds still for a moment, listening',
+        'the robot takes both sneakers by their heels in one hand and raises its other hand to its ear disc to listen, almost exactly as in the end image; the four small prints stay in the sand'],
+    'end': '7-8s: final frame: exactly the pose of the end image, and the four small, light prints remain in the sand exactly as in the end image - this is the end image.',
+    'rules': ('The red sneaker always stays red and on the same hand, the blue sneaker always stays blue and on the other hand. The sneakers always stay low, close to the sand '
+              'in front of the microphone - they are never swung up high. Each step is a soft heel-to-toe roll in a steady walking rhythm, left and right alternating; '
+              'the prints are small, light, natural traces of walking, never deep stamps, and appear only where a sneaker stepped and then stay exactly there - '
+              'the sand never sprays, rises or smooths over.'),
+    'tools': ('Each sneaker is a real lace-up sneaker with one heel and one toe, white laces criss-crossed and tied in a small bow, and a rubber sole with a tread pattern; '
+              'the laces stay tied the whole time. The recorder has one microphone on top of one tripod.')},
+              '12': {
+    'images': '시작 = kf-12-v4/ps-kf2-12-start-tilt(마지막 조각을 오른쪽 아래 모서리 축으로 11° 기울여 칸에 반쯤 걸침, 아래 하트 칸은 그대로) · 끝 = kf-12-v4/ps-kf2-12-end',
+    'timeline': [
+        'the robot holds the last sun-and-flowers tile tilted against the board, half resting in its own place with its left side lifted; every other tile on the board stays exactly in place the whole time - none is ever missing, lifted or moved',
+        'the robot straightens the tile and presses it flat into its place with its hand - only this one tile moves',
+        'the sun-and-flowers tile lies flat and flush with its neighbors, no gap on any side; the board is complete',
+        'the robot presses the new tile flat, first with its left hand, then with its right hand',
+        'the robot steps back and looks up at the completed board',
+        'the robot claps its hands happily several times, bouncing on its feet, eyes the same arc shape',
+        'the robot points at the big logo on the completed board, then steps back in close beside the board and leans toward it, both hands back on the right edge of the board'],
+    'rules': ("Every other tile keeps its own picture and stays exactly in its own place, flat, for the whole clip - no tile is ever missing, lifted or moved "
+              "except the one sun-and-flowers tile in the robot's hand, and the robot only presses that one tile flat into the board. "
+              "The robot's hands touch the tile when pushing and pressing it. The quarter sun on the last tile keeps its short yellow crayon rays the whole time."),
+    'replace': [('a piece, its empty slot and the board around it have the same size, and once the piece is in,', 'the piece and the board around it have the same size, and once the piece is flat,')]}}
 PROP_WORDS_V8 = {'09': [('The camera stays black', "The robot's handheld action camera stays black")]}
 QUALITY_EN_Q11 = ('The shot itself never moves: the framing stays exactly as in the start image for all 8 seconds - no zoom, no push-in, no close-up, '
                   'no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size.')
@@ -437,13 +487,13 @@ MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, �
         '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
         '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK. 10/12 Bumm님 «동작 하나 더» → 키프레임 v2(탁 · «액션 !» 가리키기) 통과, 10/13 판 13으로 다시 만듦(작업 103a5ee1, 시작·끝 = 원화) — 2.5~4.5초 가슴에 로고가 생기고 옆으로 든 슬레이트에 줄무늬 막대가 안 보임 → Bumm님 판정 대기', 13),
         '04': ('10/11 빠른 모드로 만듦(작업 022b63ac) — 3.0~4.75초 입 생김 → Q5 넣어 새로 만들 것(Bumm님 10/11, 다시 만들기는 끝에 몰아서 승인). 10/12 키프레임 v2(하늘 빈 시작 · 손가락 쓱 · 파파팡) 통과, 10/13 판 13으로 다시 만듦(작업 7a18e33a, 시작 = 하늘 빈 포스터 · 끝 = 원화) — 얼굴 눈만·포스터 고정, 4.5~6초 손끝이 왼쪽 가장자리·5.5초 안테나가 위 가장자리에 닿음 → Bumm님 판정 대기', 13),
-        '05': ('10/11 빠른 모드로 만듦(작업 f5f6055b) — Bumm님 통과(시간 때문에 그대로). 신발끈이 사라짐·발자국 모양·위치 어색 → 여유 있으면 새로 만들 후보. 10/12 키프레임 v2(끈 운동화 · 번갈아 디딤) 통과, 10/13 판 13으로 다시 만듦(작업 5d1e0198, 시작·끝 = 키프레임 v2) — 끈 그대로·발자국 넷·상자 고정·얼굴 눈만, 첫 디딤이 두 짝 동시·빨강을 어깨까지 휘두름·6초 안테나가 위 가장자리에 닿음 → Bumm님 판정 대기', 13),
+        '05': ('10/11 빠른 모드로 만듦(작업 f5f6055b) — Bumm님 통과(시간 때문에 그대로). 신발끈이 사라짐·발자국 모양·위치 어색 → 여유 있으면 새로 만들 후보. 10/12 키프레임 v2(끈 운동화 · 번갈아 디딤) 통과, 10/13 판 13으로 다시 만듦(작업 5d1e0198, 시작·끝 = 키프레임 v2) — 끈 그대로·발자국 넷·상자 고정·얼굴 눈만, 첫 디딤이 두 짝 동시·빨강을 어깨까지 휘두름·6초 안테나가 위 가장자리에 닿음 → Bumm님 판정 대기 10/13 Bumm님 보류(«신발을 손에 끼우고 걷는 소리를 녹음하는 느낌») → 폴리 방식 키프레임 v3 · 끝 그림 발자국 작고 옅게(make05-end-light.py)로 세 번째(작업 bc6a2b0e, 판 14) — 낮게 번갈아 디딤·작은 발자국 넷·끝 자세 맞음, 첫 프레임이 이미 양손에 한 짝씩(시작 그림과 평균 26) → Bumm님 판정 대기', 14),
         '06': ('10/11 빠른 모드로 만듦(작업 9be79fcb) — Bumm님 통과(«오류는 제일 없다»), 행동이 밋밋함 → Q8', 5),
         '07': ('10/11 빠른 모드로 만듦(작업 50b9a0fd) — Bumm님 통과(«지금까지 중 제일 낫다»), 같은 건반만 침·큰 동작을 뒤로 → Q9·Q10', 6),
         '09': ('10/11 빠른 모드로 만듦(작업 e5bdd295, 판 7) — 1~6.5초 화면이 확대됨(세션 문장 «camera closer» 탓)·6.25~7.4초 입 → Q11·Q12, Bumm님 «다시 만들기». 다시 만듦(작업 7d6594eb, 판 8) — Bumm님 통과, 확정(화면 고정 통과. 5.0~6.4초 작은 «오» 입·물이 흘러 바닥 웅덩이 → Q7 보강)', 8),
         '10': ('10/11 빠른 모드로 만듦(작업 80b85d90, 판 9) — Bumm님 통과, 확정(화면 고정·얼굴 눈만. 김이 숟가락에서 올라 얼굴판 앞을 지남 → Q7 보강)', 9),
         '11': ('10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, Bumm님 통과, 확정(화면 고정·얼굴 눈만. 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Q13). 10/12 키프레임 v2(빙글 → 손잡고 뛰기) 통과, 10/13 판 13으로 다시 만듦(작업 b62c5439, 시작 = 원화 · 끝 = 뛰는 중) — 얼굴 눈만·뛰기 끝 자세 맞음, 안아 올린 2.5~3.0초·3.6~4.0초 두 얼굴판이 다시 맞닿음(Q13 문장이 있어도) → Bumm님 판정 대기', 13),
-        '12': ('10/11 빠른 모드로 만듦(작업 db76d612, 판 9) — Bumm님 «진짜 틀림»(조각·빈칸 크기, 해가 모서리에 통째, 끝 자세) → Q14~Q16. 시작·끝 그림의 해를 1/4 원으로 고쳐(K0-12-v2·ps-kf-12-end-v2) 다시 만듦(작업 a217c337, 판 11) — 조각 꼭 맞음·화면 고정·얼굴 눈만, 끝 자세 조금 다름. Bumm님 «별로»: 아래 조각이 딸려 들어감·해 곡선이 로고와 이어지는 각도 어색 → Q17, 시작·끝 그림 v3(K0-12-v3·ps-kf-12-end-v3)으로 세 번째(작업 4550cc81, 판 12) — 아래 조각 고정·해 곡선 이음·화면 고정·얼굴 눈만, 끝 자세 조금 다름 → Bumm님 «저 부분은 해니까 햇살 작대기가 있어야 한다»·시작 그림 지적 → 시작·끝 그림 v4(끝 그림의 그 칸만 고치고 노랑 햇살, 시작·중간은 끝 그림에서 조각을 들어 만듦)로 네 번째(작업 aa2cd2f8, 판 13) — 첫 프레임이 시작 그림을 따르지 않고 판 가운데에 직소 빈자리를 지어냄(첫·끝 평균차 15) → 불합격, 다시 만들 방향 Bumm님 판정 대기', 13),
+        '12': ('10/11 빠른 모드로 만듦(작업 db76d612, 판 9) — Bumm님 «진짜 틀림»(조각·빈칸 크기, 해가 모서리에 통째, 끝 자세) → Q14~Q16. 시작·끝 그림의 해를 1/4 원으로 고쳐(K0-12-v2·ps-kf-12-end-v2) 다시 만듦(작업 a217c337, 판 11) — 조각 꼭 맞음·화면 고정·얼굴 눈만, 끝 자세 조금 다름. Bumm님 «별로»: 아래 조각이 딸려 들어감·해 곡선이 로고와 이어지는 각도 어색 → Q17, 시작·끝 그림 v3(K0-12-v3·ps-kf-12-end-v3)으로 세 번째(작업 4550cc81, 판 12) — 아래 조각 고정·해 곡선 이음·화면 고정·얼굴 눈만, 끝 자세 조금 다름 → Bumm님 «저 부분은 해니까 햇살 작대기가 있어야 한다»·시작 그림 지적 → 시작·끝 그림 v4(끝 그림의 그 칸만 고치고 노랑 햇살, 시작·중간은 끝 그림에서 조각을 들어 만듦)로 네 번째(작업 aa2cd2f8, 판 13) — 첫 프레임이 시작 그림을 따르지 않고 판 가운데에 직소 빈자리를 지어냄(첫·끝 평균차 15) → 불합격, 다시 만들 방향 Bumm님 판정 대기 10/13 Bumm님 ①안 → 시작 그림을 조각이 칸에 비스듬히 반쯤 걸친 모양(make12-tilt.py)으로, «빈칸·직소» 말을 빼고 다섯 번째(작업 b315bee1, 판 14) — 첫 프레임 = 시작 그림·다른 칸 고정·노랑 햇살 유지, 끝 자세가 판 옆에 선 모습(끝 그림과 평균 23) → Bumm님 판정 대기', 14),
         '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
 
@@ -474,7 +524,7 @@ def seedance_prompt(scene, version=None):
     if version == 1: return seedance_prompt_v1(scene)
     sc = SCENES[scene]
     steps, end = _timeline(sc)
-    remake = REMAKE_V13.get(scene, {}) if version >= 13 else {}
+    remake = (REMAKE_V14.get(scene) if version >= 14 else None) or (REMAKE_V13.get(scene, {}) if version >= 13 else {})
     end = remake.get('end', end)
     timeline = remake.get('timeline')
     timeline = timeline or (TIMELINE_V12.get(scene) if version >= 12 else None)
@@ -505,12 +555,16 @@ def seedance_prompt(scene, version=None):
         for a, b in PROP_WORDS_V8.get(scene, []):
             assert a in rules, (scene, a)
             rules = rules.replace(a, b)
-    return ('8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. '
-            'The first frame is exactly the start image and the last frame is exactly the end image. '
-            f"Same robot design, materials, colors and lighting throughout; {remake.get('keep', sc['keep'])} stay exactly as they are. {quality} "
-            f'Timeline - {steps} {end} {rules} {face} '
-            'Smooth, natural, continuous motion; no morphing, no teleporting, no reverse playback, no back-and-forth looping, '
-            'no camera movement or shake, no frozen frames, no added text or logos. No audio.')
+    out = ('8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. '
+           'The first frame is exactly the start image and the last frame is exactly the end image. '
+           f"Same robot design, materials, colors and lighting throughout; {remake.get('keep', sc['keep'])} stay exactly as they are. {quality} "
+           f'Timeline - {steps} {end} {rules} {face} '
+           'Smooth, natural, continuous motion; no morphing, no teleporting, no reverse playback, no back-and-forth looping, '
+           'no camera movement or shake, no frozen frames, no added text or logos. No audio.')
+    for a, b in remake.get('replace', []):
+        assert a in out, (scene, a)
+        out = out.replace(a, b)
+    return out
 
 
 # 바로 앞 장면을 둘째 그림으로 함께 붙여 그린 장(10/10~11 다시 그림) — 원화만 붙이면 발자국 수·조각 자리가 장마다 달라졌다.
