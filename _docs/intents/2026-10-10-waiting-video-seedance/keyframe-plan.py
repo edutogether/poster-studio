@@ -641,8 +641,10 @@ def storyboards(path):
         lines += [f"## {sc} {v['title']}", '', f'**시나리오** — {SCENARIO[sc]}', '', '| 초 | 연출(키프레임) |', '|---|---|', '| 0 | 원화 |']
         lines += [f'| {t if t < 8 else "8(끝)"} | {ko} |' for t, ko, _ in v['shots']]
         if all(t < 8 for t, _, _ in v['shots']): lines.append('| 8 | 원화(처음 자세로 돌아옴) |')
-        if sc in REMAKE_V13 and MADE.get(sc, ('', 0))[1] >= 13:
-            lines += ['', f"**다시 만들기(판 13)** — 위 표는 첫 판의 연출이고, 판 13의 연출은 아래 프롬프트의 Timeline이다. 그림: {REMAKE_V13[sc]['images']}(.cache/seedance-20261010/gpt/)"]
+        ver = MADE.get(sc, ('', 0))[1]
+        rm = (REMAKE_V14.get(sc) if ver >= 14 else None) or (REMAKE_V13.get(sc) if ver >= 13 else None)
+        if rm:
+            lines += ['', f"**다시 만들기(판 {ver})** — 위 표는 첫 판의 연출이고, 판 {ver}의 연출은 아래 프롬프트의 Timeline이다. 그림: {rm['images']}(.cache/seedance-20261010/gpt/)"]
         if sc in MADE: lines += ['', f'**만든 편** — {MADE[sc][0]}. 아래는 만들 때 넣은 문장 그대로다.']
         lines += ['', '**Seedance 프롬프트 전문**', '', '```text', seedance_prompt(sc), '```', '']
         if sc != '08':
