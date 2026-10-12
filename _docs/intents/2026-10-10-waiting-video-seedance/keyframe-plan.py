@@ -353,6 +353,18 @@ REMAKE_V13 = {
            'end': '7-8s: the two robots are running hand in hand in exactly the pose of the end image, the scarves streaming behind them - this is the end image.',
            'emo_face': ' - each visor still shows only its two glowing orange arc eyes, no mouth and no smile'},
 }
+REMAKE_V13['12'] = {
+    'images': '시작 = kf-12-v4/ps-kf2-12-start(마지막 조각이 제 칸 앞으로 1.10배 들림) · 끝 = kf-12-v4/ps-kf2-12-end(다 끼움, 1/4 해에 노랑 햇살) · 중간 그림 K1(1.05배)',
+    'timeline': [
+        'the robot holds the last sun-and-flowers tile just in front of its own cell, lifted a little toward the viewer, its four edges already lined up with the cell; every other tile, including the one below, stays still',
+        'the robot pushes the tile straight back into its cell with the flat of its hand - it slides in evenly and looks a little smaller as it goes back',
+        'the sun-and-flowers tile sits fully in its cell, flat and flush with the others, no gap on any side; the board is complete',
+        'the robot presses the new tile flat, first with its left hand, then with its right hand',
+        'the robot steps back and looks up at the completed board',
+        'the robot claps its hands happily several times, bouncing on its feet, eyes the same arc shape',
+        'the robot points at the big logo on the completed board, then steps back in close beside the board and leans toward it, both hands back on the right edge of the board'],
+    'rules': ("Every tile keeps its own picture and stays in its own cell; the sun-and-flowers tile goes into the one empty cell and then stays there flush. "
+              "The robot's hands touch the tile when pushing and pressing it. The quarter sun on the last tile keeps its short yellow crayon rays the whole time.")}
 PROP_WORDS_V8 = {'09': [('The camera stays black', "The robot's handheld action camera stays black")]}
 QUALITY_EN_Q11 = ('The shot itself never moves: the framing stays exactly as in the start image for all 8 seconds - no zoom, no push-in, no close-up, '
                   'no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size.')
@@ -431,7 +443,7 @@ MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, �
         '09': ('10/11 빠른 모드로 만듦(작업 e5bdd295, 판 7) — 1~6.5초 화면이 확대됨(세션 문장 «camera closer» 탓)·6.25~7.4초 입 → Q11·Q12, Bumm님 «다시 만들기». 다시 만듦(작업 7d6594eb, 판 8) — Bumm님 통과, 확정(화면 고정 통과. 5.0~6.4초 작은 «오» 입·물이 흘러 바닥 웅덩이 → Q7 보강)', 8),
         '10': ('10/11 빠른 모드로 만듦(작업 80b85d90, 판 9) — Bumm님 통과, 확정(화면 고정·얼굴 눈만. 김이 숟가락에서 올라 얼굴판 앞을 지남 → Q7 보강)', 9),
         '11': ('10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, Bumm님 통과, 확정(화면 고정·얼굴 눈만. 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Q13). 10/12 키프레임 v2(빙글 → 손잡고 뛰기) 통과, 10/13 판 13으로 다시 만듦(작업 b62c5439, 시작 = 원화 · 끝 = 뛰는 중) — 얼굴 눈만·뛰기 끝 자세 맞음, 안아 올린 2.5~3.0초·3.6~4.0초 두 얼굴판이 다시 맞닿음(Q13 문장이 있어도) → Bumm님 판정 대기', 13),
-        '12': ('10/11 빠른 모드로 만듦(작업 db76d612, 판 9) — Bumm님 «진짜 틀림»(조각·빈칸 크기, 해가 모서리에 통째, 끝 자세) → Q14~Q16. 시작·끝 그림의 해를 1/4 원으로 고쳐(K0-12-v2·ps-kf-12-end-v2) 다시 만듦(작업 a217c337, 판 11) — 조각 꼭 맞음·화면 고정·얼굴 눈만, 끝 자세 조금 다름. Bumm님 «별로»: 아래 조각이 딸려 들어감·해 곡선이 로고와 이어지는 각도 어색 → Q17, 시작·끝 그림 v3(K0-12-v3·ps-kf-12-end-v3)으로 세 번째(작업 4550cc81, 판 12) — 아래 조각 고정·해 곡선 이음·화면 고정·얼굴 눈만, 끝 자세 조금 다름 → Bumm님 판정 대기', 12),
+        '12': ('10/11 빠른 모드로 만듦(작업 db76d612, 판 9) — Bumm님 «진짜 틀림»(조각·빈칸 크기, 해가 모서리에 통째, 끝 자세) → Q14~Q16. 시작·끝 그림의 해를 1/4 원으로 고쳐(K0-12-v2·ps-kf-12-end-v2) 다시 만듦(작업 a217c337, 판 11) — 조각 꼭 맞음·화면 고정·얼굴 눈만, 끝 자세 조금 다름. Bumm님 «별로»: 아래 조각이 딸려 들어감·해 곡선이 로고와 이어지는 각도 어색 → Q17, 시작·끝 그림 v3(K0-12-v3·ps-kf-12-end-v3)으로 세 번째(작업 4550cc81, 판 12) — 아래 조각 고정·해 곡선 이음·화면 고정·얼굴 눈만, 끝 자세 조금 다름 → Bumm님 «저 부분은 해니까 햇살 작대기가 있어야 한다»·시작 그림 지적 → 시작·끝 그림 v4(끝 그림의 그 칸만 고치고 노랑 햇살, 시작·중간은 끝 그림에서 조각을 들어 만듦)로 네 번째(작업 aa2cd2f8, 판 13) — 첫 프레임이 시작 그림을 따르지 않고 판 가운데에 직소 빈자리를 지어냄(첫·끝 평균차 15) → 불합격, 다시 만들 방향 Bumm님 판정 대기', 13),
         '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
 
