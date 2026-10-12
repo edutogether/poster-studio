@@ -529,6 +529,28 @@ C «저기, 저기 봐! 찍는다?»(5.8~7.0) · «삑»(7.8~8.4, 노트북 쪽 
 
 용량 한도(한 번에 10MB) 때문에 첨부는 JPEG로 줄여 올린다. 배경은 G0과 합성해 고정하고, 문간 장(G3~G5)은 v3처럼 `--keep 1340,110,1520,600`으로 둔다.
 
+## 카메라 용어(10/13 팀장 전달 — 지시문에 이 말로 쓴다)
+
+참고는 팀장이 보낸 «카메라 기법» 영상 세 편이다. 1/3은 카메라의 움직임 8가지, 2/3은 촬영 방식·시간 연출 8가지, 3/3은 장면 전환 8가지를 다룬다.
+우리 영상은 노트북 웹캠 자리에서 한 컷으로 찍은 것처럼 보여야 한다. 그래서 카메라가 움직이는 기법은 쓰지 않고, 아래 다섯 가지만 쓴다.
+영상 모델은 영어 촬영 용어를 잘 알아듣는다. 지시문에는 용어와 «무엇이 보이는지»를 함께 적는다.
+
+| 용어 | 뜻 | 쓰는 곳 | 어떻게 넣나 |
+|---|---|---|---|
+| **고정 숏**(locked-off static shot) | 삼각대에 묶은 카메라 — 줌·팬·틸트·돌리가 하나도 없다 | 촬영 영상 두 편, 대기 영상 전부 | 지시문 **맨 앞 문장**: `Locked-off static shot, no zoom, no pan, no dolly.` 03은 몸 전체가 보이는 중간 크기라 `Locked-off medium shot`으로 쓴다 |
+| **랙 포커스**(rack focus) | 한 컷 안에서 초점이 앞 물체에서 뒤 물체로 옮겨 간다 | 촬영 영상 첫 장면 — 렌즈 바로 앞 손은 흐리고, 손이 빠지며 초점이 얼굴로 온다 | 지시문 0~1.5초 |
+| **프리즈 프레임**(freeze frame) | 마지막 포즈에서 화면이 사진처럼 멈춘다 | 촬영 영상 끝 — 찍히는 순간 | 지시문에는 «포즈를 그대로 멈춘다»만 쓰고, 멈춤과 하얀 플래시는 뒤처리(`camera-shot-post.py`)로 넣는다 |
+| **J컷**(J-cut) | 소리가 그림보다 먼저 들어온다 | 촬영 영상 시작 — 로비 생활 소리가 먼저 들리고 그림이 0.3초에 걸쳐 밝아진다 | 뒤처리 `--jcut 0.3`, 생활 소리는 `lobby-ambience.py`로 첫 프레임부터 깐다 |
+| **L컷**(L-cut) | 그림이 끝난 뒤에도 소리가 이어진다 | 촬영 영상 끝 — 찰칵 뒤 멈춘 장면에서도 로비 소리가 끝까지 이어진다 | 생활 소리를 영상 끝(8.0초)까지 깐다. 찰칵(7.45초) 뒤로 소리를 끊지 않는다 |
+| 박자에 맞춘 한 번 박수(on the beat, single clap) | 슬레이트를 정한 박자에 단 한 번 친다 | 대기 영상 03 마지막 «딱» | 지시문 `At 7 seconds, on the beat, a single clap` |
+
+쓰지 않는 기법과 그 이유는 아래와 같다.
+
+- **카메라 움직임**(팬·틸트·돌리 인·줌 인·트래킹·오빗·크레인 업·돌리 줌): 웹캠은 책상 위에 놓여 있어 움직이지 않는다. 대기 영상도 화면이 움직이면 불합격이었다(Q11).
+- **핸드헬드·FPV 드론·더치 앵글**: 같은 이유로 쓰지 않는다. 화면이 흔들리거나 기울면 아이들이 보는 촬영 화면과 달라진다.
+- **슬로 모션·스피드 램프·타임랩스**: 8초 안에서 실제 속도로 보여 줘야 «이렇게 하면 된다»가 전해진다.
+- **장면 전환**(점프 컷·매치 컷·휩 팬·크로스 디졸브·와이프·스매시 컷): 한 컷짜리 영상이라 전환이 없다. 소리 쪽 J컷·L컷만 쓴다.
+
 ## 영상 만들기 전 확인 — 개인 v8(10/13, 생성 0 — Bumm님 허락 뒤)
 
 | 항목 | 값 |
@@ -541,27 +563,27 @@ C «저기, 저기 봐! 찍는다?»(5.8~7.0) · «삑»(7.8~8.4, 노트북 쪽 
 | 끝 그림 | `cam-v8/video/ps-cam8-K4-169.png`(올림 50ff329a) |
 | 그림 준비 | 1536×1024 원본에서 위 64·아래 96화소를 잘라 16:9(1536×864)로 맞췄다. 머리 위 여유는 남겼다. |
 | 중간 장(K1~K3) | 넣지 않고 초별 글로 준다. 참고 그림으로 넣으면 시작·끝이 고정되지 않았다(10/10 08 시험). |
-| 뒤처리(0원) | 7.45초 하얀 플래시 0.15초, 7.6~8.0초 멈춘 장면은 ffmpeg로 붙인다. 3·2·1 숫자는 앱이 띄운다. |
+| 뒤처리(0원) | `camera-shot-post.py --bed <로비 소리> --jcut 0.3`: 처음 0.3초 그림이 밝아지는 동안 소리가 먼저(J컷), 7.45초 찰칵·하얀 플래시 0.15초, 7.6~8.0초 멈춘 장면(프리즈 프레임), 로비 소리는 끝까지(L컷). 3·2·1 숫자는 앱이 띄운다. |
+
+지시문은 10/13 «카메라 용어»를 넣은 판이다(`preflight-20261013/prompt-personal-v3.txt`). 맨 앞 고정 숏, 0~1.5초 랙 포커스, 끝 프리즈 프레임,
+첫 프레임부터 끝까지 이어지는 생활 소리(J컷·L컷)를 넣었다. 단체는 같은 용어로 `prompt-group-v2.txt`, 대기 영상 03은 `prompt-03-v17.txt`다.
 
 ```text
-8-second single continuous shot, landscape 16:9, a fixed laptop webcam on a table at chest height in a bright, warm cinema lobby: a long wall of
-ticket and snack counters with a row of bright menu screens, a glossy light-brown wooden plank floor, a white ceiling with curved cove-light rims and
-warm downlights. The first frame is exactly the start image (her hand right in front of the lens) and the last frame is exactly the end image (her
-V-sign pose). The camera and the lobby behind her never move or change.
-The same young Korean woman throughout - exactly the face of the start and end images, long side-parted black waves, the light-blue denim shirt worn
-open with the sleeves rolled to just below the elbows over a fitted white T-shirt, high-waisted washed-black jeans, and a small black four-leaf clover
-pendant on a thin gold chain. Nobody else is in the picture.
-Timeline - 0-0.6s: her hand right in front of the lens, adjusting the laptop, covers part of the picture; lobby light leaks around it.
-0.6-1.5s: the hand moves down out of the picture; she is very close to the camera, checking the screen with a light smile.
+Locked-off static shot, no zoom, no pan, no dolly. 8-second single continuous shot, landscape 16:9, from a laptop webcam on a table at chest height in
+a bright, warm cinema lobby with a long wall of ticket and snack counters and bright menu screens behind her, a glossy light-brown wooden floor and a
+white ceiling with warm downlights. The first frame is exactly the start image and the last frame is exactly the end image. The lobby behind her never
+changes. The same young Korean woman throughout - exactly the face, long side-parted black waves, open light-blue denim shirt with rolled sleeves,
+white T-shirt, black jeans and small black four-leaf clover pendant of the start and end images. Nobody else is in the picture. Timeline - 0-0.6s:
+rack focus - her hand right in front of the lens adjusts the laptop and is a soft blur, covering part of the picture. 0.6-1.5s: the hand moves down
+out of the picture and the focus racks from the blurred hand to her face; she is very close to the camera, checking the screen with a light smile.
 1.5-3s: still looking at the screen, she steps backward a few steps to her spot about 1.8 m from the camera, where she is seen from head to mid-thigh.
-3-4.5s: she smooths her shirt collar with one hand and tidies her bangs with the fingertips of the other.
-4.5-7s: she stands straight, looks into the camera and waits with a natural smile, breathing and blinking.
-7-8s: she raises her right hand to a V sign beside her cheek with a bright smile and holds it still - this is the end image.
-Real photographic lighting the whole time: warm ceiling light on her hair and face, a thin cool rim light from the menu screens, soft reflections on the
-glossy floor; the lobby behind her stays slightly soft. Natural human motion, no morphing, no extra people, no text, no numbers, no logos,
-no camera movement.
-Sound: only the natural sound of the place - the soft bump of her hand on the laptop, her sneakers on the wooden floor as she steps back, the rustle of
-her denim shirt, a small breath and a soft laugh, and the quiet, distant murmur and air of a cinema lobby. No music, no speech, no narration.
+3-4.5s: she smooths her shirt collar with one hand and tidies her bangs with the fingertips of the other. 4.5-7s: she stands straight, looks into the
+camera and waits calmly with a natural smile, breathing and blinking, counting along in her head. 7-8s: she raises her right hand to a V sign beside
+her cheek with a bright smile and holds the pose perfectly still, like a freeze frame - this is the end image. Real photographic lighting: warm
+ceiling light on her hair and face, a thin cool rim light from the menu screens, soft reflections on the floor; the lobby behind her stays slightly
+soft. Natural human motion. Sound: only the natural sound of the place, audible from the very first frame and running to the last frame - the soft
+bump of her hand on the laptop, her sneakers on the wooden floor as she steps back, the rustle of her denim shirt, a small breath and a soft laugh,
+and the quiet distant murmur of a cinema lobby. No music, no speech.
 ```
 
 ## 영상 만들기 전 확인(v3 시절 기록 — 개인은 위 v8로 대체, 단체는 v8 단체 그림으로 다시 쓴다)

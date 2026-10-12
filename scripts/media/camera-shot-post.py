@@ -5,9 +5,11 @@
 
 - 셔터 소리: 내려받은 효과음 없이 직접 합성한다(짧은 기계음 두 번 — 셔터가 열리고 닫히는 «찰»·«칵»). 원본 생활 소리 위에 섞는다.
 - 플래시: SHOT초에 흰색으로 확 밝아졌다가 FLASH초에 걸쳐 원래 화면으로 돌아온다.
-- 멈춘 장면: FREEZE초부터 끝까지 그 시각의 프레임을 그대로 보여 준다(사진이 찍힌 순간).
+- 멈춘 장면: FREEZE초부터 끝까지 그 시각의 프레임을 그대로 보여 준다(사진이 찍힌 순간, 프리즈 프레임).
+- J컷(--jcut S): 그림은 처음 S초에 걸쳐 검은 화면에서 밝아지고, 소리는 첫 프레임부터 그대로 들린다(소리가 그림보다 먼저).
+- L컷: 생활 소리(--bed)는 찰칵 뒤 멈춘 장면에서도 영상 끝까지 이어진다(따로 끊지 않는다).
 
-사용: python scripts/media/camera-shot-post.py <원본.mp4> <출력.mp4> [--shot 7.45] [--flash 0.15] [--freeze 7.6]
+사용: python scripts/media/camera-shot-post.py <원본.mp4> <출력.mp4> [--shot 7.45] [--flash 0.15] [--freeze 7.6] [--jcut 0.3] [--bed <wav>]
 종료: 0 · 2 입력 오류
 """
 import os, subprocess, sys, tempfile
@@ -35,14 +37,14 @@ def main(argv):
     bed = None                                           # --bed <wav>: 생활 소리(lobby-ambience.py)를 원본 소리 아래에 깐다
     if '--bed' in args:
         i = args.index('--bed'); bed = args[i + 1]; del args[i:i + 2]
-    opt = {'--shot': 7.45, '--flash': 0.15, '--freeze': 7.6}
+    opt = {'--shot': 7.45, '--flash': 0.15, '--freeze': 7.6, '--jcut': 0.0}
     for k in list(opt):
         if k in args:
             i = args.index(k); opt[k] = float(args[i + 1]); del args[i:i + 2]
     if len(args) != 2: print(__doc__); return 2
     src, out = args
     if not os.path.exists(src): print('없는 영상'); return 2
-    shot, flash, freeze = opt['--shot'], opt['--flash'], opt['--freeze']
+    shot, flash, freeze, jcut = opt['--shot'], opt['--flash'], opt['--freeze'], opt['--jcut']
     with tempfile.TemporaryDirectory() as tmp:
         # 원본 소리(없으면 무음)를 48k 모노로 꺼내 셔터를 섞는다
         raw = os.path.join(tmp, 'a.wav')
@@ -69,11 +71,12 @@ def main(argv):
         w = f"if(between(T,{shot},{shot + flash}),max(0,1-(T-{shot})/{flash - 1 / 24:.4f}),0)"   # 흰색 섞는 비율 1 → 0, 멈출 프레임 전에 0이 되게(멈춘 장면에 흰 기운이 남지 않게)
         vf = (f"format=yuv420p,"
               f"geq=lum='lum(X,Y)+(255-lum(X,Y))*{w}':cb='cb(X,Y)+(128-cb(X,Y))*{w}':cr='cr(X,Y)+(128-cr(X,Y))*{w}',"
+              + (f"fade=t=in:st=0:d={jcut}," if jcut > 0 else '') +
               f"trim=end={freeze},setpts=PTS-STARTPTS,tpad=stop_mode=clone:stop_duration={max(dur - freeze, 0):.3f}")
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', src, '-i', mixed, '-map', '0:v', '-map', '1:a', '-vf', vf,
                         '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k', '-shortest',
                         '-movflags', '+faststart', out], check=True)
-    print('저장', out, f'셔터 {shot}초 · 플래시 {flash}초 · 멈춤 {freeze}초부터')
+    print('저장', out, f'셔터 {shot}초 · 플래시 {flash}초 · 멈춤 {freeze}초부터' + (f' · J컷 {jcut}초' if jcut > 0 else ''))
     return 0
 
 

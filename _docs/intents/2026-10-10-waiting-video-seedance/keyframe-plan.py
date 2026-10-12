@@ -436,6 +436,28 @@ COMPACT_V15 = {'03': (
     'Smooth, natural, continuous motion with clear, lively body movement. No audio.')}
 # 판 16(10/13 Bumm님: 처음·중간에 짧게 끊기는 «탁» 금지) — 0~6초 막대 그대로 왼쪽·오른쪽·가운데로 부름 → 7초 한 번만 «딱» → 닫힌 슬레이트를 든 채 끝(끝 그림 kf-03-v3/ps-kf3-03-end).
 COMPACT_V16 = {'03': "8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. The first frame is exactly the start image and the last frame is exactly the end image. The framing stays exactly as in the start image for all 8 seconds; the whole robot and the clapperboard stay fully in frame at their original size. Same robot design, materials, colors and lighting throughout. Timeline - 0-2s: holding the clapperboard with its striped stick open exactly as in the start image, the robot turns its head and upper body about 45 degrees toward the left side of the picture and holds one hand cupped beside the edge of its visor, calling the film crew on that side with a big, clear gesture. 2-4s: the robot turns about 45 degrees toward the right side of the picture and calls the same way, its hand cupped beside the visor. 4-6s: the robot faces the camera and calls once more toward the front, its hand cupped beside the visor. From 0 to 6 seconds the striped stick stays open in exactly the same position as in the start image. 6-7s: the robot lifts the striped stick wide open with its hand, higher than in the start image. At 7 seconds the robot snaps the stick shut once - the only clap in the clip. 7-8s: the robot holds the closed clapperboard in front of its chest, facing the camera - this is the end image. The clapperboard is one black board with one black-and-white striped hinged stick on top and one small logo on its front; its front faces the camera the whole time and the stick stays attached at its hinge. The robot's own body is plain cream and black. The visor shows only the two glowing orange arc eyes the whole time, also while calling; the hands have black fingers with black fingertips and one cream thumb. Smooth, natural, continuous motion with clear, lively body movement. No audio."}
+# 판 17(10/13 팀장 전달 «카메라 용어») — 대기 영상 지시문 맨 앞에 고정 숏 문장을 둔다(`_docs/ops/camera-example-videos.md` «카메라 용어»).
+LOCKED_OFF = 'Locked-off static shot, no zoom, no pan, no dolly.'
+# 03 판 17(10/13 Bumm님: 막대가 조금이라도 벌어져 보이면 안 됨) — 시작·끝 모두 막대가 완전히 닫힌 슬레이트, 0~6초 닫힌 채 확성기 손으로 왼쪽·오른쪽·앞
+# → 6~6.7초 막대를 위로 활짝 → 7초 박자에 맞춰 한 번 «딱» → 7~8초 닫힌 채. 막대가 열리는 것은 한 번뿐이다.
+COMPACT_V17 = {'03': (
+    'Locked-off medium shot, no zoom, no pan, no dolly. '
+    '8-second single continuous shot, square 1:1, pure white background, premium 3D character animation. '
+    'The first frame is exactly the start image and the last frame is exactly the end image. '
+    'The whole robot and the clapperboard stay fully in frame at their original size. Same robot design, materials, colors and lighting throughout. '
+    'The clapperboard is one black board with one black-and-white striped hinged stick on top and one small logo on its front; its front faces the camera '
+    'the whole time and the stick stays attached at its hinge. '
+    'From 0 to 6 seconds the striped stick lies completely shut, flat on the board with no gap at the hinge, exactly as in the start image. '
+    'Timeline - 0-2s: holding the closed clapperboard in one hand, the robot turns its head and upper body about 45 degrees toward the left side of the picture '
+    'and holds its other hand cupped beside the edge of its visor like a megaphone, calling the film crew on that side with a big, clear gesture. '
+    '2-4s: the robot turns about 45 degrees toward the right side of the picture and calls the same way, its hand cupped beside the visor. '
+    '4-6s: the robot faces the camera and calls once more toward the front, its hand cupped beside the visor. '
+    '6-6.7s: with its free hand the robot lifts the striped stick wide open, high up, and holds it open. '
+    'At 7 seconds, on the beat, a single clap: the robot snaps the stick shut once - the only time the stick opens and closes in the clip. '
+    '7-8s: the robot holds the closed clapperboard in front of its chest, facing the camera - this is the end image. '
+    "The robot's own body is plain cream and black. The visor shows only the two glowing orange arc eyes the whole time, also while calling; "
+    'the hands have black fingers with black fingertips and one cream thumb. '
+    'Smooth, natural, continuous motion with clear, lively body movement. No audio.')}
 PROP_WORDS_V8 = {'09': [('The camera stays black', "The robot's handheld action camera stays black")]}
 QUALITY_EN_Q11 = ('The shot itself never moves: the framing stays exactly as in the start image for all 8 seconds - no zoom, no push-in, no close-up, '
                   'no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size.')
@@ -543,6 +565,7 @@ def seedance_prompt(scene, version=None):
     """품질 기준을 넣은 문장. 판(version)을 주지 않으면 이미 만든 편은 만들 때의 판, 나머지는 최신 판(12 = Q1~Q17 + Q7 보강)."""
     if version is None: version = MADE[scene][1] if scene in MADE else 12
     if version == 1: return seedance_prompt_v1(scene)
+    if version >= 17 and scene in COMPACT_V17: return COMPACT_V17[scene]
     if version >= 16 and scene in COMPACT_V16: return COMPACT_V16[scene]
     if version >= 15 and scene in COMPACT_V15: return COMPACT_V15[scene]
     sc = SCENES[scene]
@@ -587,6 +610,7 @@ def seedance_prompt(scene, version=None):
     for a, b in remake.get('replace', []):
         assert a in out, (scene, a)
         out = out.replace(a, b)
+    if version >= 17: out = LOCKED_OFF + ' ' + out
     return out
 
 
