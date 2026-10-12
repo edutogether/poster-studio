@@ -434,6 +434,8 @@ COMPACT_V15 = {'03': (
     "the whole time and the stick stays attached at its hinge. The robot's own body is plain cream and black. The visor shows only the two glowing orange arc eyes "
     'the whole time, also while calling out; the hands have black fingers with black fingertips and one cream thumb. '
     'Smooth, natural, continuous motion with clear, lively body movement. No audio.')}
+# 판 16(10/13 Bumm님: 처음·중간에 짧게 끊기는 «탁» 금지) — 0~6초 막대 그대로 왼쪽·오른쪽·가운데로 부름 → 7초 한 번만 «딱» → 닫힌 슬레이트를 든 채 끝(끝 그림 kf-03-v3/ps-kf3-03-end).
+COMPACT_V16 = {'03': "8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. The first frame is exactly the start image and the last frame is exactly the end image. The framing stays exactly as in the start image for all 8 seconds; the whole robot and the clapperboard stay fully in frame at their original size. Same robot design, materials, colors and lighting throughout. Timeline - 0-2s: holding the clapperboard with its striped stick open exactly as in the start image, the robot turns its head and upper body about 45 degrees toward the left side of the picture and holds one hand cupped beside the edge of its visor, calling the film crew on that side with a big, clear gesture. 2-4s: the robot turns about 45 degrees toward the right side of the picture and calls the same way, its hand cupped beside the visor. 4-6s: the robot faces the camera and calls once more toward the front, its hand cupped beside the visor. From 0 to 6 seconds the striped stick stays open in exactly the same position as in the start image. 6-7s: the robot lifts the striped stick wide open with its hand, higher than in the start image. At 7 seconds the robot snaps the stick shut once - the only clap in the clip. 7-8s: the robot holds the closed clapperboard in front of its chest, facing the camera - this is the end image. The clapperboard is one black board with one black-and-white striped hinged stick on top and one small logo on its front; its front faces the camera the whole time and the stick stays attached at its hinge. The robot's own body is plain cream and black. The visor shows only the two glowing orange arc eyes the whole time, also while calling; the hands have black fingers with black fingertips and one cream thumb. Smooth, natural, continuous motion with clear, lively body movement. No audio."}
 PROP_WORDS_V8 = {'09': [('The camera stays black', "The robot's handheld action camera stays black")]}
 QUALITY_EN_Q11 = ('The shot itself never moves: the framing stays exactly as in the start image for all 8 seconds - no zoom, no push-in, no close-up, '
                   'no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size.')
@@ -504,7 +506,7 @@ RULES = {
 # 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4, 4 = Q1~Q5, 5 = Q1~Q7, 6 = Q1~Q8, 7 = Q1~Q10, 8 = Q1~Q12, 9 = Q1~Q12 + Q7 보강(작은 흔적·끝에 남는 것 없음), 10 = 9 + Q7 효과 자리·Q13 얼굴판 맞닿음 없음, 11 = 10 + Q14~Q16(맞물림·모서리 그림·끝 자세), 12 = 11 + Q17(정한 한 물건만 움직임).
 MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', 1),
         '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
-        '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK. 10/12 Bumm님 «동작 하나 더» → 키프레임 v2(탁 · «액션 !» 가리키기) 통과, 10/13 판 13으로 다시 만듦(작업 103a5ee1, 시작·끝 = 원화) — 2.5~4.5초 가슴에 로고가 생기고 옆으로 든 슬레이트에 줄무늬 막대가 안 보임 → Bumm님 판정 대기 10/13 Bumm님 불합격(가슴 로고·손가락 뻗기·슬레이트 뒷면) → 키프레임 v3(왼쪽 외침·오른쪽 외침·탁) OK, «한 번에 통과하게» 짧은 지시문(판 15)으로 세 번째(작업 a6497ce2) — 외침 두 번·탁·원화로 끝, 얼굴 눈만·슬레이트 앞면 유지, 3.5초 가슴께 작은 하늘색 점 → Bumm님 판정 대기', 15),
+        '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK. 10/12 Bumm님 «동작 하나 더» → 키프레임 v2(탁 · «액션 !» 가리키기) 통과, 10/13 판 13으로 다시 만듦(작업 103a5ee1, 시작·끝 = 원화) — 2.5~4.5초 가슴에 로고가 생기고 옆으로 든 슬레이트에 줄무늬 막대가 안 보임 → Bumm님 판정 대기 10/13 Bumm님 불합격(가슴 로고·손가락 뻗기·슬레이트 뒷면) → 키프레임 v3(왼쪽 외침·오른쪽 외침·탁) OK, «한 번에 통과하게» 짧은 지시문(판 15)으로 세 번째(작업 a6497ce2) — 외침 두 번·탁·원화로 끝, 얼굴 눈만·슬레이트 앞면 유지, 3.5초 가슴께 작은 하늘색 점 → Bumm님 판정 대기 → Bumm님 불합격(처음·중간에 짧게 끊기는 탁) → 끝 그림을 닫힌 슬레이트로 바꾸고 판 16으로 네 번째(작업 2a306d9e) — 0.5초에 막대가 먼저 닫혀 버림(끝 그림이 닫힌 막대라 모델이 일찍 닫음), 부르기 세 번·7초 활짝 벌려 딱은 나옴 → 방향 전환 판정 대기', 16),
         '04': ('10/11 빠른 모드로 만듦(작업 022b63ac) — 3.0~4.75초 입 생김 → Q5 넣어 새로 만들 것(Bumm님 10/11, 다시 만들기는 끝에 몰아서 승인). 10/12 키프레임 v2(하늘 빈 시작 · 손가락 쓱 · 파파팡) 통과, 10/13 판 13으로 다시 만듦(작업 7a18e33a, 시작 = 하늘 빈 포스터 · 끝 = 원화) — 얼굴 눈만·포스터 고정, 4.5~6초 손끝이 왼쪽 가장자리·5.5초 안테나가 위 가장자리에 닿음 → Bumm님 판정 대기', 13),
         '05': ('10/11 빠른 모드로 만듦(작업 f5f6055b) — Bumm님 통과(시간 때문에 그대로). 신발끈이 사라짐·발자국 모양·위치 어색 → 여유 있으면 새로 만들 후보. 10/12 키프레임 v2(끈 운동화 · 번갈아 디딤) 통과, 10/13 판 13으로 다시 만듦(작업 5d1e0198, 시작·끝 = 키프레임 v2) — 끈 그대로·발자국 넷·상자 고정·얼굴 눈만, 첫 디딤이 두 짝 동시·빨강을 어깨까지 휘두름·6초 안테나가 위 가장자리에 닿음 → Bumm님 판정 대기 10/13 Bumm님 보류(«신발을 손에 끼우고 걷는 소리를 녹음하는 느낌») → 폴리 방식 키프레임 v3 · 끝 그림 발자국 작고 옅게(make05-end-light.py)로 세 번째(작업 bc6a2b0e, 판 14) — 낮게 번갈아 디딤·작은 발자국 넷·끝 자세 맞음, 첫 프레임이 이미 양손에 한 짝씩(시작 그림과 평균 26) → Bumm님 판정 대기', 14),
         '06': ('10/11 빠른 모드로 만듦(작업 9be79fcb) — Bumm님 통과(«오류는 제일 없다»), 행동이 밋밋함 → Q8', 5),
@@ -541,6 +543,7 @@ def seedance_prompt(scene, version=None):
     """품질 기준을 넣은 문장. 판(version)을 주지 않으면 이미 만든 편은 만들 때의 판, 나머지는 최신 판(12 = Q1~Q17 + Q7 보강)."""
     if version is None: version = MADE[scene][1] if scene in MADE else 12
     if version == 1: return seedance_prompt_v1(scene)
+    if version >= 16 and scene in COMPACT_V16: return COMPACT_V16[scene]
     if version >= 15 and scene in COMPACT_V15: return COMPACT_V15[scene]
     sc = SCENES[scene]
     steps, end = _timeline(sc)
@@ -663,7 +666,7 @@ def storyboards(path):
         if all(t < 8 for t, _, _ in v['shots']): lines.append('| 8 | 원화(처음 자세로 돌아옴) |')
         ver = MADE.get(sc, ('', 0))[1]
         rm = (REMAKE_V14.get(sc) if ver >= 14 else None) or (REMAKE_V13.get(sc) if ver >= 13 else None)
-        if ver >= 15 and sc in COMPACT_V15: rm = {'images': '시작·끝 = 원화 · 중간 그림 kf-03-v3/ps-kf3-03-L·R·C (짧은 지시문 판 15)'}
+        if ver >= 15 and sc in COMPACT_V15: rm = {'images': '시작 = 원화 · 끝 = kf-03-v3/ps-kf3-03-end(닫힌 슬레이트, 판 16) · 중간 그림 kf-03-v3/ps-kf3-03-L·R·C'}
         if rm:
             lines += ['', f"**다시 만들기(판 {ver})** — 위 표는 첫 판의 연출이고, 판 {ver}의 연출은 아래 프롬프트의 Timeline이다. 그림: {rm['images']}(.cache/seedance-20261010/gpt/)"]
         if sc in MADE: lines += ['', f'**만든 편** — {MADE[sc][0]}. 아래는 만들 때 넣은 문장 그대로다.']
