@@ -38,11 +38,11 @@
   {
     "id": 5,
     "status": "approved",
-    "src": "/studio/waiting-v2/05-adaad281f08d.mp4",
-    "sha256": "adaad281f08dac001d61cde9c5917343b0bd4aef7d370f6f96772b709528e99f",
-    "bytes": 1166424,
+    "src": "/studio/waiting-v2/05-216524b44d04.mp4",
+    "sha256": "216524b44d0497b9db4ba0838d928c1148fc0eb3383fdf20597fde470407845f",
+    "bytes": 1382530,
     "still": "/studio/waiting-v2/05.webp",
-    "stillSha256": "e9aff3a6a99414e0b1992f7bdc06d38065df5b698ea700f8d76df0dcd9847402"
+    "stillSha256": "acd71ffa55081b12ecbb9a4760ffbff6c6d04ff744ad5ecd995c451836c8c415"
   },
   {
     "id": 6,
@@ -101,10 +101,10 @@
   {
     "id": 12,
     "status": "approved",
-    "src": "/studio/waiting-v2/12-62b42ffd40b4.mp4",
-    "sha256": "62b42ffd40b44b69d94cb7c4a63cbf875f16aa2f69e1fbcd4541dfff9e984cac",
-    "bytes": 2049561,
+    "src": "/studio/waiting-v2/12-7e89eeaa31f2.mp4",
+    "sha256": "7e89eeaa31f27e2364f1d3b9898c5385dff0546068104b07e98fd00a52df0eee",
+    "bytes": 1817603,
     "still": "/studio/waiting-v2/12.webp",
-    "stillSha256": "e59c0d86d56b79641acc60461173c30fb4b4a1a7c4909c0ec0d3c383e6f1952e"
+    "stillSha256": "d07864e73f00b9c2cc255b2206db44f9c3ae8c1f6150fe32ca0916b08f0c877e"
   }
 ]

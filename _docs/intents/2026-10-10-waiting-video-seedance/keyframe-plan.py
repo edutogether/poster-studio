@@ -415,6 +415,25 @@ REMAKE_V14 = {'03': {
               "except the one sun-and-flowers tile in the robot's hand, and the robot only presses that one tile flat into the board. "
               "The robot's hands touch the tile when pushing and pressing it. The quarter sun on the last tile keeps its short yellow crayon rays the whole time."),
     'replace': [('a piece, its empty slot and the board around it have the same size, and once the piece is in,', 'the piece and the board around it have the same size, and once the piece is flat,')]}}
+# 판 15 = 짧은 지시문(10/13 Bumm님 «다시 만들기 최소로 — 한 번에 통과하게»). 통과한 편들의 공통점을 따른다:
+# 초 단위의 짧고 구체적인 동작 순서, 금지 문장 대신 «있는 것»을 서술, 시작·끝 그림의 차이(여기서는 같은 자세로 돌아옴)를 분명히.
+COMPACT_V15 = {'03': (
+    '8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. '
+    'The first frame is exactly the start image and the last frame is exactly the end image - the same opening pose. '
+    'The framing stays exactly as in the start image for all 8 seconds; the whole robot and the clapperboard stay fully in frame at their original size. '
+    'Same robot design, materials, colors and lighting throughout. '
+    'Timeline - 0-1s: the robot lifts the open clapperboard a little higher in front of its chest. '
+    '1-2s: the robot turns its head and upper body about 45 degrees toward the left side of the picture and holds one hand cupped beside the edge of its visor, '
+    'calling out to the film crew on that side; the clapperboard front still faces the camera. '
+    '2-3s: the robot turns its head and upper body about 45 degrees toward the right side of the picture and calls out the same way, its hand cupped beside the visor. '
+    '3-4s: the robot faces the camera again and at 3.5 seconds snaps the striped stick shut with a firm clap onto the board. '
+    '4-5s: the robot holds the closed clapperboard steady in front of its chest. '
+    '5-6s: the robot lifts the striped stick open again with its hand. '
+    '6-8s: the robot settles back into exactly the opening pose of the start image - this is the end image. '
+    'The clapperboard is one black board with one black-and-white striped hinged stick on top and one small logo on its front; its front faces the camera '
+    "the whole time and the stick stays attached at its hinge. The robot's own body is plain cream and black. The visor shows only the two glowing orange arc eyes "
+    'the whole time, also while calling out; the hands have black fingers with black fingertips and one cream thumb. '
+    'Smooth, natural, continuous motion with clear, lively body movement. No audio.')}
 PROP_WORDS_V8 = {'09': [('The camera stays black', "The robot's handheld action camera stays black")]}
 QUALITY_EN_Q11 = ('The shot itself never moves: the framing stays exactly as in the start image for all 8 seconds - no zoom, no push-in, no close-up, '
                   'no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size.')
@@ -485,7 +504,7 @@ RULES = {
 # 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4, 4 = Q1~Q5, 5 = Q1~Q7, 6 = Q1~Q8, 7 = Q1~Q10, 8 = Q1~Q12, 9 = Q1~Q12 + Q7 보강(작은 흔적·끝에 남는 것 없음), 10 = 9 + Q7 효과 자리·Q13 얼굴판 맞닿음 없음, 11 = 10 + Q14~Q16(맞물림·모서리 그림·끝 자세), 12 = 11 + Q17(정한 한 물건만 움직임).
 MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', 1),
         '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
-        '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK. 10/12 Bumm님 «동작 하나 더» → 키프레임 v2(탁 · «액션 !» 가리키기) 통과, 10/13 판 13으로 다시 만듦(작업 103a5ee1, 시작·끝 = 원화) — 2.5~4.5초 가슴에 로고가 생기고 옆으로 든 슬레이트에 줄무늬 막대가 안 보임 → Bumm님 판정 대기', 13),
+        '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK. 10/12 Bumm님 «동작 하나 더» → 키프레임 v2(탁 · «액션 !» 가리키기) 통과, 10/13 판 13으로 다시 만듦(작업 103a5ee1, 시작·끝 = 원화) — 2.5~4.5초 가슴에 로고가 생기고 옆으로 든 슬레이트에 줄무늬 막대가 안 보임 → Bumm님 판정 대기 10/13 Bumm님 불합격(가슴 로고·손가락 뻗기·슬레이트 뒷면) → 키프레임 v3(왼쪽 외침·오른쪽 외침·탁) OK, «한 번에 통과하게» 짧은 지시문(판 15)으로 세 번째(작업 a6497ce2) — 외침 두 번·탁·원화로 끝, 얼굴 눈만·슬레이트 앞면 유지, 3.5초 가슴께 작은 하늘색 점 → Bumm님 판정 대기', 15),
         '04': ('10/11 빠른 모드로 만듦(작업 022b63ac) — 3.0~4.75초 입 생김 → Q5 넣어 새로 만들 것(Bumm님 10/11, 다시 만들기는 끝에 몰아서 승인). 10/12 키프레임 v2(하늘 빈 시작 · 손가락 쓱 · 파파팡) 통과, 10/13 판 13으로 다시 만듦(작업 7a18e33a, 시작 = 하늘 빈 포스터 · 끝 = 원화) — 얼굴 눈만·포스터 고정, 4.5~6초 손끝이 왼쪽 가장자리·5.5초 안테나가 위 가장자리에 닿음 → Bumm님 판정 대기', 13),
         '05': ('10/11 빠른 모드로 만듦(작업 f5f6055b) — Bumm님 통과(시간 때문에 그대로). 신발끈이 사라짐·발자국 모양·위치 어색 → 여유 있으면 새로 만들 후보. 10/12 키프레임 v2(끈 운동화 · 번갈아 디딤) 통과, 10/13 판 13으로 다시 만듦(작업 5d1e0198, 시작·끝 = 키프레임 v2) — 끈 그대로·발자국 넷·상자 고정·얼굴 눈만, 첫 디딤이 두 짝 동시·빨강을 어깨까지 휘두름·6초 안테나가 위 가장자리에 닿음 → Bumm님 판정 대기 10/13 Bumm님 보류(«신발을 손에 끼우고 걷는 소리를 녹음하는 느낌») → 폴리 방식 키프레임 v3 · 끝 그림 발자국 작고 옅게(make05-end-light.py)로 세 번째(작업 bc6a2b0e, 판 14) — 낮게 번갈아 디딤·작은 발자국 넷·끝 자세 맞음, 첫 프레임이 이미 양손에 한 짝씩(시작 그림과 평균 26) → Bumm님 판정 대기', 14),
         '06': ('10/11 빠른 모드로 만듦(작업 9be79fcb) — Bumm님 통과(«오류는 제일 없다»), 행동이 밋밋함 → Q8', 5),
@@ -522,6 +541,7 @@ def seedance_prompt(scene, version=None):
     """품질 기준을 넣은 문장. 판(version)을 주지 않으면 이미 만든 편은 만들 때의 판, 나머지는 최신 판(12 = Q1~Q17 + Q7 보강)."""
     if version is None: version = MADE[scene][1] if scene in MADE else 12
     if version == 1: return seedance_prompt_v1(scene)
+    if version >= 15 and scene in COMPACT_V15: return COMPACT_V15[scene]
     sc = SCENES[scene]
     steps, end = _timeline(sc)
     remake = (REMAKE_V14.get(scene) if version >= 14 else None) or (REMAKE_V13.get(scene, {}) if version >= 13 else {})
@@ -643,6 +663,7 @@ def storyboards(path):
         if all(t < 8 for t, _, _ in v['shots']): lines.append('| 8 | 원화(처음 자세로 돌아옴) |')
         ver = MADE.get(sc, ('', 0))[1]
         rm = (REMAKE_V14.get(sc) if ver >= 14 else None) or (REMAKE_V13.get(sc) if ver >= 13 else None)
+        if ver >= 15 and sc in COMPACT_V15: rm = {'images': '시작·끝 = 원화 · 중간 그림 kf-03-v3/ps-kf3-03-L·R·C (짧은 지시문 판 15)'}
         if rm:
             lines += ['', f"**다시 만들기(판 {ver})** — 위 표는 첫 판의 연출이고, 판 {ver}의 연출은 아래 프롬프트의 Timeline이다. 그림: {rm['images']}(.cache/seedance-20261010/gpt/)"]
         if sc in MADE: lines += ['', f'**만든 편** — {MADE[sc][0]}. 아래는 만들 때 넣은 문장 그대로다.']
