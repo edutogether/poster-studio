@@ -184,7 +184,7 @@ SEED_FACE_11 = ('Each visor shows only its two glowing orange arc eyes the whole
                 "and the child's eyes are never reflected on the mother's visor; while hugging the two faces never overlap; "
                 'hands have black fingers with black fingertips and one cream thumb.')
 SEEDANCE = {'모델': 'Seedance 2.0 (seedance_2_0)', 'mode': 'fast — 빠른 모드(10/11 Bumm님 결정, 한 편씩 승인)', '해상도': '720p', '화면비': '1:1', '길이': '8초',
-            '소리': '없음(generate_audio false)', '시작 그림(start_image)': '원화', '끝 그림(end_image)': '원화(05·09·12는 끝 그림)',
+            '소리': '없음(generate_audio false)', '시작 그림(start_image)': '원화(10/13 다시 만든 04·05는 그 편의 시작 그림)', '끝 그림(end_image)': '원화(05·09·12와 10/13 다시 만든 11은 끝 그림)',
             '참고 그림(image_references)': '넣지 않음 — 넣으면 시작·끝 그림이 참고 목록으로 합쳐져 첫·끝이 고정되지 않았다(10/10 08 시험). 중간 키프레임은 아래 초별 연출 글로 준다',
             '크레딧': '20(빠른 모드) — 보통 모드(std)면 36'}
 POST = ['결과 크기(10/10 시험은 960×960) → 704×704로 줄임(앱 자리와 같은 크기)',
@@ -297,6 +297,62 @@ TIMELINE_V12 = {
            'the robot claps its hands happily several times, bouncing on its feet, eyes the same arc shape',
            'the robot points at the big logo on the completed board, then steps back in close beside the board and leans toward it, both hands back on the right edge of the board'],
 }
+# 판 13 = 12 + 다시 만들기(10/12 Bumm님 키프레임 v2 통과 → 10/13 영상 승인). 시작·끝 그림이 원화와 다른 편은 연출뿐 아니라
+# 고정 물건(keep)·규칙(rules)·도구(tools)도 바뀌므로 함께 갈아 끼운다. 그림은 .cache/seedance-20261010/gpt/kf-NN-v2/.
+REMAKE_V13 = {
+    '03': {'images': '시작·끝 = 원화 · 중간 그림 kf-03-v2/ps-kf2-03-K1(탁)·K2(«액션 !»)',
+           'timeline': [
+        'the robot lifts the open clapperboard a little higher and leans back slightly, winding up for the clap',
+        'the robot snaps the striped stick shut with a firm clap - it visibly hits the board; the robot leans forward with energy, holding the closed clapperboard in front of its chest',
+        "right after the clap the excited robot gives a film director's action signal without any sound: it lowers the closed clapperboard to its side in one hand and thrusts its other arm straight forward, pointing with one finger, one foot stepping forward, body leaning forward in a dynamic pose; the robot stays the same size and fully in frame",
+        'the robot holds the pointing pose for a beat, then gives a small proud bounce',
+        'the robot steps back to its place and brings the closed clapperboard back in front of its chest with both hands',
+        "the robot's hand lifts the hinged striped stick open again by hand - the stick is half open",
+        'the hinged stick is open as in the start image and the robot holds the clapperboard almost exactly as in the start image; no motion lines, no spark marks and no drawn effects anywhere']},
+    '04': {'images': '시작 = kf-04-v2/ps-kf2-04-start(하늘 빈 포스터) · 끝 = 원화 · 중간 그림 K1(손가락 쓱)·K2(파파팡)',
+           'keep': 'the poster (its frame, size and position, and the town, the river, the grass, the two children and the dog in its lower part)',
+           'timeline': [
+        'the robot turns its head toward the poster and looks up at its empty dark-blue night sky',
+        'the robot raises one arm and touches its index fingertip to the upper left of the empty sky on the poster',
+        'the robot sweeps its fingertip across the sky in one smooth arc from left to right; a thin trail of tiny golden sparkles follows the fingertip, and the rest of the sky is still empty',
+        'the robot pulls its hand back and waits a beat while the sparkle trail glows a little brighter',
+        'pop-pop-pop - colorful fireworks burst open along the sparkle trail and the glowing light shapes of the end image start to appear in the sky; the robot leans back with both arms open in delight',
+        'more fireworks burst until the sky of the poster looks exactly like the end image; the robot bounces happily',
+        'the robot turns back toward the viewer and holds out its open palm beside the poster, almost exactly as in the end image'],
+           'end': '7-8s: the robot settles into exactly the pose of the end image, and the poster sky shows exactly the fireworks and glowing light shapes of the end image - this is the end image.',
+           'rules': ("The poster never moves or changes size. Only the upper sky of the poster changes: it starts as an empty night sky, the sparkles and fireworks appear only "
+                     "where the fingertip swept, and at the end the sky shows exactly the fireworks and glowing light shapes of the end image. The town, river, grass, two children "
+                     "and dog in the lower part of the poster never change. The fingertip visibly touches the poster while sweeping."),
+           'tools': 'The poster is one flat printed sheet with straight edges; when pointing and sweeping, the robot extends one finger of a normal hand.'},
+    '05': {'images': '시작 = kf-05-v2/ps-kf2-05-start(끈 운동화) · 끝 = kf-05-v2/ps-kf2-05-end(걸은 발자국 넷) · 중간 그림 K1(빨강 디딤)·K2(파랑 디딤)',
+           'keep': 'the wooden sandbox, the small black handheld recorder with its microphone on the tripod, and the red and blue lace-up sneakers with their white laces tied in small bows',
+           'timeline': [
+        'the robot takes one sneaker in each hand - the red sneaker in one hand, the blue sneaker in the other - and holds them just above the smooth sand at the left end of the box like two feet',
+        'tap - the robot plants the red sneaker flat on the sand near the left end, leaving exactly one sole-shaped print with tread marks where it stepped; the blue sneaker is lifted mid-step and the robot bounces with the beat',
+        'tap - the blue sneaker steps ahead and is planted flat, leaving a second print; the red sneaker lifts behind it; the two prints alternate left and right like real steps',
+        'tap - the red sneaker steps ahead again, leaving a third print, staggered like a real step',
+        'tap - the blue sneaker steps ahead, leaving a fourth print; the four prints now form exactly the walking trail of the end image, and the robot does a happy little bounce',
+        'the robot lifts both sneakers up off the sand and looks at the four prints, pleased',
+        'the robot holds the pair of sneakers by their heels in one hand and puts its other hand to its ear disc to listen, almost exactly as in the end image; the four prints stay in the sand'],
+           'end': '7-8s: final frame: exactly the pose of the end image, and the four prints remain in the sand exactly as in the end image - this is the end image.',
+           'rules': ('The red sneaker always stays red and in the same hand, the blue sneaker always stays blue and in the other hand. This is a walking tap-dance, not stamping: '
+                     'each sneaker is planted flat once per step and visibly presses into the sand; a print appears only where a sneaker was planted and then stays exactly there - '
+                     'the sand never sprays, rises or smooths over.'),
+           'tools': ('Each sneaker is a real lace-up sneaker with one heel and one toe, white laces criss-crossed and tied in a small bow, and a rubber sole with a tread pattern; '
+                     'the laces stay tied the whole time. The recorder has one microphone on top of one tripod.')},
+    '11': {'images': '시작 = 원화 · 끝 = kf-11-v2/ps-kf2-11-end(손잡고 뛰는 중) · 중간 그림 t5(빙글)·K2(뛰기 시작)',
+           'keep': 'both robots - the mother with the red knitted scarf and its small logo tag, the child with the blue knitted scarf and blue shoes',  # 끝 그림에서 아이 목도리 끝이 날린다
+           'timeline': [
+        'holding hands, the mother and child take one more step together',
+        'they stop and look at each other - the mother turns her head down toward the child, the child looks up',
+        'the mother bends down and lifts the child up in a hug, holding it out to the side at her shoulder so that there is clear empty space between the two heads - both visors fully visible, the two heads and faces never touching or overlapping',
+        'the mother holds the child up happily and spins around once in a small circle, both faces visible, never overlapping',
+        'the mother sets the child back down on the ground and they take each other by the hand',
+        'holding hands, the two robots start running together side by side - knees lifted, arms swinging, a light bounce in their steps, the red and blue scarves flying behind them; they run in place along the same line and stay the same size and in the same place in the frame',
+        'they keep running joyfully hand in hand in place, mid-stride, one foot off the ground, almost exactly as in the end image'],
+           'end': '7-8s: the two robots are running hand in hand in exactly the pose of the end image, the scarves streaming behind them - this is the end image.',
+           'emo_face': ' - each visor still shows only its two glowing orange arc eyes, no mouth and no smile'},
+}
 PROP_WORDS_V8 = {'09': [('The camera stays black', "The robot's handheld action camera stays black")]}
 QUALITY_EN_Q11 = ('The shot itself never moves: the framing stays exactly as in the start image for all 8 seconds - no zoom, no push-in, no close-up, '
                   'no cut, no change of angle; the whole robot and every prop stay fully in frame at their original size.')
@@ -367,14 +423,14 @@ RULES = {
 # 이미 만든 편 — (기록, 그때 쓴 문장의 판). 판 1 = 품질 기준 없음, 2 = Q1~Q3, 3 = Q1~Q4, 4 = Q1~Q5, 5 = Q1~Q7, 6 = Q1~Q8, 7 = Q1~Q10, 8 = Q1~Q12, 9 = Q1~Q12 + Q7 보강(작은 흔적·끝에 남는 것 없음), 10 = 9 + Q7 효과 자리·Q13 얼굴판 맞닿음 없음, 11 = 10 + Q14~Q16(맞물림·모서리 그림·끝 자세), 12 = 11 + Q17(정한 한 물건만 움직임).
 MADE = {'01': ('10/11 빠른 모드로 만듦(작업 c5510fd8) — Bumm님 OK, 그대로 확정', 1),
         '02': ('10/11 빠른 모드로 만듦(작업 c9ae7e97) — Bumm님 OK, 그대로 확정', 2),
-        '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK, 그대로 확정', 3),
-        '04': ('10/11 빠른 모드로 만듦(작업 022b63ac) — 3.0~4.75초 입 생김 → Q5 넣어 새로 만들 것(Bumm님 10/11, 다시 만들기는 끝에 몰아서 승인)', 3),
-        '05': ('10/11 빠른 모드로 만듦(작업 f5f6055b) — Bumm님 통과(시간 때문에 그대로). 신발끈이 사라짐·발자국 모양·위치 어색 → 여유 있으면 새로 만들 후보', 4),
+        '03': ('10/11 빠른 모드로 만듦(작업 6f09427a) — Bumm님 OK. 10/12 Bumm님 «동작 하나 더» → 키프레임 v2(탁 · «액션 !» 가리키기) 통과, 10/13 판 13으로 다시 만듦(작업 103a5ee1, 시작·끝 = 원화) — 2.5~4.5초 가슴에 로고가 생기고 옆으로 든 슬레이트에 줄무늬 막대가 안 보임 → Bumm님 판정 대기', 13),
+        '04': ('10/11 빠른 모드로 만듦(작업 022b63ac) — 3.0~4.75초 입 생김 → Q5 넣어 새로 만들 것(Bumm님 10/11, 다시 만들기는 끝에 몰아서 승인). 10/12 키프레임 v2(하늘 빈 시작 · 손가락 쓱 · 파파팡) 통과, 10/13 판 13으로 다시 만듦(작업 7a18e33a, 시작 = 하늘 빈 포스터 · 끝 = 원화) — 얼굴 눈만·포스터 고정, 4.5~6초 손끝이 왼쪽 가장자리·5.5초 안테나가 위 가장자리에 닿음 → Bumm님 판정 대기', 13),
+        '05': ('10/11 빠른 모드로 만듦(작업 f5f6055b) — Bumm님 통과(시간 때문에 그대로). 신발끈이 사라짐·발자국 모양·위치 어색 → 여유 있으면 새로 만들 후보. 10/12 키프레임 v2(끈 운동화 · 번갈아 디딤) 통과, 10/13 판 13으로 다시 만듦(작업 5d1e0198, 시작·끝 = 키프레임 v2) — 끈 그대로·발자국 넷·상자 고정·얼굴 눈만, 첫 디딤이 두 짝 동시·빨강을 어깨까지 휘두름·6초 안테나가 위 가장자리에 닿음 → Bumm님 판정 대기', 13),
         '06': ('10/11 빠른 모드로 만듦(작업 9be79fcb) — Bumm님 통과(«오류는 제일 없다»), 행동이 밋밋함 → Q8', 5),
         '07': ('10/11 빠른 모드로 만듦(작업 50b9a0fd) — Bumm님 통과(«지금까지 중 제일 낫다»), 같은 건반만 침·큰 동작을 뒤로 → Q9·Q10', 6),
         '09': ('10/11 빠른 모드로 만듦(작업 e5bdd295, 판 7) — 1~6.5초 화면이 확대됨(세션 문장 «camera closer» 탓)·6.25~7.4초 입 → Q11·Q12, Bumm님 «다시 만들기». 다시 만듦(작업 7d6594eb, 판 8) — Bumm님 통과, 확정(화면 고정 통과. 5.0~6.4초 작은 «오» 입·물이 흘러 바닥 웅덩이 → Q7 보강)', 8),
         '10': ('10/11 빠른 모드로 만듦(작업 80b85d90, 판 9) — Bumm님 통과, 확정(화면 고정·얼굴 눈만. 김이 숟가락에서 올라 얼굴판 앞을 지남 → Q7 보강)', 9),
-        '11': ('10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, Bumm님 통과, 확정(화면 고정·얼굴 눈만. 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Q13)', 9),
+        '11': ('10/11 빠른 모드로 만듦(작업 27f9645d, 판 9) — 화면 고정·얼굴 눈만, Bumm님 통과, 확정(화면 고정·얼굴 눈만. 안을 때 3.75~4.5초·5.4~5.6초 두 얼굴판이 맞닿음 → Q13). 10/12 키프레임 v2(빙글 → 손잡고 뛰기) 통과, 10/13 판 13으로 다시 만듦(작업 b62c5439, 시작 = 원화 · 끝 = 뛰는 중) — 얼굴 눈만·뛰기 끝 자세 맞음, 안아 올린 2.5~3.0초·3.6~4.0초 두 얼굴판이 다시 맞닿음(Q13 문장이 있어도) → Bumm님 판정 대기', 13),
         '12': ('10/11 빠른 모드로 만듦(작업 db76d612, 판 9) — Bumm님 «진짜 틀림»(조각·빈칸 크기, 해가 모서리에 통째, 끝 자세) → Q14~Q16. 시작·끝 그림의 해를 1/4 원으로 고쳐(K0-12-v2·ps-kf-12-end-v2) 다시 만듦(작업 a217c337, 판 11) — 조각 꼭 맞음·화면 고정·얼굴 눈만, 끝 자세 조금 다름. Bumm님 «별로»: 아래 조각이 딸려 들어감·해 곡선이 로고와 이어지는 각도 어색 → Q17, 시작·끝 그림 v3(K0-12-v3·ps-kf-12-end-v3)으로 세 번째(작업 4550cc81, 판 12) — 아래 조각 고정·해 곡선 이음·화면 고정·얼굴 눈만, 끝 자세 조금 다름 → Bumm님 판정 대기', 12),
         '08': ('10/10 시험 영상(작업 94360a13) — 확정', 1)}
 
@@ -406,7 +462,10 @@ def seedance_prompt(scene, version=None):
     if version == 1: return seedance_prompt_v1(scene)
     sc = SCENES[scene]
     steps, end = _timeline(sc)
-    timeline = TIMELINE_V12.get(scene) if version >= 12 else None
+    remake = REMAKE_V13.get(scene, {}) if version >= 13 else {}
+    end = remake.get('end', end)
+    timeline = remake.get('timeline')
+    timeline = timeline or (TIMELINE_V12.get(scene) if version >= 12 else None)
     timeline = timeline or (TIMELINE_V11.get(scene) if version >= 11 else None)
     timeline = timeline or (TIMELINE_V8.get(scene) if version >= 8 else None)
     timeline = timeline or (TIMELINE_V7.get(scene) if version >= 7 else None)
@@ -424,18 +483,19 @@ def seedance_prompt(scene, version=None):
         hit = [bool(EMO.search(st)) for st in parts]
         if version < 8: hit[-1] = False  # 판 7까지는 끝 장면에 붙이지 않았다
         else: hit = [h or (i > 0 and hit[i - 1]) for i, h in enumerate(hit)]  # Q12: 그 다음 초(끝 장면 포함)에도
-        parts = [re.sub(r'\.$', EMO_FACE + '.', st) if h else st for st, h in zip(parts, hit)]
+        parts = [re.sub(r'\.$', remake.get('emo_face', EMO_FACE) + '.', st) if h else st for st, h in zip(parts, hit)]
         steps, end = ' '.join(parts[:-1]), parts[-1]
     face = SEED_FACE_11 if scene == '11' else SEED_FACE
     quality = (QUALITY_EN_Q11 + ' ' if version >= 8 else '') + QUALITY_EN + (' ' + QUALITY_EN_Q4 if version >= 3 else '') + (' ' + QUALITY_EN_Q67 if version >= 5 else '') + (' ' + QUALITY_EN_Q7B if version >= 9 else '') + (' ' + QUALITY_EN_V10 if version >= 10 else '') + (' ' + QUALITY_EN_V11 if version >= 11 else '') + (' ' + QUALITY_EN_V12 if version >= 12 else '') + (' ' + QUALITY_EN_Q8 if version >= 6 else '') + (' ' + QUALITY_EN_Q910 if version >= 7 else '')  # Q11(화면 고정)은 가장 중요해 맨 앞
-    rules = RULES[scene] + (' ' + TOOLS[scene] if version >= 3 else '') + (' ' + DETAILS[scene] if version >= 5 and scene in DETAILS else '')
+    rules = (remake.get('rules', RULES[scene]) + (' ' + remake.get('tools', TOOLS[scene]) if version >= 3 else '')
+             + (' ' + DETAILS[scene] if version >= 5 and scene in DETAILS else ''))
     if version >= 8:
         for a, b in PROP_WORDS_V8.get(scene, []):
             assert a in rules, (scene, a)
             rules = rules.replace(a, b)
     return ('8-second single continuous shot, square 1:1, fixed camera, pure white background, premium 3D character animation. '
             'The first frame is exactly the start image and the last frame is exactly the end image. '
-            f"Same robot design, materials, colors and lighting throughout; {sc['keep']} stay exactly as they are. {quality} "
+            f"Same robot design, materials, colors and lighting throughout; {remake.get('keep', sc['keep'])} stay exactly as they are. {quality} "
             f'Timeline - {steps} {end} {rules} {face} '
             'Smooth, natural, continuous motion; no morphing, no teleporting, no reverse playback, no back-and-forth looping, '
             'no camera movement or shake, no frozen frames, no added text or logos. No audio.')
@@ -515,6 +575,8 @@ def storyboards(path):
         lines += [f"## {sc} {v['title']}", '', f'**시나리오** — {SCENARIO[sc]}', '', '| 초 | 연출(키프레임) |', '|---|---|', '| 0 | 원화 |']
         lines += [f'| {t if t < 8 else "8(끝)"} | {ko} |' for t, ko, _ in v['shots']]
         if all(t < 8 for t, _, _ in v['shots']): lines.append('| 8 | 원화(처음 자세로 돌아옴) |')
+        if sc in REMAKE_V13 and MADE.get(sc, ('', 0))[1] >= 13:
+            lines += ['', f"**다시 만들기(판 13)** — 위 표는 첫 판의 연출이고, 판 13의 연출은 아래 프롬프트의 Timeline이다. 그림: {REMAKE_V13[sc]['images']}(.cache/seedance-20261010/gpt/)"]
         if sc in MADE: lines += ['', f'**만든 편** — {MADE[sc][0]}. 아래는 만들 때 넣은 문장 그대로다.']
         lines += ['', '**Seedance 프롬프트 전문**', '', '```text', seedance_prompt(sc), '```', '']
         if sc != '08':
