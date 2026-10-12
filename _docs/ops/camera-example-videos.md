@@ -519,7 +519,42 @@ C «저기, 저기 봐! 찍는다?»(5.8~7.0) · «삑»(7.8~8.4, 노트북 쪽 
 
 용량 한도(한 번에 10MB) 때문에 첨부는 JPEG로 줄여 올린다. 배경은 G0과 합성해 고정하고, 문간 장(G3~G5)은 v3처럼 `--keep 1340,110,1520,600`으로 둔다.
 
-## 영상 만들기 전 확인(생성 0 — 허락 뒤)
+## 영상 만들기 전 확인 — 개인 v8(10/13, 생성 0 — Bumm님 허락 뒤)
+
+| 항목 | 값 |
+|---|---|
+| 모델 | Seedance 2.0 (seedance_2_0) |
+| 모드·해상도·크레딧 | ⭐ 보통(std) · 1080p · **72**<br>대안: 빠른(fast) · **20**<br>10/13 `get_cost`로 소리를 켠 실제 값이다. 빠른 모드는 1080p로 줘도 20이라, 실제 해상도가 720p로 낮아지는지는 만들어 봐야 안다 [확인]. |
+| 화면비·길이 | 16:9 · 8초 |
+| 소리 | 켠다(`generate_audio: true`). 생활 소리만 넣는다: 노트북을 만지는 소리, 나무 바닥 발소리, 셔츠 스치는 소리, 작은 숨·웃음, 로비의 먼 웅성임. 음악·말은 없다. |
+| 시작 그림 | `cam-v8/video/ps-cam8-K0-169.png`(올림 82262a60) |
+| 끝 그림 | `cam-v8/video/ps-cam8-K4-169.png`(올림 50ff329a) |
+| 그림 준비 | 1536×1024 원본에서 위 64·아래 96화소를 잘라 16:9(1536×864)로 맞췄다. 머리 위 여유는 남겼다. |
+| 중간 장(K1~K3) | 넣지 않고 초별 글로 준다. 참고 그림으로 넣으면 시작·끝이 고정되지 않았다(10/10 08 시험). |
+| 뒤처리(0원) | 7.45초 하얀 플래시 0.15초, 7.6~8.0초 멈춘 장면은 ffmpeg로 붙인다. 3·2·1 숫자는 앱이 띄운다. |
+
+```text
+8-second single continuous shot, landscape 16:9, a fixed laptop webcam on a table at chest height in a bright, warm cinema lobby: a long wall of
+ticket and snack counters with a row of bright menu screens, a glossy light-brown wooden plank floor, a white ceiling with curved cove-light rims and
+warm downlights. The first frame is exactly the start image (her hand right in front of the lens) and the last frame is exactly the end image (her
+V-sign pose). The camera and the lobby behind her never move or change.
+The same young Korean woman throughout - exactly the face of the start and end images, long side-parted black waves, the light-blue denim shirt worn
+open with the sleeves rolled to just below the elbows over a fitted white T-shirt, high-waisted washed-black jeans, and a small black four-leaf clover
+pendant on a thin gold chain. Nobody else is in the picture.
+Timeline - 0-0.6s: her hand right in front of the lens, adjusting the laptop, covers part of the picture; lobby light leaks around it.
+0.6-1.5s: the hand moves down out of the picture; she is very close to the camera, checking the screen with a light smile.
+1.5-3s: still looking at the screen, she steps backward a few steps to her spot about 1.8 m from the camera, where she is seen from head to mid-thigh.
+3-4.5s: she smooths her shirt collar with one hand and tidies her bangs with the fingertips of the other.
+4.5-7s: she stands straight, looks into the camera and waits with a natural smile, breathing and blinking.
+7-8s: she raises her right hand to a V sign beside her cheek with a bright smile and holds it still - this is the end image.
+Real photographic lighting the whole time: warm ceiling light on her hair and face, a thin cool rim light from the menu screens, soft reflections on the
+glossy floor; the lobby behind her stays slightly soft. Natural human motion, no morphing, no extra people, no text, no numbers, no logos,
+no camera movement.
+Sound: only the natural sound of the place - the soft bump of her hand on the laptop, her sneakers on the wooden floor as she steps back, the rustle of
+her denim shirt, a small breath and a soft laugh, and the quiet, distant murmur and air of a cinema lobby. No music, no speech, no narration.
+```
+
+## 영상 만들기 전 확인(v3 시절 기록 — 개인은 위 v8로 대체, 단체는 v8 단체 그림으로 다시 쓴다)
 
 | 항목 | 개인 | 단체 |
 |---|---|---|

@@ -120,6 +120,7 @@ export default [
     // 출력 픽셀 대조용 수정 전 빌드도 배포 번들의 사본이다. 원본 소스·검증 도구는 계속 검사한다.
     // 다운로드한 Blender 런타임은 외부 배포물이다. 저장소의 scripts/ 검사는 그대로 유지한다.
     // 배경 분리 도구를 격리 설치한 파이썬 가상환경(.cache/tools/rembg-venv)도 외부 패키지 묶음이다(안에 urllib3의 JS가 있다).
-    ignores: ['dist/**', '.cache/integration-baseline/dist/**', '.cache/blender-runtime/**', '.cache/tools/rembg-venv/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
+    // 대기 영상 실화면 확인(scripts/verify/waiting-videos-live.mjs)이 띄운 크롬의 프로필 폴더에는 크롬이 받은 구성요소 JS가 쌓인다.
+    ignores: ['dist/**', '.cache/integration-baseline/dist/**', '.cache/blender-runtime/**', '.cache/tools/rembg-venv/**', '.cache/waiting-videos-live/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
   }
 ];
