@@ -132,17 +132,13 @@
   border-radius: 8px;
   font-size: 16px;
 }
-/* «이전»: 진한 글씨·굵게, 출력 단추와 같은 높이. 너비는 글자에 맞추지 않고 넉넉히 잡는다. */
+/* «이전»: 출력 단추와 같은 높이, 너비는 글자에 맞추지 않고 넉넉히. 색·굵기는 2단계와 함께 studio.css에서. */
 #resultView .result-actions .back-button {
   flex: 0 0 auto;
   min-width: 148px;
   padding-left: 22px;
   padding-right: 22px;
-  background: #ededed;
-  color: #1c1c1c;
-  font-weight: 700;
 }
-#resultView .result-actions .back-button:hover { background: #e2e2e2; }
 @media (max-width: 1099px) {
   #resultView { grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); }
   #resultView .result-artboard { padding: 24px 18px; }

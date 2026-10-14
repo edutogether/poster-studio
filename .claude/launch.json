@@ -66,6 +66,18 @@
         "-c-1"
       ],
       "port": 5500
+    },
+    {
+      "//": "Vite 개발 서버(5602). ① 포스터 고르기 화면 바로 보기: http://localhost:5602/?preview=posters (개발 서버 전용 — 운영 빌드에서는 코드가 빠진다) ② 포스터 시안 실험실: /.cache/poster-redesign-20261014/lab/index.html. 5500(dist)과 같이 켜도 된다.",
+      "name": "poster-lab",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5602",
+        "--strictPort"
+      ],
+      "port": 5602
     }
   ]
 }

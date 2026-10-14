@@ -33,6 +33,12 @@ const MAX_GENERATIONS_PER_PHOTO = 2;
    먼저 내보내기 때문이다(2026-10-09 두 방식으로 빌드해 확인). 앱은 그 파일을 부르지 않는다. */
 const SAMPLE_WAIT_SCENES = 5;
 
+/* 포스터 고르기 화면만 바로 여는 로컬 미리보기(2026-10-14 Bumm님: «샘플 흐름을 처음부터 거치지 않고 그 화면이 곧장 열리게»).
+   개발 서버(npm run dev)에서 주소 끝에 ?preview=posters를 붙이면 샘플 원화로 8개 디자인을 채운 3단계가 곧장 열린다.
+   import.meta.env.DEV는 운영 빌드에서 false로 바뀌어 이 갈래가 번들에서 통째로 빠진다 — 라이브에는 노출되지 않는다.
+   서버 확인(/health)·카메라·AI 요청은 하나도 하지 않는다. */
+const POSTER_PREVIEW = import.meta.env.DEV && new URLSearchParams(location.search).get("preview") === "posters";
+
 /** 화면 입력값 수집. 비어 있는 영화 제목은 준비 화면과 같은 예시로 채운다. */
 export function getMeta(mode: string): Meta {
   const genre = val("genre") || "animation";
@@ -155,7 +161,7 @@ export default function PosterStudio() {
      되는 것보다, 페이지를 여는 순간 문제를 아는 게 낫다. 실패해도 촬영은 막지
      않는다(연결이 잠깐 불안정했을 수도 있으므로 fail-open). */
   useEffect(() => {
-    if (sampleMode) return;
+    if (sampleMode || POSTER_PREVIEW) return;
     let alive = true;
     (async () => {
       try {
@@ -474,6 +480,19 @@ export default function PosterStudio() {
       setSpinning(false);
     }
   };
+
+  useEffect(() => {
+    if (!POSTER_PREVIEW) return;
+    let alive = true;
+    (async () => {
+      const { default: sampleArt } = await import("./studio/design-sample.png");
+      const meta = getMeta(mode);
+      meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
+      const built = await buildPosters([sampleArt], meta);
+      if (alive) applyPosters(built);
+    })();
+    return () => { alive = false; };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps -- 처음 한 번만(미리보기 진입)
 
   const onPrint = () => {
     if (!posters.length) {

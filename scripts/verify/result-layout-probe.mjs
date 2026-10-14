@@ -11,6 +11,8 @@
    ① 두 단추가 화면 안에 다 보이고, 아래에 BOTTOM_GAP 이상 여백이 남는다 ② 오른쪽 작업 칸에 세로 스크롤이 생기지 않는다
    ③ «이전»과 «이 포스터로 출력하기»의 높이가 같다 ④ 단추 줄의 왼쪽·오른쪽 끝이 포스터 카드 격자의 왼쪽·오른쪽 끝과 같다(±2px)
    ⑤ «이전» 글씨가 진하다(밝기 ≤ 80) · 굵다(≥ 600)
+   사진 촬영 화면(2단계)도 같은 기준으로 먼저 잰다(10/14 팀장 지시 «같은 문제라 같은 기준»): 두 단추 높이 같음 · «이전» 진하고 굵음 ·
+   단추 줄 왼쪽·오른쪽 끝 = 바로 위 «오늘 촬영할 영화» 카드의 왼쪽·오른쪽 끝 · 단추 아래 여백. 캡처는 step2-<크기>.png.
    캡처는 원본 해상도 PNG(<크기>.png)와 잰 값(<크기>.json)으로 남긴다. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -51,6 +53,33 @@ try {
   await evaluate('document.fonts.ready.then(() => true)');
   await evaluate("document.getElementById('prepareNextBtn').click()");
   await delay(400);
+  const report2 = [];
+  for (const [W, H] of sizes) {
+    await call('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: false });
+    await delay(500);
+    const m = await evaluate(`(() => {
+      const r = (el) => { const b = el.getBoundingClientRect(); return { x: Math.round(b.left), w: Math.round(b.width), h: Math.round(b.height), right: Math.round(b.right), bottom: Math.round(b.bottom) }; };
+      const back = document.querySelector('#cameraView .camera-actions .back-button');
+      const shot = document.getElementById('shotBtn');
+      const card = document.querySelector('#cameraView .camera-film-card');
+      const cs = getComputedStyle(back); const rgb = cs.color.match(/\\d+/g).map(Number);
+      return { back: r(back), shot: r(shot), card: r(card), backLum: Math.round(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]), backWeight: Number(cs.fontWeight), vh: innerHeight };
+    })()`);
+    const shot2 = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+    await fs.writeFile(path.join(out, `step2-${W}x${H}.png`), Buffer.from(shot2.data, 'base64'));
+    const checks = {
+      '2단계 두 단추 높이 같음': m.back.h === m.shot.h,
+      '2단계 «이전» 진하고 굵음': m.backLum <= 80 && m.backWeight >= 600,
+      '2단계 왼쪽 = 카드 왼쪽': Math.abs(m.back.x - m.card.x) <= 2,
+      '2단계 오른쪽 = 카드 오른쪽': Math.abs(m.shot.right - m.card.right) <= 2,
+      '2단계 단추 아래 여백': H - Math.max(m.back.bottom, m.shot.bottom) >= BOTTOM_GAP,
+    };
+    const bad = Object.entries(checks).filter(([, ok]) => !ok).map(([k]) => k);
+    failed += bad.length;
+    await fs.writeFile(path.join(out, `step2-${W}x${H}.json`), JSON.stringify({ ...m, checks }, null, 1));
+    report2.push({ 크기: `${W}x${H}`, 이전: `${m.back.w}x${m.back.h}`, 촬영단추: `${m.shot.w}x${m.shot.h}`, 왼쪽차: m.back.x - m.card.x, 오른쪽차: m.shot.right - m.card.right, 아래여백: H - Math.max(m.back.bottom, m.shot.bottom), 이전글씨: `${m.backLum}/${m.backWeight}`, 실패: bad.join(', ') || '없음' });
+  }
+  console.table(report2);
   await evaluate("document.getElementById('shotBtn').click()");
   for (let i = 0; i < 300; i++) { if (await evaluate("document.body.dataset.step === '3' && !(document.getElementById('spinner')||{}).open")) break; await delay(100); }
   assert.equal(await evaluate('document.body.dataset.step'), '3', '포스터 고르기로 넘어가야 한다');

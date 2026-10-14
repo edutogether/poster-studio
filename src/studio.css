@@ -318,6 +318,11 @@ main.app {
 .camera-example-label { margin-right: auto; align-self: flex-end; padding-bottom: 12px; color: #fff; font-weight: 600; text-shadow: 0 1px 5px #0008; }
 #cameraWorkspace .camera-actions, #resultWorkspace .result-actions { flex-wrap: nowrap; gap: 12px; }
 .camera-actions .back-button, .result-actions .back-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-width: 82px; }
+/* «이전»(2·3단계 공통, 2026-10-14 Bumm님): 연한 회색 글씨가 약해 보여 진한 검정·굵게. 높이는 각 단계에서 옆 단추와 같게 맞춘다.
+   확인: scripts/verify/result-layout-probe.mjs(두 단계 모두 «이전» 밝기 ≤ 80·굵기 ≥ 600을 판정). */
+#cameraWorkspace .camera-actions .back-button, #resultWorkspace .result-actions .back-button { background: #ededed; color: #1c1c1c; font-weight: 700; }
+#cameraWorkspace .camera-actions .back-button:hover:not(:disabled), #resultWorkspace .result-actions .back-button:hover:not(:disabled) { background: #e2e2e2; }
+#cameraWorkspace .camera-actions .back-button { min-width: 112px; padding-left: 18px; padding-right: 18px; }
 #resultWorkspace .page-heading p { font-size: 16px; line-height: 1.5; margin-top: 10px; color: #666; }
 .result-secondary { align-items: center; gap: 8px 18px; flex-shrink: 0; margin: 14px 0 0; }
 .result-secondary .quiet-button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 0; min-height: 36px; }
@@ -407,7 +412,7 @@ main.app {
   #cameraWorkspace .camera-film-scene { flex: none; height: 160px; }
   #cameraWorkspace .camera-ticket { min-height: 92px; }
   #cameraWorkspace .camera-ticket > div:first-child { padding: 10px 14px; }
-  #cameraWorkspace .camera-actions { padding: 14px 0; }
+  #cameraWorkspace .camera-actions { padding: 14px 0 22px; }   /* 아래 14 → 22: 1366×768에서 단추 아래 여백이 14px뿐이었다(2026-10-14) */
 }
 @media (max-width: 1099px) { #cameraView .camera-tips { grid-template-columns: 1fr; gap: 10px; } }
 @media (min-width: 1100px) and (max-height: 740px) {

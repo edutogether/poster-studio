@@ -249,6 +249,9 @@
 - 포맷: `cd functions && npm run format` (prettier — functions에만 있음)
 - 로컬 실행: `npm run dev`(Vite). 라이브와 같은 형태로 보려면 `npm run build` 후 `dist/`를
   정적 서버로 연다(포트 5500 또는 8080 — `ALLOWED_ORIGINS`에 이미 허용돼 있음).
+- 포스터 고르기 화면만 바로 보기: 개발 서버 주소 끝에 `?preview=posters`(예: `http://localhost:5602/?preview=posters`) — 샘플 원화로 8개 디자인을 채운
+  3단계가 곧장 열린다(2026-10-14 Bumm님). `import.meta.env.DEV` 갈래라 **운영 빌드에서는 코드가 통째로 빠진다**(dist 번들에 `"posters"` 0건,
+  dist 서버에 같은 주소를 주면 1단계 그대로 — 확인함). 서버·카메라·AI 요청 0건.
   AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
 - 에뮬레이터: 사용하지 않는다. 헤더(CSP 등) 확인이 필요하면 `firebase emulators:start --only hosting`.
 - 배포: `master`에 push → CI가 test → functions → hosting 순으로 자동 배포. 수동 배포는 하지 않는다
