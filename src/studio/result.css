@@ -1,7 +1,7 @@
 /* 결과 화면: 세로 원본 한 장 + 구성이 다른 디자인 8종. */
 #resultView {
   grid-template-columns: minmax(0, 38fr) minmax(0, 62fr);
-  height: calc(100svh - var(--header-h, 72px));
+  height: calc(100svh - var(--header-h, 76px));   /* PC 머리말은 76px(compact.css의 다른 화면과 같음) — 72였을 때 문서가 4px 넘쳤다 */
   min-height: 620px;
   background: #fff;
 }
@@ -40,17 +40,20 @@
   aspect-ratio: 2 / 3; box-shadow: none;
 }
 #resultView #resultWorkspace {
-  padding: 38px 28px 24px;
+  /* 2026-10-14 Bumm님: PC 세 크기(2560×1440·1920×1080·1366×768)에서 두 단추가 다 보이고 아래 여백이 남게 —
+     제목·설명·카드·단추를 조금씩 줄였다. 확인 도구: scripts/verify/result-layout-probe.mjs */
+  --result-chrome: 340px;   /* 카드 격자 밖의 세로 공간(머리말 76 + 위 28 + 제목 묶음 + 캡션·줄 간격 + 단추 줄 + 아래 24) */
+  padding: 28px 28px 24px;
   background: #fff;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: auto;
 }
-#resultView .page-heading { margin: 0 0 22px; flex: none; }
-#resultView .page-heading h1 { font-size: clamp(24px, 1.75vw, 34px); line-height: 1.35; }
+#resultView .page-heading { margin: 0 0 16px; flex: none; }
+#resultView .page-heading h1 { font-size: clamp(23px, 1.6vw, 31px); line-height: 1.35; }
 #resultView .result-accent { color: var(--accent, #d82d23); }
-#resultView .page-heading p { margin: 12px 0 0; font-size: 16px; color: #646464; }
+#resultView .page-heading p { margin: 8px 0 0; font-size: 15px; color: #646464; }
 #resultView .result-settings { flex: 0 0 auto; padding: 0; background: transparent; border: 0; }
 #resultView .section-description { display: none; }
 #resultView #gallery.style-grid {
@@ -60,9 +63,9 @@
   grid-template-rows: auto auto;
   align-content: start;
   align-items: start;
-  gap: 18px 18px;
+  gap: 14px 16px;
   width: 100%;
-  max-width: max(520px, calc((100svh - 342px) * 4 / 3));
+  max-width: max(520px, calc((100svh - var(--result-chrome)) * 4 / 3));
   margin: 0 auto;
   padding: 4px;
   height: auto;
@@ -72,7 +75,7 @@
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 10px;
+  gap: 8px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -107,18 +110,45 @@
 #resultView #gallery .style-option[aria-pressed="true"] .style-name { color: #dc241b; font-weight: 750; }
 #resultView #gallery .style-check { top: 7px; right: 7px; background: #e72a21; color: #fff; }
 #resultView .result-actions {
+  /* 단추 줄의 왼쪽·오른쪽 끝을 카드 격자에 맞춘다(격자와 같은 최대 폭, 격자 안쪽 여백 4px과 같은 안쪽 여백). */
   flex: none;
+  display: flex;
+  gap: 12px;
   width: 100%;
-  margin-top: 20px;
-  padding: 0;
+  max-width: max(520px, calc((100svh - var(--result-chrome)) * 4 / 3));
+  min-height: 0;            /* compact.css의 PC 단추 줄 최소 높이 72px를 풀어 단추(60px)만큼만 차지하게 */
+  margin: 16px auto 0;
+  padding: 0 4px;
+  box-sizing: border-box;
   position: static;
   background: #fff;
 }
+#resultView .result-actions .primary-button,
+#resultView .result-actions .back-button {
+  min-height: 0;
+  height: 60px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 8px;
+  font-size: 16px;
+}
+/* «이전»: 진한 글씨·굵게, 출력 단추와 같은 높이. 너비는 글자에 맞추지 않고 넉넉히 잡는다. */
+#resultView .result-actions .back-button {
+  flex: 0 0 auto;
+  min-width: 148px;
+  padding-left: 22px;
+  padding-right: 22px;
+  background: #ededed;
+  color: #1c1c1c;
+  font-weight: 700;
+}
+#resultView .result-actions .back-button:hover { background: #e2e2e2; }
 @media (max-width: 1099px) {
   #resultView { grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); }
   #resultView .result-artboard { padding: 24px 18px; }
   #resultView #resultWorkspace { padding: 42px 20px 0; }
   #resultView #gallery.style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 470px; gap: 20px 16px; }
+  #resultView .result-actions { max-width: 470px; }
 }
 @media (max-width: 760px) {
   #resultView { grid-template-columns: 1fr; height: auto; min-height: 0; }
@@ -128,6 +158,9 @@
   #resultView .page-heading h1 { font-size: 25px; }
   #resultView .page-heading p { font-size: 15px; }
   #resultView .result-actions { z-index: 3; }
+  /* 좁은 화면에서는 «이전» 최소 폭을 풀어 출력 단추가 화면 밖으로 밀리지 않게 한다(390px에서 8px 넘쳤다). */
+  #resultView .result-actions .back-button { min-width: 0; flex: 0 0 30%; padding-left: 10px; padding-right: 10px; }
+  #resultView .result-actions .primary-button { min-width: 0; }
 }
 
 #resultView .result-brand { display: inline-flex; align-items: center; gap: 9px; color: #191919; font-size: 19px; font-weight: 750; letter-spacing: -.4px; }
