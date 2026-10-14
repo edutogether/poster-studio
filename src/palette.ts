@@ -101,3 +101,37 @@ export function artColors(art: CanvasImageSource & { width: number; height: numb
   cache.set(art, out);
   return out;
 }
+
+/* ───── 그림의 밝기·채도(트립틱 색 세기 조절용, 2026-10-14 Bumm님: «어두운 영화관 장면·사람 사진에선 세 칸 차이가 티가 안 난다») ───── */
+export interface ArtTone { lum: number; sat: number }
+const toneCache = new WeakMap<object, ArtTone>();
+export function toneOfPixels(data: ArrayLike<number>): ArtTone {
+  let L = 0, S = 0, n = 0;
+  for (let i = 0; i + 3 < data.length; i += 4) {
+    const r = data[i] / 255, g = data[i + 1] / 255, b = data[i + 2] / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    L += 0.2126 * r + 0.7152 * g + 0.0722 * b; S += max ? (max - min) / max : 0; n++;
+  }
+  return n ? { lum: L / n, sat: S / n } : { lum: 0.4, sat: 0.4 };
+}
+export function artTone(art: CanvasImageSource & { width: number; height: number }): ArtTone {
+  if (toneCache.has(art)) return toneCache.get(art)!;
+  let out: ArtTone = { lum: 0.4, sat: 0.4 };
+  try {
+    const cv = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+    const cx = cv && typeof cv.getContext === 'function' ? cv.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings) : null;
+    if (cv && cx && typeof cx.getImageData === 'function') {
+      cv.width = 48; cv.height = 72; cx.drawImage(art, 0, 0, 48, 72);
+      out = toneOfPixels(cx.getImageData(0, 0, 48, 72).data);
+    }
+  } catch { /* 기본값 */ }
+  toneCache.set(art, out);
+  return out;
+}
+/** 트립틱 양쪽 칸 색 세기: 채도가 낮은 사진(사람)일수록 색을 더 입히고, 어두운 그림일수록 같은 색을 밝혀 덧칠해 차이가 보이게 한다. */
+export function triptychGrade(t: ArtTone) {
+  const color = Math.max(0.78, Math.min(0.96, 0.78 + (0.5 - t.sat) * 0.5));
+  const lift = Math.max(0, Math.min(0.42, (0.3 - t.lum) * 1.6));
+  const deep = t.lum > 0.3 ? 0.22 : 0;
+  return { color, lift, deep };
+}

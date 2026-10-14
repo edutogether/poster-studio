@@ -12,7 +12,7 @@
 import { FEST, DATE, VENUE, W, H, type Genre } from './constants.js';
 import { state, type Meta } from './state.js';
 import { setLS, roundRect, drawOrgLogo } from './layout.js';
-import { artColors, colorBlockColors, archColors, css } from './palette.js';
+import { artColors, colorBlockColors, archColors, css, artTone, triptychGrade } from './palette.js';
 
 export function creditMain(m: Meta) { return m.mode === 'group' ? m.groupName : `주연 · 감독   ${m.name}`; }
 export function creditSub(m: Meta) { return m.mode === 'group' && m.members ? `출연  ${m.members}` : ''; }
@@ -149,6 +149,68 @@ function photo(c: Ctx, art: HTMLImageElement, x: number, y: number, w: number, h
   c.drawImage(art, x + (w - iw) * ax, y + (h - ih) * ay, iw, ih);
   c.restore();
 }
+/* ───── 주인공 자리를 지키는 배치(2026-10-14 Bumm님: «얼굴이 아치 안에 들어와야 함 — 지금은 다 잘림») ─────
+   AI 그림의 구도는 생성 지시문이 정한다(functions/index.js buildPrompt: «세로 2:3, 주인공은 위쪽 2/3 안에 머리까지 다 보이게,
+   머리 위 여백, 아래 1/3은 비움», 혼자면 «가운데»). 그래서 주인공 상자를 그 약속대로 둔다 — 혼자: 가로 16~84%, 단체: 4~96%,
+   세로 5~67%(그림 비율). 틀은 그림을 «덮어 채우기» 대신, 이 상자가 틀의 안전 영역 안에 다 들어오게 크기·자리를 정한다.
+   그러다 그림이 칸을 다 못 덮으면, 남는 자리는 같은 그림을 크게 흐려 깐 «배경 연장»으로 채운다(0원·0초 — AI 배경 연장 없음). */
+interface Rect { x: number; y: number; w: number; h: number }
+interface Box { x0: number; y0: number; x1: number; y1: number }
+function subjectBox(m: Meta): Box {
+  return m.mode === 'group' ? { x0: 0.04, y0: 0.05, x1: 0.96, y1: 0.67 } : { x0: 0.16, y0: 0.05, x1: 0.84, y1: 0.67 };
+}
+/** cover = 그림이 채울 칸, safe = 주인공 상자가 들어와야 할 영역(cover 안). 반환: 그린 그림의 자리·크기. */
+function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: Box) {
+  const aw = art.width, ah = art.height;
+  const bw = (box.x1 - box.x0) * aw, bh = (box.y1 - box.y0) * ah;
+  const sCover = Math.max(cover.w / aw, cover.h / ah), sFit = Math.min(safe.w / bw, safe.h / bh);
+  const s = Math.min(sCover, sFit);
+  const pick = (lo: number, hi: number, want: number) => (lo <= hi ? Math.min(hi, Math.max(lo, want)) : want);
+  // 주인공 상자가 safe 안에 들어오는 범위와, 그림이 cover를 덮는 범위를 겹쳐 고른다(겹치지 않으면 주인공이 먼저).
+  const bx = (lo0: number, hi0: number) => [lo0, hi0];
+  const [sxLo, sxHi] = bx(safe.x - s * box.x0 * aw, safe.x + safe.w - s * box.x1 * aw);
+  const [syLo, syHi] = bx(safe.y - s * box.y0 * ah, safe.y + safe.h - s * box.y1 * ah);
+  const [cxLo, cxHi] = bx(cover.x + cover.w - s * aw, cover.x);
+  const [cyLo, cyHi] = bx(cover.y + cover.h - s * ah, cover.y);
+  const wantX = safe.x + safe.w / 2 - s * (box.x0 + box.x1) / 2 * aw;
+  const wantY = safe.y + safe.h / 2 - s * (box.y0 + box.y1) / 2 * ah;
+  const ox = Math.max(sxLo, cxLo) <= Math.min(sxHi, cxHi) ? pick(Math.max(sxLo, cxLo), Math.min(sxHi, cxHi), wantX) : pick(sxLo, sxHi, wantX);
+  const oy = Math.max(syLo, cyLo) <= Math.min(syHi, cyHi) ? pick(Math.max(syLo, cyLo), Math.min(syHi, cyHi), wantY) : pick(syLo, syHi, wantY);
+  const r = { x: ox, y: oy, w: aw * s, h: ah * s };
+  const covers = r.x <= cover.x + 0.5 && r.y <= cover.y + 0.5 && r.x + r.w >= cover.x + cover.w - 0.5 && r.y + r.h >= cover.y + cover.h - 0.5;
+  c.save(); c.beginPath(); rectPath(c, cover.x, cover.y, cover.w, cover.h); c.clip();
+  if (!covers) {
+    // 배경 연장: 같은 그림을 칸을 덮는 크기로 크게 흐리고 살짝 가라앉혀 깐 뒤, 선명한 그림을 가장자리를 부드럽게 해서 얹는다.
+    const sc = sCover * 1.08, iw = aw * sc, ih = ah * sc;
+    c.save();
+    if ('filter' in c) c.filter = 'blur(36px) saturate(1.1)';
+    c.drawImage(art, cover.x + (cover.w - iw) / 2, cover.y + (cover.h - ih) * 0.45, iw, ih);
+    c.restore();
+    c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(cover.x, cover.y, cover.w, cover.h);
+    featherDraw(c, art, r, 56);
+  } else {
+    c.drawImage(art, r.x, r.y, r.w, r.h);
+  }
+  c.restore();
+  return r;
+}
+/** 그림을 가장자리 f px만큼 투명하게 녹여 그린다(배경 연장과 이음매가 보이지 않게). 화면 밖 캔버스가 없으면 그냥 그린다. */
+function featherDraw(c: Ctx, art: HTMLImageElement, r: Rect, f: number) {
+  const t = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+  const tc = t?.getContext?.('2d');
+  if (!t || !tc || typeof tc.createLinearGradient !== 'function') { c.drawImage(art, r.x, r.y, r.w, r.h); return; }
+  const w = Math.max(1, Math.round(r.w)), h = Math.max(1, Math.round(r.h));
+  t.width = w; t.height = h;
+  tc.drawImage(art, 0, 0, w, h);
+  tc.globalCompositeOperation = 'destination-out';
+  const edge = (x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number) => {
+    const g = tc.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    tc.fillStyle = g; tc.fillRect(rx, ry, rw, rh);
+  };
+  edge(0, 0, f, 0, 0, 0, f, h); edge(w, 0, w - f, 0, w - f, 0, f, h);
+  edge(0, 0, 0, f, 0, 0, w, f); edge(0, h, 0, h - f, 0, h - f, w, f);
+  c.drawImage(t, r.x, r.y, r.w, r.h);
+}
 function paper(c: Ctx, color: string, grainAlpha = 0.05) {
   c.fillStyle = color; c.fillRect(0, 0, W, H);
   grain(c, 0, 0, W, H, grainAlpha);
@@ -247,27 +309,32 @@ function archPath(c: Ctx, cx: number, spring: number, r: number, bottom: number)
   c.moveTo(cx - r, bottom); c.lineTo(cx - r, spring); c.arc(cx, spring, r, Math.PI, 0); c.lineTo(cx + r, bottom); c.closePath();
 }
 
-/** 한글 세로쓰기 제목(위 → 아래, 여러 열이면 오른쪽 열부터). 캔버스에는 세로쓰기가 없어 글자를 하나씩 세운다.
+/** 한글 세로쓰기(위 → 아래, 여러 열이면 오른쪽 열부터). 캔버스에는 세로쓰기가 없어 글자를 하나씩 세운다.
  *  - 크기 = 기둥 높이 ÷ 글자 수(띄어쓰기는 0.45글자), 최대 기둥 폭·170px. 한 열이 88px 밑이면 띄어쓰기에서 균형 있게 2열·3열.
+ *  - fixed를 주면 그 크기로 한 열(부제처럼 작은 세로 글).
+ *  - justify: 글줄 길이가 기둥 높이의 70%를 넘으면 글자 사이를 고르게 벌려 정확히 기둥 높이를 채운다(그림 높이와 맞물리게).
  *  - 한글이 없는 제목(영문)은 통째로 90° 돌려 한 줄로 세운다(세로쓰기에서 라틴 글자를 눕히는 관례).
- *  - 쉼표·마침표는 글자 칸 오른쪽 위로 옮긴다(세로쓰기 문장부호 자리). */
-function verticalTitle(c: Ctx, text: string, s: Style, x0: number, x1: number, top: number, height: number, color: string) {
+ *  - 쉼표·마침표는 글자 칸 오른쪽 위로 옮긴다(세로쓰기 문장부호 자리).
+ *  반환: 실제로 그린 가장 왼쪽 x와 글자 크기(옆에 다른 세로 글을 붙일 때 쓴다). */
+function verticalTitle(c: Ctx, text: string, s: Style, x0: number, x1: number, top: number, height: number, color: string,
+  justify = false, fixed = 0): { left: number; size: number } {
   const t = text.trim(), colW = x1 - x0;
   c.save(); c.fillStyle = color; c.textBaseline = 'alphabetic';
   if (!/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(t)) {
-    let size = Math.min(colW * 0.9, 200);
-    while (size > 40 && inkWidth(c, s, size, t) > height) size -= 2;
+    let size = fixed || Math.min(colW * 0.9, 200);
+    while (size > 18 && inkWidth(c, s, size, t) > height) size -= 2;
     const b = block(c, [t], s, size, 1);
-    c.translate(x0 + (colW + b.asc - b.desc) / 2, top); c.rotate(Math.PI / 2);
+    const left = x1 - b.asc - b.desc;
+    c.translate(left + b.desc, top); c.rotate(Math.PI / 2);
     draw(c, b, 0, -b.asc, color, 'left');
-    c.restore(); return;
+    c.restore(); return { left, size };
   }
   const units = (w: string) => [...w].length;
   const colUnits = (words: string[]) => words.reduce((n, w, i) => n + units(w) + (i ? 0.45 : 0), 0);
   const words = t.split(/\s+/).filter(Boolean);
   let cols: string[][] = [words];
-  let size = Math.min(170, colW, height / colUnits(words));
-  for (let n = 2; size < 88 && n <= 3 && words.length >= n; n++) {
+  let size = fixed || Math.min(170, colW, height / colUnits(words));
+  for (let n = 2; !fixed && size < 88 && n <= 3 && words.length >= n; n++) {
     let best: string[][] | null = null, bestScore = Infinity;
     const walk = (start: number, left: number, acc: string[][]) => {
       if (left === 1) {
@@ -283,12 +350,30 @@ function verticalTitle(c: Ctx, text: string, s: Style, x0: number, x1: number, t
     cols = best;
     size = Math.min(170, (colW - (n - 1) * 24) / n, height / Math.max(...cols.map(colUnits)));
   }
-  size = Math.max(40, Math.floor(size));
+  // 띄어쓰기가 없어 단어로 못 나누는 긴 제목: 글자 단위로 고르게 2~4열(최후 수단 — 가로 제목의 글자 단위 줄바꿈과 같은 규칙).
+  if (!fixed && size < 40) {
+    const chars = [...t.replace(/\s+/g, '')];
+    for (let n = 2; n <= 4; n++) {
+      const per = Math.ceil(chars.length / n);
+      const parts = Array.from({ length: n }, (_, i) => [chars.slice(i * per, (i + 1) * per).join('')]).filter((p) => p[0]);
+      const z = Math.min(170, (colW - (parts.length - 1) * 24) / parts.length, height / (per * 1.02));
+      cols = parts; size = z;
+      if (z >= 40) break;
+    }
+  }
+  size = Math.max(fixed ? 12 : 20, Math.floor(size));
   setFont(c, { ...s, tracking: 0 }, size);
   c.textAlign = 'center';
-  const step = size * 1.02, gapW = size * 0.45 * 1.02, colGap = size * 0.28;
+  const colGap = size * 0.28;
+  let left = x1;
   cols.forEach((ws, ci) => {
     const cx = x1 - size / 2 - ci * (size + colGap);
+    left = Math.min(left, cx - size / 2);
+    // 글자 칸 높이: 기본 1.02em, justify면 기둥 높이를 채우도록 늘린다(최대 1.6em).
+    const natural = colUnits(ws) * size * 1.02;
+    let step = size * 1.02;
+    if (justify && natural >= height * 0.7 && natural < height) step = Math.min(size * 1.6, step * height / natural);   // 늘리기만 한다(줄이면 글자가 겹친다)
+    const gapW = step * 0.45;
     let y = top;
     ws.forEach((w, wi) => {
       if (wi) y += gapW;
@@ -302,6 +387,7 @@ function verticalTitle(c: Ctx, text: string, s: Style, x0: number, x1: number, t
     });
   });
   c.restore();
+  return { left, size };
 }
 
 /* ───────────── 8종 ───────────── */
@@ -334,68 +420,87 @@ export const TEMPLATES: Template[] = [
     brands(c);
   } },
 
-  /* 2. 에디토리얼 — 영화 잡지 표지: 전면 사진, 맨 위 제호(제목)를 폭 가득, 그 아래 가는 선 + 날짜 줄(잡지의 발행일 자리),
-        왼쪽 아래 표지 문구(홍보 문구가 가장 크고, 그 아래 주연·영화제). 정렬은 왼쪽 선(x 64) 하나.
-        레퍼런스: references-round2.md B(영화 잡지 표지 — 제호·날짜 줄·표지 문구). */
+  /* 2. 에디토리얼 — «서점 잡지 표지». 시네마가 극장에 붙는 포스터라면 이건 서점에 꽂힌 영화 잡지다:
+        흰 테두리 안의 사진, 맨 위 폭 가득한 제호(= 영화 제목)와 발행 줄(날짜 · 장소), 왼쪽 아래 표지 문구(홍보 문구가 가장 크다),
+        오른쪽 아래 바코드 자리(영화제 이름). 주인공은 제호·표지 문구와 겹치지 않는 안전 영역에 둔다(placeArt).
+        레퍼런스: references-round2.md B — Sight and Sound(제호), Little White Lies(일러스트 초상 표지), 잡지 표지 문법. */
   { label: '에디토리얼', render(c, art, m) {
-    photo(c, art, 0, 0, W, H, 0.45);
-    const top = c.createLinearGradient(0, 0, 0, 660);
-    top.addColorStop(0, 'rgba(0,0,0,.66)'); top.addColorStop(0.55, 'rgba(0,0,0,.3)'); top.addColorStop(1, 'rgba(0,0,0,0)');
-    c.fillStyle = top; c.fillRect(0, 0, W, 660);
-    const bot = c.createLinearGradient(0, 1040, 0, H);
-    bot.addColorStop(0, 'rgba(0,0,0,0)'); bot.addColorStop(1, 'rgba(0,0,0,.8)');
-    c.fillStyle = bot; c.fillRect(0, 1040, W, H - 1040);
-    brands(c, false, false);
-    // 제호: 폭 1072를 꽉 채우는 명조(최대 260px). 한 줄이 110px 밑이어야 하면 띄어쓰기에서 두 줄.
+    const B = 28, frame: Rect = { x: B, y: B, w: W - 2 * B, h: H - 2 * B };
+    c.fillStyle = '#fbfaf7'; c.fillRect(0, 0, W, H);
+    // 제호 — 폭 1080을 꽉 채우는 명조(최대 210px), 너무 길면 띄어쓰기에서 두 줄.
     const st: Style = { family: SERIF, weight: 900, tracking: -0.035 };
-    let size = 260; while (size > 110 && inkWidth(c, st, size, m.title.trim()) > 1072) size -= 2;
-    const title = size > 110 ? block(c, [m.title.trim()], st, size, 1) : fitTitle(c, m.title, st, { width: 1072, max: 120, min: 64, maxLines: 3, lh: 1.04, maxHeight: 300 });
-    const tb = draw(c, title, 62, 158, '#fff', 'left');
-    hairline(c, 64, tb + 26, 1072, 'rgba(255,255,255,.9)', 2);
-    const ds: Style = { family: SANS, weight: 700, tracking: 0.1 };
-    draw(c, fitSmall(c, DATE, ds, 24, 520, 1.2, 18, true), 64, tb + 46, '#fff', 'left');
-    draw(c, fitSmall(c, VENUE, ds, 24, 400, 1.2, 18, true), W - 64, tb + 46, '#fff', 'right');
+    let size = 210; while (size > 104 && inkWidth(c, st, size, m.title.trim()) > 1080) size -= 2;
+    const title = size > 104 ? block(c, [m.title.trim()], st, size, 1) : fitTitle(c, m.title, st, { width: 1080, max: 110, min: 60, maxLines: 3, lh: 1.04, maxHeight: 300 });
+    const mastTop = 150, mastBottom = mastTop + title.height, issueY = mastBottom + 28;
+    const ds: Style = { family: SANS, weight: 700, tracking: 0.12 };
+    const dateB = fitSmall(c, DATE, ds, 22, 480, 1.2, 16, true), venueB = fitSmall(c, VENUE, ds, 22, 360, 1.2, 16, true);
+    const issueBottom = issueY + 14 + Math.max(dateB.height, venueB.height);
+    // 표지 문구(왼쪽 아래) — 먼저 재서 안전 영역을 정한다.
     const cover = column(c, [
-      { text: m.tagline, s: { family: SANS, weight: 800, tracking: -0.01 }, size: 60, color: '#fff', lh: 1.16 },
-      { text: creditMain(m), s: { family: SANS, weight: 600 }, size: 30, color: '#fff', gap: 28, lh: 1.3 },
-      { text: creditSub(m), s: { family: SANS, weight: 400 }, size: 23, color: 'rgba(255,255,255,.88)', gap: 8, lh: 1.4 },
-      { text: FEST, s: { family: SANS, weight: 500, tracking: 0.04 }, size: 23, color: 'rgba(255,255,255,.88)', gap: 20, oneLine: true },
+      { text: m.tagline, s: { family: SANS, weight: 800, tracking: -0.015 }, size: 56, color: '#fff', lh: 1.14 },
+      { text: creditMain(m), s: { family: SANS, weight: 600 }, size: 28, color: '#fff', gap: 24, lh: 1.3 },
+      { text: creditSub(m), s: { family: SANS, weight: 400 }, size: 22, color: 'rgba(255,255,255,.9)', gap: 8, lh: 1.4 },
     ], 640);
-    cover.draw(64, 1736 - cover.height);
+    const coverTop = 1716 - cover.height;
+    const safe: Rect = { x: B + 24, y: issueBottom + 26, w: W - 2 * B - 48, h: coverTop - 40 - (issueBottom + 26) };
+    placeArt(c, art, frame, safe, subjectBox(m));
+    // 글자 자리만 살짝 어둡게 — 위(로고·제호)와 왼쪽 아래(표지 문구).
+    const top = c.createLinearGradient(0, B, 0, issueBottom + 80);
+    top.addColorStop(0, 'rgba(0,0,0,.62)'); top.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = top; c.fillRect(B, B, W - 2 * B, issueBottom + 80 - B);
+    const bot = c.createLinearGradient(0, coverTop - 140, 0, H - B);
+    bot.addColorStop(0, 'rgba(0,0,0,0)'); bot.addColorStop(1, 'rgba(0,0,0,.66)');
+    c.fillStyle = bot; c.fillRect(B, coverTop - 140, W - 2 * B, H - B - (coverTop - 140));
+    brands(c, false, false);
+    draw(c, title, 60, mastTop, '#fff', 'left');
+    hairline(c, 62, issueY, 1076, 'rgba(255,255,255,.92)', 2);
+    draw(c, dateB, 62, issueY + 14, '#fff', 'left');
+    draw(c, venueB, W - 62, issueY + 14, '#fff', 'right');
+    cover.draw(62, coverTop);
+    // 바코드 자리: 흰 상자 안에 막대(숫자 없음 — 글자를 지어내지 않는다), 그 위에 영화제 이름.
+    const bx = W - B - 24 - 196, by = H - B - 24 - 104;
+    c.fillStyle = '#fff'; c.fillRect(bx, by, 196, 104);
+    c.fillStyle = '#111';
+    const bars = [3, 1, 2, 1, 1, 3, 1, 2, 2, 1, 3, 1, 1, 2, 1, 3, 2, 1, 1, 2, 3, 1, 2, 1, 1, 3, 1, 2];
+    let x = bx + 16;
+    bars.forEach((bw, i) => { if (i % 2 === 0) c.fillRect(x, by + 16, bw * 2.2, 72); x += bw * 2.2 + 1.6; });
+    const fest = fitSmall(c, FEST, { family: SANS, weight: 600, tracking: 0.02 }, 20, 300, 1.2, 15, true);
+    draw(c, fest, W - B - 24, by - 12 - fest.height, '#fff', 'right');
   } },
 
-  /* 3. 컬러 블록 — 위 색 면과 아래 색 면 두 단, 그림은 두 면에 걸쳐 놓인 카드, 홍보 문구는 오른쪽 여백에 세로로.
-        두 색은 그림에서 뽑는다: 위 = 그림의 주색(밝게), 아래 = 주색의 보색(깊게) — 아래 면 위 제목과의 대비 7:1 이상(src/palette.ts).
-        레퍼런스: Saul Bass «Anatomy of a Murder»(위아래 색 면이 정보 위계를 가름), The Green Knight(가장자리 세로 문구). */
+  /* 3. 컬러 블록 — 위아래 두 색 면. 사진은 위 색 면 «안쪽 여백 안»에 들어간다(사방 같은 여백 — 색 면이 사진의 액자).
+        두 색은 그림에서 뽑는다: 위 = 그림의 주색(진하게), 아래 = 주색의 보색(깊게)(src/palette.ts, 대비는 수치로 고정).
+        사진은 주인공 상자를 지키며 칸에 맞춘다(placeArt). 레퍼런스: Saul Bass «The Man with the Golden Arm»(색 면이 액자), «Anatomy of a Murder». */
   { label: '컬러 블록', render(c, art, m) {
     const k = colorBlockColors(artColors(art));
     const topC = css(k.top), bottomC = css(k.bottom), onBottom = css(k.onBottom), soft = css(k.onBottomSoft), ink = css(k.ink);
     paper(c, topC, 0.04); brands(c, true);
+    const M = 72;
     const bill = billing(c, m, {
       main: { family: SANS, weight: 700 }, mainSize: 30, mainColor: '#fff',
       sub: { family: SANS, weight: 400 }, subSize: 23, subColor: soft,
       fest: { family: SANS, weight: 600 }, festSize: 24, festColor: soft,
       when: { family: SANS, weight: 700 }, whenSize: 26, whenColor: '#fff', gapCredits: 30, gapFest: 8,
-    }, 960);
+    }, W - 2 * M);
     const billTop = 1724 - bill.height;
     // 짧은 제목은 더 크게(최대 190px) — 아래 면 위에서 제목이 면의 주인이 되게.
-    const title = fitTitle(c, m.title, { family: DISPLAY, weight: 400, tracking: -0.01 }, { width: 960, max: 190, oneLineMin: 96, max2: 104, min: 64, maxLines: 3, maxHeight: 330 });
+    const title = fitTitle(c, m.title, { family: DISPLAY, weight: 400, tracking: -0.01 }, { width: W - 2 * M, max: 190, oneLineMin: 96, max2: 104, min: 64, maxLines: 3, maxHeight: 330 });
     const titleTop = billTop - 46 - title.height;
-    const cardBottom = titleTop - 44;
-    const planeTop = Math.round(cardBottom - (cardBottom - 170) * 0.3);
+    const planeTop = titleTop - 64;
     c.fillStyle = bottomC; c.fillRect(0, planeTop, W, H - planeTop);
-    photo(c, art, 120, 170, 960, cardBottom - 170, 0.42);
-    draw(c, title, 120, titleTop, onBottom, 'left');
-    bill.draw(120, 1724, 'left');
-    // 세로 문구: 카드 오른쪽 여백(1080~1200)의 가운데 선, 카드 위쪽에서부터 아래로 읽힌다.
-    const tag = fitSmall(c, m.tagline, { family: SANS, weight: 700, tracking: 0.1 }, 26, planeTop - 170 - 20, 1.2, 18);
-    c.save(); c.translate(1140, 170); c.rotate(Math.PI / 2);
+    const box: Rect = { x: M, y: 168, w: W - 2 * M, h: planeTop - M - 168 };
+    placeArt(c, art, box, box, subjectBox(m));
+    draw(c, title, M, titleTop, onBottom, 'left');
+    bill.draw(M, 1724, 'left');
+    // 세로 문구: 사진 오른쪽 여백(1128~1200)의 가운데 선, 사진 위쪽에서부터 아래로 읽힌다.
+    const tag = fitSmall(c, m.tagline, { family: SANS, weight: 700, tracking: 0.1 }, 24, box.h - 20, 1.2, 16);
+    c.save(); c.translate(W - M / 2, box.y); c.rotate(Math.PI / 2);
     draw(c, tag, 0, -tag.height / 2, ink, 'left');
     c.restore();
   } },
 
-  /* 4. 아치 프레임 — 그림을 전면에 깔고, 아치 모양 창만 원래 색으로 남긴다. 바깥 막과 금빛 선·글자 색은 그림에서 뽑는다:
-        막 = 그림의 주색을 아주 깊게, 선·제목 = 그림의 강조색을 밝게(막 위 대비 7:1 이상, src/palette.ts). 가운데 축.
+  /* 4. 아치 프레임 — 아치 모양 창 안에 주인공이 온전히 들어오게 그림을 놓는다(placeArt — 창 안쪽의 안전 영역에 주인공 상자).
+        바깥은 같은 그림을 흐려 깐 위에 그림의 주색을 아주 깊게 덮은 막, 선·제목은 같은 색을 밝게(대비 수치 고정, src/palette.ts).
         레퍼런스: Criterion «The Spirit of the Beehive»(모양이 곧 색 창문), Mucha(세로로 긴 비례). */
   { label: '아치 프레임', render(c, art, m) {
     const k = archColors(artColors(art));
@@ -412,15 +517,16 @@ export const TEMPLATES: Template[] = [
     const titleTop = billTop - 52 - title.height;
     const tag = fitSmall(c, m.tagline, { family: SERIF, weight: 500, tracking: 0.14 }, 26, 960);
     const tagTop = titleTop - 30 - tag.height;
-    const archBottom = tagTop - 56, r = 400, cx = W / 2, spring = 190 + r;
-    // 그림은 아치 창이 가운데에 오도록 아치 아래 끝까지만 깐다(주인공은 대개 그림 가운데~아래).
-    photo(c, art, 0, 0, W, archBottom + 160, 0.5);
-    c.save(); c.globalAlpha = 0.76; c.fillStyle = veil;
+    const archBottom = tagTop - 56, r = 440, cx = W / 2, spring = 176 + r;
+    // 바깥: 같은 그림을 크게 흐려 깔고(막 아래로 비친다), 창 안에는 주인공을 지키며 선명한 그림.
+    c.save(); if ('filter' in c) c.filter = 'blur(28px)'; photo(c, art, 0, 0, W, H, 0.45); c.restore();
+    const win: Rect = { x: cx - r, y: spring - r, w: 2 * r, h: archBottom - (spring - r) };
+    const safe: Rect = { x: cx - 0.8 * r, y: spring - 0.62 * r, w: 1.6 * r, h: archBottom - 18 - (spring - 0.62 * r) };
+    c.save(); c.beginPath(); archPath(c, cx, spring, r, archBottom); c.clip();
+    placeArt(c, art, win, safe, subjectBox(m));
+    c.restore();
+    c.save(); c.globalAlpha = 0.84; c.fillStyle = veil;
     c.beginPath(); rectPath(c, 0, 0, W, H); archPath(c, cx, spring, r, archBottom); c.fill('evenodd'); c.restore();
-    const fade = c.createLinearGradient(0, archBottom, 0, archBottom + 160);
-    fade.addColorStop(0, css(k.veil, 0)); fade.addColorStop(1, veil);
-    c.save(); c.beginPath(); rectPath(c, 0, archBottom, W, H - archBottom); archPath(c, cx, spring, r, archBottom); c.clip('evenodd');
-    c.fillStyle = fade; c.fillRect(0, archBottom, W, 160); c.fillStyle = veil; c.fillRect(0, archBottom + 160, W, H); c.restore();
     c.save(); c.strokeStyle = gold; c.lineWidth = 2; c.beginPath(); archPath(c, cx, spring, r + 14, archBottom + 14); c.stroke(); c.restore();
     draw(c, tag, cx, tagTop, soft, 'center');
     draw(c, title, cx, titleTop, gold, 'center');
@@ -514,7 +620,8 @@ export const TEMPLATES: Template[] = [
     c.save(); c.translate(W / 2, cardTop + cardH / 2); c.rotate(-0.035); c.translate(-W / 2, -(cardTop + cardH / 2));
     c.save(); c.shadowColor = 'rgba(58,40,20,.35)'; c.shadowBlur = 26; c.shadowOffsetY = 10;
     c.fillStyle = '#fbfaf6'; c.fillRect(cardX, cardTop, cardW, cardH); c.restore();
-    photo(c, art, cardX + side, cardTop + topB, photoS, photoS, 0.55);
+    const sq: Rect = { x: cardX + side, y: cardTop + topB, w: photoS, h: photoS };
+    placeArt(c, art, sq, sq, subjectBox(m));   // 정사각으로 자를 때도 주인공 상자를 지킨다
     // 즉석 사진 색: 검정이 살짝 들뜨고 따뜻하게.
     c.save(); c.globalCompositeOperation = 'screen'; c.fillStyle = 'rgba(46,34,24,.16)'; c.fillRect(cardX + side, cardTop + topB, photoS, photoS);
     c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,214,160,.22)'; c.fillRect(cardX + side, cardTop + topB, photoS, photoS); c.restore();
@@ -530,52 +637,74 @@ export const TEMPLATES: Template[] = [
     bill.draw(cardX, 1726, 'left');
   } },
 
-  /* 7. 타이포그래피 — 세로 제목 기둥: 흰 종이, 왼쪽에 그림(2:3 그대로), 오른쪽 기둥에 제목을 한글 세로쓰기로(Song Myung).
-        제목은 크되 폭을 채우지 않고, 큰 여백과 아주 작은 정보 글의 크기 대비가 전부다. 정렬은 왼쪽 선 하나 + 오른쪽 기둥.
-        레퍼런스: references-round2.md A(⭐ A-2) — 슬기와 민·신신 «터전을 불태우라»(제목 길이별 줄바꿈 체계), 한글 세로쓰기. */
+  /* 7. 타이포그래피 — «개인 카페에 붙은 활판 포스터»: 결이 있는 따뜻한 종이, 왼쪽에 그림(2:3 그대로), 오른쪽에 한글 세로쓰기 제목(Song Myung)이
+        그림 높이를 정확히 채우고, 그 왼쪽에 작은 세로 부제(홍보 문구)가 한 박자 아래에서 따라 내려온다. 아래는 넓은 여백 뒤 작은 정보 글.
+        위계 = 세로 제목(아주 크게) · 세로 부제(작게) · 정보(가장 작게), 색은 먹색 하나 + 날짜에만 주홍. 정렬은 그림 왼쪽 선 하나.
+        레퍼런스: references-round2.md A(⭐ A-2) — 슬기와 민·신신(제목 길이별 줄바꿈 체계), 한글 세로쓰기 활판 문법. */
   { label: '타이포그래피', render(c, art, m) {
-    const ink = '#141414', mute = '#5b5952';
-    paper(c, '#fbfaf6', 0.02); brands(c, true);
-    const L = 72;
-    // 왼쪽 아래 정보 덩어리: 가는 선 하나 위에 영화제·날짜·장소 세 줄.
+    const ink = '#1d1a16', mute = '#6c6253', vermilion = '#b4462b';
+    paper(c, '#f4efe5', 0.07);
+    // 종이 가장자리를 아주 살짝 어둡게(인쇄 종이의 손때 — 4%).
+    const v = c.createRadialGradient(W / 2, H * 0.45, H * 0.35, W / 2, H * 0.5, H * 0.75);
+    v.addColorStop(0, 'rgba(80,60,30,0)'); v.addColorStop(1, 'rgba(80,60,30,.08)');
+    c.fillStyle = v; c.fillRect(0, 0, W, H);
+    brands(c, true);
+    const L = 96, top = 232, imgW = 700, imgH = 1050;
+    // 그림: 2:3 그대로(자르지 않는다). 종이에 붙인 인화지처럼 아주 옅은 그림자.
+    c.save(); c.shadowColor = 'rgba(60,45,25,.22)'; c.shadowBlur = 18; c.shadowOffsetY = 6;
+    c.fillStyle = '#fff'; c.fillRect(L, top, imgW, imgH); c.restore();
+    photo(c, art, L, top, imgW, imgH, 0.5);
+    // 세로 제목: 그림 오른쪽 기둥(그림 끝 + 64 ~ 오른쪽 여백). 길이가 그림 높이의 70%를 넘으면 그림 높이에 맞춰 고르게 벌린다.
+    const tCol = verticalTitle(c, m.title, { family: SONG, weight: 400 }, L + imgW + 56, W - L, top, imgH, ink, true);
+    // 세로 부제: 제목 기둥 왼쪽, 제목 한 글자 반 아래에서 시작. 자리가 모자라면 그림 아래 가로로.
+    const tagSize = 30, tagX1 = tCol.left - 30;
+    const tagLen = [...m.tagline.replace(/\s+/g, ' ')].length * tagSize * 1.05;
+    let infoTopLimit = top + imgH;   // 주연 글은 그림(또는 가로 부제) 아래에서만
+    if (tagX1 - tagSize >= L + imgW + 20 && tagLen <= imgH - tCol.size * 1.5) {
+      verticalTitle(c, m.tagline, { family: SONG, weight: 400 }, tagX1 - tagSize, tagX1, top + tCol.size * 1.5, imgH - tCol.size * 1.5, mute, false, tagSize);
+    } else {
+      const tag = fitSmall(c, m.tagline, { family: SONG, weight: 400 }, 30, imgW, 1.4);
+      draw(c, tag, L, top + imgH + 40, mute, 'left');
+      infoTopLimit = top + imgH + 40 + tag.height;
+    }
+    // 정보: 주연(약간 크게) → 가는 선 → 영화제 · 날짜(주홍) · 장소. 왼쪽 선 하나.
     const info = column(c, [
-      { text: FEST, s: { family: SANS, weight: 600 }, size: 22, color: ink, oneLine: true },
-      { text: DATE, s: { family: SANS, weight: 600 }, size: 22, color: ink, gap: 6, oneLine: true },
-      { text: VENUE, s: { family: SANS, weight: 600 }, size: 22, color: ink, gap: 6, oneLine: true },
+      { text: FEST, s: { family: SANS, weight: 600, tracking: 0.02 }, size: 22, color: ink, oneLine: true },
+      { text: DATE, s: { family: SANS, weight: 700, tracking: 0.04 }, size: 22, color: vermilion, gap: 8, oneLine: true },
+      { text: VENUE, s: { family: SANS, weight: 600 }, size: 22, color: ink, gap: 8, oneLine: true },
     ], 520);
     const infoTop = 1728 - info.height;
-    hairline(c, L, infoTop - 22, 520, 'rgba(20,20,20,.3)', 1);
+    hairline(c, L, infoTop - 24, 360, 'rgba(29,26,22,.35)', 1);
     info.draw(L, infoTop);
     const credit = column(c, [
-      { text: creditMain(m), s: { family: SANS, weight: 500, tracking: 0.04 }, size: 24, color: ink, lh: 1.35 },
+      { text: creditMain(m), s: { family: SANS, weight: 500, tracking: 0.06 }, size: 25, color: ink, lh: 1.35 },
       { text: creditSub(m), s: { family: SANS, weight: 400 }, size: 21, color: mute, gap: 8, lh: 1.45 },
     ], 760);
-    const creditTop = infoTop - 22 - 56 - credit.height;
-    credit.draw(L, creditTop);
-    const tag = fitSmall(c, m.tagline, { family: SERIF, weight: 500 }, 31, 760, 1.4);
-    const tagTop = creditTop - 22 - tag.height;
-    draw(c, tag, L, tagTop, ink, 'left');
-    // 그림: 2:3 그대로(자르지 않음), 위 216에서 문구 위 48까지.
-    const top = 216, imgH = Math.min(1152, tagTop - 48 - top), imgW = Math.round(imgH * 2 / 3);
-    photo(c, art, L, top, imgW, imgH, 0.5);
-    // 세로 제목: 그림 오른쪽 기둥(그림 끝 + 56 ~ 오른쪽 여백), 그림 위쪽 선에서 시작해 그림 높이 안에.
-    verticalTitle(c, m.title, { family: SONG, weight: 400 }, L + imgW + 56, W - L, top, imgH, ink);
+    credit.draw(L, Math.max(infoTopLimit + 24, infoTop - 24 - 36 - credit.height));
   } },
 
-  /* 8. 트립틱 — 한 그림을 30·40·30 세 칸으로 화면 가득(가는 검은 틈만), 칸마다 색조를 달리해(새벽 파랑 · 원래 색 · 밤 보라)
-        «시간의 세 칸»으로 읽힌다. 글은 아래 어둠 위에 가운데 축(세 칸의 대칭). 레퍼런스: Moonlight 가로판(칸마다 색조). */
+  /* 8. 트립틱 — 한 그림을 30·40·30 세 칸으로 화면 가득(4px 가는 틈), 칸마다 색조를 달리해(새벽 파랑 · 원래 색 · 밤 보라)
+        «시간의 세 칸»으로 읽힌다. 색 세기는 그림의 밝기·채도에 맞춘다(src/palette.ts triptychGrade):
+        채도 낮은 사람 사진은 색을 더 입히고, 어두운 그림은 같은 색을 밝혀 덧칠해 어떤 그림이든 세 칸 차이가 보인다.
+        글은 아래 어둠 위에 가운데 축(세 칸의 대칭). 레퍼런스: Moonlight 가로판(칸마다 색조). */
   { label: '트립틱', render(c, art, m) {
     c.fillStyle = '#0a0a0a'; c.fillRect(0, 0, W, H);
-    const g = 10, widths = [354, 472, 354], xs = [0, 354 + g, 354 + g + 472 + g];
-    // 양쪽 칸 색조: 'color' 섞기로 색상만 바꾸고(밝고 어두움은 그림 그대로) 'multiply'로 조금 가라앉힌다.
-    const grade = [{ hue: '#3c6fc6', deep: 'rgba(28,48,104,.28)' }, null, { hue: '#9a4b9e', deep: 'rgba(66,28,78,.28)' }];
+    const g = 4, widths = [354, 484, 354], xs = [0, 354 + g, 354 + g + 484 + g];
+    const grade = triptychGrade(artTone(art));
+    // 그림의 주색이 그 칸의 색(파랑 220° · 보라 285°)과 가까우면 칸 색을 더 깊게 가라앉혀 가운데 칸과 갈라지게 한다
+    // (불꽃놀이처럼 원래 푸른 그림에서 왼쪽 칸 차이가 ΔE 13.8에 그쳤다).
+    const main = artColors(art).hue, near = (h: number) => Math.min(Math.abs(main - h), 360 - Math.abs(main - h)) < 40;
+    const tints = [{ hue: '#2f6fe0', deep: 'rgb(20,40,104)', extra: near(220) ? 0.42 : 0 }, null,
+      { hue: '#a23fc4', deep: 'rgb(70,24,86)', extra: near(285) ? 0.42 : 0 }];
     xs.forEach((x, i) => {
       c.save(); c.beginPath(); rectPath(c, x, 0, widths[i], H); c.clip();
       photo(c, art, 0, 0, W, H, 0.4);
-      const t = grade[i];
+      const t = tints[i];
       if (t) {
-        c.globalCompositeOperation = 'color'; c.globalAlpha = 0.62; c.fillStyle = t.hue; c.fillRect(x, 0, widths[i], H);
-        c.globalCompositeOperation = 'multiply'; c.globalAlpha = 1; c.fillStyle = t.deep; c.fillRect(x, 0, widths[i], H);
+        c.globalCompositeOperation = 'color'; c.globalAlpha = grade.color; c.fillStyle = t.hue; c.fillRect(x, 0, widths[i], H);
+        if (grade.lift) { c.globalCompositeOperation = 'screen'; c.globalAlpha = grade.lift; c.fillStyle = t.hue; c.fillRect(x, 0, widths[i], H); }
+        const deep = Math.max(grade.deep, t.extra);
+        if (deep) { c.globalCompositeOperation = 'multiply'; c.globalAlpha = deep; c.fillStyle = t.deep; c.fillRect(x, 0, widths[i], H); }
       }
       c.restore();
     });
