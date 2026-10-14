@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ────────────────────────────────────────────────────────────────────
-   포스터 글꼴(Black Han Sans·Noto Serif KR·Anton·Bebas Neue)을 구글 폰트에서 받아
+   포스터 글꼴(Black Han Sans·Noto Serif KR·Anton·Bebas Neue·Gaegu 700·Song Myung)을 구글 폰트에서 받아
    public/fonts/poster/에 고정한다. 받은 그대로의 파일과 @font-face 규칙(unicode-range 포함)을
    쓰므로 화면·포스터에 그려지는 글자는 외부에서 받던 때와 같다.
 
@@ -18,13 +18,13 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = path.join(ROOT, 'public', 'fonts', 'poster');
 const CSS_OUT = path.join(ROOT, 'public', 'fonts', 'poster.css');
-// index.html이 2026-10-07까지 쓰던 주소 그대로다.
+// index.html이 2026-10-07까지 쓰던 주소에 2026-10-14 Gaegu 700(폴라로이드 캡션)·Song Myung(세로 제목)을 더했다 — 더하기 전 파일 217개는 해시까지 그대로였다.
 const CSS_URL =
-  'https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Serif+KR:wght@500;700;900&family=Anton&family=Bebas+Neue&display=swap';
+  'https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Serif+KR:wght@500;700;900&family=Anton&family=Bebas+Neue&family=Gaegu:wght@700&family=Song+Myung&display=swap';
 // woff2와 unicode-range 조각을 주는 최신 크롬으로 받는다(행사 노트북·휴대폰 브라우저가 받는 것과 같은 형태).
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
-const LICENSES = ['blackhansans', 'notoserifkr', 'anton', 'bebasneue'];
+const LICENSES = ['blackhansans', 'notoserifkr', 'anton', 'bebasneue', 'gaegu', 'songmyung'];
 const FILE_URL = /url\((https:\/\/fonts\.gstatic\.com\/s\/([a-z0-9]+)\/v\d+\/([A-Za-z0-9_-]+(?:\.\d+)?\.woff2))\)/g;
 
 async function get(url, as = 'text') {

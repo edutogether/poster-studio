@@ -21,7 +21,8 @@ test('화면 진입 HTML은 외부 글꼴 서비스를 부르지 않고 자체 �
 test('포스터 글꼴 규칙의 파일이 전부 있고 woff2이며, 쓰지 않는 파일이 남아 있지 않다', () => {
   // 🔴 대상이 0건이면 통과하지 않는다.
   expect(urls.length, '글꼴 규칙에서 파일 주소를 하나도 못 찾았다').toBeGreaterThan(100);
-  for (const family of ['Black Han Sans', 'Noto Serif KR', 'Anton', 'Bebas Neue']) {
+  // Gaegu(폴라로이드 캡션 손글씨)·Song Myung(타이포그래피 세로 제목)은 2026-10-14 포스터 다시 설계로 더했다.
+  for (const family of ['Black Han Sans', 'Noto Serif KR', 'Anton', 'Bebas Neue', 'Gaegu', 'Song Myung']) {
     expect(css, family).toContain(`font-family: '${family}'`);
   }
   const referenced = new Set();
