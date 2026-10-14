@@ -20,11 +20,11 @@
   {
     "id": 3,
     "status": "approved",
-    "src": "/studio/waiting-v2/03-eb6e204f5423.mp4",
-    "sha256": "eb6e204f5423b2dabf4e6e8ad54932bd784c1a43173e03a01de35e7217b32b94",
-    "bytes": 947818,
+    "src": "/studio/waiting-v2/03-6a2fffcbf763.mp4",
+    "sha256": "6a2fffcbf763734970ec2222aa9116cda66b13757d87c8372bebae98ff997e0b",
+    "bytes": 1230517,
     "still": "/studio/waiting-v2/03.webp",
-    "stillSha256": "b38cde69c658af0793c0023aed0524cc405263884f7e5c96e4191632822ff6fd"
+    "stillSha256": "b3c1116e9d8c92a40d6ff0cb6740fdb4ce11da5aaa57e766bbf0ce0e9a32c296"
   },
   {
     "id": 4,
