@@ -226,6 +226,21 @@
   **다시 받으면 같은 대조를 돌리고, 출력이 바뀌었으면 승인 없이 커밋하지 않는다.**
   외부 글꼴 도메인을 CSP·HTML에 다시 넣지 않는다(`test/csp.test.js`·`test/poster-fonts.test.js`).
 
+## GitHub 정지 중 로컬 배포 (2026-10-15 Bumm님 승인, 팀장 전달)
+- GitHub가 정지돼 push·CI가 안 될 때만, 매번 팀장을 거친 Bumm님 승인을 받고 이 컴퓨터에서 Firebase로 직접 배포한다.
+  절차 전체는 [`_docs/ops/runbook.md`](../../_docs/ops/runbook.md) §9다. 2026-10-15에 master `8d752d4`를 hosting만 이렇게 냈다.
+- 🔴 **이 컴퓨터의 체크아웃에서 바로 빌드·배포하지 않는다.** `core.autocrlf=true`라 CRLF로 빌드돼 CI와 다른 파일이 나간다.
+  `git -c core.autocrlf=false worktree add --detach`로 LF 사본을 만들어 거기서 한다.
+  10/15 실측: 마지막 push(a658d89)를 LF 사본에서 빌드하자 라이브 299개 파일과 SHA-256까지 모두 같았다.
+- 🟠 **확인 기준은 CI 파일 한 곳에 둔다.** 배포 직후 확인은 `scripts/ci/run-workflow-step.mjs`가 `deploy.yml`의 단계 명령을 꺼내 그대로 실행한다(명령을 베껴 두지 않는다).
+  바이트 대조는 `scripts/verify/dist-vs-live.mjs`, 대기 영상은 `waiting-videos-live.mjs --url <주소>`다.
+  세 도구 모두 일부러 깨뜨려 실패하는 것을 확인했다(죽은 주소·없는 단계·`${{ }}` 식·빈 블록·다른 빌드·빈 폴더).
+- 🟠 **되돌릴 자리는 배포 전에 만든다.** 지금 라이브 판을 `hosting:clone`으로 30일짜리 채널(`rollback-<날짜>`)에 복제한다.
+  되돌리기는 그 채널을 `live`로 다시 복제하는 것이다. 10/15에 실제로 되돌렸다가 다시 냈다.
+- 🔴 **부스 코드 스위치가 켜진 뒤에는 functions를 로컬에서 그냥 내지 않는다.** CI의 «부스 코드 설정» 단계가 매 배포마다 환경 파일을 만든다.
+  그 파일 없이 내면 켜 둔 스위치가 빠질 수 있다. 비공개 운영 문서 절차로 같은 파일을 먼저 만들거나, 멈추고 보고한다.
+- 배포 도구는 CI와 같은 `tools/deploy` 잠금 판(firebase-tools 15.32.1)을 쓴다. 이 컴퓨터 전역의 `firebase`(15.22.4)를 쓰지 않는다.
+
 ## CI — 문서만 고친 커밋은 배포를 건너뛴다 (2026-09-10, COMMON_STANDARDS §23)
 - 워크플로가 **하나**라 테스트·배포가 같은 파일에 있다. 그래서 `on.push.paths-ignore`를
   **쓰지 않는다** — 그건 워크플로 단위라 **테스트까지 같이 꺼진다**(§21-6).
@@ -255,7 +270,7 @@
   AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
 - 에뮬레이터: 사용하지 않는다. 헤더(CSP 등) 확인이 필요하면 `firebase emulators:start --only hosting`.
 - 배포: `master`에 push → CI가 test → functions → hosting 순으로 자동 배포. 수동 배포는 하지 않는다
-  (예외: `keepWarm` 스케줄 변경 배포 — `_docs/ops/runbook.md` 참고).
+  (예외: `keepWarm` 스케줄 변경 배포, GitHub 정지 중 로컬 배포 — `_docs/ops/runbook.md` §9와 아래 절 참고).
 
 ## 자주 틀리는 것
 - **임시 사진 삭제 누락이 세 번 재발했다.** 2차 감사(오류 경로), 7차 감사(429 경로 3곳), 8차 감사(재시도 예산 초과로
@@ -284,6 +299,7 @@
   되돌리면 **줄끝(CRLF/LF)이 달라 다른 파일이 나간다** — 이 저장소에서 실측했다: 라이브에서
   받은 `index.html`·`privacy.html`·`boot-splash.js`·`pretendard.css`가 로컬 파일과 md5가
   달랐는데 줄끝만 정규화하니 전부 일치했다(CI는 리눅스 LF, 로컬은 CRLF).
+  GitHub가 정지돼 CI 경로가 없을 때는 «GitHub 정지 중 로컬 배포» 절(LF 사본·되돌림 채널)을 따른다.
 - **이 저장소의 PR은 사람이 GitHub에서 머지 버튼을 누르는 것을 기본으로 한다**(2026-09-09 팀장 확정).
   PR은 리뷰가 아니라 **기록**을 위해 만드는 것이라(헌법 §8) 머지 방식이 이력에 남는 게 중요하다.
   세션이 `gh pr merge`로 대신 누르지 않는다.

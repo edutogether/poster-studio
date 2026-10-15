@@ -49,11 +49,12 @@ npm --prefix functions test
 npm --prefix functions run lint
 ```
 
-문구 변경은 폰트 서브셋을 검사한다. 새 글자는 `npm run fonts:charset` → `python scripts/fonts/subset.py` → `npm run fonts:check` 순서로 반영한다. 현행 8종 포스터는 `node scripts/verify/release-baseline.mjs`로 Windows에서 5개 입력 × 8종 지문을 수집하고 `npm run verify:pixels -- <전.json> <후.json>`로 대조한다. 배포 뒤 `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`로 저장된 출시 기준선과 실제 운영 출력을 대조한다. 이전 `poster-pixels-ui.js`·`studio-flow.mjs`는 구 4종 UI의 역사 검증용이다. 승인 범위 밖 출력 차이를 통과시키려고 기준을 갱신하지 않는다. 부하테스트는 별도 승인 없이 실행하지 않는다.
+문구 변경은 폰트 서브셋을 검사한다. 새 글자는 `npm run fonts:charset` → `python scripts/fonts/subset.py` → `npm run fonts:check` 순서로 반영한다. 현행 8종 포스터는 `node scripts/verify/release-baseline.mjs`로 Windows에서 5개 입력 × 8종 지문을 수집하고 `npm run verify:pixels -- <전.json> <후.json>`로 대조한다. 배포 뒤 `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`로 저장된 출시 기준선과 실제 운영 출력을 대조한다(촬영 흐름을 누르므로 실제 모드 라이브에서만 된다. 샘플 모드 라이브는 `node scripts/verify/waiting-videos-live.mjs <결과 폴더> --url https://poster.edutogether.kr`로 본다). 이전 `poster-pixels-ui.js`·`studio-flow.mjs`는 구 4종 UI의 역사 검증용이다. 승인 범위 밖 출력 차이를 통과시키려고 기준을 갱신하지 않는다. 부하테스트는 별도 승인 없이 실행하지 않는다.
 
 ## 공용 절차·보고·도구 인계
 
 - 공용 마무리·윈도 기준선·감사 주기·점수/기준 커밋·보고/승인·비밀값 규칙은 `D:\Projects\AGENTS.md`의 «SHARED WORKFLOW REFERENCES»와 그 절의 원문 경로를 확인한다. Codex도 `.claude/rules/app.md`를 작업 전에 직접 읽는다.
 - 앱 보고·질문은 Project Engineering을 거친다. 팀장이 전달한 Bumm님 승인은 해당 범위에만 적용하며, 인계·검사 통과를 병합·배포 승인으로 해석하지 않는다. 인증코드 값·생성 규칙과 비밀값은 문서·보고·커밋에 넣지 않는다.
+- GitHub가 정지돼 CI가 돌지 않을 때의 배포는 승인을 받은 뒤 `_docs/ops/runbook.md` §9만 따른다. LF 사본에서 빌드하고, CI 단계는 `scripts/ci/run-workflow-step.mjs`로 실행하고, 되돌림 채널을 먼저 만든다. 이 컴퓨터의 CRLF 체크아웃에서 바로 배포하지 않는다.
 - 도구 전환은 `_docs/ops/HANDOFF_CURRENT.md` §1 «인계 절차»를 따른다. 미커밋 변경을 먼저 보존하고 자기 변경만 승인된 작업 가지에 올린 뒤 원격 전체 SHA를 담은 인수 프롬을 전달한다. 검증 결과는 대상·환경을 확인해 재사용하며 인계를 위해 병합·배포하지 않는다.
 - «마무리» 지시만으로 `.claude/rules/app.md` «이 앱에서 절대 하면 안 되는 것»의 라이브 부하시험 금지·부하시험 중지 결정을 해제하지 않는다. 이 예외를 바꾸는 별도 지시가 없으면 유지한다.

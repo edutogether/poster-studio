@@ -110,6 +110,59 @@
 4. 해당 커밋의 CI 성공과 두 Hosting 주소의 응답·번들을 확인한다. 실제 `/generate` 호출은 비용이 발생하므로 별도 지시 없이 검사하지 않는다.
 
 Hosting과 Functions를 콘솔에서 직접 바꾸거나 수동 `firebase deploy`로 우회하지 않는다. 되돌린 뒤 공통 인계 문서에 커밋과 CI 결과를 남긴다.
+GitHub가 정지돼 CI가 돌지 않을 때만 예외로 §9 절차를 쓴다.
+
+## 9. GitHub 정지 중 로컬 배포 (2026-10-15 Bumm님 승인, 팀장 전달)
+GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 Bumm님 배포 승인이 있어야 한다. 정상일 때는 §8까지의 CI 경로다.
+2026-10-15에 이 절차로 master `8d752d4`를 배포했다(기록은 `_docs/CHANGELOG.md`와 `_docs/intents/2026-10-15-local-deploy-github-suspended/`).
+
+1. **무엇이 나가는지 본다.** `origin/master`가 마지막으로 push된(= CI가 마지막으로 배포한) 커밋이다.
+   - 전체: `git diff --stat origin/master master`
+   - functions: `git diff --stat origin/master master -- functions/`. 비어 있으면 hosting만 낸다.
+2. **LF 사본을 만든다.** 이 컴퓨터의 체크아웃은 CRLF(`core.autocrlf=true`)라 그대로 빌드하면 CI(LF)와 다른 파일이 나간다.
+   ```bash
+   git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/base origin/master
+   git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/master master
+   ```
+3. **이 컴퓨터의 빌드가 CI를 재현하는지 본다.** `base`에서 `npm ci && npm run build`를 하고, 라이브와 바이트 대조한다.
+   - 명령: `node scripts/verify/dist-vs-live.mjs ../base/dist https://poster-studio.web.app`
+   - 전부 같아야 다음으로 간다. 다르면 라이브가 마지막 push가 아니거나 빌드 환경이 다르다 — 멈추고 팀장에게 보고한다.
+4. **CI 검사를 `master` 사본에서 전부 돌린다.** 하나라도 종료코드가 0이 아니면 멈춘다.
+   - functions: `npm ci` · `npm run lint` · `npm test`
+   - 루트: `npm ci` · `npm run lint` · `npm run typecheck` · `npm run fonts:check` · `npm test` · `npm run verify:selftest` · `npm run build`
+   - dist 점검: `node scripts/ci/run-workflow-step.mjs "dist에 나가면 안 되는 것이 없는지"`(CI 단계의 명령을 워크플로 파일에서 꺼내 그대로 실행한다)
+   - 대기 영상: `node scripts/verify/waiting-videos-live.mjs`
+5. **배포 도구는 CI와 같은 잠금 판을 쓴다.**
+   - 설치: `cd tools/deploy && npm ci --ignore-scripts --no-audit --no-fund`
+   - 확인: `tools/deploy/node_modules/.bin/firebase --version`이 `15.32.1`이어야 한다.
+   - 로그인한 계정이 `inky-poster-studio`에 접근되는지 `firebase projects:list`로 본다.
+6. **되돌릴 자리를 먼저 만든다.** 지금 라이브 판을 30일짜리 채널에 복제하고, 그 채널이 `base` 빌드와 같은지 대조한다.
+   ```bash
+   firebase hosting:channel:list --site poster-studio --project inky-poster-studio          # 지금 라이브 판 번호를 적어 둔다
+   firebase hosting:channel:create rollback-<날짜> --site poster-studio --expires 30d --project inky-poster-studio
+   firebase hosting:clone poster-studio:live poster-studio:rollback-<날짜> --project inky-poster-studio
+   node scripts/verify/dist-vs-live.mjs ../base/dist <채널 주소>
+   ```
+7. **배포한다**(`master` 사본에서, CI와 같은 순서).
+   - functions가 바뀌었으면 먼저 `firebase deploy --only functions --project inky-poster-studio --non-interactive`를 낸다.
+     그다음 `node scripts/ci/run-workflow-step.mjs "부스토큰 스모크테스트 (배포 직후 실제 인증 확인)"`가 통과해야 hosting으로 간다.
+   - 🔴 **부스 코드 스위치가 켜진 뒤(11/7쯤부터)에는 functions를 그냥 내지 않는다.** CI는 배포할 때마다 «부스 코드 설정» 단계에서 환경 파일을 새로 만들어 넣는다.
+     그 파일 없이 내면 켜 둔 스위치가 빠질 수 있다. 비공개 운영 문서의 절차로 같은 파일을 먼저 만들거나, 멈추고 팀장에게 보고한다.
+   - hosting: `firebase deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive -m "로컬 배포 <커밋>"`
+   - `firebase`는 5번의 `tools/deploy/node_modules/.bin/firebase`다.
+8. **배포 직후 CI와 같은 확인을 한다.**
+   - 두 주소 바이트 대조:
+     - `node scripts/verify/dist-vs-live.mjs dist https://poster.edutogether.kr`
+     - `node scripts/verify/dist-vs-live.mjs dist https://poster-studio.web.app`
+   - CI 스모크(홈 200 · 나가면 안 되는 경로 404 · og.jpg · CORS 반사 · 부스 토큰 400):
+     `node scripts/ci/run-workflow-step.mjs "부스토큰 스모크테스트 (배포 직후 실제 인증 확인)" "배포 직후 라이브 확인 (두 주소 · 200 + 404 + CORS)"`
+   - 샘플 모드면 대기 영상: `node scripts/verify/waiting-videos-live.mjs <결과 폴더> --url https://poster.edutogether.kr`
+   - 실제 모드면 포스터 출시 기준선: `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`
+9. **문제가 있으면 되돌린다.**
+   - 명령: `firebase hosting:clone poster-studio:rollback-<날짜> poster-studio:live --project inky-poster-studio`
+   - 되돌린 뒤 `dist-vs-live.mjs ../base/dist`로 확인한다. Firebase 콘솔 Hosting의 출시 기록에서도 이전 판으로 되돌릴 수 있다.
+10. **기록한다.** CHANGELOG에 한 줄, 공통 인계 문서(`_docs/ops/HANDOFF_CURRENT.md`)에 배포 커밋·라이브 판 번호·되돌림 채널을 적는다.
+    GitHub가 돌아오면 master를 push한다. CI가 같은 파일을 다시 배포한다(바이트가 같으므로 화면 변화 없음).
 
 ## 참고
 - 노트북 재부팅/브라우저 재시작으로 대부분의 일시적 문제는 해결된다.

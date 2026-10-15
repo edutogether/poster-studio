@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-10-15 | [local-deploy-github-suspended](2026-10-15-local-deploy-github-suspended/intent.md) | 2 | done | GitHub 정지 중 master를 이 컴퓨터에서 Firebase로 직접 배포 — LF 사본·CI와 같은 검사·되돌림 채널 |
 | 2026-10-14 | [ai-retry-instead-of-fallback](2026-10-14-ai-retry-instead-of-fallback/intent.md) | 2 | draft | AI가 실패하면 «AI 없이 계속하기»(빈 그라데이션) 대신 «다시 만들기» — 결정 5개 Bumm님 확인 대기 |
 | 2026-10-14 | [poster-select-redesign](2026-10-14-poster-select-redesign/intent.md) | 2 | in-progress | 포스터 고르기 화면 단추·여백 다듬기와 포스터 7종을 세계 수준 레퍼런스로 다시 설계 |
 | 2026-10-10 | [waiting-video-seedance](2026-10-10-waiting-video-seedance/intent.md) | 2 | in-progress | 대기 영상 12편을 키프레임부터 다시 — Higgsfield 프로젝트 «Poster Studio», 캐릭터 에셋, Seedance로 한 번에(정확히 8초) |

@@ -47,7 +47,7 @@ firebase.json    hosting(poster-studio 타겟) + functions 설정, 보안헤더(
 
 ## 개발/배포 (관리자용)
 ### 프론트엔드
-`public/` 아래 정적 파일을 고치고 `master`에 푸시하면 `.github/workflows/deploy.yml`이 자동으로 Firebase Hosting(`poster-studio` 사이트)에 배포한다. 로컬 미리보기는 `public/index.html`을 정적 서버(예: VS Code Live Server)로 열면 된다 — 단, AI 생성 버튼은 Firebase Functions 배포가 끝나야 동작한다. `firebase.json`의 CSP 등 보안헤더는 정적 서버 미리보기에는 안 걸리므로, 헤더 관련 동작을 확인하려면 `firebase deploy --only hosting:poster-studio`로 실제 배포하거나 `firebase emulators:start --only hosting`을 쓸 것.
+`src/`(React+TypeScript)·`public/`(정적 자산)을 고치고 `master`에 푸시하면 `.github/workflows/deploy.yml`이 `npm run build`로 만든 `dist/`를 Firebase Hosting(`poster-studio` 사이트)에 배포한다. GitHub가 정지돼 CI가 돌지 않을 때는 `_docs/ops/runbook.md` §9의 로컬 배포 절차만 쓴다. 로컬 미리보기는 `npm run dev`, 배포본과 같은 형태는 `npm run build` 뒤 `dist/`를 정적 서버로 연다 — 단, AI 생성은 로컬에서도 라이브 Functions를 부르므로 실비용이 나간다. `firebase.json`의 CSP 등 보안헤더는 정적 서버 미리보기에는 안 걸리므로, 헤더 관련 동작을 확인하려면 `firebase deploy --only hosting:poster-studio`로 실제 배포하거나 `firebase emulators:start --only hosting`을 쓸 것.
 
 ### Firebase Functions (AI 생성 API)
 ```bash

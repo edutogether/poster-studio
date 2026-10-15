@@ -1,8 +1,9 @@
 /* 대기 영상 12편이 실제 앱 화면에서 도는지 확인한다(2026-10-12 Bumm님 «12편 앱 장착», 팀장 전달).
 
-     node scripts/verify/waiting-videos-live.mjs [결과 폴더] [--runs 8]
+     node scripts/verify/waiting-videos-live.mjs [결과 폴더] [--runs 8] [--url <주소>]
 
-   빌드본(dist/)을 이 도구 안의 작은 서버(127.0.0.1, 영상 Range 요청 지원)로 열고, 헤드리스 크롬으로 샘플 흐름
+   빌드본(dist/)을 이 도구 안의 작은 서버(127.0.0.1, 영상 Range 요청 지원)로 열고(--url을 주면 그 주소 — 배포 직후 라이브 확인,
+   2026-10-15), 헤드리스 크롬으로 샘플 흐름
    («샘플 포스터 보기» → 로딩 40초)을 12편이 다 나올 때까지 되풀이한다(장면 순서는 앱이 섞는다).
    판정: ① 12편 모두 로딩 화면에 나왔고, 나온 편마다 영상이 실제로 재생됐다(playing) — 정지 그림으로 되돌아간 편 0
          ② 재생 주소가 목록(src/studio/waiting-videos.json)과 같다
@@ -18,12 +19,14 @@ import { spawn } from 'node:child_process';
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
-const out = path.resolve(args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--runs') || '.cache/waiting-videos-live');
+const out = path.resolve(args.find((a, i) => !a.startsWith('--') && !['--runs', '--url'].includes(args[i - 1])) || '.cache/waiting-videos-live');
 const RUNS = Number(opt('--runs', 8));
 const DIST = path.resolve('dist');
 const manifest = JSON.parse(fss.readFileSync('src/studio/waiting-videos.json', 'utf8'));
 assert.equal(manifest.length, 12, '목록 12편');
-assert.ok(fss.existsSync(path.join(DIST, 'index.html')), 'dist/가 없다 — npm run build 먼저');
+const LIVE = opt('--url', '');
+if (LIVE) assert.match(LIVE, /^https?:\/\/[^/]+\/?$/, '--url은 주소의 처음(예: https://poster.edutogether.kr)만');
+else assert.ok(fss.existsSync(path.join(DIST, 'index.html')), 'dist/가 없다 — npm run build 먼저');
 await fs.mkdir(out, { recursive: true });
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.mp4': 'video/mp4', '.webp': 'image/webp',
@@ -43,8 +46,8 @@ const server = http.createServer((req, res) => {
   res.writeHead(200, { 'content-type': type, 'accept-ranges': 'bytes', 'content-length': size, 'cache-control': 'no-store' });
   fss.createReadStream(file).pipe(res);
 });
-await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const url = `http://127.0.0.1:${server.address().port}/`;
+if (!LIVE) await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const url = LIVE ? LIVE.replace(/\/?$/, '/') : `http://127.0.0.1:${server.address().port}/`;
 
 const port = 9541;
 const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--no-default-browser-check',
@@ -130,5 +133,5 @@ try {
     if (!(r.나온횟수 > 0 && r.재생 > 0 && r.정지그림으로되돌아감 === 0 && r.주소맞음 && r.이음매 < 4)) { failed = true; console.error(`실패: ${r.id}`); }
   }
   await call('Browser.close');
-} finally { socket?.close(); chrome.kill(); server.close(); }
+} finally { socket?.close(); chrome.kill(); if (server.listening) server.close(); }
 process.exit(failed ? 1 : 0);

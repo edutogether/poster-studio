@@ -66,7 +66,7 @@ npm run verify:selftest               # 대조 도구가 빈 게이트가 아닌
   정적 서버로 연다(포트 5500 또는 8080 — `ALLOWED_ORIGINS`에 이미 허용됨).
   AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
 - **배포**: `master`에 push하면 CI가 `test` → `deploy-functions` → `deploy-hosting` 순으로 자동 배포한다.
-  수동 `firebase deploy`는 하지 않는다(예외: `keepWarm` 스케줄 변경 — RUNBOOK 참고).
+  수동 `firebase deploy`는 하지 않는다(예외: `keepWarm` 스케줄 변경, GitHub 정지 중 로컬 배포 — RUNBOOK §9 참고).
 - **코드를 고쳤으면 양쪽 test·lint를 돌리고 커밋한다.** 실패한 커밋이 `master`에 올라가면 그 사이 배포가 통째로 멈춘다.
 
 ## 폴더 구조

@@ -1,5 +1,16 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-15 — GitHub 정지 중 로컬 배포 (팀장 전달, Bumm님 승인)
+
+- **라이브(두 주소) = master `8d752d4`**, hosting만 냈다. 판은 `ee321037c278595a`(14:04 KST)다.
+  - 대기 영상 12편과 1~3단계 단추 수정이 나갔다. 샘플 모드는 그대로이고, 부스 코드는 꺼져 있다.
+  - functions는 마지막 push(a658d89) 이후 바뀌지 않아 내지 않았다.
+- **되돌림 채널** `rollback-20261015`에 10/10 라이브 판 `2969227513313223`을 담아 뒀다(만료 11/14 13:45 KST).
+  되돌리는 법은 runbook §9-9이고, 10/15에 실제로 되돌렸다가 다시 냈다.
+- `origin/master`는 아직 a658d89다. GitHub가 돌아오면 master를 push한다(CI가 같은 파일을 다시 배포한다).
+  GitHub가 계속 정지면 샘플 모드 해제(11/7쯤) 배포도 runbook §9로 한다.
+- 포스터 디자인 가지 `poster-redesign-20261014`는 넣지 않았다(Bumm님 템플릿별 지적 대기).
+
 ## 2026-10-10 — 저장소 정리 뒤 상태
 
 - 작업 폴더는 최신 master다. 대기 영상 도구(`scripts/media/`)·기록(`_docs/intents/2026-09-30-studio-design-integration/`)도 master에 있다.
@@ -396,7 +407,7 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 
 | 무엇 | 쓰는 곳 |
 |---|---|
-| Firebase·Google Cloud 로그인(`firebase` 15.x, `gcloud`) | `keepWarm` 스케줄 변경 배포(유일한 수동 배포 예외), Secret Manager 교체 |
+| Firebase·Google Cloud 로그인(`firebase` 15.x, `gcloud`) | `keepWarm` 스케줄 변경 배포, GitHub 정지 중 로컬 배포(runbook §9 — 이 둘이 수동 배포 예외), Secret Manager 교체 |
 | Secret Manager의 `OPENAI_API_KEY`·`BOOTH_TOKEN` | Functions 실행 — 값은 콘솔에만 있다 |
 | GitHub 저장소 비밀 `FIREBASE_SERVICE_ACCOUNT` | CI 배포 잡 전용. PR 검사는 쓰지 않는다 |
 | `gh` 로그인(`817beatles`) | CI 결과 확인·PR |
