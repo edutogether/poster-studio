@@ -26,3 +26,35 @@ export function boothCodeHeaders(): Record<string, string> {
     return {};
   }
 }
+
+/* 부스 코드 입력 창(2026-10-16) — 생성 요청이 «부스 코드» 거절(403, code: "booth_code")을 받으면 화면이 입력 창을 연다.
+   넣은 코드는 사진 없는 요청으로 먼저 확인한다: 코드 문지기를 지나면 사진 확인에서 400이 난다(그 앞에서 끝나므로
+   이용 횟수·예산 카운터를 쓰지 않는다 — functions/index.js의 순서). 맞으면 이 브라우저에 보관한다. */
+export function isBoothCodeRefusal(status: number, body: unknown): boolean {
+  return status === 403 && typeof body === "object" && body !== null && (body as { code?: unknown }).code === "booth_code";
+}
+
+export function saveBoothCode(code: string): boolean {
+  if (!FORMAT.test(code)) return false;
+  try { localStorage.setItem(KEY, code); return true; } catch { return false; }
+}
+
+export type BoothCodeCheck = "ok" | "wrong" | "format" | "offline" | "error";
+
+export async function verifyBoothCode(raw: string, deps: { apiBase: string; boothToken: string; fetch?: typeof fetch }): Promise<BoothCodeCheck> {
+  const code = raw.trim();
+  if (!FORMAT.test(code)) return "format";
+  let res: Response;
+  try {
+    res = await (deps.fetch ?? fetch)(`${deps.apiBase}/generate`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-booth-token": deps.boothToken, "x-booth-code": code },
+      body: "{}",
+    });
+  } catch {
+    return "offline";
+  }
+  if (res.status === 400) return "ok";
+  const body = await res.json().catch(() => null);
+  return isBoothCodeRefusal(res.status, body) ? "wrong" : "error";
+}

@@ -1496,7 +1496,7 @@ test('부스 코드: 켜면 맞는 코드만 통과하고, 없거나 틀리면 4
   ]) {
     const r = await runGate(gate, headers);
     expect(r.code, JSON.stringify(headers)).toBe(403);
-    expect(r.body.error).toBe('행사 부스에서만 만들 수 있어요.');
+    expect(r.body).toEqual({ error: '행사 부스에서만 만들 수 있어요.', code: 'booth_code' }); // 화면이 이 code로 부스 코드 입력 창을 연다(src/boothCode.ts)
   }
 });
 

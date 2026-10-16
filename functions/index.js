@@ -671,7 +671,7 @@ function makeBoothCodeGate({ required, sha256 }) {
     const code = String(req.headers['x-booth-code'] || '');
     const provided = crypto.createHash('sha256').update(code).digest();
     if (BOOTH_CODE_PATTERN.test(code) && crypto.timingSafeEqual(provided, expected)) return next();
-    return res.status(403).json({ error: '행사 부스에서만 만들 수 있어요.' });
+    return res.status(403).json({ error: '행사 부스에서만 만들 수 있어요.', code: 'booth_code' });
   };
 }
 let boothCodeGate = makeBoothCodeGate({
