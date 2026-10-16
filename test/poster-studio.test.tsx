@@ -18,6 +18,8 @@ import { TEMPLATES } from '../src/templates.js';
 import PosterStudio, { getMeta } from '../src/PosterStudio.js';
 import * as homeRestart from '../src/restartHome.js';
 import * as posterModule from '../src/poster.js';
+import * as saveModule from '../src/savePoster.js';
+import { PHONE_QUERY, slideAt } from '../src/studio/StudioView.js';
 import { captureBoothCode } from '../src/boothCode.js';
 
 /** 보관한 부스 코드와 메모리 값을 함께 지운다(#booth= 로 여는 것과 같다 — 저장소가 막힌 브라우저용 메모리 값이 다음 테스트로 새지 않게). */
@@ -906,4 +908,103 @@ describe('샘플 모드',()=>{
     expect(el('shotBtn').textContent).toBe('3초 뒤 사진 찍기');
     expect(document.getElementById('startBtn')).not.toBeNull();
   });
+});
+
+/* 휴대폰 흐름(2026-10-17 Bumm님 휴대폰 지적, _docs/intents/2026-10-17-mobile-flow). 화면 배치는 CSS(@media 760px)라
+   여기서는 «휴대폰일 때만 일어나는 동작»과 «PC에서는 아무 일도 없음»을 고정한다. 배치 · 한 화면 맞춤은 mobile-layout-probe가 잰다. */
+describe('휴대폰 흐름', () => {
+  const asPhone = (phone: boolean) => vi.stubGlobal('matchMedia', (q: string) => ({ matches: phone && q === PHONE_QUERY, addEventListener() {}, removeEventListener() {} }));
+  let scrolled: Element[];
+  let restoreDialog: () => void;
+  beforeEach(() => {
+    scrolled = [];
+    Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this); };
+    Element.prototype.scrollTo = function () {} as typeof Element.prototype.scrollTo;
+    const had = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value(this: HTMLDialogElement) { this.setAttribute('open', ''); } });
+    restoreDialog = () => { if (had) Object.defineProperty(HTMLDialogElement.prototype, 'showModal', had); else delete (HTMLDialogElement.prototype as unknown as Record<string, unknown>).showModal; };
+  });
+  afterEach(() => {
+    delete (Element.prototype as unknown as Record<string, unknown>).scrollIntoView;
+    delete (Element.prototype as unknown as Record<string, unknown>).scrollTo;
+    restoreDialog();
+  });
+
+  test.each([[true, 1], [false, 0]])('1단계 극장 사진을 누르면 둘째 페이지로 넘어간다 — 휴대폰=%s', async (phone, count) => {
+    asPhone(phone);
+    await act(async () => { renderApp(); });
+    await act(async () => { (document.querySelector('.preview-panel') as HTMLElement).click(); });
+    expect(scrolled.filter((e) => e.id === 'prepareWorkspace')).toHaveLength(count);
+  });
+
+  test('2단계 빨간 원형 단추: 실제 모드는 촬영을 시작하고, 다 찍으면 «오늘 촬영할 영화»까지 내려간다', async () => {
+    asPhone(true);
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(el('phoneShotBtn').getAttribute('aria-label')).toBe('3초 뒤 사진 찍기');
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    makeVideoReady(el<HTMLVideoElement>('video'));
+    vi.useFakeTimers();
+    await act(async () => { el<HTMLButtonElement>('phoneShotBtn').click(); });
+    await runCountdown();
+    vi.useRealTimers();
+    await act(async () => { await Promise.resolve(); });
+    expect(el('phoneShotBtn').hidden).toBe(true);   // 찍은 뒤에는 원형 단추가 없다(«이 사진으로 만들기»로)
+    expect(scrolled.some((e) => e.classList.contains('camera-film-heading'))).toBe(true);
+  });
+
+  test('2단계 빨간 원형 단추: 샘플 모드는 카메라 없이 «샘플 포스터 보기» 자리로 내려간다', async () => {
+    asPhone(true);
+    vi.stubEnv('VITE_SAMPLE_MODE', '1');
+    const f = installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('phoneShotBtn').click(); });
+    expect(scrolled.some((e) => e.classList.contains('camera-film-heading'))).toBe(true);
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+    expect(f.bodies).toHaveLength(0);
+  });
+
+  test('3단계: 큰 포스터 줄 — 옆 장을 누르면 그 장이 선택되고, 가운데 장을 누르면 크게 보기 창이 열린다', async () => {
+    asPhone(true);
+    installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    const slides = document.querySelectorAll<HTMLButtonElement>('.poster-slide');
+    expect(slides).toHaveLength(8);
+    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe(`${TEMPLATES[0].label} · 1 / 8`);
+    await act(async () => { slides[2].click(); });
+    expect(document.querySelectorAll('#gallery .thumb')[2].getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector<HTMLDialogElement>('.poster-dialog')!.open).toBe(false);
+    await act(async () => { document.querySelectorAll<HTMLButtonElement>('.poster-slide')[2].click(); });
+    expect(document.querySelector<HTMLDialogElement>('.poster-dialog')!.open).toBe(true);
+    expect(document.querySelectorAll('.dialog-carousel img')).toHaveLength(8);
+  });
+
+  test('3단계 «내 휴대폰에 저장»: 고른 포스터를 영화 제목 이름으로 저장한다', async () => {
+    asPhone(true);
+    installFetch();
+    const save = vi.spyOn(saveModule, 'savePoster').mockResolvedValue('shared');
+    await act(async () => { renderApp(); });
+    fireEvent.input(el('movieTitle'), { target: { value: '우리의 별' } });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { document.querySelectorAll<HTMLButtonElement>('#gallery .thumb')[3].click(); });
+    await act(async () => { el<HTMLButtonElement>('saveBtn').click(); });
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0][1]).toBe('우리의 별');
+    expect(save.mock.calls[0][0]).toBeInstanceOf(HTMLCanvasElement);
+  });
+});
+
+test('넘김 번호: 한 칸 = 장 너비 + 간격, 양끝을 넘지 않는다', () => {
+  expect(slideAt(0, 268, 14, 8)).toBe(0);
+  expect(slideAt(282 * 3 + 100, 268, 14, 8)).toBe(3);
+  expect(slideAt(282 * 3 + 160, 268, 14, 8)).toBe(4);
+  expect(slideAt(99999, 268, 14, 8)).toBe(7);
+  expect(slideAt(-50, 268, 14, 8)).toBe(0);
+  expect(slideAt(500, 0, 0, 8)).toBe(0);
 });

@@ -104,12 +104,16 @@ try {
       const hides = /(hidden|clip)/.test(s.overflowX + s.overflowY) || s.textOverflow === 'ellipsis';
       if (hides && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)) clipped.push(name(el) + ' ' + el.scrollWidth + '/' + el.clientWidth + '×' + el.scrollHeight + '/' + el.clientHeight);
     }
-    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
+    const tips = document.querySelector('#cameraView:not([hidden]) .camera-tips');
+    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, tipsBottom: tips ? Math.round(tips.getBoundingClientRect().bottom) : null, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
   })()`;
-  const shot = async (tag, screen, { arrival = false } = {}) => {
+  // fit: 휴대폰 3단계는 스크롤 없이 한 화면(팀장 설계 ⑬). tips: 휴대폰 2단계 도착 화면에 안내 1~3이 잘리지 않는다(⑤).
+  const shot = async (tag, screen, { arrival = false, fit = false, tips = false } = {}) => {
     await delay(400);
     const m = await evaluate(MEASURE);
     m.arrivalScroll = arrival && m.scrollY > 0 ? m.scrollY : 0;
+    m.notFit = fit && m.height > m.vh + 1 ? m.height - m.vh : 0;
+    m.tipsCut = tips && m.tipsBottom !== null && m.tipsBottom > m.vh ? m.tipsBottom - m.vh : 0;
     const v = await call('Page.captureScreenshot', { format: 'png' });
     await fs.writeFile(path.join(out, `${tag}-${screen}-view.png`), Buffer.from(v.data, 'base64'));
     const metrics = await call('Page.getLayoutMetrics');
@@ -117,8 +121,8 @@ try {
     const s = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: metrics.cssLayoutViewport.clientWidth, height: Math.min(h, 12000), scale: 1 } });
     await fs.writeFile(path.join(out, `${tag}-${screen}.png`), Buffer.from(s.data, 'base64'));
     report.push({ size: tag, screen, ...m });
-    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll;
-    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${bad ? '  ← 확인' : ''}`);
+    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.tipsCut;
+    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ''}${bad ? '  ← 확인' : ''}`);
   };
   const fail = (tag, what) => { blocked = true; console.error(`${tag}: ${what}에서 흐름이 막힘`); };
 
@@ -129,25 +133,35 @@ try {
     if (!await waitFor('!!document.getElementById("prepareNextBtn") && !document.getElementById("splash")', 20000)) { fail(tag, '스플래시'); continue; }
     await evaluate('document.fonts.ready.then(() => true)');
     await shot(tag, '1-step1-solo');
+    if (!desktop) {   // 휴대폰: 극장 사진(첫 페이지)을 누르면 둘째 페이지로 넘어간다(②)
+      await evaluate(`document.querySelector('.preview-panel').click() || true`);
+      await delay(900);
+      await shot(tag, '1-step1-page2');
+    }
     await evaluate(`document.querySelector('[data-mode="group"]').click() || true`);
     await shot(tag, '1-step1-group');
     await evaluate('scrollTo(0, document.scrollingElement.scrollHeight); document.getElementById("prepareNextBtn").click() || true');
     if (!await waitFor('!document.getElementById("cameraView").hidden')) { fail(tag, '2단계(같이)'); continue; }
-    await shot(tag, '2-step2-group', { arrival: true });
+    await shot(tag, '2-step2-group', { arrival: true, tips: !desktop });
     await evaluate(`document.querySelector('.camera-actions .back-button').click() || true`);
     await waitFor('!document.getElementById("prepareNextBtn").closest("[hidden]")');
     await evaluate(`document.querySelector('[data-mode="solo"]').click() || true`);
     await evaluate('scrollTo(0, document.scrollingElement.scrollHeight); document.getElementById("prepareNextBtn").click() || true');
     if (!await waitFor('!document.getElementById("cameraView").hidden')) { fail(tag, '2단계(혼자)'); continue; }
-    await shot(tag, '2-step2-solo', { arrival: true });
+    await shot(tag, '2-step2-solo', { arrival: true, tips: !desktop });
+    if (!desktop) {   // 휴대폰: 빨간 원형 단추(⑥) — 샘플 모드는 «오늘 촬영할 영화»와 단추 줄까지 내려간다(⑦)
+      await evaluate(`document.getElementById('phoneShotBtn').click() || true`);
+      await delay(900);
+      await shot(tag, '2-step2-after-shot');
+    }
     await evaluate('document.getElementById("shotBtn").click() || true');
     if (!await waitFor('!!document.querySelector(".generation-wait, [class*=generation-wait]")', 10000)) { fail(tag, '로딩 화면'); continue; }
     await delay(1500);
     await shot(tag, '3-loading');
     if (!await waitFor('!document.getElementById("resultView").hidden', 70000)) { fail(tag, '3단계'); continue; }
-    await shot(tag, '4-step3-notice', { arrival: true });
+    await shot(tag, '4-step3-notice', { arrival: true, fit: !desktop });
     await delay(3500);
-    await shot(tag, '5-step3');
+    await shot(tag, '5-step3', { fit: !desktop });
     const opened = await evaluate(`(() => { const d = document.querySelector('.poster-dialog'); const b = [...document.querySelectorAll('#resultView button')].find((x) => x.getAttribute('aria-label') && /크게/.test(x.getAttribute('aria-label'))); if (!b) return false; b.click(); return !!(d && d.open); })()`);
     if (opened) { await shot(tag, '6-poster-dialog'); await evaluate(`document.querySelector('.poster-dialog').close() || true`); } else console.log(`${tag}: 포스터 크게 보기 단추를 못 찾음(건너뜀)`);
     await call('Page.navigate', { url: base + 'privacy.html' });
@@ -161,6 +175,6 @@ try {
 }
 await fs.writeFile(path.join(out, 'report.json'), JSON.stringify(report, null, 1));
 if (blocked || !report.length) process.exit(2);
-const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll).length;
+const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.tipsCut).length;
 console.log(issues ? `걸린 화면 ${issues}개 / ${report.length}` : `통과 — ${report.length}개 화면 모두 결함 없음`);
 process.exit(issues ? 1 : 0);
