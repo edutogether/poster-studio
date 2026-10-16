@@ -17,6 +17,9 @@ export async function ensureFonts(){
       document.fonts.load("400 80px 'Bebas Neue'"),
       document.fonts.load("800 40px 'PretendardFull'"),
       document.fonts.load("900 40px 'PretendardFull'"),
+      // 2026-10-14 포스터 다시 설계: 폴라로이드 캡션 손글씨(Gaegu 700), 타이포그래피 세로 제목(Song Myung)
+      document.fonts.load("700 80px 'Gaegu'"),
+      document.fonts.load("400 80px 'Song Myung'"),
     ]);
     await document.fonts.ready;
   }catch(e){ /* 폰트 못 받아도 기본글꼴로 진행 */ }
@@ -37,7 +40,11 @@ export async function ensureGlyphs(meta: Meta){
       try{ jobs.push(document.fonts.load(`${w} 80px '${fam}'`, txt)); }catch(e){}
     }
   }
-  try{ jobs.push(document.fonts.load("400 60px 'Bebas Neue'", EN)); }catch(e){}
+  // 손글씨·세로 제목 글꼴은 굵기가 하나뿐이라 그 굵기로만 받는다(2026-10-14).
+  for(const face of ["700 80px 'Gaegu'", "400 80px 'Song Myung'"]){
+    try{ jobs.push(document.fonts.load(face, txt)); }catch(e){}
+  }
+  try{ jobs.push(document.fonts.load("400 60px 'Bebas Neue'", EN + ' 0123456789+')); }catch(e){}
   try{ await Promise.all(jobs); await document.fonts.ready; }catch(e){}
 }
 

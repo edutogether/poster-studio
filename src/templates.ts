@@ -1,7 +1,18 @@
-/** 그림 한 장을 서로 다른 면적·여백·프레임으로 조판하는 8종 디자인. */
+/** 그림 한 장을 서로 다른 면적·여백·프레임으로 조판하는 8종 디자인.
+ *  2026-10-14 다시 설계(Bumm님) — 레퍼런스와 디자인별 «가져올 것»: _docs/intents/2026-10-14-poster-select-redesign/references.md
+ *
+ *  조판 원칙(8종 공통)
+ *  - 위계는 세 단계: 제목(아주 크게) · 홍보 문구(중간) · 빌링(작게, 한 덩어리).
+ *  - 제목은 기본 한 줄, 글자 수에 맞춰 크기가 자동으로 정해진다. 한 줄로 최소 크기 밑으로 내려가야 할 만큼 길 때만
+ *    띄어쓰기 자리에서 균형 있게 줄을 바꾼다(단어 중간·조사 앞에서 끊지 않는다 — 한국어 조사는 앞말에 붙어 있으므로
+ *    띄어쓰기에서만 끊으면 된다). 띄어쓰기가 없는 아주 긴 제목만 글자 단위로 나눈다.
+ *  - 요소는 고정 좌표가 아니라 아래에서 위로 쌓는다 — 긴 제목·단체 출연진이 와도 서로 겹치지 않고 간격이 유지된다.
+ *  - 바깥 여백은 디자인마다 한 값, 정렬은 디자인마다 한 축(왼쪽 선 또는 가운데 선)만 쓴다.
+ *  - 문구는 바꾸지 않는다: 두 로고 · 홍보 문구 · 제목 · 주연/단체·출연 · 영화제명 · 날짜·장소. */
 import { FEST, DATE, VENUE, W, H, type Genre } from './constants.js';
 import { state, type Meta } from './state.js';
-import { coverDraw, setLS, roundRect, drawOrgLogo } from './layout.js';
+import { setLS, roundRect, drawOrgLogo } from './layout.js';
+import { artColors, colorBlockSet, archSet, css, artTone, triptychGrade, luminance } from './palette.js';
 
 export function creditMain(m: Meta) { return m.mode === 'group' ? m.groupName : `주연 · 감독   ${m.name}`; }
 export function creditSub(m: Meta) { return m.mode === 'group' && m.members ? `출연  ${m.members}` : ''; }
@@ -9,166 +20,725 @@ export interface Template {
   label: string;
   render(ctx: CanvasRenderingContext2D, art: HTMLImageElement, m: Meta, g: Genre): void;
 }
-const sans = "'PretendardFull', sans-serif";
-const serif = "'Noto Serif KR', serif";
 type Ctx = CanvasRenderingContext2D;
+type Align = 'left' | 'center' | 'right';
+const SANS = "'PretendardFull', sans-serif";
+const SERIF = "'Noto Serif KR', serif";
+const DISPLAY = "'Black Han Sans', sans-serif";
+/** 폴라로이드 캡션 손글씨 — Gaegu 700(OFL): 획 굵기가 고른 유성 매직 느낌(2026-10-14 Dokdo와 같은 캡션으로 견줘 골랐다). */
+const MARKER = "'Gaegu', 'PretendardFull', sans-serif";
+/** 타이포그래피 세로 제목 — Song Myung(OFL): 옛 활판 명조의 굵고 가는 획 대비. */
+const SONG = "'Song Myung', 'Noto Serif KR', serif";
+const WHEN = `${DATE}  ·  ${VENUE}`;
 
-function line(c: Ctx, text: string, x: number, y: number, size: number, color: string | CanvasGradient,
-  weight = 500, width = 1024, family = sans, align: CanvasTextAlign = 'center', tracking = 0) {
-  c.save(); c.textAlign = align; c.textBaseline = 'middle'; c.fillStyle = color;
-  setLS(c, tracking);
-  c.font = `${weight} ${size}px ${family}`;
-  while (c.measureText(text).width > width && size > 8) { size -= 1; c.font = `${weight} ${size}px ${family}`; }
-  c.fillText(text, x, y, width); c.restore();
+/* ───────────── 글자 조판 ───────────── */
+interface Style { family: string; weight: number; tracking?: number /* em */ }
+interface Block { lines: string[]; size: number; style: Style; asc: number; desc: number; step: number; width: number; height: number }
+
+function setFont(c: Ctx, s: Style, size: number) {
+  c.font = `${s.weight} ${size}px ${s.family}`;
+  setLS(c, (s.tracking ?? 0) * size);
 }
-
-/** 2줄 안에서 실제 글자 폭을 재며 맞춘다. 그림자·굵은 외곽선 없이 조판한다. */
-function title(c: Ctx, text: string, y: number, color: string | CanvasGradient, size = 126, weight = 800,
-  family = sans, align: CanvasTextAlign = 'center', tracking = 0, width = 1024, stacked = false, maxHeight = Infinity) {
-  c.save(); setLS(c, tracking);
-  let lines = [text];
-  const wordCuts = new Set(Array.from(text.matchAll(/\s+/g), match => match.index));
-  for (; size > 12; size -= 2) {
-    c.font = `${weight} ${size}px ${family}`;
-    if ((!stacked || text.length < 5) && c.measureText(text).width <= width) { lines = [text]; break; }
-    // 짧은 제목은 한 줄을 유지하고, 긴 제목만 균형 있게 두 줄로 나눈다.
-    if (!stacked && size > 88) continue;
-    let best: string[] = []; let score = Infinity;
-    for (let i = 1; i < text.length; i++) {
-      if (wordCuts.size && !wordCuts.has(i)) continue;
-      const a = text.slice(0, i).trim(), b = text.slice(i).trim();
-      const aw = c.measureText(a).width, bw = c.measureText(b).width;
-      if (!a || !b || Math.max(aw, bw) > width) continue;
-      const next = Math.abs(aw - bw);
-      if (next <= score) { score = next; best = [a, b]; }
-    }
-    if (best.length) { lines = best; break; }
+/** 보이는 폭 — 캔버스는 마지막 글자 뒤에도 자간을 더해 재므로 그만큼 뺀다(2026-10-14 실측: 8글자 × 10px = 80px). */
+function inkWidth(c: Ctx, s: Style, size: number, text: string) {
+  setFont(c, s, size);
+  return c.measureText(text).width - (s.tracking ?? 0) * size;
+}
+function block(c: Ctx, lines: string[], s: Style, size: number, lh: number): Block {
+  setFont(c, s, size);
+  let asc = 0, desc = 0, width = 0;
+  for (const line of lines) {
+    const mt = c.measureText(line);
+    asc = Math.max(asc, mt.actualBoundingBoxAscent ?? size * 0.8);
+    desc = Math.max(desc, mt.actualBoundingBoxDescent ?? size * 0.2);
+    width = Math.max(width, inkWidth(c, s, size, line));
   }
-  // 대체 명조 글꼴은 같은 px에서도 실제 한글 높이가 다르다. 제목 전용 세로
-  // 영역도 측정해 긴 두 줄이 아래 크레딧으로 침범하지 않게 한다.
-  c.textBaseline = 'middle';
-  while (size > 12 && Number.isFinite(maxHeight)) {
-    c.font = `${weight} ${size}px ${family}`;
-    const fits = lines.every((value, i) => {
-      const metrics = c.measureText(value);
-      const offset = (i - (lines.length - 1) / 2) * size * 1.18;
-      return offset - (metrics.actualBoundingBoxAscent ?? size / 2) >= -maxHeight / 2
-        && offset + (metrics.actualBoundingBoxDescent ?? size / 2) <= maxHeight / 2;
-    });
-    if (fits) break;
-    size -= 2;
+  const step = size * lh;
+  return { lines, size, style: s, asc, desc, step, width, height: asc + desc + (lines.length - 1) * step };
+}
+/** 줄을 바꾸면 안 되는 자리·좋은 자리 점수(한국어). 단어 사이(띄어쓰기)에서만 끊으므로 조사는 늘 앞말에 붙어 있다.
+ *  - 한 음절 낱말 뒤는 끊지 않는다: 첫·두·긴·새·옛·한 같은 꾸밈말·수 낱말이 뒷말과 떨어진다(«두 / 줄로», «첫 / 번째»).
+ *  - 마지막 줄이 한 음절만 남지 않게 한다.
+ *  - 꾸미는 말(«찾는», «달리던»)은 꾸밈 받는 말과 붙는 쪽을 조금 더 좋게 친다.
+ *  - 쉼표 뒤는 좋은 자리다. */
+function breakPenalty(lines: string[], size: number) {
+  let p = 0;
+  lines.forEach((line, i) => {
+    const words = line.split(' ');
+    const last = (words[words.length - 1] ?? '').replace(/[,，.!?·…:]+$/, '');
+    if (i < lines.length - 1) {
+      if ([...last].length === 1) p += size * 4;
+      else if (/[는던]$/.test(last) && !/[,，]$/.test(line)) p += size * 0.5;
+      if (/[,，·:]$/.test(line)) p -= size * 0.6;
+    } else if ([...line.replace(/\s/g, '')].length === 1) p += size * 4;
+  });
+  return p;
+}
+/** 단어 묶음을 n줄로 나누는 모든 방법 중 «가장 긴 줄 + 줄바꿈 자리 점수»가 가장 작은 것(균형 + 의미 단위). */
+function balanced(c: Ctx, words: string[], n: number, s: Style, size: number): string[] | null {
+  let best: string[] | null = null, bestScore = Infinity;
+  const walk = (start: number, left: number, acc: string[]) => {
+    if (left === 1) {
+      const lines = [...acc, words.slice(start).join(' ')];
+      const widths = lines.map((l) => inkWidth(c, s, size, l));
+      const score = Math.max(...widths) + breakPenalty(lines, size);
+      if (score < bestScore) { bestScore = score; best = lines; }
+      return;
+    }
+    for (let i = start + 1; i <= words.length - left + 1; i++) walk(i, left - 1, [...acc, words.slice(start, i).join(' ')]);
+  };
+  if (words.length >= n) walk(0, n, []);
+  return best;
+}
+interface FitOpts { width: number; max: number; min: number; oneLineMin?: number; max2?: number; maxLines?: number; lh?: number; maxHeight?: number }
+/** 제목 맞춤 — 한 줄(최대 → oneLineMin) → 띄어쓰기 균형 2줄·3줄(max2 → min) → 띄어쓰기 없는 긴 제목만 글자 단위. */
+function fitTitle(c: Ctx, text: string, s: Style, o: FitOpts): Block {
+  const lh = o.lh ?? 1.08, one = o.oneLineMin ?? o.min, max2 = o.max2 ?? o.max;
+  const ok = (b: Block) => b.width <= o.width && (o.maxHeight == null || b.height <= o.maxHeight);
+  const t = text.trim();
+  for (let size = o.max; size >= one; size -= 2) { const b = block(c, [t], s, size, lh); if (ok(b)) return b; }
+  const words = t.split(/\s+/).filter(Boolean);
+  for (let n = 2; n <= (o.maxLines ?? 3); n++) {
+    if (words.length < n) break;
+    for (let size = max2; size >= o.min; size -= 2) {
+      const lines = balanced(c, words, n, s, size);
+      if (lines) { const b = block(c, lines, s, size, lh); if (ok(b)) return b; }
+    }
+  }
+  // 띄어쓰기가 없거나 단어 하나가 너무 긴 제목: 글자 단위로 고르게 나눈다(최후 수단).
+  const chars = [...t];
+  for (let n = 2; n <= 4; n++) {
+    const per = Math.ceil(chars.length / n);
+    const lines = Array.from({ length: n }, (_, i) => chars.slice(i * per, (i + 1) * per).join('').trim()).filter(Boolean);
+    for (let size = max2; size >= o.min; size -= 2) { const b = block(c, lines, s, size, lh); if (ok(b)) return b; }
+  }
+  const lines = Array.from({ length: 4 }, (_, i) => chars.slice(i * Math.ceil(chars.length / 4), (i + 1) * Math.ceil(chars.length / 4)).join(''));
+  let size = o.min; while (size > 12 && block(c, lines, s, size, lh).width > o.width) size -= 1;
+  return block(c, lines, s, size, lh);
+}
+/** 작은 글(문구·빌링) — 폭에 맞춰 줄이되 min 밑이면 띄어쓰기에서 줄을 바꾼다. 한 줄로만 둘 글(영화제명)은 oneLine. */
+function fitSmall(c: Ctx, text: string, s: Style, size: number, width: number, lh = 1.4, min = Math.round(size * 0.78), oneLine = false): Block {
+  for (let z = size; z >= min; z -= 1) { const b = block(c, [text], s, z, lh); if (b.width <= width) return b; }
+  if (oneLine) { let z = min; while (z > 12 && block(c, [text], s, z, lh).width > width) z -= 1; return block(c, [text], s, z, lh); }
+  const words = text.split(/\s+/).filter(Boolean);
+  for (let n = 2; n <= 4; n++) {
+    const lines = balanced(c, words, n, s, size);
+    if (lines) { const b = block(c, lines, s, size, lh); if (b.width <= width) return b; }
+  }
+  let z = min; while (z > 12 && block(c, [text], s, z, lh).width > width) z -= 1;
+  return block(c, [text], s, z, lh);
+}
+/** top에서부터 그린다. 반환: 아래 끝 y. */
+function draw(c: Ctx, b: Block, x: number, top: number, color: string | CanvasGradient, align: Align = 'left') {
+  c.save(); setFont(c, b.style, b.size); c.fillStyle = color; c.textAlign = align; c.textBaseline = 'alphabetic';
+  const t = (b.style.tracking ?? 0) * b.size;
+  const dx = align === 'center' ? t / 2 : align === 'right' ? t : 0;
+  b.lines.forEach((line, i) => c.fillText(line, x + dx, top + b.asc + i * b.step));
+  c.restore();
+  return top + b.height;
+}
+/* ───────────── 그림·바탕 ───────────── */
+/** 상자 안에 그림을 덮어 채운다. ax·ay = 남는 부분을 어디서 자를지(0 왼쪽/위 · 0.5 가운데 · 1 오른쪽/아래). */
+function rectPath(c: Ctx, x: number, y: number, w: number, h: number) {
+  c.moveTo(x, y); c.lineTo(x + w, y); c.lineTo(x + w, y + h); c.lineTo(x, y + h); c.closePath();
+}
+function photo(c: Ctx, art: HTMLImageElement, x: number, y: number, w: number, h: number, ay = 0.45, ax = 0.5) {
+  const s = Math.max(w / art.width, h / art.height);
+  const iw = art.width * s, ih = art.height * s;
+  c.save(); c.beginPath(); rectPath(c, x, y, w, h); c.clip();
+  c.drawImage(art, x + (w - iw) * ax, y + (h - ih) * ay, iw, ih);
+  c.restore();
+}
+/* ───── 주인공 자리를 지키는 배치(2026-10-14 Bumm님: «얼굴이 아치 안에 들어와야 함 — 지금은 다 잘림») ─────
+   AI 그림의 구도는 생성 지시문이 정한다(functions/index.js buildPrompt: «세로 2:3, 주인공은 위쪽 2/3 안에 머리까지 다 보이게,
+   머리 위 여백, 아래 1/3은 비움», 혼자면 «가운데»). 그래서 주인공 상자를 그 약속대로 둔다 — 혼자: 가로 16~84%, 단체: 4~96%,
+   세로 5~67%(그림 비율). 틀은 그림을 «덮어 채우기» 대신, 이 상자가 틀의 안전 영역 안에 다 들어오게 크기·자리를 정한다.
+   그러다 그림이 칸을 다 못 덮으면, 남는 자리는 같은 그림을 크게 흐려 깐 «배경 연장»으로 채운다(0원·0초 — AI 배경 연장 없음). */
+interface Rect { x: number; y: number; w: number; h: number }
+interface Box { x0: number; y0: number; x1: number; y1: number }
+function subjectBox(m: Meta): Box {
+  return m.mode === 'group' ? { x0: 0.04, y0: 0.05, x1: 0.96, y1: 0.67 } : { x0: 0.16, y0: 0.05, x1: 0.84, y1: 0.67 };
+}
+/** cover = 그림이 채울 칸, safe = 주인공 상자가 들어와야 할 영역(cover 안). 반환: 그린 그림의 자리·크기. */
+function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: Box) {
+  const aw = art.width, ah = art.height;
+  const bw = (box.x1 - box.x0) * aw, bh = (box.y1 - box.y0) * ah;
+  const sCover = Math.max(cover.w / aw, cover.h / ah), sFit = Math.min(safe.w / bw, safe.h / bh);
+  const s = Math.min(sCover, sFit);
+  const pick = (lo: number, hi: number, want: number) => (lo <= hi ? Math.min(hi, Math.max(lo, want)) : want);
+  // 주인공 상자가 safe 안에 들어오는 범위와, 그림이 cover를 덮는 범위를 겹쳐 고른다(겹치지 않으면 주인공이 먼저).
+  const bx = (lo0: number, hi0: number) => [lo0, hi0];
+  const [sxLo, sxHi] = bx(safe.x - s * box.x0 * aw, safe.x + safe.w - s * box.x1 * aw);
+  const [syLo, syHi] = bx(safe.y - s * box.y0 * ah, safe.y + safe.h - s * box.y1 * ah);
+  const [cxLo, cxHi] = bx(cover.x + cover.w - s * aw, cover.x);
+  const [cyLo, cyHi] = bx(cover.y + cover.h - s * ah, cover.y);
+  const wantX = safe.x + safe.w / 2 - s * (box.x0 + box.x1) / 2 * aw;
+  const wantY = safe.y + safe.h / 2 - s * (box.y0 + box.y1) / 2 * ah;
+  const ox = Math.max(sxLo, cxLo) <= Math.min(sxHi, cxHi) ? pick(Math.max(sxLo, cxLo), Math.min(sxHi, cxHi), wantX) : pick(sxLo, sxHi, wantX);
+  const oy = Math.max(syLo, cyLo) <= Math.min(syHi, cyHi) ? pick(Math.max(syLo, cyLo), Math.min(syHi, cyHi), wantY) : pick(syLo, syHi, wantY);
+  const r = { x: ox, y: oy, w: aw * s, h: ah * s };
+  const covers = r.x <= cover.x + 0.5 && r.y <= cover.y + 0.5 && r.x + r.w >= cover.x + cover.w - 0.5 && r.y + r.h >= cover.y + cover.h - 0.5;
+  c.save(); c.beginPath(); rectPath(c, cover.x, cover.y, cover.w, cover.h); c.clip();
+  if (!covers) {
+    // 배경 연장: 같은 그림을 칸을 덮는 크기로 크게 흐리고 살짝 가라앉혀 깐 뒤, 선명한 그림을 가장자리를 부드럽게 해서 얹는다.
+    const sc = sCover * 1.08, iw = aw * sc, ih = ah * sc;
+    c.save();
+    if ('filter' in c) c.filter = 'blur(36px) saturate(1.1)';
+    c.drawImage(art, cover.x + (cover.w - iw) / 2, cover.y + (cover.h - ih) * 0.45, iw, ih);
+    c.restore();
+    c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(cover.x, cover.y, cover.w, cover.h);
+    featherDraw(c, art, r, 56);
+  } else {
+    c.drawImage(art, r.x, r.y, r.w, r.h);
   }
   c.restore();
-  const x = align === 'left' ? 88 : W / 2;
-  lines.forEach((value, i) => line(c, value, x, y + (i - (lines.length - 1) / 2) * size * 1.18,
-    size, color, weight, width, family, align, tracking));
+  return r;
 }
-function image(c: Ctx, art: HTMLImageElement, x=0, y=0, w=W, h=H) {
-  c.save(); roundRect(c, x, y, w, h, 0); c.clip(); coverDraw(c, art, x, y, w, h, .35); c.restore();
+/** 그림을 가장자리 f px만큼 투명하게 녹여 그린다(배경 연장과 이음매가 보이지 않게). 화면 밖 캔버스가 없으면 그냥 그린다. */
+function featherDraw(c: Ctx, art: HTMLImageElement, r: Rect, f: number) {
+  const t = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+  const tc = t?.getContext?.('2d');
+  if (!t || !tc || typeof tc.createLinearGradient !== 'function') { c.drawImage(art, r.x, r.y, r.w, r.h); return; }
+  const w = Math.max(1, Math.round(r.w)), h = Math.max(1, Math.round(r.h));
+  t.width = w; t.height = h;
+  tc.drawImage(art, 0, 0, w, h);
+  tc.globalCompositeOperation = 'destination-out';
+  const edge = (x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number) => {
+    const g = tc.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    tc.fillStyle = g; tc.fillRect(rx, ry, rw, rh);
+  };
+  edge(0, 0, f, 0, 0, 0, f, h); edge(w, 0, w - f, 0, w - f, 0, f, h);
+  edge(0, 0, 0, f, 0, 0, w, f); edge(0, h, 0, h - f, 0, h - f, w, f);
+  c.drawImage(t, r.x, r.y, r.w, r.h);
 }
-/** 배경을 평평한 색으로 가리지 않고 아래까지 그림의 질감을 남긴다. */
-function shade(c: Ctx, color: string, start=1040, strength=.86) {
-  const gradient=c.createLinearGradient(0,start,0,H);
-  gradient.addColorStop(0,'transparent'); gradient.addColorStop(1,color);
-  c.save();c.globalAlpha=strength;c.fillStyle=gradient;c.fillRect(0,start,W,H-start);c.restore();
+function paper(c: Ctx, color: string, grainAlpha = 0.05) {
+  c.fillStyle = color; c.fillRect(0, 0, W, H);
+  grain(c, 0, 0, W, H, grainAlpha);
 }
-function brands(c: Ctx, dark=false) {
-  const color=dark?'#222':'#fff';
-  if (!dark) {
-    const gradient=c.createLinearGradient(0,0,0,240);
-    gradient.addColorStop(0,'#0009');gradient.addColorStop(1,'transparent');
-    c.fillStyle=gradient;c.fillRect(0,0,W,240);
+/** 종이 결 — 고정 씨앗의 잡음이라 같은 입력이면 늘 같은 그림이 나온다(무작위 금지: 인쇄·대조가 흔들린다). */
+let grainTile: HTMLCanvasElement | null = null;
+function grain(c: Ctx, x: number, y: number, w: number, h: number, alpha: number, mode: GlobalCompositeOperation = 'multiply') {
+  if (!alpha || typeof document === 'undefined' || !c.createPattern) return;
+  if (!grainTile) {
+    const t = document.createElement('canvas'); t.width = t.height = 192;
+    const tc = t.getContext?.('2d'); if (!tc) return;
+    const id = tc.createImageData(192, 192);
+    let seed = 0x2f6b9d;
+    for (let i = 0; i < id.data.length; i += 4) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const v = 96 + (seed >>> 24) % 64;
+      id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255;
+    }
+    tc.putImageData(id, 0, 0); grainTile = t;
   }
-  // 우상단 앱 로고와 같은 노란 영화 카메라 부분을 같은 원본에서 가져온다.
-  if(state.LOGO_FESTIVAL)c.drawImage(state.LOGO_FESTIVAL,120,0,145,90,64,53,93,58);
-  line(c,'InKY',173,86,32,color,800,94,sans,'left');
-  line(c,'Film Festival',257,86,32,color,400,220,sans,'left');
-  const logo=dark?state.LOGO_DARK:state.LOGO_LIGHT;
-  const ratio=logo?.naturalWidth && logo.naturalHeight?logo.naturalWidth/logo.naturalHeight:3.8;
-  c.save();c.shadowColor=color;c.shadowBlur=1.4;
-  drawOrgLogo(c,W-64-72*ratio/2,86,72,dark?'dark':'light');c.restore();
+  const p = c.createPattern(grainTile, 'repeat'); if (!p) return;
+  c.save(); c.globalAlpha = alpha; c.globalCompositeOperation = mode; c.fillStyle = p; c.fillRect(x, y, w, h); c.restore();
 }
-function credits(c: Ctx, m: Meta, y: number, color: string, align: CanvasTextAlign='center') {
-  const x=align==='left'?88:600;
-  line(c,creditMain(m),x,y,33,color,600,1024,sans,align);
-  if(creditSub(m))line(c,creditSub(m),x,y+43,25,color,400,1024,sans,align);
+/** 필름 빛 번짐(헐레이션): 그림의 밝은 곳만 골라 붉은 주황으로 물들여 흐리게 겹친다(Vision3·Cinestill 필름의 붉은 테).
+ *  작은 캔버스(가로 120px)에 그려 늘이므로 그 자체로 부드럽게 퍼진다. 그림을 읽을 수 없는 환경이면 건너뛴다. */
+function halation(c: Ctx, art: HTMLImageElement, x: number, y: number, w: number, h: number, ay: number) {
+  if (typeof document === 'undefined') return;
+  try {
+    const sw = 120, sh = Math.max(1, Math.round(120 * h / w));
+    const t = document.createElement('canvas'); t.width = sw; t.height = sh;
+    const tc = t.getContext?.('2d'); if (!tc || typeof tc.getImageData !== 'function') return;
+    const s = Math.max(sw / art.width, sh / art.height), iw = art.width * s, ih = art.height * s;
+    tc.drawImage(art, (sw - iw) / 2, (sh - ih) * ay, iw, ih);
+    const id = tc.getImageData(0, 0, sw, sh), d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const l = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255, k = Math.max(0, (l - 0.7) / 0.3);
+      d[i] = 255 * k; d[i + 1] = 72 * k; d[i + 2] = 30 * k; d[i + 3] = 255;
+    }
+    tc.putImageData(id, 0, 0);
+    c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.6;
+    if ('filter' in c) c.filter = 'blur(10px)';
+    c.drawImage(t, x - 12, y - 12, w + 24, h + 24); c.restore();
+  } catch { /* 그림을 읽을 수 없으면 번짐 없이 */ }
 }
-function footer(c: Ctx, color='#dcebf3', dark=false) {
-  // 기존 상단 중앙 문구의 27px·600·자간 2px을 하단 한 곳으로 옮긴다.
-  line(c,FEST,600,1670,27,color,600,1056,sans,'center',2);
-  line(c,`${DATE}  ·  ${VENUE}`,600,1726,28,dark?'#38342d':'#fff',700);
-}
-function paper(c: Ctx, color: string) { c.fillStyle=color; c.fillRect(0,0,W,H); }
-function rule(c: Ctx, y: number, color: string, x=72, w=1056) { c.fillStyle=color;c.fillRect(x,y,w,2); }
+function hairline(c: Ctx, x: number, y: number, w: number, color: string, t = 2) { c.fillStyle = color; c.fillRect(x, Math.round(y), w, t); }
 
+/* ───────────── 로고 두 개(윗줄 크레딧) — 자리·크기는 그대로(테스트로 고정) ───────────── */
+/** left·right = 두 로고의 바깥 끝(기본 64 · W-64). 필름처럼 가장자리를 다른 것이 차지하는 틀만 안쪽으로 들인다. */
+function brands(c: Ctx, dark = false, veil = !dark, left = 64, right = W - 64) {
+  const color = dark ? '#1d1d1b' : '#fff';
+  if (veil) {
+    const g = c.createLinearGradient(0, 0, 0, 240);
+    g.addColorStop(0, '#0009'); g.addColorStop(1, 'transparent');
+    c.fillStyle = g; c.fillRect(0, 0, W, 240);
+  }
+  if (state.LOGO_FESTIVAL) c.drawImage(state.LOGO_FESTIVAL, 120, 0, 145, 90, left, 53, 93, 58);
+  c.save(); c.textBaseline = 'middle'; c.fillStyle = color;
+  c.font = `800 32px ${SANS}`; setLS(c, 0); c.fillText('InKY', left + 109, 86);
+  c.font = `400 32px ${SANS}`; c.fillText('Film Festival', left + 193, 86);
+  c.restore();
+  const logo = dark ? state.LOGO_DARK : state.LOGO_LIGHT;
+  const ratio = logo?.naturalWidth && logo.naturalHeight ? logo.naturalWidth / logo.naturalHeight : 3.8;
+  c.save(); c.shadowColor = color; c.shadowBlur = 1.4;
+  drawOrgLogo(c, right - 72 * ratio / 2, 86, 72, dark ? 'dark' : 'light'); c.restore();
+}
+
+/* ───────────── 빌링(크레딧 + 영화제·날짜·장소)을 한 덩어리로 — 먼저 재고, 나중에 그린다 ───────────── */
+interface BillStyle { main: Style; mainSize: number; mainColor: string; sub: Style; subSize: number; subColor: string;
+  fest: Style; festSize: number; festColor: string; when: Style; whenSize: number; whenColor: string; gapCredits: number; gapFest: number }
+interface Bill { height: number; draw(x: number, bottom: number, align: Align): number }
+function billing(c: Ctx, m: Meta, b: BillStyle, width: number): Bill {
+  const rows: { blk: Block; color: string; gap: number }[] = [];
+  rows.push({ blk: fitSmall(c, creditMain(m), b.main, b.mainSize, width, 1.3), color: b.mainColor, gap: 0 });
+  if (creditSub(m)) rows.push({ blk: fitSmall(c, creditSub(m), b.sub, b.subSize, width, 1.35), color: b.subColor, gap: Math.round(b.subSize * 0.55) });
+  rows.push({ blk: fitSmall(c, FEST, b.fest, b.festSize, width, 1.3, Math.round(b.festSize * 0.78), true), color: b.festColor, gap: b.gapCredits });
+  rows.push({ blk: fitSmall(c, WHEN, b.when, b.whenSize, width, 1.3), color: b.whenColor, gap: b.gapFest });
+  const height = rows.reduce((h, r) => h + r.gap + r.blk.height, 0);
+  return { height, draw(x, bottom, align) {
+    let y = bottom - height;
+    for (const r of rows) y = draw(c, r.blk, x, y + r.gap, r.color, align);
+    return bottom - height;
+  } };
+}
+interface ColItem { text: string; s: Style; size: number; color: string; gap?: number; lh?: number; oneLine?: boolean }
+/** 작은 글 여러 덩어리를 한 칸(열)에 위에서 아래로 쌓는다. */
+function column(c: Ctx, items: ColItem[], width: number) {
+  const rows = items.filter((it) => it.text).map((it) => ({ blk: fitSmall(c, it.text, it.s, it.size, width, it.lh ?? 1.4, Math.round(it.size * 0.78), it.oneLine), color: it.color, gap: it.gap ?? 0 }));
+  const height = rows.reduce((h, r, i) => h + (i ? r.gap : 0) + r.blk.height, 0);
+  return { height, draw(x: number, top: number, align: Align = 'left') {
+    let y = top;
+    rows.forEach((r, i) => { y = draw(c, r.blk, x, y + (i ? r.gap : 0), r.color, align); });
+    return y;
+  } };
+}
+function archPath(c: Ctx, cx: number, spring: number, r: number, bottom: number) {
+  c.moveTo(cx - r, bottom); c.lineTo(cx - r, spring); c.arc(cx, spring, r, Math.PI, 0); c.lineTo(cx + r, bottom); c.closePath();
+}
+
+/* ISBN 바코드(EAN-13)와 부가기호(EAN-5) — 표준 부호표 그대로 막대를 만든다(에디토리얼 «잡지 표지»의 뒤표지 바코드, 2026-10-17).
+   ean13('979112026114') → 확인 숫자를 붙인 13자리. *Modules는 막대 칸(1 = 검정)을 돌려준다(EAN-13 95칸, EAN-5 48칸). */
+const EAN_L = ['0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'];
+const EAN_G = ['0100111', '0110011', '0011011', '0100001', '0011101', '0111001', '0000101', '0010001', '0001001', '0010111'];
+const EAN_R = ['1110010', '1100110', '1101100', '1000010', '1011100', '1001110', '1010000', '1000100', '1001000', '1110100'];
+const EAN13_PARITY = ['LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG', 'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL'];
+const EAN5_PARITY = ['GGLLL', 'GLGLL', 'GLLGL', 'GLLLG', 'LGGLL', 'LLGGL', 'LLLGG', 'LGLGL', 'LGLLG', 'LLGLG'];
+export function ean13(twelve: string) {
+  const d = [...twelve].map(Number);
+  const sum = d.reduce((s, v, i) => s + v * (i % 2 ? 3 : 1), 0);
+  return twelve + String((10 - (sum % 10)) % 10);
+}
+export function ean13Modules(code: string): boolean[] {
+  const d = [...code].map(Number), parity = EAN13_PARITY[d[0]];
+  let bits = '101';
+  for (let i = 1; i <= 6; i++) bits += (parity[i - 1] === 'L' ? EAN_L : EAN_G)[d[i]];
+  bits += '01010';
+  for (let i = 7; i <= 12; i++) bits += EAN_R[d[i]];
+  bits += '101';
+  return [...bits].map((b) => b === '1');
+}
+export function ean5Modules(code: string): boolean[] {
+  const d = [...code].map(Number), check = (3 * (d[0] + d[2] + d[4]) + 9 * (d[1] + d[3])) % 10, parity = EAN5_PARITY[check];
+  let bits = '01011';
+  d.forEach((v, i) => { if (i) bits += '01'; bits += (parity[i] === 'L' ? EAN_L : EAN_G)[v]; });
+  return [...bits].map((b) => b === '1');
+}
+
+/* ───────────── 8종 ───────────── */
 export const TEMPLATES: Template[] = [
-  { label:'시네마', render(c,art,m) {
-    image(c,art);shade(c,'#06101a',940,.98);
-    line(c,m.tagline,600,1245,31,'#e8e6dc',500,1000,sans,'center',2);
-    title(c,m.title,1380,'#fff',156,900,sans,'center',-3);
-    rule(c,1485,'#d9c297',510,180);
-    credits(c,m,1544,'#eee9db');brands(c);footer(c,'#ddd7c8');
-  }},
-  { label:'에디토리얼', render(c,art,m) {
-    paper(c,'#f4f0e7');brands(c,true);rule(c,156,'#252b28');
-    title(c,m.title,314,'#19392f',132,900,sans,'left',-5,1024,true);
-    line(c,m.tagline,88,486,30,'#455448',500,1024,sans,'left');
-    image(c,art,80,524,1040,962);
-    c.fillStyle='#19392f';c.fillRect(80,1510,72,7);
-    credits(c,m,1560,'#26362f','left');rule(c,1640,'#b4bbae');footer(c,'#384c40',true);
-  }},
-  { label:'컬러 블록', render(c,art,m) {
-    paper(c,'#f9d949');brands(c,true);
-    image(c,art,48,170,1104,1120);
-    c.fillStyle='#143cc0';c.beginPath();c.moveTo(0,1218);c.lineTo(W,1314);c.lineTo(W,H);c.lineTo(0,H);c.closePath();c.fill();
-    line(c,m.tagline,88,1338,29,'#dbe3ff',600,1024,sans,'left');
-    title(c,m.title,1458,'#fff5b4',142,900,sans,'left',-4,1024);
-    credits(c,m,1570,'#fff');footer(c,'#dbe3ff');
-  }},
-  { label:'아치 프레임', render(c,art,m) {
-    paper(c,'#123930');brands(c);
-    // 상단은 둥근 아치, 하단은 직선. 사진과 금색 프레임이 하나의 창을 이룬다.
-    c.save();c.beginPath();c.moveTo(110,1300);c.lineTo(110,670);c.arc(600,670,490,Math.PI,Math.PI*2);c.lineTo(1090,1300);c.closePath();c.clip();
-    image(c,art,110,180,980,1120);c.restore();
-    c.strokeStyle='#d5ba79';c.lineWidth=3;c.beginPath();c.moveTo(92,1318);c.lineTo(92,670);c.arc(600,670,508,Math.PI,Math.PI*2);c.lineTo(1108,1318);c.closePath();c.stroke();
-    line(c,m.tagline,600,1342,28,'#e1ce9f',500,1000,serif);
-    title(c,m.title,1468,'#f5e3b4',128,700,serif,'center',1,1024,false,160);
-    credits(c,m,1573,'#ede3cd');footer(c,'#dfcfac');
-  }},
-  { label:'필름스트립', render(c,art,m) {
-    paper(c,'#eee9df');c.fillStyle='#171918';c.fillRect(0,0,W,1328);brands(c);
-    image(c,art,150,164,900,1120);
-    c.fillStyle='#eee9df';for(let y=182;y<1290;y+=94){roundRect(c,58,y,44,56,9);c.fill();roundRect(c,1098,y,44,56,9);c.fill();}
-    line(c,m.tagline,600,1353,28,'#54564f',500);
-    title(c,m.title,1470,'#1b211e',128,900,sans,'center',-4);
-    credits(c,m,1596,'#39423b');footer(c,'#455045',true);
-  }},
-  { label:'폴라로이드', render(c,art,m) {
-    paper(c,'#bd392c');brands(c);
-    c.save();c.translate(600,775);c.rotate(-.045);c.translate(-600,-775);
-    c.save();c.shadowColor='#43181155';c.shadowBlur=28;c.shadowOffsetY=12;
-    c.fillStyle='#fffaf0';c.fillRect(130,194,940,1145);c.restore();
-    image(c,art,163,227,874,970);
-    line(c,m.tagline,600,1262,30,'#554e43',500,826,serif);
+  /* 1. 시네마 — 전면 그림 + 아래로 깊어지는 어둠, 가운데 축. Bumm님이 만족한 방향 그대로, 쌓는 방식만 바꿨다:
+        긴 제목이 와도 문구·제목·선·빌링이 겹치지 않고, 빌링은 한 덩어리로 묶인다. 레퍼런스: Beasts of the Southern Wild, 4등. */
+  { label: '시네마', render(c, art, m) {
+    photo(c, art, 0, 0, W, H, 0.35);
+    const bill = billing(c, m, {
+      main: { family: SANS, weight: 600 }, mainSize: 33, mainColor: '#eee9db',
+      sub: { family: SANS, weight: 400 }, subSize: 25, subColor: '#d9d3c4',
+      fest: { family: SANS, weight: 600, tracking: 0.07 }, festSize: 25, festColor: '#cfc8b8',
+      when: { family: SANS, weight: 700 }, whenSize: 28, whenColor: '#fff', gapCredits: 64, gapFest: 14,
+    }, 1040);
+    const billTop = 1730 - bill.height;
+    const title = fitTitle(c, m.title, { family: SANS, weight: 900, tracking: -0.02 }, { width: 1040, max: 156, oneLineMin: 100, max2: 116, min: 70, maxLines: 3, maxHeight: 400 });
+    const ruleY = billTop - 50;
+    const titleTop = ruleY - 46 - title.height;
+    const tag = fitSmall(c, m.tagline, { family: SANS, weight: 500, tracking: 0.07 }, 31, 1000);
+    const tagTop = titleTop - 30 - tag.height;
+    // 어둠은 문구 위 300px에서 시작해 빌링 아래에서 가장 짙다 — 제목이 길어 위로 올라가면 함께 올라간다.
+    const fadeStart = Math.min(940, tagTop - 300);
+    const g = c.createLinearGradient(0, fadeStart, 0, H);
+    g.addColorStop(0, 'rgba(6,16,26,0)'); g.addColorStop(0.45, 'rgba(6,16,26,.74)'); g.addColorStop(1, 'rgba(6,16,26,.97)');
+    c.fillStyle = g; c.fillRect(0, fadeStart, W, H - fadeStart);
+    bill.draw(W / 2, 1730, 'center');
+    hairline(c, W / 2 - 90, ruleY, 180, '#d9c297');
+    draw(c, title, W / 2, titleTop, '#fff', 'center');
+    draw(c, tag, W / 2, tagTop, '#e8e6dc', 'center');
+    brands(c);
+  } },
+
+  /* 2. 에디토리얼 — «서점 잡지 표지». 시네마가 극장에 붙는 포스터라면 이건 서점에 꽂힌 영화 잡지다:
+        흰 테두리 안의 사진, 맨 위 폭 가득한 제호(= 영화 제목)와 발행 줄(날짜 · 장소), 왼쪽 아래 표지 문구(홍보 문구가 가장 크다),
+        오른쪽 아래 실제 규칙대로 부호화한 ISBN 바코드(EAN-13 + 부가기호, 2026-10-17)와 영화제 이름. 주인공은 제호·표지 문구와 겹치지 않는 안전 영역에 둔다(placeArt).
+        레퍼런스: references-round2.md B — Sight and Sound(제호), Little White Lies(일러스트 초상 표지), 잡지 표지 문법. */
+  { label: '에디토리얼', render(c, art, m) {
+    const B = 28, frame: Rect = { x: B, y: B, w: W - 2 * B, h: H - 2 * B };
+    c.fillStyle = '#fbfaf7'; c.fillRect(0, 0, W, H);
+    // 제호 — 폭 1080을 꽉 채우는 명조(최대 210px), 너무 길면 띄어쓰기에서 두 줄.
+    const st: Style = { family: SERIF, weight: 900, tracking: -0.035 };
+    let size = 210; while (size > 104 && inkWidth(c, st, size, m.title.trim()) > 1080) size -= 2;
+    const title = size > 104 ? block(c, [m.title.trim()], st, size, 1) : fitTitle(c, m.title, st, { width: 1080, max: 110, min: 60, maxLines: 3, lh: 1.04, maxHeight: 300 });
+    const mastTop = 150, mastBottom = mastTop + title.height, issueY = mastBottom + 28;
+    const ds: Style = { family: SANS, weight: 700, tracking: 0.12 };
+    const dateB = fitSmall(c, DATE, ds, 22, 480, 1.2, 16, true), venueB = fitSmall(c, VENUE, ds, 22, 360, 1.2, 16, true);
+    const issueBottom = issueY + 14 + Math.max(dateB.height, venueB.height);
+    // 표지 문구(왼쪽 아래) — 먼저 재서 안전 영역을 정한다.
+    const cover = column(c, [
+      { text: m.tagline, s: { family: SANS, weight: 800, tracking: -0.015 }, size: 56, color: '#fff', lh: 1.14 },
+      { text: creditMain(m), s: { family: SANS, weight: 600 }, size: 28, color: '#fff', gap: 24, lh: 1.3 },
+      { text: creditSub(m), s: { family: SANS, weight: 400 }, size: 22, color: 'rgba(255,255,255,.9)', gap: 8, lh: 1.4 },
+    ], 640);
+    const coverTop = 1716 - cover.height;
+    const safe: Rect = { x: B + 24, y: issueBottom + 26, w: W - 2 * B - 48, h: coverTop - 40 - (issueBottom + 26) };
+    placeArt(c, art, frame, safe, subjectBox(m));
+    // 글자 자리만 살짝 어둡게 — 위(로고·제호)와 왼쪽 아래(표지 문구).
+    const top = c.createLinearGradient(0, B, 0, issueBottom + 80);
+    top.addColorStop(0, 'rgba(0,0,0,.62)'); top.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = top; c.fillRect(B, B, W - 2 * B, issueBottom + 80 - B);
+    const bot = c.createLinearGradient(0, coverTop - 140, 0, H - B);
+    bot.addColorStop(0, 'rgba(0,0,0,0)'); bot.addColorStop(1, 'rgba(0,0,0,.66)');
+    c.fillStyle = bot; c.fillRect(B, coverTop - 140, W - 2 * B, H - B - (coverTop - 140));
+    brands(c, false, false);
+    draw(c, title, 60, mastTop, '#fff', 'left');
+    hairline(c, 62, issueY, 1076, 'rgba(255,255,255,.92)', 2);
+    draw(c, dateB, 62, issueY + 14, '#fff', 'left');
+    draw(c, venueB, W - 62, issueY + 14, '#fff', 'right');
+    cover.draw(62, coverTop);
+    // 바코드(2026-10-17 Bumm님 «ISBN 바코드 부분만 좀 더 현실적으로»): 실제 책 뒤표지처럼 흰 칸에 ISBN 글자, EAN-13 막대(규칙대로 부호화한
+    // 진짜 막대 — 가운데·양끝 긴 막대, 아래 숫자 13자리)와 오른쪽 5자리 부가기호 막대. 번호는 행사 날짜로 지은 979-11-2026-1114 계열이다.
+    const isbn = ean13('979112026114'), addon = '07680';
+    // 흰 칸 = 여백 12 + 앞 빈 칸 9칸 + EAN-13 95칸 + 사이 9칸 + 부가기호 48칸 + 뒤 빈 칸 6칸 + 여백 12
+    const mod = 2.6, barH = 92, boxW = 2 * 12 + (9 + 95 + 9 + 48 + 6) * mod, boxH = 30 + barH + 34 + 12;
+    const bx = W - B - 24 - boxW, by = H - B - 24 - boxH;
+    c.fillStyle = '#fff'; c.fillRect(bx, by, boxW, boxH);
+    c.fillStyle = '#111'; c.textBaseline = 'alphabetic';
+    c.font = `500 19px ${SANS}`; setLS(c, 1.2); c.fillText(`ISBN ${isbn.slice(0, 3)}-${isbn.slice(3, 5)}-${isbn.slice(5, 9)}-${isbn.slice(9, 12)}-${isbn[12]}`, bx + 12 + 11 * mod, by + 22);
+    const x0 = bx + 12 + 9 * mod, barTop = by + 30;
+    ean13Modules(isbn).forEach((on, i) => { if (on) c.fillRect(x0 + i * mod, barTop, mod, barH + (i < 3 || (i >= 45 && i < 50) || i >= 92 ? 12 : 0)); });
+    const a0 = x0 + (95 + 9) * mod;
+    ean5Modules(addon).forEach((on, i) => { if (on) c.fillRect(a0 + i * mod, barTop + 18, mod, barH - 6); });
+    c.font = `500 20px ${SANS}`; setLS(c, 0); c.textAlign = 'center';
+    const digitY = barTop + barH + 30;
+    c.fillText(isbn[0], x0 - 5 * mod, digitY);
+    for (let i = 0; i < 6; i++) c.fillText(isbn[1 + i], x0 + (3 + 7 * i + 3.5) * mod, digitY);
+    for (let i = 0; i < 6; i++) c.fillText(isbn[7 + i], x0 + (50 + 7 * i + 3.5) * mod, digitY);
+    for (let i = 0; i < 5; i++) c.fillText(addon[i], a0 + (5 + 9 * i + 3.5) * mod, barTop + 12);
+    c.textAlign = 'left';
+    const fest = fitSmall(c, FEST, { family: SANS, weight: 600, tracking: 0.02 }, 20, 300, 1.2, 15, true);
+    draw(c, fest, W - B - 24, by - 12 - fest.height, '#fff', 'right');
+  } },
+
+  /* 3. 컬러 블록 — 위아래 두 색 면. 사진은 위 색 면 «안쪽 여백 안»에 들어간다(사방 같은 여백 — 색 면이 사진의 액자).
+        색은 정해 둔 20세트 × 차분/선명 2가지에서 그림의 주색 계열·밝기·색 세기로 고른다(2026-10-17 «색 세트 10개 이상», src/palette.ts — 대비·겹침은 수치로 고정).
+        사진은 주인공 상자를 지키며 칸에 맞춘다(placeArt). 레퍼런스: Saul Bass «The Man with the Golden Arm»(색 면이 액자), «Anatomy of a Murder». */
+  { label: '컬러 블록', render(c, art, m) {
+    const k = colorBlockSet(artColors(art), artTone(art));
+    const topC = css(k.top), bottomC = css(k.bottom), onBottom = css(k.title), credit = css(k.credit), soft = css(k.soft), ink = css(k.ink);
+    paper(c, topC, 0.04); brands(c, luminance(k.top) > 0.3, false);
+    const M = 72;
+    const bill = billing(c, m, {
+      main: { family: SANS, weight: 700 }, mainSize: 30, mainColor: credit,
+      sub: { family: SANS, weight: 400 }, subSize: 23, subColor: soft,
+      fest: { family: SANS, weight: 600 }, festSize: 24, festColor: soft,
+      when: { family: SANS, weight: 700 }, whenSize: 26, whenColor: credit, gapCredits: 30, gapFest: 8,
+    }, W - 2 * M);
+    const billTop = 1724 - bill.height;
+    // 짧은 제목은 더 크게(최대 190px) — 아래 면 위에서 제목이 면의 주인이 되게.
+    const title = fitTitle(c, m.title, { family: DISPLAY, weight: 400, tracking: -0.01 }, { width: W - 2 * M, max: 190, oneLineMin: 96, max2: 104, min: 64, maxLines: 3, maxHeight: 330 });
+    const titleTop = billTop - 46 - title.height;
+    const planeTop = titleTop - 64;
+    c.fillStyle = bottomC; c.fillRect(0, planeTop, W, H - planeTop);
+    const box: Rect = { x: M, y: 168, w: W - 2 * M, h: planeTop - M - 168 };
+    placeArt(c, art, box, box, subjectBox(m));
+    draw(c, title, M, titleTop, onBottom, 'left');
+    bill.draw(M, 1724, 'left');
+    // 세로 문구: 사진 오른쪽 여백(1128~1200)의 가운데 선, 사진 위쪽에서부터 아래로 읽힌다.
+    const tag = fitSmall(c, m.tagline, { family: SANS, weight: 700, tracking: 0.1 }, 24, box.h - 20, 1.2, 16);
+    c.save(); c.translate(W - M / 2, box.y); c.rotate(Math.PI / 2);
+    draw(c, tag, 0, -tag.height / 2, ink, 'left');
     c.restore();
-    title(c,m.title,1468,'#fff9e9',128,700,serif,'center',-1,1024,false,160);
-    credits(c,m,1570,'#fff4df');footer(c,'#ffe4cc');
-  }},
-  { label:'타이포그래피', render(c,art,m) {
-    paper(c,'#ff744c');brands(c,true);rule(c,158,'#252622');
-    title(c,m.title,342,'#192821',154,900,sans,'left',-7,1024,true);
-    line(c,m.tagline,88,554,30,'#23362b',600,1024,sans,'left');
-    image(c,art,0,590,1200,1020);shade(c,'#10241b',1280,1);
-    credits(c,m,1565,'#fff0da','left');footer(c,'#f6d1ab');
-  }},
-  { label:'트립틱', render(c,art,m) {
-    paper(c,'#edf0e7');brands(c,true);
-    line(c,m.tagline,600,222,29,'#385347',500,1024,serif);
-    image(c,art,64,285,1072,1040);
-    // 한 장의 이미지를 이어지는 세 폭으로 나눈다. 각 폭을 반복하거나 인물을 복제하지 않는다.
-    c.fillStyle='#edf0e7';c.fillRect(409,285,18,1040);c.fillRect(773,285,18,1040);
-    rule(c,1370,'#617c68',64,1072);
-    title(c,m.title,1454,'#243d30',130,700,serif,'center',2);
-    credits(c,m,1578,'#39513f');footer(c,'#4c6352',true);
-  }},
+  } },
+
+  /* 4. 아치 프레임 — 아치 모양 창 안에 주인공이 온전히 들어오게 그림을 놓는다(placeArt — 창 안쪽의 안전 영역에 주인공 상자).
+        바깥은 같은 그림을 흐려 깐 위에 깊은 색 막 — 위쪽은 옅게 덮어 흐린 그림이 은은히 비치고, 글자가 놓이는 아래로 갈수록 짙게(2026-10-17
+        «바깥쪽도 블러로 은은하게 보이게»). 색은 정해 둔 20세트 × 차분/선명 2가지에서 고른다(src/palette.ts, 대비·겹침 수치 고정).
+        레퍼런스: Criterion «The Spirit of the Beehive»(모양이 곧 색 창문), Mucha(세로로 긴 비례). */
+  { label: '아치 프레임', render(c, art, m) {
+    const k = archSet(artColors(art), artTone(art));
+    const veil = css(k.veil), gold = css(k.gold), text = css(k.text), soft = css(k.soft);
+    c.fillStyle = veil; c.fillRect(0, 0, W, H);
+    const bill = billing(c, m, {
+      main: { family: SANS, weight: 500 }, mainSize: 30, mainColor: text,
+      sub: { family: SANS, weight: 400 }, subSize: 23, subColor: text,
+      fest: { family: SANS, weight: 500, tracking: 0.06 }, festSize: 24, festColor: text,
+      when: { family: SANS, weight: 600 }, whenSize: 26, whenColor: text, gapCredits: 40, gapFest: 10,
+    }, 1000);
+    const billTop = 1728 - bill.height;
+    const title = fitTitle(c, m.title, { family: SERIF, weight: 700, tracking: 0.04 }, { width: 1000, max: 116, oneLineMin: 80, max2: 92, min: 60, maxLines: 3, maxHeight: 260 });
+    const titleTop = billTop - 52 - title.height;
+    const tag = fitSmall(c, m.tagline, { family: SERIF, weight: 500, tracking: 0.14 }, 26, 960);
+    const tagTop = titleTop - 30 - tag.height;
+    const archBottom = tagTop - 56, r = 440, cx = W / 2, spring = 176 + r;
+    // 바깥: 같은 그림을 크게 흐려 깔고(막 아래로 비친다), 창 안에는 주인공을 지키며 선명한 그림.
+    c.save(); if ('filter' in c) c.filter = 'blur(28px)'; photo(c, art, 0, 0, W, H, 0.45); c.restore();
+    const win: Rect = { x: cx - r, y: spring - r, w: 2 * r, h: archBottom - (spring - r) };
+    const safe: Rect = { x: cx - 0.8 * r, y: spring - 0.62 * r, w: 1.6 * r, h: archBottom - 18 - (spring - 0.62 * r) };
+    c.save(); c.beginPath(); archPath(c, cx, spring, r, archBottom); c.clip();
+    placeArt(c, art, win, safe, subjectBox(m));
+    c.restore();
+    const vg = c.createLinearGradient(0, 0, 0, H);
+    vg.addColorStop(0, css(k.veil, 0.5)); vg.addColorStop(Math.max(0.05, (archBottom - 120) / H), css(k.veil, 0.58));
+    vg.addColorStop(Math.min(0.98, (tagTop - 10) / H), css(k.veil, 0.86)); vg.addColorStop(1, css(k.veil, 0.92));
+    c.save(); c.fillStyle = vg;
+    c.beginPath(); rectPath(c, 0, 0, W, H); archPath(c, cx, spring, r, archBottom); c.fill('evenodd'); c.restore();
+    c.save(); c.strokeStyle = gold; c.lineWidth = 2; c.beginPath(); archPath(c, cx, spring, r + 14, archBottom + 14); c.stroke(); c.restore();
+    draw(c, tag, cx, tagTop, soft, 'center');
+    draw(c, title, cx, titleTop, gold, 'center');
+    bill.draw(cx, 1728, 'center');
+    brands(c, false, false);
+  } },
+
+  /* 5. 필름스트립 — 화면 전체가 35mm 영화 필름 한 토막(필름 폭 35mm = 1200px, 1mm ≈ 34.3px).
+        검은 필름 바탕, 실제 비례의 구멍(2.8×1.98mm, 간격 4.75mm, 가장자리에서 2.01mm), 가장자리 주황 인쇄(번호·화살표 — 상표 없이),
+        그림 칸(좌우를 잘라 글 자리까지 꽉 채움, 2026-10-17) + 프레임 선, 필름 결과 밝은 곳 둘레의 붉은 빛 번짐(헐레이션). 레퍼런스: references-round2.md C. */
+  { label: '필름스트립', render(c, art, m) {
+    const mm = W / 35;
+    const perfW = 2.8 * mm, perfH = 1.98 * mm, pitch = 4.75 * mm, edge = 2.01 * mm;
+    // 사진 양옆에 검은 필름 여백을 둔다 — 3차는 사진이 구멍 바로 옆까지 와서 답답했다(2026-10-17 Bumm님).
+    const imgX = Math.round(6.6 * mm), imgW = W - 2 * imgX;
+    // 필름 바탕: 빛에 비춘 필름처럼 아주 깊은 갈색 검정, 가장자리(구멍 줄)는 조금 더 비친다.
+    c.fillStyle = '#100c08'; c.fillRect(0, 0, W, H);
+    const sideG = c.createLinearGradient(0, 0, W, 0);
+    sideG.addColorStop(0, 'rgba(70,48,26,.55)'); sideG.addColorStop(0.16, 'rgba(70,48,26,0)');
+    sideG.addColorStop(0.84, 'rgba(70,48,26,0)'); sideG.addColorStop(1, 'rgba(70,48,26,.55)');
+    c.fillStyle = sideG; c.fillRect(0, 0, W, H);
+    // 글 덩어리를 먼저 재서, 사진이 그 아래까지 내려가 글 뒤를 채우게 한다(사진과 글 사이 빈 칸 없음).
+    const bill = billing(c, m, {
+      main: { family: SANS, weight: 600 }, mainSize: 30, mainColor: '#f3ede0',
+      sub: { family: SANS, weight: 400 }, subSize: 22, subColor: '#d8cfbd',
+      fest: { family: SANS, weight: 500, tracking: 0.06 }, festSize: 23, festColor: '#d8cfbd',
+      when: { family: SANS, weight: 700 }, whenSize: 25, whenColor: '#f3ede0', gapCredits: 30, gapFest: 8,
+    }, imgW - 80);
+    const frameTop = 150, frameBottom = H - 70;
+    const billTop = frameBottom - 44 - bill.height;
+    const title = fitTitle(c, m.title, { family: SANS, weight: 900, tracking: -0.02 }, { width: imgW - 80, max: 120, oneLineMin: 78, max2: 88, min: 54, maxLines: 3, maxHeight: 240 });
+    const titleTop = billTop - 36 - title.height;
+    const tag = fitSmall(c, m.tagline, { family: SANS, weight: 500, tracking: 0.16 }, 24, imgW - 80);
+    const tagTop = titleTop - 20 - tag.height;
+    const frame: Rect = { x: imgX, y: frameTop, w: imgW, h: frameBottom - frameTop };
+    // 사진은 늘리지 않고 칸을 덮게(좌우를 자른다), 주인공 상자는 글 덩어리 위쪽 안전 영역에 지킨다.
+    const safe: Rect = { x: imgX + 16, y: frameTop + 24, w: imgW - 32, h: tagTop - 40 - (frameTop + 24) };
+    c.save(); roundRect(c, imgX, frameTop, imgW, frame.h, 10); c.clip();
+    placeArt(c, art, frame, safe, subjectBox(m));
+    halation(c, art, imgX, frameTop, imgW, frame.h, 0.45);
+    const fade = c.createLinearGradient(0, tagTop - 260, 0, frameBottom);
+    fade.addColorStop(0, 'rgba(10,7,4,0)'); fade.addColorStop(0.45, 'rgba(10,7,4,.62)'); fade.addColorStop(1, 'rgba(10,7,4,.9)');
+    c.fillStyle = fade; c.fillRect(imgX, tagTop - 260, imgW, frameBottom - tagTop + 260);
+    grain(c, imgX, frameTop, imgW, frame.h, 0.14, 'overlay');
+    c.restore();
+    // 앞·뒤 칸의 끝자락(위 26px 프레임 선 너머, 아래 프레임 선 너머)
+    for (const [y0, y1] of [[-60, frameTop - 26], [frameBottom + 26, H + 60]]) {
+      c.save(); roundRect(c, imgX, y0, imgW, y1 - y0, 10); c.clip();
+      photo(c, art, imgX, y0 < 0 ? y1 - frame.h : y0, imgW, frame.h, 0.45);
+      c.fillStyle = 'rgba(10,7,4,.55)'; c.fillRect(imgX, y0, imgW, y1 - y0); c.restore();
+    }
+    // 구멍: 라이트박스에 비춘 필름처럼 테두리 없는 맑은 흰빛 + 둘레 필름으로 번지는 따뜻한 빛, 모서리 0.5mm 둥글게,
+    // 윗변에만 필름 두께 그늘(4차 «베이지 구멍이 싸 보임» — 베이지 바탕·회색 테두리를 걷었다).
+    const perf = (x: number, y: number) => {
+      c.save(); c.shadowColor = 'rgba(255,226,180,.5)'; c.shadowBlur = 18;
+      c.fillStyle = '#fbfcfd'; roundRect(c, x, y, perfW, perfH, 0.5 * mm); c.fill(); c.restore();
+      c.save(); roundRect(c, x, y, perfW, perfH, 0.5 * mm); c.clip();
+      const g = c.createLinearGradient(0, y, 0, y + perfH);
+      g.addColorStop(0, 'rgba(110,90,70,.3)'); g.addColorStop(0.14, 'rgba(110,90,70,0)');
+      c.fillStyle = g; c.fillRect(x, y, perfW, perfH);
+      c.restore();
+    };
+    for (let y = -pitch / 3; y < H; y += pitch) { perf(edge, y); perf(W - edge - perfW, y); }
+    // 가장자리 인쇄 — 왼쪽: 필름 번호·칸 번호, 오른쪽: 키 코드식 번호(행사 날짜 1114를 넣었다). 상표 이름은 쓰지 않는다.
+    //   화살표는 글자가 아니라 도형으로 그린다(글꼴에 없는 기호를 쓰지 않는다 — 화면 글꼴 검사 fonts:check와도 맞물린다).
+    const edgeInk = 'rgba(232,140,58,.92)', ARROW = 1, BACK = -1;
+    const edgePrint = (x: number, parts: (string | number)[], flip: boolean) => {
+      c.save(); c.translate(x, flip ? H : 0); c.rotate(flip ? -Math.PI / 2 : Math.PI / 2);
+      c.font = `400 22px 'Bebas Neue', ${SANS}`; setLS(c, 3); c.fillStyle = edgeInk; c.textBaseline = 'middle';
+      let u = 40;
+      for (const p of parts) {
+        const w = typeof p === 'number' ? 12 : c.measureText(p).width;
+        if (u + w > H - 30) break;
+        if (typeof p === 'number') { c.beginPath(); c.moveTo(u + (p > 0 ? 0 : 12), -7); c.lineTo(u + (p > 0 ? 12 : 0), 0); c.lineTo(u + (p > 0 ? 0 : 12), 7); c.closePath(); c.fill(); }
+        else c.fillText(p, u, 0);
+        u += w + 34;
+      }
+      c.restore();
+    };
+    edgePrint(edge / 2, ['INKY 1114', ...Array.from({ length: 8 }, (_, i) => [ARROW, String(14 + i), `${14 + i}A`]).flat()], false);
+    edgePrint(W - edge / 2, Array.from({ length: 8 }, (_, i) => [`IN 26 1114 00${24 + i}+0${(i * 4) % 10}`, BACK]).flat(), true);
+    draw(c, tag, W / 2, tagTop, '#e2d9c6', 'center');
+    draw(c, title, W / 2, titleTop, '#fbf6ea', 'center');
+    bill.draw(W / 2, frameBottom - 44, 'center');
+    grain(c, 0, 0, W, H, 0.05, 'overlay');
+    brands(c, false, false, imgX + 18, W - imgX - 18);
+  } },
+
+  /* 6. 폴라로이드 — 짙은 차콜 펠트 위에 놓인 진짜 즉석 사진 한 장(i-Type 비례: 카드 88×107mm, 사진 79×79mm 정사각, 아래 여백 22mm),
+        2도 기울기, 제목은 아래 흰 여백에 유성 매직 손글씨. 영화제·교육청 로고는 즉석 사진의 위쪽 흰 테두리 안에 둔다(2026-10-17 Bumm님:
+        «로고가 폴라로이드 필름 안 상단에» · «빈 상단과 하단을 써서 사진을 더 크게» · «베이지 바탕은 AI 기본 웹페이지 톤» → 차콜).
+        레퍼런스: Memento(아래 여백이 글 쓰는 자리). */
+  { label: '폴라로이드', render(c, art, m) {
+    const text = '#ece6dc', mute = '#b9b1a5';
+    // 바탕: 짙은 차콜 펠트 — 고른 잡음 결 + 가운데가 살짝 밝은 조명
+    c.fillStyle = '#26241f'; c.fillRect(0, 0, W, H);
+    grain(c, 0, 0, W, H, 0.22, 'overlay');
+    const light = c.createRadialGradient(W / 2, H * 0.42, H * 0.1, W / 2, H * 0.5, H * 0.78);
+    light.addColorStop(0, 'rgba(255,240,220,.09)'); light.addColorStop(1, 'rgba(0,0,0,.42)');
+    c.fillStyle = light; c.fillRect(0, 0, W, H);
+    const bill = billing(c, m, {
+      main: { family: SANS, weight: 700 }, mainSize: 28, mainColor: text,
+      sub: { family: SANS, weight: 400 }, subSize: 22, subColor: mute,
+      fest: { family: SANS, weight: 600 }, festSize: 23, festColor: mute,
+      when: { family: SANS, weight: 700 }, whenSize: 25, whenColor: text, gapCredits: 26, gapFest: 6,
+    }, 1000);
+    const billTop = 1736 - bill.height;
+    const tag = fitSmall(c, m.tagline, { family: SERIF, weight: 500 }, 28, 1000);
+    const tagTop = billTop - 28 - tag.height;
+    // 카드: 즉석 사진 비례 그대로, 위 로고 자리가 화면 위 끝 가까이까지 오게 크게(폭 최대 1140px — 4차: 아래 빈 자리까지 써서 사진을 더 크게)
+    const cardTop = 52, room = tagTop - 46 - cardTop, mmPx = Math.min(1140 / 88, room / 107);
+    const cardW = 88 * mmPx, cardH = 107 * mmPx, cardX = (W - cardW) / 2, cardBottom = cardTop + cardH;
+    const side = 4.5 * mmPx, topB = 5.5 * mmPx, photoS = 79 * mmPx, capTop = cardTop + topB + photoS, capH = cardBottom - capTop;
+    const title = fitTitle(c, m.title, { family: MARKER, weight: 700, tracking: -0.03 }, { width: photoS - 24, max: 140, oneLineMin: 80, max2: 78, min: 48, maxLines: 2, lh: 1.6, maxHeight: capH - 30 });   // 줄 간격 1.6: 2도 기운 카드에서 두 줄 캡션의 테두리 상자가 겹치지 않게
+    c.save(); c.translate(W / 2, cardTop + cardH / 2); c.rotate(-0.026); c.translate(-W / 2, -(cardTop + cardH / 2));
+    c.save(); c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 34; c.shadowOffsetY = 14;
+    c.fillStyle = '#fbfaf6'; c.fillRect(cardX, cardTop, cardW, cardH); c.restore();
+    const sq: Rect = { x: cardX + side, y: cardTop + topB, w: photoS, h: photoS };
+    placeArt(c, art, sq, sq, subjectBox(m));   // 정사각으로 자를 때도 주인공 상자를 지킨다
+    // 즉석 사진 색: 검정이 살짝 들뜨고 따뜻하게.
+    c.save(); c.globalCompositeOperation = 'screen'; c.fillStyle = 'rgba(46,34,24,.16)'; c.fillRect(sq.x, sq.y, photoS, photoS);
+    c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,214,160,.22)'; c.fillRect(sq.x, sq.y, photoS, photoS); c.restore();
+    // 위쪽 흰 테두리 안의 로고(작게, 사진 폭 양끝에 맞춤)
+    const logoH = Math.min(46, topB * 0.62), logoY = cardTop + (topB - logoH) / 2;
+    if (state.LOGO_FESTIVAL) {
+      const lw = logoH * (93 / 58);
+      c.drawImage(state.LOGO_FESTIVAL, 120, 0, 145, 90, sq.x, logoY, lw, logoH);
+      c.save(); c.textBaseline = 'middle'; c.fillStyle = '#1d1d1b';
+      const fs = logoH * 0.55; c.font = `800 ${fs}px ${SANS}`; setLS(c, 0); c.fillText('InKY', sq.x + lw + fs * 0.35, logoY + logoH / 2);
+      const iw = c.measureText('InKY').width; c.font = `400 ${fs}px ${SANS}`; c.fillText('Film Festival', sq.x + lw + fs * 0.35 + iw + fs * 0.28, logoY + logoH / 2);
+      c.restore();
+    }
+    const org = state.LOGO_DARK, oh = logoH * (72 / 58), ratio = org?.naturalWidth && org.naturalHeight ? org.naturalWidth / org.naturalHeight : 3.8;
+    // 상단 띠(brands)와 같은 비례(영화제 아이콘 58 : 교육청 72, 같은 굵기 보정) — 3차 렌더에서 교육청 로고가 눈에 띄게 작았다.
+    c.save(); c.shadowColor = '#1d1d1b'; c.shadowBlur = 1.2; drawOrgLogo(c, sq.x + photoS - (oh * ratio) / 2, logoY + logoH / 2, oh, 'dark'); c.restore();
+    draw(c, title, sq.x + 12, capTop + (capH - title.height) / 2 - 2, '#1d1b19', 'left');
+    c.restore();
+    draw(c, tag, W / 2, tagTop, text, 'center');
+    bill.draw(W / 2, 1736, 'center');
+  } },
+
+  /* 7. 타이포그래피 — 제목 글자가 곧 그림(2026-10-17 Bumm님: «뭘 말하고 싶은지 모르겠음 · 에디토리얼과 겹치고 · 사진은 작고 ·
+        타이포그래피라기엔 제목이 그냥 명조로 일관됨» → «타이포그래피가 주인공인 포스터로 새로»).
+        제목을 줄마다 화면 폭에 꽉 차게 키운 거대한 활자 더미 — 줄마다 글자 수가 달라 크기도 달라진다(스위스 활판 포스터의
+        «양끝 맞춘 활자 더미»). 줄 나눔은 활자 더미 높이가 목표에 가장 가까운 것을 고른다(한 음절 낱말 뒤에서는 끊지 않는다).
+        가장 큰 줄은 주홍, 나머지는 먹색. 그 아래는 스위스식 격자: 왼쪽 좁은 단(홍보 문구 · 크레딧 · 영화제 정보) | 오른쪽 큰 세로 사진
+        (칸을 덮게 자르고 주인공 상자를 지킴 — 4차 첫 렌더의 «폭 가득 사진 띠»는 세로 그림이라 양옆을 흐린 그림으로 채워 싸 보였다).
+        레퍼런스: Müller-Brockmann «der Film»·콘서트 포스터(활자가 화면을 채움), 슬기와 민(한글 활자 더미). */
+  { label: '타이포그래피', render(c, art, m) {
+    const ink = '#141414', red = '#E0412B', M = 60, colW = W - 2 * M;
+    c.fillStyle = '#F2F1EC'; c.fillRect(0, 0, W, H); grain(c, 0, 0, W, H, 0.05);
+    brands(c, true, false);
+    const st: Style = { family: DISPLAY, weight: 400, tracking: -0.02 };
+    // 아래 격자: 왼쪽 좁은 단(위 = 홍보 문구, 아래 = 크레딧 · 영화제 · 날짜(주홍) · 장소) | 오른쪽 큰 세로 사진.
+    const bottom = H - M, gut = 32, sideW = 330, photoW = colW - sideW - gut;
+    const head = column(c, [{ text: m.tagline, s: { family: SONG, weight: 400 }, size: 34, color: ink, lh: 1.3 }], sideW);
+    const foot = column(c, [
+      { text: creditMain(m), s: { family: SANS, weight: 700, tracking: 0.02 }, size: 24, color: ink, lh: 1.35 },
+      { text: creditSub(m), s: { family: SANS, weight: 400 }, size: 20, color: '#55524c', gap: 6, lh: 1.45 },
+      { text: FEST, s: { family: SANS, weight: 600 }, size: 20, color: ink, gap: 34, oneLine: true },
+      { text: DATE, s: { family: SANS, weight: 800, tracking: 0.02 }, size: 26, color: red, gap: 8, oneLine: true },
+      { text: VENUE, s: { family: SANS, weight: 600 }, size: 20, color: ink, gap: 8, oneLine: true },
+    ], sideW);
+    // 활자 더미: 낱말을 몇 줄로 묶을지 정한다 — 줄마다 폭에 맞춘 크기의 합(줄 간격 0.94)이 목표 높이에 가장 가깝게.
+    // 사진 칸은 높이 720 이상(이보다 낮으면 세로 그림이 칸을 덮지 못해 주인공 상자를 지키려 줄어든다).
+    const stackTop = 150, minPhoto = 720, stackMax = bottom - minPhoto - 40 - stackTop, target = Math.min(stackMax, 700);
+    const words = m.title.trim().split(/\s+/).filter(Boolean);
+    const units = words.length > 1 ? words : [...(words[0] ?? '')];   // 띄어쓰기가 없으면 글자 단위로 나눈다
+    const joiner = words.length > 1 ? ' ' : '';
+    const sizeOf = (line: string) => Math.min(560, colW / inkWidth(c, st, 100, line) * 100);
+    let best: string[] = [units.join(joiner)], bestScore = Infinity;
+    const partitions = (from: number, k: number): string[][][] => {
+      if (k === 1) return [[units.slice(from)]];
+      const out: string[][][] = [];
+      for (let i = from + 1; i <= units.length - k + 1; i++) for (const rest of partitions(i, k - 1)) out.push([units.slice(from, i), ...rest]);
+      return out;
+    };
+    for (let k = 1; k <= Math.min(5, units.length); k++) {
+      for (const parts of partitions(0, k)) {
+        const lines = parts.map(p => p.join(joiner));
+        const total = lines.reduce((sum, l) => sum + sizeOf(l) * 0.94, 0);
+        // 한 음절 낱말 뒤에서 끊으면 벌점(띄어쓰기로 나눈 경우만), 목표보다 크면 큰 벌점
+        const orphan = words.length > 1 ? parts.slice(0, -1).filter(p => [...p[p.length - 1]].length === 1).length * 400 : 0;
+        const score = Math.abs(total - target) + (total > stackMax ? (total - stackMax) * 6 : 0) + orphan;
+        if (score < bestScore) { bestScore = score; best = lines; }
+      }
+    }
+    let sizes = best.map(sizeOf);
+    const total = sizes.reduce((s, v) => s + v * 0.94, 0);
+    if (total > stackMax) sizes = sizes.map(v => v * stackMax / total);   // 그래도 넘치면 전체를 같은 비율로 줄인다
+    const biggest = sizes.indexOf(Math.max(...sizes));
+    let y = stackTop;
+    best.forEach((line, i) => {
+      const b = block(c, [line], st, sizes[i], 1);
+      draw(c, b, M, y + (sizes[i] * 0.94 - b.height) / 2, i === biggest && best.length > 1 ? red : ink, 'left');
+      y += sizes[i] * 0.94;
+    });
+    // 사진: 활자 더미 아래 40px부터 바닥 여백까지, 오른쪽 큰 칸(칸을 덮게 — 늘리지 않고 남는 쪽을 자른다)
+    const photoTop = y + 40, box: Rect = { x: W - M - photoW, y: photoTop, w: photoW, h: bottom - photoTop };
+    placeArt(c, art, box, box, subjectBox(m));
+    hairline(c, M, photoTop, sideW, ink, 3);
+    head.draw(M, photoTop + 26);
+    foot.draw(M, bottom - foot.height);
+  } },
+
+  /* 8. 트립틱 — 한 그림을 30·40·30 세 칸으로 화면 가득(4px 가는 틈), 칸마다 색조를 달리해(새벽 파랑 · 원래 색 · 밤 보라)
+        «시간의 세 칸»으로 읽힌다. 색 세기는 그림의 밝기·채도에 맞춘다(src/palette.ts triptychGrade):
+        채도 낮은 사람 사진은 색을 더 입히고, 어두운 그림은 같은 색을 밝혀 덧칠해 어떤 그림이든 세 칸 차이가 보인다.
+        글은 아래 어둠 위에 가운데 축(세 칸의 대칭). 레퍼런스: Moonlight 가로판(칸마다 색조). */
+  { label: '트립틱', render(c, art, m) {
+    c.fillStyle = '#0a0a0a'; c.fillRect(0, 0, W, H);
+    const g = 4, widths = [354, 484, 354], xs = [0, 354 + g, 354 + g + 484 + g];
+    const grade = triptychGrade(artTone(art));
+    // 그림의 주색이 그 칸의 색(파랑 220° · 보라 285°)과 가까우면 칸 색을 더 깊게 가라앉혀 가운데 칸과 갈라지게 한다
+    // (불꽃놀이처럼 원래 푸른 그림에서 왼쪽 칸 차이가 ΔE 13.8에 그쳤다).
+    const main = artColors(art).hue, near = (h: number) => Math.min(Math.abs(main - h), 360 - Math.abs(main - h)) < 40;
+    const tints = [{ hue: '#2f6fe0', deep: 'rgb(20,40,104)', extra: near(220) ? 0.42 : 0 }, null,
+      { hue: '#a23fc4', deep: 'rgb(70,24,86)', extra: near(285) ? 0.42 : 0 }];
+    xs.forEach((x, i) => {
+      c.save(); c.beginPath(); rectPath(c, x, 0, widths[i], H); c.clip();
+      photo(c, art, 0, 0, W, H, 0.4);
+      const t = tints[i];
+      if (t) {
+        c.globalCompositeOperation = 'color'; c.globalAlpha = grade.color; c.fillStyle = t.hue; c.fillRect(x, 0, widths[i], H);
+        if (grade.lift) { c.globalCompositeOperation = 'screen'; c.globalAlpha = grade.lift; c.fillStyle = t.hue; c.fillRect(x, 0, widths[i], H); }
+        const deep = Math.max(grade.deep, t.extra);
+        if (deep) { c.globalCompositeOperation = 'multiply'; c.globalAlpha = deep; c.fillStyle = t.deep; c.fillRect(x, 0, widths[i], H); }
+      }
+      c.restore();
+    });
+    const bill = billing(c, m, {
+      main: { family: SANS, weight: 600 }, mainSize: 30, mainColor: '#f1eee8',
+      sub: { family: SANS, weight: 400 }, subSize: 23, subColor: '#cfcac0',
+      fest: { family: SANS, weight: 500, tracking: 0.06 }, festSize: 24, festColor: '#cfcac0',
+      when: { family: SANS, weight: 700 }, whenSize: 26, whenColor: '#fff', gapCredits: 34, gapFest: 8,
+    }, 1040);
+    const billTop = 1730 - bill.height;
+    const title = fitTitle(c, m.title, { family: SERIF, weight: 700, tracking: 0.02 }, { width: 1040, max: 132, oneLineMin: 88, max2: 96, min: 60, maxLines: 3, maxHeight: 280 });
+    const titleTop = billTop - 52 - title.height;
+    const tag = fitSmall(c, m.tagline, { family: SERIF, weight: 500, tracking: 0.14 }, 27, 1000);
+    const tagTop = titleTop - 28 - tag.height;
+    const fadeStart = Math.min(1000, tagTop - 260);
+    const fade = c.createLinearGradient(0, fadeStart, 0, H);
+    fade.addColorStop(0, 'rgba(8,8,10,0)'); fade.addColorStop(0.5, 'rgba(8,8,10,.7)'); fade.addColorStop(1, 'rgba(8,8,10,.94)');
+    c.fillStyle = fade; c.fillRect(0, fadeStart, W, H - fadeStart);
+    draw(c, tag, W / 2, tagTop, '#e2ddd2', 'center');
+    draw(c, title, W / 2, titleTop, '#fff', 'center');
+    bill.draw(W / 2, 1730, 'center');
+    brands(c);
+  } },
 ];
