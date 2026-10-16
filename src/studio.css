@@ -505,3 +505,39 @@ main.app {
     margin: 0;
   }
 }
+
+/* ───── 휴대폰 배열(2026-10-17 Bumm님: «요즘 애들은 다 핸드폰으로 본다. 모바일판 배열이 엉망인 것 손봐야 한다») ─────
+   760px 이하에서만 — PC 화면은 바꾸지 않는다. 앞의 여러 겹(style·atelier·cinema·compact) 뒤에 두어 여기서 정리한다.
+   확인: scripts/verify/mobile-layout-probe.mjs(360·390·430 폭 × 3배, 샘플 모드 흐름 전부). */
+@media (max-width: 760px) {
+  /* 낱말 중간에서 줄을 바꾸지 않는다(«첫 번 / 째», «포 / 스터»). 띄어쓰기 없는 긴 영문만 칸 끝에서 끊는다.
+     끝줄에 한 낱말만 남지 않게 한다(«…조금씩 가까이 / 모여주세요.»). */
+  body { word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; }
+  /* 첫 화면 부제: «…나의 첫 / 번째 영화 포스터»처럼 끝줄에 한두 낱말만 남지 않게 두 줄 길이를 고른다 */
+  .exhibition-description { text-wrap: balance; }
+
+  /* 머리말: InKY 로고가 혼자 맨 위 줄을 차지하던 것을 CGV×교육청과 한 줄로(세 줄 → 두 줄). 로고 단추는 누르는 높이 44px 이상. */
+  .header-inner { padding-top: 6px; }
+  .brand.header-home { zoom: .78; padding-block: 9px; }
+  .festival-brand.header-home { top: 15px; padding-block: 14px; margin-block: -14px; transform: scale(.88); transform-origin: right center; }
+
+  /* 개인정보처리방침 링크: 보이는 자리는 그대로, 누르는 높이만 44px로. 위는 단계 표시 단추와 닿아 아래로만 넓히고,
+     3단계는 그만큼 포스터 칸을 내려 아이콘 단추와 겹치지 않게 한다. */
+  .privacy-link { padding-block: 4px 20px; margin-top: -4px; }
+  #resultView .result-artboard { padding-top: 48px; }
+
+  /* 1단계 «단독 주연 · 우리 같이»: 120px 두 칸이 왼쪽에 몰려 있던 것을 폭 가득 같은 크기로 */
+  #prepareWorkspace .segmented { max-width: none; }
+
+  /* 2단계: 촬영 칸과 안내 사이 회색 빈칸 64px → 휴대폰 설계값 28px(위 760px 규칙의 28px를 뒤의 공통 #cameraWorkspace 64px가 덮고 있었다) */
+  #cameraWorkspace { padding-top: 28px; }
+  /* 단체 티켓 출연진: 한 줄 말줄임(«… 오리온 · 카…») 대신 줄을 바꿔 다 보인다 */
+  .camera-ticket-name { white-space: normal; text-overflow: clip; overflow: visible; }
+
+  /* 3단계 위 아이콘 단추(다음 주인공 · 크게 보기)와 크게 보기 창 «닫기»: 36·28px → 손가락 크기 44px */
+  #resultView .result-artboard .icon-button { width: 44px; height: 44px; }
+  .poster-dialog .dialog-close { width: 44px; height: 44px; }
+
+  /* 3단계 «출력하기» 단추가 문서 끝에 0px로 붙어 있었다 — 1·2단계 단추 줄처럼 아래 20px(아이폰은 홈 표시줄만큼) */
+  #resultView #resultWorkspace { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+}

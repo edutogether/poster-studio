@@ -214,6 +214,18 @@ describe('세 단계 화면 연결', () => {
     expect(options[0].getAttribute('aria-pressed')).toBe('false');
   });
 
+  test('단계를 넘기면 맨 위에서 시작하고 제목 초점은 화면을 끌어내리지 않는다(휴대폰, 10/17)', async () => {
+    await act(async () => { renderApp(); });
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    vi.stubGlobal('scrollY', 900);   // 1단계 맨 아래에서 «다음»을 누른 휴대폰
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(document.activeElement).toBe(el('cameraView').querySelector('h1'));
+    expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+  });
+
   test('완료 알림은 2.2초 뒤 닫히고 새 생성 때만 다시 표시한다', async () => {
     await act(async () => { renderApp(); });
     await shoot();

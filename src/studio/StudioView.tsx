@@ -146,7 +146,10 @@ export default function StudioView(p: StudioViewProps) {
     if (previousStep.current !== step) {
       const view = document.getElementById(["prepareView", "cameraView", "resultView"][step - 1]);
       const heading = view?.querySelector<HTMLHeadingElement>("h1");
-      if (heading) { heading.tabIndex = -1; heading.focus(); }
+      // 새 단계는 맨 위에서 시작한다. 제목 초점이 화면을 끌어내리면 휴대폰에서 2단계 카메라·3단계 포스터가 위로 밀린 채 열린다(2026-10-17).
+      // PC는 문서가 스크롤되지 않아 그대로다.
+      if (window.scrollY > 0) window.scrollTo(0, 0);
+      if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
       previousStep.current = step;
     }
   }, [step]);
