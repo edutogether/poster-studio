@@ -1,6 +1,6 @@
 /* 휴대폰 화면 배치 점검(2026-10-17 Bumm님: «요즘 애들은 다 핸드폰으로 본다. 모바일판 배열이 엉망인 것 손봐야 한다»).
 
-     node scripts/verify/mobile-layout-probe.mjs <dist 폴더> <결과 폴더> [--sizes 360x780,390x844,430x932] [--scale 3] [--desktop]
+     node scripts/verify/mobile-layout-probe.mjs <dist 폴더> <결과 폴더> [--sizes 360x780,390x844,430x932] [--scale 3] [--desktop] [--real]
 
    샘플 모드 빌드(dist)를 127.0.0.1의 작은 정적 서버로 열고, 휴대폰 흉내(터치·모바일 화면)로 샘플 모드 흐름을 끝까지 누른다.
    화면: 1단계(혼자·같이) · 2단계(혼자·같이) · 로딩 · 3단계(완성 알림 · 고르기) · 포스터 크게 보기 · 개인정보 안내.
@@ -18,7 +18,7 @@ import fss from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
@@ -30,6 +30,9 @@ if (!fss.existsSync(path.join(dist, 'index.html'))) { console.error(`dist에 ind
 const scale = Number(opt('--scale', '3'));
 // --desktop: 터치·휴대폰 흉내 없이 PC 브라우저로 같은 흐름을 찍는다 — 휴대폰 규칙이 PC 화면을 바꾸지 않았는지 대조할 때
 const desktop = args.includes('--desktop');
+// --real: 실제 모드 빌드(VITE_SAMPLE_MODE=0)를 가짜 카메라(dist/studio/camera-student.webp — 이미 공개된 지어낸 인물)로 찍고,
+// 서버 요청(https)은 페이지 안에서 흉내 낸 응답으로 돌려준다 — 네트워크로는 한 건도 나가지 않는다(https 차단도 그대로).
+const real = args.includes('--real');
 const sizes = opt('--sizes', '360x780,390x844,430x932').split(',').map((s) => { const [w, h] = s.split('x').map(Number); return { w, h }; });
 await fs.mkdir(out, { recursive: true });
 
@@ -46,8 +49,16 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'mobile-probe-'));
+const art = path.join(dist, 'studio', 'camera-student.webp');
+const cameraFlags = [];
+if (real) {
+  const y4m = path.join(profile, 'cam.y4m');
+  const ff = spawnSync('ffmpeg', ['-v', 'error', '-y', '-loop', '1', '-i', art, '-t', '3', '-r', '15', '-pix_fmt', 'yuv420p', '-vf', 'scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720', y4m]);
+  if (ff.status !== 0) { console.error('가짜 카메라 영상을 못 만들었다: ' + ff.stderr); process.exit(2); }
+  cameraFlags.push('--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`);
+}
 const port = 9562;
-const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--no-default-browser-check', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
+const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--no-default-browser-check', '--mute-audio', ...cameraFlags, `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
 const delay = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
 let socket, seq = 0;
 const pending = new Map();
@@ -66,7 +77,18 @@ try {
   await call('Network.enable');
   await call('Network.setBlockedURLs', { urls: ['https://*'] });
   await call('Page.enable');
-  await call('Page.addScriptToEvaluateOnNewDocument', { source: "if(navigator.mediaDevices){navigator.mediaDevices.getUserMedia=async()=>{throw Error('확인 중 카메라 차단');};}window.print=()=>{};" });
+  if (real) {
+    // 생성(/generate)은 4초 뒤 그림 한 장(가짜 카메라와 같은 그림)으로, 나머지(/health)는 정상으로 답한다 — 로딩 화면을 찍을 시간을 둔다.
+    const image = 'data:image/webp;base64,' + (await fs.readFile(art)).toString('base64');
+    await call('Page.addScriptToEvaluateOnNewDocument', { source: `(() => { const net = window.fetch.bind(window); window.fetch = async (input, init) => {
+      const url = String((input && input.url) || input);
+      if (!/^https:/.test(url)) return net(input, init);
+      if (/\\/generate/.test(url)) { await new Promise((r) => setTimeout(r, 4000)); return new Response(JSON.stringify({ images: [${JSON.stringify(image)}] }), { status: 200, headers: { 'content-type': 'application/json' } }); }
+      return new Response('{"ok":true}', { status: 200, headers: { 'content-type': 'application/json' } });
+    }; window.print = () => {}; })();` });
+  } else {
+    await call('Page.addScriptToEvaluateOnNewDocument', { source: "if(navigator.mediaDevices){navigator.mediaDevices.getUserMedia=async()=>{throw Error('확인 중 카메라 차단');};}window.print=()=>{};" });
+  }
   if (!desktop) await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
 
   // 화면 하나를 재고 전체 페이지를 찍는다.
@@ -152,10 +174,15 @@ try {
     // 휴대폰: 빨간 원형 단추(⑥) — 샘플 모드는 «오늘 촬영할 영화»와 단추 줄까지 내려간다(⑦). 단추가 없는 옛 빌드(대조용 «전»)는 이 화면만 건너뛴다.
     if (!desktop && await evaluate(`!!document.getElementById('phoneShotBtn')`)) {
       await evaluate(`document.getElementById('phoneShotBtn').click() || true`);
+      // 실제 모드: 카메라를 켜고 3·2·1 뒤 찍힌다 — «이 사진으로 만들기»가 나올 때까지 기다린다
+      if (real && !await waitFor('!document.getElementById("generateBtn").hidden', 20000)) { fail(tag, '실제 모드 촬영'); continue; }
       await delay(900);
       await shot(tag, '2-step2-after-shot');
+    } else if (real) {
+      await evaluate('document.getElementById("shotBtn").click() || true');
+      if (!await waitFor('!document.getElementById("generateBtn").hidden', 20000)) { fail(tag, '실제 모드 촬영'); continue; }
     }
-    await evaluate('document.getElementById("shotBtn").click() || true');
+    await evaluate(real ? 'document.getElementById("generateBtn").click() || true' : 'document.getElementById("shotBtn").click() || true');
     if (!await waitFor('!!document.querySelector(".generation-wait, [class*=generation-wait]")', 10000)) { fail(tag, '로딩 화면'); continue; }
     await delay(1500);
     await shot(tag, '3-loading');
