@@ -12,8 +12,9 @@ import {
   W,
   H,
 } from "./constants.js";
-import { buildPosters, makePlaceholderArt } from "./poster.js";
-import { boothCodeHeaders } from "./boothCode.js";
+import { buildPosters } from "./poster.js";
+import { boothCodeHeaders, saveBoothCode, verifyBoothCode } from "./boothCode.js";
+import { classifyGenerateFailure, type GenerateFailure } from "./generateFailure.js";
 import StudioView from "./studio/StudioView.js";
 import { SCENE_MS } from "./studio/GenerationWait.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
@@ -23,6 +24,12 @@ import type { Meta, Poster } from "./state.js";
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
    아이는 그대로 끝"이 되는 문제가 있어 절충한 값. 다시 촬영하면 초기화된다. */
 const MAX_GENERATIONS_PER_PHOTO = 2;
+
+/* AI가 그림을 못 만들면 빈 그라데이션 포스터로 넘어가지 않고 «다시 만들기»로 간다(2026-10-16 Bumm님 결정,
+   _docs/intents/2026-10-14-ai-retry-instead-of-fallback). 실패는 위 2회를 쓰지 않는다(서버도 사진 카운터를 되돌린다).
+   다시 해 볼 만한 실패(시간 초과·연결 불안정·혼잡 등)가 같은 사진으로 이만큼 쌓이면 «다시 찍기»로 안내한다 — 원인이
+   고쳐지지 않은 채 줄이 계속 멈추지 않게. 인터넷 끊김·부스 코드는 세지 않는다(사진을 바꿔도 낫지 않는다). */
+const MAX_FAILURES_PER_PHOTO = 3;
 
 /* 샘플 모드(2026-10-09 Bumm님 «샘플 포스터를 보더라도 40초(8초짜리 로딩 영상 5개)의 로딩 화면 이후 포스터 고르는 화면으로»).
    사내 클로즈 베타 동안 라이브에서 촬영·AI 없이 흐름 전체를 보여 준다. 켜고 끄는 스위치는 저장소 루트
@@ -91,7 +98,10 @@ export default function PosterStudio() {
   const [snapshotURL, setSnapshotURL] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
-  const [fallbackShown, setFallbackShown] = useState(false);
+  const [failure, setFailure] = useState<GenerateFailure | null>(null);
+  const [online, setOnline] = useState(true);
+  const [boothOpen, setBoothOpen] = useState(false);
+  const failCountRef = useRef(0);
   const [posters, setPosters] = useState<Poster[]>([]);
   const [selected, setSelected] = useState(0);
   const [generating, setGenerating] = useState(false);
@@ -107,7 +117,6 @@ export default function PosterStudio() {
   const cameraEpoch = useRef(0);
   const cameraOpening = useRef<Promise<void> | null>(null);
   const capturedBlobRef = useRef<Blob | null>(null);
-  const pendingMetaRef = useRef<Meta | null>(null);
   const snapshotURLRef = useRef<string | null>(null);
   const isGeneratingRef = useRef(false); // 이중 클릭 방지(중복 과금 차단)
   const genCountRef = useRef(0);
@@ -309,9 +318,9 @@ export default function PosterStudio() {
     setSnapshotURL(null);
     setPhase("idle");
     setPosters([]);
-    setFallbackShown(false);
-    pendingMetaRef.current = null;
+    setFailure(null);
     genCountRef.current = 0;
+    failCountRef.current = 0;
     try {
       await startCamera();
     } catch {
@@ -359,8 +368,8 @@ export default function PosterStudio() {
     setPosters([]);
     setSelected(0);
     genCountRef.current = 0;
-    pendingMetaRef.current = null;
-    setFallbackShown(false);
+    failCountRef.current = 0;
+    setFailure(null);
     setStatus("");
     const pctx = canvasRef.current?.getContext("2d");
     if (pctx) drawPlaceholder(pctx);
@@ -380,9 +389,8 @@ export default function PosterStudio() {
     }
     const meta = getMeta(mode);
     isGeneratingRef.current = true;
-    genCountRef.current += 1;
     setGenerating(true);
-    setFallbackShown(false);
+    setFailure(null);
     setSpinning(true);
     setStatus("AI가 영화 포스터를 그리고 있어요. 완성되면 자동으로 보여드릴게요.");
 
@@ -396,6 +404,7 @@ export default function PosterStudio() {
     const stopElapsed = startElapsed();
     const ctrl = new AbortController(); // 요청 시간 제한(부스 무한 멈춤 방지)
     const timer = setTimeout(() => ctrl.abort(), 150_000);
+    let failed: GenerateFailure | null = null;
     try {
       const res = await fetch(`${API_BASE}/generate`, {
         method: "POST",
@@ -404,24 +413,16 @@ export default function PosterStudio() {
         signal: ctrl.signal,
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "생성 실패");
-      applyPosters(await buildPosters(data.images, meta));
-      setStatus("");
-      setCompletionId(value => value + 1);
+      if (!res.ok) failed = classifyGenerateFailure({ status: res.status, body: data });
+      else {
+        applyPosters(await buildPosters(data.images, meta));
+        genCountRef.current += 1;   // 성공만 센다
+        failCountRef.current = 0;
+        setStatus("");
+        setCompletionId(value => value + 1);
+      }
     } catch (e: any) {
-      let msg = e.message;
-      if (e.name === "AbortError")
-        msg = "시간이 너무 오래 걸려 중단했어요. 잠시 후 다시 시도해 주세요.";
-      else if (e instanceof TypeError)
-        msg =
-          "서버 또는 인터넷 연결을 확인해 주세요. (검은 창이 켜져 있나요? 와이파이는 연결됐나요?)";
-      setStatus(
-        "오류: " +
-          msg +
-          ' — 계속 안 되면 아래 "AI 없이 계속하기"로 진행할 수 있어요.',
-      );
-      pendingMetaRef.current = meta;
-      setFallbackShown(true);
+      failed = classifyGenerateFailure({ aborted: e?.name === "AbortError", network: e instanceof TypeError });
     } finally {
       clearTimeout(timer);
       stopElapsed();
@@ -429,26 +430,49 @@ export default function PosterStudio() {
       setGenerating(false);
       setSpinning(false);
     }
+    if (failed) showFailure(failed);
   };
 
-  const onFallback = async () => {
-    const meta = pendingMetaRef.current;
-    if (!meta || isGeneratingRef.current) return;
-    isGeneratingRef.current = true;
-    setGenerating(true);
-    setFallbackShown(false);
-    setStatus("AI 없이 기본 버전을 만드는 중…");
-    try {
-      applyPosters(await buildPosters([makePlaceholderArt(meta.genre)], meta));
-      setStatus("AI 그림 없이 만든 기본 버전이에요(얼굴 그림은 안 들어갑니다). 인쇄는 그대로 가능해요.");
-    } catch {
-      setStatus("기본 버전을 만들지 못했어요. 다시 시도해 주세요.");
-      setFallbackShown(true);
-    } finally {
-      isGeneratingRef.current = false;
-      setGenerating(false);
+  const showFailure = (failed: GenerateFailure) => {
+    setStatus("");
+    if (failed.action === "booth") { setBoothOpen(true); return; }
+    if (failed.action === "retry" || failed.action === "wait") {
+      failCountRef.current += 1;
+      if (failCountRef.current >= MAX_FAILURES_PER_PHOTO)
+        failed = { action: "retake", message: "여러 번 만들지 못했어요. 다시 찍어서 만들어 볼까요?", staffNote: failed.staffNote };
     }
+    if (failed.action === "offline") setOnline(false);
+    setFailure(failed);
   };
+
+  /* 인터넷이 끊긴 실패면 5초마다 서버 확인(/health)으로 연결을 본다 — 돌아오면 «다시 만들기»를 켠다.
+     사진은 노트북 메모리에 그대로 있다. 진행자는 그 사이 다른 와이파이·핫스팟으로 바꾼다(runbook). */
+  useEffect(() => {
+    if (failure?.action !== "offline") return;
+    let alive = true;
+    const check = async () => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 4_000);
+      try {
+        const r = await fetch(`${API_BASE}/health`, { signal: ctrl.signal });
+        if (alive && r.ok) setOnline(true);
+      } catch { /* 아직 끊김 */ }
+      clearTimeout(t);
+    };
+    void check();
+    const timer = setInterval(() => void check(), 5_000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [failure]);
+
+  const onRetryFailure = () => { setFailure(null); void onGenerate(); };
+  const onRetakeFailure = () => { setFailure(null); void onRetake(); };
+  const onDismissFailure = () => setFailure(null);
+  const onBoothCodeSaved = (code: string) => {
+    saveBoothCode(code);
+    setBoothOpen(false);
+    void onGenerate();
+  };
+  const verifyBooth = (code: string) => verifyBoothCode(code, { apiBase: API_BASE, boothToken: BOOTH_TOKEN });
 
   /* 샘플 모드: 촬영 대신 같은 원화 한 장으로 8개 틀을 만든다. 진짜 생성과 같은 로딩 화면을 장면 5개 동안
      보인 뒤 결과로 간다. 조판은 로딩 화면 뒤에서 같이 돌린다 — 진짜 생성도 응답을 받은 뒤 로딩 화면이 떠 있는
@@ -459,7 +483,7 @@ export default function PosterStudio() {
     isGeneratingRef.current = true;
     setGenerating(true);
     setStatus("");
-    setFallbackShown(false);
+    setFailure(null);
     setSpinning(true);
     const stopElapsed = startElapsed();
     const waited = new Promise((resolve) => setTimeout(resolve, SAMPLE_WAIT_SCENES * SCENE_MS));
@@ -538,7 +562,15 @@ export default function PosterStudio() {
       countdown={countdown}
       generating={generating}
       spinning={spinning}
-      fallbackShown={fallbackShown}
+      failure={failure}
+      online={online}
+      boothOpen={boothOpen}
+      onRetryFailure={onRetryFailure}
+      onRetakeFailure={onRetakeFailure}
+      onDismissFailure={onDismissFailure}
+      onBoothCodeSaved={onBoothCodeSaved}
+      onBoothCodeClose={() => setBoothOpen(false)}
+      verifyBooth={verifyBooth}
       status={status}
       completionId={completionId}
       posters={posters}
@@ -556,7 +588,6 @@ export default function PosterStudio() {
       onShot={sampleMode ? onSample : onShot}
       onRetake={onRetake}
       onGenerate={sampleMode ? onSample : onGenerate}
-      onFallback={onFallback}
       onPrint={onPrint}
       onNewPerson={onNewPerson}
       stopCamera={stopCamera}

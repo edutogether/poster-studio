@@ -1205,7 +1205,7 @@ dialog:has(#dialogContent > .poster):not(:has(#dialogContent > .primary-button))
 }
 @font-face {
   font-family: StudioCaption;
-  src: url("/fonts/subset/Pretendard-Medium.woff2?v=8bb3df2f25");
+  src: url("/fonts/subset/Pretendard-Medium.woff2?v=24bcd80caf");
   font-weight: 500;
   font-display: optional;
 }

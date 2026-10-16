@@ -5,6 +5,10 @@ import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "../defaults.js";
 import MemberField from "./MemberField.js";
 import GenerationWait from "./GenerationWait.js";
 import CameraExample from "./CameraExample.js";
+import GenerateFailureDialog from "./GenerateFailureDialog.js";
+import BoothCodeDialog from "./BoothCodeDialog.js";
+import type { GenerateFailure } from "../generateFailure.js";
+import type { BoothCodeCheck } from "../boothCode.js";
 import { approvedCameraVideo } from "./cameraVideo.js";
 
 const choices = [
@@ -26,7 +30,15 @@ export interface StudioViewProps {
   countdown: string | null;
   generating: boolean;
   spinning: boolean;
-  fallbackShown: boolean;
+  failure: GenerateFailure | null;
+  online: boolean;
+  boothOpen: boolean;
+  onRetryFailure: Action;
+  onRetakeFailure: Action;
+  onDismissFailure: Action;
+  onBoothCodeSaved: (code: string) => void;
+  onBoothCodeClose: Action;
+  verifyBooth: (code: string) => Promise<BoothCodeCheck>;
   status: string;
   completionId: number;
   posters: Poster[];
@@ -44,7 +56,6 @@ export interface StudioViewProps {
   sampleMode?: boolean;
   onRetake: Action;
   onGenerate: Action;
-  onFallback: Action;
   onPrint: Action;
   onNewPerson: Action;
   stopCamera: Action;
@@ -617,21 +628,14 @@ export default function StudioView(p: StudioViewProps) {
         <strong>완성 !</strong>
         <p>마음에 드는 버전을 고르고 인쇄하세요.</p>
       </div>}
-      <div className="studio-status" hidden={p.spinning || (!p.status && !p.fallbackShown)}>
+      <div className="studio-status" hidden={p.spinning || !p.status}>
         <p id="status" role="status">
           {p.status}
         </p>
-        <button
-          id="fallbackBtn"
-          type="button"
-          className={
-            p.fallbackShown ? "secondary-button" : "secondary-button hidden"
-          }
-          onClick={p.onFallback}
-        >
-          AI 없이 기본 버전으로 계속하기
-        </button>
       </div>
+      {!p.spinning && <GenerateFailureDialog failure={p.failure} online={p.online}
+        onRetry={p.onRetryFailure} onRetake={p.onRetakeFailure} onEditInputs={() => { void p.onDismissFailure(); go(1); }} />}
+      <BoothCodeDialog open={p.boothOpen && !p.spinning} verify={p.verifyBooth} onSaved={p.onBoothCodeSaved} onClose={() => void p.onBoothCodeClose()} />
       <dialog
         ref={dialog}
         className="poster-dialog"
