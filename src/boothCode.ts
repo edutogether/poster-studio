@@ -44,20 +44,31 @@ export function saveBoothCode(code: string): boolean {
 
 export type BoothCodeCheck = "ok" | "wrong" | "format" | "offline" | "error";
 
+/** 확인 요청 시간 제한 — 확인하는 동안 «취소»·Esc가 꺼지므로, 와이파이가 걸려도 창이 잠기지 않게 끊고 «오프라인»으로 본다
+    (2026-10-17 종합감사. 시작 때 /health 확인과 같은 6초). */
+export const VERIFY_TIMEOUT_MS = 6_000;
+
 export async function verifyBoothCode(raw: string, deps: { apiBase: string; boothToken: string; fetch?: typeof fetch }): Promise<BoothCodeCheck> {
   const code = raw.trim();
   if (!FORMAT.test(code)) return "format";
-  let res: Response;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), VERIFY_TIMEOUT_MS);
   try {
-    res = await (deps.fetch ?? fetch)(`${deps.apiBase}/generate`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-booth-token": deps.boothToken, "x-booth-code": code },
-      body: "{}",
-    });
-  } catch {
-    return "offline";
+    let res: Response;
+    try {
+      res = await (deps.fetch ?? fetch)(`${deps.apiBase}/generate`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-booth-token": deps.boothToken, "x-booth-code": code },
+        body: "{}",
+        signal: ctrl.signal,
+      });
+    } catch {
+      return "offline";
+    }
+    if (res.status === 400) return "ok";
+    const body = await res.json().catch(() => null);
+    return isBoothCodeRefusal(res.status, body) ? "wrong" : "error";
+  } finally {
+    clearTimeout(timer);
   }
-  if (res.status === 400) return "ok";
-  const body = await res.json().catch(() => null);
-  return isBoothCodeRefusal(res.status, body) ? "wrong" : "error";
 }

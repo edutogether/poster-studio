@@ -62,7 +62,7 @@ test("저장소에 형식이 틀린 값이 있으면 헤더로 싣지 않는다"
 });
 
 /* 부스 코드 입력 창(2026-10-16)이 쓰는 확인·보관. 확인은 사진 없는 요청이라 맞으면 400(사진 확인에서 끝남), 틀리면 403 booth_code다. */
-import { isBoothCodeRefusal, saveBoothCode, verifyBoothCode } from "../src/boothCode";
+import { isBoothCodeRefusal, saveBoothCode, verifyBoothCode, VERIFY_TIMEOUT_MS } from "../src/boothCode";
 
 const respond = (status: number, body: unknown) => async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
@@ -76,6 +76,27 @@ test("확인: 400이면 맞음, 403 booth_code면 틀림, 다른 403·500은 오
   let called = 0;
   expect(await verifyBoothCode("한글", deps(async () => { called++; return new Response("{}", { status: 400 }); }))).toBe("format");
   expect(called).toBe(0);
+});
+
+test("확인이 제한 시간(6초) 안에 끝나지 않으면 요청을 끊고 오프라인으로 본다 — 확인 중엔 «취소»가 꺼져 창이 잠기므로", async () => {
+  vi.useFakeTimers();
+  try {
+    let aborted = false;
+    const hang = ((_url: string, init: RequestInit) => new Promise((_, reject) => init.signal!.addEventListener("abort", () => {
+      aborted = true;
+      reject(new DOMException("aborted", "AbortError"));
+    }))) as unknown as typeof fetch;
+    let result: string | null = null;
+    void verifyBoothCode("INKY-2026-ABCD", { apiBase: "https://api.test", boothToken: "t", fetch: hang }).then((r) => { result = r; });
+    await vi.advanceTimersByTimeAsync(VERIFY_TIMEOUT_MS - 1);
+    expect(result).toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(aborted).toBe(true);
+    expect(result).toBe("offline");
+    expect(VERIFY_TIMEOUT_MS).toBe(6_000);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("확인 요청은 사진 없이 토큰·코드 헤더만 싣는다", async () => {
