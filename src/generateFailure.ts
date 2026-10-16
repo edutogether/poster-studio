@@ -14,7 +14,8 @@ export type FailureAction =
 
 export type GenerateFailure = { action: FailureAction; message: string; staffNote?: string; waitSeconds?: number };
 
-type Input = { status?: number; body?: unknown; aborted?: boolean; network?: boolean };
+/** malformed: 서버는 성공(200)이라 했는데 그림을 쓸 수 없다(본문이 HTML · 그림 0장 · 조판 오류) — 진행자용 원인을 담는다. */
+type Input = { status?: number; body?: unknown; aborted?: boolean; network?: boolean; malformed?: string };
 
 /** 이 함수가 가르는 서버 code 전부. 서버에 code를 새로 만들면 여기와 아래 switch에 함께 넣는다(test/generate-failure.test.ts가 막는다). */
 export const FAILURE_CODES = ["booth_code", "busy_global", "busy_network", "openai_busy", "timeout", "upstream", "unknown", "bad_request",
@@ -25,9 +26,10 @@ const server = (body: unknown) => {
   return { code: typeof b.code === "string" ? b.code : "", error: typeof b.error === "string" ? b.error : "" };
 };
 
-export function classifyGenerateFailure({ status, body, aborted, network }: Input): GenerateFailure {
+export function classifyGenerateFailure({ status, body, aborted, network, malformed }: Input): GenerateFailure {
   if (aborted) return { action: "retry", message: "시간이 너무 오래 걸려 멈췄어요." };
   if (network) return { action: "offline", message: "인터넷 연결이 끊겼어요." };
+  if (malformed) return { action: "retry", message: "그림을 다 그리지 못했어요.", staffNote: malformed };
   const { code, error } = server(body);
   const staffNote = error || (status ? `응답 ${status}` : undefined);
   switch (code) {

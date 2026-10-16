@@ -428,13 +428,30 @@ export default function PosterStudio() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) failed = classifyGenerateFailure({ status: res.status, body: data });
       else {
-        applyPosters(await buildPosters(data.images, meta));
-        genCountRef.current += 1;   // 성공만 센다
-        failCountRef.current = 0;
-        setStatus("");
-        setCompletionId(value => value + 1);
+        /* 응답을 받은 뒤의 실패는 인터넷 끊김이 아니다 — 따로 가르고 원인을 콘솔에 남긴다(2026-10-17 종합감사).
+           예전엔 한 try가 조판까지 감싸 그림 없는 200(HTML 등)이 «인터넷 연결이 끊겼어요»로, 그림 0장은 안내 없이 끝났다. */
+        const images: unknown = data.images;
+        let built: Poster[] | null = null;
+        if (!Array.isArray(images) || !images.length || !images.every(image => typeof image === "string")) {
+          console.error("[포스터 생성 실패] 응답에 그림이 없음", res.status, data);
+          failed = classifyGenerateFailure({ malformed: `응답에 그림이 없음(응답 ${res.status})` });
+        } else {
+          try { built = await buildPosters(images, meta); }
+          catch (e) {
+            console.error("[포스터 생성 실패] 조판", e);
+            failed = classifyGenerateFailure({ malformed: `포스터 조판 실패: ${e instanceof Error ? e.message : String(e)}` });
+          }
+        }
+        if (built) {
+          applyPosters(built);
+          genCountRef.current += 1;   // 성공만 센다
+          failCountRef.current = 0;
+          setStatus("");
+          setCompletionId(value => value + 1);
+        }
       }
     } catch (e: any) {
+      console.error("[포스터 생성 실패] 요청", e);
       failed = classifyGenerateFailure({ aborted: e?.name === "AbortError", network: e instanceof TypeError });
     } finally {
       clearTimeout(timer);
