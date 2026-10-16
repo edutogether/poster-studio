@@ -144,12 +144,43 @@ jobs:
       # 리액트+TS 전환(2026-09-09)으로 src/constants.js를 거쳐 src/constants.ts가 됐다 — 파일을 옮길
       # 때마다 이 경로를 같이 안 고쳐 배포가 실패한 적이 있다. 소스를 문자열로 읽는
       # 지점이라 번들러가 개입하지 않는 원본 파일을 가리켜야 한다.
+      # 부스 코드 스위치가 켜지면(2026-10-17 보강 — 종합감사 발견) 코드 없는 요청은 403(booth_code)이 정상이다.
+      # 그래서 켜짐이면 «토큰만 → 403 booth_code»(스위치가 서버에 실제로 들어갔는지)와 «토큰 + 코드 → 400»을 둘 다 본다.
+      # 값은 env로 받는다 — 로컬 배포(scripts/ci/run-workflow-step.mjs)에서는 배포하는 사람이 같은 이름의 환경변수를 넣는다.
+      # 이 단계의 판정은 test/smoke-step.test.js가 가짜 curl로 실제 실행해 고정한다.
       - name: 부스토큰 스모크테스트 (배포 직후 실제 인증 확인)
+        env:
+          BOOTH_CODE_REQUIRED: ${{ vars.BOOTH_CODE_REQUIRED }}
+          BOOTH_CODE: ${{ secrets.BOOTH_CODE }}
         run: |
           TOKEN=$(node -pe "require('fs').readFileSync('src/constants.ts','utf8').match(/const BOOTH_TOKEN = '([^']+)'/)[1]")
-          STATUS=$(curl -s -o /tmp/smoke.json -w "%{http_code}" \
-            -X POST -H "x-booth-token: $TOKEN" -H "content-type: application/json" -d '{}' \
-            "https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/generate")
+          URL="https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/generate"
+          # 사진 없는 요청. 뒤에 머리글을 더 붙일 수 있다(부스 코드).
+          ask() {
+            curl -s -o /tmp/smoke.json -w "%{http_code}" -X POST -H "x-booth-token: $TOKEN" -H "content-type: application/json" "$@" -d '{}' "$URL"
+          }
+          case "${BOOTH_CODE_REQUIRED:-false}" in
+            false)
+              STATUS=$(ask)
+              ;;
+            true)
+              FIRST=$(ask)
+              echo "코드 없이: $FIRST, 본문: $(cat /tmp/smoke.json)"
+              if [ "$FIRST" != "403" ] || ! grep -q '"booth_code"' /tmp/smoke.json; then
+                echo "::error::부스 코드 스위치가 켜졌는데 코드 없는 요청이 부스 코드로 거절되지 않았습니다($FIRST) — 함수 환경 파일이 빠졌을 수 있습니다."
+                exit 1
+              fi
+              if [ -z "${BOOTH_CODE:-}" ]; then
+                echo "::error::BOOTH_CODE가 없어 코드를 실은 요청을 확인할 수 없습니다."
+                exit 1
+              fi
+              STATUS=$(ask -H "x-booth-code: $BOOTH_CODE")
+              ;;
+            *)
+              echo "::error::BOOTH_CODE_REQUIRED는 true 또는 false여야 합니다."
+              exit 1
+              ;;
+          esac
           echo "응답 상태: $STATUS, 본문: $(cat /tmp/smoke.json)"
           # 🔴 "401이 아니면 통과"였다가 고쳤다(2026-09-09). 그 형태는 **틀린 답 하나만**
           # 잡는다 — 500·404·배포 실패로 함수가 아예 없을 때, 심지어 curl이 연결을 못 해
@@ -161,6 +192,10 @@ jobs:
               ;;
             401)
               echo "::error::부스토큰 인증 실패(401) — src/constants.ts의 BOOTH_TOKEN과 Firebase Secret Manager 값이 어긋났을 수 있습니다."
+              exit 1
+              ;;
+            403)
+              echo "::error::부스 코드로 거절(403) — 서버의 부스 코드 스위치와 BOOTH_CODE_REQUIRED·BOOTH_CODE가 어긋났습니다(서버는 켜짐인데 꺼짐으로 왔거나 코드가 틀림)."
               exit 1
               ;;
             429)

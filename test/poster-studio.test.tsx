@@ -17,6 +17,10 @@ import { render, act, cleanup, fireEvent, waitFor } from '@testing-library/react
 import { TEMPLATES } from '../src/templates.js';
 import PosterStudio, { getMeta } from '../src/PosterStudio.js';
 import * as homeRestart from '../src/restartHome.js';
+import { captureBoothCode } from '../src/boothCode.js';
+
+/** 보관한 부스 코드와 메모리 값을 함께 지운다(#booth= 로 여는 것과 같다 — 저장소가 막힌 브라우저용 메모리 값이 다음 테스트로 새지 않게). */
+function forgetBoothCode() { history.replaceState(null, '', '/#booth='); captureBoothCode(); }
 import { heightToApply, TWO_COL_MIN_WIDTH } from '../src/useLayoutMatch.js';
 import {
   installCanvas, installCamera, installFetch, installImage, installFonts,
@@ -365,6 +369,7 @@ describe('세 단계 화면 연결', () => {
     expect(localStorage.getItem('poster-studio-booth-code')).toBe('INKY-TEST-0001');
     expect(el('resultView').hidden).toBe(false);
     localStorage.clear();
+    forgetBoothCode();
   });
 
   test('부스 코드 창 «취소»는 탭을 닫아 보고, 브라우저가 막으면 처음 화면으로 되돌린다(10/17 Bumm님)', async () => {
@@ -753,7 +758,7 @@ describe('부스 코드(서버 스위치 기본 꺼짐)', () => {
   }
 
   test('보관된 코드가 없으면 생성 요청 헤더는 예전과 같다', async () => {
-    localStorage.removeItem('poster-studio-booth-code');
+    forgetBoothCode();
     expect(Object.keys(await 생성_요청_헤더())).toEqual(['x-booth-token']);
   });
 

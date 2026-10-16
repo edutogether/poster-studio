@@ -150,9 +150,13 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    firebase hosting:clone poster-studio:live poster-studio:rollback-<날짜> --project inky-poster-studio
    node scripts/verify/dist-vs-live.mjs ../base/dist <채널 주소>
    ```
+   - functions도 낼 때는 지금 라이브 함수의 지문을 적어 둔다: `firebase functions:list --project inky-poster-studio --json`(`posterStudio`·`keepWarm`·`cleanupOldCountersSchedule`의 해시).
+     되돌릴 곳은 `base` 사본(지금 라이브와 같은 커밋)이다.
 7. **배포한다**(`master` 사본에서, CI와 같은 순서).
    - functions가 바뀌었으면 먼저 `firebase deploy --only functions --project inky-poster-studio --non-interactive`를 낸다.
      그다음 `node scripts/ci/run-workflow-step.mjs "부스토큰 스모크테스트 (배포 직후 실제 인증 확인)"`가 통과해야 hosting으로 간다.
+     부스 코드 스위치가 켜졌으면 이 단계는 `BOOTH_CODE_REQUIRED=true`와 `BOOTH_CODE`(값은 비공개 운영 문서)를 환경변수로 넣고 돌린다 —
+     «코드 없이 403 booth_code»와 «코드를 실어 400»을 둘 다 본다(2026-10-17). 안 넣으면 403으로 실패하는 것이 맞다.
    - 🔴 **부스 코드 스위치가 켜진 뒤(11/7쯤부터)에는 functions를 그냥 내지 않는다.** CI는 배포할 때마다 «부스 코드 설정» 단계에서 환경 파일을 새로 만들어 넣는다.
      그 파일 없이 내면 켜 둔 스위치가 빠질 수 있다. 비공개 운영 문서의 절차로 같은 파일을 먼저 만들거나, 멈추고 팀장에게 보고한다.
    - hosting: `firebase deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive -m "로컬 배포 <커밋>"`
@@ -167,6 +171,9 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    - 실제 모드면 포스터 출시 기준선: `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`
 9. **문제가 있으면 되돌린다.**
    - 명령: `firebase hosting:clone poster-studio:rollback-<날짜> poster-studio:live --project inky-poster-studio`
+   - functions도 냈으면 `base` 사본에서 `firebase deploy --only functions --project inky-poster-studio --non-interactive`로 되돌리고,
+     7번의 스모크테스트를 다시 통과시킨 뒤 6번에 적은 지문과 `functions:list`를 견준다. 생성 요청이 없어 비용은 들지 않는다.
+     🟠 [확인] 로컬에서 함수를 되돌려 본 적은 아직 없다(2026-10-17 종합감사 지적 — «눌러 본 것만 롤백 지점»). 배포 승인을 받을 때 이 연습도 함께 승인받아 한 번 해 본다.
    - 되돌린 뒤 `dist-vs-live.mjs ../base/dist`로 확인한다. Firebase 콘솔 Hosting의 출시 기록에서도 이전 판으로 되돌릴 수 있다.
 10. **기록한다.** CHANGELOG에 한 줄, 공통 인계 문서(`_docs/ops/HANDOFF_CURRENT.md`)에 배포 커밋·라이브 판 번호·되돌림 채널을 적는다.
     GitHub가 돌아오면 master를 push한다. CI가 같은 파일을 다시 배포한다(바이트가 같으므로 화면 변화 없음).

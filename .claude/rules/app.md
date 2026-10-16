@@ -271,7 +271,7 @@
   배포 상태가 곧 행사 준비 상태이고, 11/14 전에 "배포한 줄 알았는데 안 됐다"가 나면 안 된다.
 
 ## 명령
-- 테스트: `cd functions && npm test`(91개) / 저장소 루트에서 `npm test`(160개) — 둘 다 vitest
+- 테스트: `cd functions && npm test`(94개) / 저장소 루트에서 `npm test`(221개) — 둘 다 vitest(2026-10-17 기준)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
 - 빌드: 루트에서 `npm run build` → `dist/`
