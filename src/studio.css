@@ -607,6 +607,8 @@ main.app {
     cursor: pointer;
   }
   .phone-shot[hidden] { display: none; }
+  /* 칸 아래쪽 글줄(«이렇게, …» · 실제 모드의 «카메라 켜기» / «카메라 끄기»)을 원형 단추 위로 올린다 — 실제 모드에서 «카메라 켜기»가 원형 단추와 13~28px 겹쳤다(10/17 실제 모드 검사) */
+  #cameraView .camHint.camera-example-caption { padding-bottom: 44px; }
   .phone-shot .studio-icon { width: 30px; height: 30px; }
   .phone-shot:active:not(:disabled) { transform: scale(.96); }
   .phone-shot:disabled { background: #bdbdbd; box-shadow: none; cursor: default; }
