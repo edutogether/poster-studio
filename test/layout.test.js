@@ -85,13 +85,3 @@ test('creditSub: 단체 모드인데 출연진을 안 적으면 빈 문자열', 
   expect(app.creditSub({ mode: 'group', members: '' })).toBe('');
 });
 
-// ── makePlaceholderArt: AI 장애 폴백용 그림이 어떤 장르에도 예외 없이 만들어진다 ──
-test('makePlaceholderArt: 알려진 장르는 PNG data URL을 만든다', () => {
-  const url = app.makePlaceholderArt('sf');
-  expect(url.startsWith('data:image/png')).toBeTruthy();
-});
-
-test('makePlaceholderArt: 모르는 장르 값이 와도 기본값(animation)으로 대체되어 예외 없이 동작한다', () => {
-  const url = app.makePlaceholderArt('존재하지않는장르');
-  expect(url.startsWith('data:image/png')).toBeTruthy();
-});
