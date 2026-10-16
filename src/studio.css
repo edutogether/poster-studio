@@ -286,6 +286,15 @@ main.app {
 #cameraWorkspace .camera-tips p { font-size: 16px; line-height: 1.5; margin: 3px 0 0; }
 .cameraBox > .camera-example { object-fit: cover; object-position: center 42%; }
 .cameraBox > .camera-example-group { object-fit: cover; object-position: center; }
+/* «포스터를 만들지 못했어요» 안내 창(2026-10-16, src/studio/GenerateFailureDialog.tsx) — 부스 코드 입력 창과 같은 틀이다. */
+.generate-failure-backdrop { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; padding: 16px; background: #111a; }
+.generate-failure-dialog { width: min(520px, 100%); padding: 30px; border-radius: 14px; background: #fff; color: #1c1c1c; box-shadow: 0 18px 48px #0004; }
+.generate-failure-dialog h2 { margin: 0 0 12px; font-size: 24px; font-weight: 800; }
+.generate-failure-dialog > p { margin: 0 0 10px; font-size: 17px; line-height: 1.6; }
+.generate-failure-state { font-weight: 700; color: #c42a1f; }
+.generate-failure-dialog > .generate-failure-note { margin: 14px 0 0; font-size: 13px; line-height: 1.5; color: #777; }
+.generate-failure-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.generate-failure-actions button { min-height: 52px; padding: 0 22px; }
 /* 부스 코드 입력 창(2026-10-16, src/studio/BoothCodeDialog.tsx) — 생성 요청이 «부스 코드» 거절을 받았을 때만 뜬다. */
 .booth-code-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: #111a; }
 .booth-code-dialog { width: min(480px, 100%); padding: 28px; border-radius: 14px; background: #fff; color: #1c1c1c; box-shadow: 0 18px 48px #0004; }
