@@ -77,13 +77,13 @@ await fs.writeFile(htmlPath, page);
 const port = 9549;
 const profile = path.resolve(path.dirname(out), '.manual-chrome');
 const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--disable-background-networking', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--allow-file-access-from-files', 'about:blank'], { windowsHide: true, stdio: 'ignore' });
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+const delay = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
 let socket, seq = 0; const pending = new Map();
 try {
   let target;
   for (let i = 0; i < 50; i++) { try { target = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((t) => t.type === 'page'); if (target) break; } catch {} await delay(100); }
   assert.ok(target, '브라우저 시작');
-  socket = new WebSocket(target.webSocketDebuggerUrl);
+  socket = new globalThis.WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r) => { socket.onopen = r; });
   socket.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.reject(Error(m.error.message)) : p.resolve(m.result); } };
   const call = (method, params = {}) => new Promise((resolve, reject) => { const id = ++seq; pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method, params })); });
