@@ -456,6 +456,25 @@ async function _firestoreIncrementAndCheck(collectionName, docId, limit, databas
 let _incrementAndCheck = _firestoreIncrementAndCheck;
 function _setCounterImplForTesting(fn) {
   _incrementAndCheck = fn || _firestoreIncrementAndCheck;
+  // 가짜 카운터를 넣으면 되돌리기도 그 가짜(fn.release)를 쓴다 — 없으면 아무것도 하지 않는다(테스트가 실제 Firestore를 부르지 않게).
+  _release = fn ? fn.release || (async () => ({ count: 0 })) : _firestoreRelease;
+}
+
+/* 생성이 실패하면 «사진당 2회» 카운터를 하나 되돌린다(2026-10-16 Bumm님 결정 1 — 실패는 아이의 기회를 쓰지 않는다).
+   0 아래로는 내리지 않는다. 하루 예산·전역·IP 카운터는 되돌리지 않는다(결정 5 — 시간 초과는 과금됐을 수 있어 보수적으로). */
+async function _firestoreRelease(collectionName, docId, database = db) {
+  const ref = database.collection(collectionName).doc(docId);
+  return database.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.exists ? snap.data().count || 0 : 0;
+    if (current <= 0) return { count: 0 };
+    tx.set(ref, { count: current - 1, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    return { count: current - 1 };
+  });
+}
+let _release = _firestoreRelease;
+function _setReleaseImplForTesting(fn) {
+  _release = fn || _firestoreRelease;
 }
 
 /* 카운터 한 번이 오래 걸리면 그만 기다리고 오류로 처리한다(각 미들웨어의 대체 처리로 넘어간다).
@@ -465,7 +484,7 @@ let COUNTER_TIMEOUT_MS = COUNTER_TIMEOUT_MS_DEFAULT;
 function _setCounterTimeoutForTesting(ms) {
   COUNTER_TIMEOUT_MS = ms ?? COUNTER_TIMEOUT_MS_DEFAULT;
 }
-function checkCounter(collectionName, docId, limit) {
+function withCounterTimeout(promise) {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(
@@ -473,7 +492,13 @@ function checkCounter(collectionName, docId, limit) {
       COUNTER_TIMEOUT_MS
     );
   });
-  return Promise.race([_incrementAndCheck(collectionName, docId, limit), timeout]).finally(() => clearTimeout(timer));
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+function checkCounter(collectionName, docId, limit) {
+  return withCounterTimeout(_incrementAndCheck(collectionName, docId, limit));
+}
+function releaseCounter(collectionName, docId) {
+  return withCounterTimeout(_release(collectionName, docId));
 }
 
 // 노트북/인스턴스 여러 개에 걸쳐 진짜로 전역 강제되는 상한. 2026-08-29엔 인스턴스별
@@ -697,6 +722,8 @@ async function checkPhotoGenerationLimit(req, res, next) {
   const hash = crypto.createHash('sha256').update(fs.readFileSync(req.file.path)).digest('hex');
   try {
     const { allowed } = await checkCounter('photoGenCounts', hash, PHOTO_GENERATION_LIMIT);
+    // 셌으면 생성 실패 때 되돌릴 수 있게 남긴다(generateHandler). 카운터 오류로 통과한(fail-open) 요청은 세지 않았으니 되돌리지 않는다.
+    if (allowed) req.photoCounted = hash;
     if (!allowed) {
       // 막힌 요청은 아래 /generate 핸들러(임시파일 정리 담당)까지 못 가므로 여기서 직접
       // 지워야 /tmp에 고아 파일이 안 남는다(2차 감사 때 고친 것과 같은 종류의 버그 재발 방지).
@@ -779,6 +806,12 @@ async function generateHandler(req, res) {
     console.error('[generate]', err?.status || '', err?.message || err);
     const { status, message, code } = mapGenerateError(err);
     result = { status, body: { error: message, code } };
+    // 실패는 «사진당 2회»를 쓰지 않는다(결정 1). 되돌리기가 실패해도 응답은 그대로 보낸다 — 기회를 하나 잃을 뿐이다.
+    if (req.photoCounted) {
+      await releaseCounter('photoGenCounts', req.photoCounted).catch((e) =>
+        console.error('[generate] 사진 카운터 되돌리기 실패:', e?.message || e)
+      );
+    }
   }
   await fs.promises.unlink(req.file.path).catch(() => {});
   res.status(result.status).json(result.body);
@@ -847,6 +880,8 @@ export {
   OPENAI_TIMEOUT_MS,
   GENERATE_BUDGET_MS,
   _setCounterImplForTesting,
+  _setReleaseImplForTesting,
+  _firestoreRelease,
   _firestoreIncrementAndCheck,
   editWithRetry,
   generateArt,

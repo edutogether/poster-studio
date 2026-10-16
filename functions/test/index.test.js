@@ -45,6 +45,7 @@ import {
   COUNTER_TTL_MS,
   cleanupOldCounters,
   _firestoreIncrementAndCheck,
+  _firestoreRelease,
   ALLOWED_ORIGINS,
   COUNTER_TTL_OVERRIDES_MS,
   MAX_REQUEST_BYTES,
@@ -73,13 +74,22 @@ import {
 // 격리된 카운터를 만들어 쓰고 끝나면 원래(공유) 구현으로 복원한다.
 function makeInMemoryCounterImpl() {
   const counters = new Map();
-  return async (collectionName, docId, limit) => {
+  const impl = async (collectionName, docId, limit) => {
     const key = `${collectionName}/${docId}`;
     const current = counters.get(key) || 0;
     if (current >= limit) return { allowed: false, count: current };
     counters.set(key, current + 1);
     return { allowed: true, count: current + 1 };
   };
+  // 생성 실패 때 사진 카운터 되돌리기(2026-10-16)도 같은 저장소에서 한다.
+  impl.release = async (collectionName, docId) => {
+    const key = `${collectionName}/${docId}`;
+    const next = Math.max(0, (counters.get(key) || 0) - 1);
+    counters.set(key, next);
+    return { count: next };
+  };
+  impl.counters = counters;
+  return impl;
 }
 
 /* 8차 감사(2026-09-07) 발견 — 진짜 플래키 테스트였다.
@@ -103,13 +113,20 @@ async function runInSingleRateLimitBucket(body) {
 
 const _fakeCounters = new Map();
 function useSharedCounterImpl() {
-  _setCounterImplForTesting(async (collectionName, docId, limit) => {
+  const impl = async (collectionName, docId, limit) => {
     const key = `${collectionName}/${docId}`;
     const current = _fakeCounters.get(key) || 0;
     if (current >= limit) return { allowed: false, count: current };
     _fakeCounters.set(key, current + 1);
     return { allowed: true, count: current + 1 };
-  });
+  };
+  impl.release = async (collectionName, docId) => {
+    const key = `${collectionName}/${docId}`;
+    const next = Math.max(0, (_fakeCounters.get(key) || 0) - 1);
+    _fakeCounters.set(key, next);
+    return { count: next };
+  };
+  _setCounterImplForTesting(impl);
 }
 useSharedCounterImpl();
 
@@ -1576,5 +1593,44 @@ test('POST /generate: 기본(꺼짐) 상태에서는 부스 코드 없이도 지
     expect(r.status).toBe(400);
   } finally {
     server.close();
+  }
+});
+
+// ── 생성 실패는 «사진당 2회»를 쓰지 않는다(2026-10-16 Bumm님 결정 1) ──────────────
+test('사진 카운터 되돌리기: 하나씩 내리고 0 아래로는 내리지 않는다', async () => {
+  const db = makeCounterDb({ 'photoGenCounts/h1': { count: 2 } });
+  expect((await _firestoreRelease('photoGenCounts', 'h1', db)).count).toBe(1);
+  expect((await _firestoreRelease('photoGenCounts', 'h1', db)).count).toBe(0);
+  expect((await _firestoreRelease('photoGenCounts', 'h1', db)).count).toBe(0);
+  expect((await _firestoreRelease('photoGenCounts', 'none', db)).count).toBe(0);
+  expect(db._count('photoGenCounts', 'h1')).toBe(0);
+});
+
+test('POST /generate: 같은 사진이 실패하면 카운터가 되돌아가 한도보다 많이 다시 해 볼 수 있고, 성공은 한도대로 센다', async () => {
+  const photo = Buffer.from([0xff, 0xd8, 0xff, 0xdb, ...crypto.randomBytes(8)]);
+  const send = async (port) => {
+    const { headers, rawBody } = await buildMultipartRequest([['photo', { blob: new Blob([photo], { type: 'image/jpeg' }), filename: 'p.jpg' }]]);
+    const r = await fetch(`http://127.0.0.1:${port}/generate`, { method: 'POST', headers: { ...headers, 'x-booth-token': 'test-booth-token' }, body: rawBody });
+    return { status: r.status, body: await r.json() };
+  };
+  const server = await startTestServer();
+  const port = server.address().port;
+  try {
+    await runInSingleRateLimitBucket(async () => {
+      _setClientForTesting(makeFakeClient(async () => { const e = new Error('Request timed out'); e.status = 400; throw e; }));
+      const failed = [];
+      for (let i = 0; i < PHOTO_GENERATION_LIMIT + 2; i++) failed.push(await send(port));
+      expect(failed.map((r) => r.status), '실패는 사진 한도에 걸리지 않는다').toEqual(failed.map(() => 504));
+      expect(failed[0].body.code).toBe('timeout');
+      _setClientForTesting(makeFakeClient(async () => ({ data: [{ b64_json: 'AAA' }] })));
+      const ok = [];
+      for (let i = 0; i < PHOTO_GENERATION_LIMIT + 1; i++) ok.push(await send(port));
+      expect(ok.map((r) => r.status), '성공은 한도대로 세고 그 다음은 막는다').toEqual([...Array(PHOTO_GENERATION_LIMIT).fill(200), 429]);
+      expect(ok[PHOTO_GENERATION_LIMIT].body.code).toBe('photo_limit');
+    });
+  } finally {
+    server.close();
+    _setClientForTesting(null);
+    useSharedCounterImpl();
   }
 });
