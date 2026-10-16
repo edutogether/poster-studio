@@ -149,7 +149,8 @@ try {
     await evaluate('scrollTo(0, document.scrollingElement.scrollHeight); document.getElementById("prepareNextBtn").click() || true');
     if (!await waitFor('!document.getElementById("cameraView").hidden')) { fail(tag, '2단계(혼자)'); continue; }
     await shot(tag, '2-step2-solo', { arrival: true, tips: !desktop });
-    if (!desktop) {   // 휴대폰: 빨간 원형 단추(⑥) — 샘플 모드는 «오늘 촬영할 영화»와 단추 줄까지 내려간다(⑦)
+    // 휴대폰: 빨간 원형 단추(⑥) — 샘플 모드는 «오늘 촬영할 영화»와 단추 줄까지 내려간다(⑦). 단추가 없는 옛 빌드(대조용 «전»)는 이 화면만 건너뛴다.
+    if (!desktop && await evaluate(`!!document.getElementById('phoneShotBtn')`)) {
       await evaluate(`document.getElementById('phoneShotBtn').click() || true`);
       await delay(900);
       await shot(tag, '2-step2-after-shot');
