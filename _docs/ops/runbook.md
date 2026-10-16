@@ -123,17 +123,21 @@ GitHub가 정지돼 CI가 돌지 않을 때만 예외로 §9 절차를 쓴다.
 GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 Bumm님 배포 승인이 있어야 한다. 정상일 때는 §8까지의 CI 경로다.
 2026-10-15에 이 절차로 master `8d752d4`를 배포했다(기록은 `_docs/CHANGELOG.md`와 `_docs/intents/2026-10-15-local-deploy-github-suspended/`).
 
-1. **무엇이 나가는지 본다.** `origin/master`가 마지막으로 push된(= CI가 마지막으로 배포한) 커밋이다.
-   - 전체: `git diff --stat origin/master master`
-   - functions: `git diff --stat origin/master master -- functions/`. 비어 있으면 hosting만 낸다.
+1. **무엇이 나가는지 본다.** 기준(`<라이브 커밋>`)은 **지금 라이브에 나가 있는 커밋**이다 — 공통 인계 문서(`_docs/ops/HANDOFF_CURRENT.md`) 맨 위
+   «라이브는 …»에 적힌 것. 🟠 이 절차로 한 번 배포한 뒤로는 `origin/master`가 아니다(2026-10-15 로컬 배포 뒤 라이브는 `8d752d4`,
+   `origin/master`는 그보다 56커밋 앞의 `a658d89` — `origin/master`를 기준으로 잡으면 3번 대조에서 멈춘다. 2026-10-17 점검에서 발견).
+   GitHub가 정상이고 CI로만 배포해 왔다면 `origin/master`와 같다.
+   - 전체: `git diff --stat <라이브 커밋> master`
+   - functions: `git diff --stat <라이브 커밋> master -- functions/`. 비어 있으면 hosting만 낸다.
 2. **LF 사본을 만든다.** 이 컴퓨터의 체크아웃은 CRLF(`core.autocrlf=true`)라 그대로 빌드하면 CI(LF)와 다른 파일이 나간다.
    ```bash
-   git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/base origin/master
+   git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/base <라이브 커밋>
    git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/master master
    ```
 3. **이 컴퓨터의 빌드가 CI를 재현하는지 본다.** `base`에서 `npm ci && npm run build`를 하고, 라이브와 바이트 대조한다.
    - 명령: `node scripts/verify/dist-vs-live.mjs ../base/dist https://poster-studio.web.app`
-   - 전부 같아야 다음으로 간다. 다르면 라이브가 마지막 push가 아니거나 빌드 환경이 다르다 — 멈추고 팀장에게 보고한다.
+   - 전부 같아야 다음으로 간다. 다르면 기준 커밋이 지금 라이브가 아니거나 빌드 환경이 다르다 — 멈추고 팀장에게 보고한다.
+   - 2026-10-17 점검: `8d752d4` LF 빌드가 두 주소 모두와 323개 파일 바이트까지 같았다.
 4. **CI 검사를 `master` 사본에서 전부 돌린다.** 하나라도 종료코드가 0이 아니면 멈춘다.
    - functions: `npm ci` · `npm run lint` · `npm test`
    - 루트: `npm ci` · `npm run lint` · `npm run typecheck` · `npm run fonts:check` · `npm test` · `npm run verify:selftest` · `npm run build`
@@ -152,6 +156,10 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    ```
    - functions도 낼 때는 지금 라이브 함수의 지문을 적어 둔다: `firebase functions:list --project inky-poster-studio --json`(`posterStudio`·`keepWarm`·`cleanupOldCountersSchedule`의 해시).
      되돌릴 곳은 `base` 사본(지금 라이브와 같은 커밋)이다.
+   - 이미 만든 되돌림 채널이 아직 살아 있고 `base` 빌드와 같으면 새로 만들지 않고 그것을 쓴다(`rollback-20261016-night`는 11/15까지 — 10/17 대조 323개 같음).
+   - 2026-10-17 연습: 하루짜리 채널 `rehearsal-1017`에 새 판(미리보기 채널)을 `hosting:clone`으로 올렸다가 되돌림 채널을 다시 `hosting:clone`해
+     되돌렸다 — 두 번 다 `dist-vs-live.mjs`로 바이트까지 같았다(300개 · 323개). 9번의 hosting 되돌리기와 같은 명령 꼴이다. 라이브는 건드리지 않았다.
+     함수 지문은 그날 `posterStudio` `b327ed39…` · `keepWarm` · `cleanupOldCountersSchedule` `e0f59577…`였다.
 7. **배포한다**(`master` 사본에서, CI와 같은 순서).
    - functions가 바뀌었으면 먼저 `firebase deploy --only functions --project inky-poster-studio --non-interactive`를 낸다.
      그다음 `node scripts/ci/run-workflow-step.mjs "부스토큰 스모크테스트 (배포 직후 실제 인증 확인)"`가 통과해야 hosting으로 간다.
