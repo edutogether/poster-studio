@@ -452,7 +452,7 @@ export default function PosterStudio() {
     if (failed.action === "retry" || failed.action === "wait") {
       failCountRef.current += 1;
       if (failCountRef.current >= MAX_FAILURES_PER_PHOTO)
-        failed = { action: "retake", message: "여러 번 만들지 못했어요. 다시 찍어서 만들어 볼까요?", staffNote: failed.staffNote };
+        failed = { action: "retake", message: "여러 번 만들지 못했어요.", staffNote: failed.staffNote };
     }
     if (failed.action === "offline") setOnline(false);
     setFailure(failed);

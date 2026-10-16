@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { BoothCodeCheck } from "../boothCode.js";
+import DialogIcon from "./DialogIcon.js";
 
 type Props = { open: boolean; verify: (code: string) => Promise<BoothCodeCheck>; onSaved: (code: string) => void; onClose: () => void };
 
 const MESSAGE: Record<Exclude<BoothCodeCheck, "ok">, string> = {
   wrong: "코드가 맞지 않아요. 다시 확인해 주세요.",
-  format: "영문·숫자·하이픈으로 4~64자를 넣어 주세요.",
+  format: "영문 · 숫자 · 하이픈으로 4~64자를 넣어 주세요.",
   offline: "인터넷 연결을 확인해 주세요.",
   error: "지금은 확인할 수 없어요. 잠시 후 다시 해 주세요.",
 };
@@ -43,8 +44,8 @@ export default function BoothCodeDialog({ open, verify, onSaved, onClose }: Prop
           aria-invalid={problem ? true : undefined} aria-describedby={problem ? "boothCodeProblem" : undefined} disabled={checking} />
         <p id="boothCodeProblem" className="booth-code-problem" role="alert">{problem ?? ""}</p>
         <div className="booth-code-actions">
-          <button type="button" className="back-button" onClick={onClose} disabled={checking}>닫기</button>
-          <button type="submit" className="primary-button" disabled={checking}>{checking ? "확인하는 중…" : "확인"}</button>
+          <button type="button" className="back-button" onClick={onClose} disabled={checking}><DialogIcon name="x" />닫기</button>
+          <button type="submit" className="primary-button" disabled={checking}><DialogIcon name="check" />{checking ? "확인하는 중…" : "확인"}</button>
         </div>
       </form>
     </div>

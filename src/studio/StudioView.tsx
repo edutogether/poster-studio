@@ -635,7 +635,7 @@ export default function StudioView(p: StudioViewProps) {
         </p>
       </div>
       {!p.spinning && <GenerateFailureDialog failure={p.failure} online={p.online}
-        onRetry={p.onRetryFailure} onRetake={p.onRetakeFailure} onEditInputs={() => { void p.onDismissFailure(); go(1); }} />}
+        onRetry={p.onRetryFailure} onRetake={p.onRetakeFailure} onEditInputs={() => { void p.onDismissFailure(); go(1); }} onHome={() => void p.onHome()} />}
       <BoothCodeDialog open={p.boothOpen && !p.spinning} verify={p.verifyBooth} onSaved={p.onBoothCodeSaved} onClose={() => void p.onBoothCodeClose()} />
       <dialog
         ref={dialog}

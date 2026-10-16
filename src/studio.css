@@ -288,13 +288,20 @@ main.app {
 .cameraBox > .camera-example-group { object-fit: cover; object-position: center; }
 /* «포스터를 만들지 못했어요» 안내 창(2026-10-16, src/studio/GenerateFailureDialog.tsx) — 부스 코드 입력 창과 같은 틀이다. */
 .generate-failure-backdrop { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; padding: 16px; background: #111a; }
-.generate-failure-dialog { width: min(520px, 100%); padding: 30px; border-radius: 14px; background: #fff; color: #1c1c1c; box-shadow: 0 18px 48px #0004; }
-.generate-failure-dialog h2 { margin: 0 0 12px; font-size: 24px; font-weight: 800; }
-.generate-failure-dialog > p { margin: 0 0 10px; font-size: 17px; line-height: 1.6; }
-.generate-failure-state { font-weight: 700; color: #c42a1f; }
-.generate-failure-dialog > .generate-failure-note { margin: 14px 0 0; font-size: 13px; line-height: 1.5; color: #777; }
-.generate-failure-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
-.generate-failure-actions button { min-height: 52px; padding: 0 22px; }
+/* 2026-10-17 Bumm님: 창 크기는 종류와 상관없이 같다 · 문구는 모두 한 줄 · 단추 두 개는 같은 크기. 상태 줄(인터넷 확인 중)은 비어 있어도 자리를 둔다. */
+.generate-failure-dialog { box-sizing: border-box; width: min(520px, 100%); padding: 30px; border-radius: 14px; background: #fff; color: #1c1c1c; box-shadow: 0 18px 48px #0004; }
+.generate-failure-dialog h2, .generate-failure-dialog > p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.generate-failure-dialog h2 { margin: 0 0 12px; font-size: 24px; line-height: 1.35; font-weight: 800; }
+.generate-failure-dialog > p { margin: 0; font-size: 17px; line-height: 1.6; }
+.generate-failure-dialog > .generate-failure-state { min-height: calc(17px * 1.6); margin-top: 4px; font-size: 15px; font-weight: 700; color: #555; }
+.generate-failure-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+.generate-failure-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 14px; white-space: nowrap; }
+@media (max-width: 480px) {
+  .generate-failure-dialog { padding: 24px 20px; }
+  .generate-failure-dialog h2 { font-size: 21px; }
+  .generate-failure-dialog > p { font-size: 16px; }
+  .generate-failure-actions { grid-template-columns: 1fr; }
+}
 /* 부스 코드 입력 창(2026-10-16, src/studio/BoothCodeDialog.tsx) — 생성 요청이 «부스 코드» 거절을 받았을 때만 뜬다. */
 .booth-code-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: #111a; }
 .booth-code-dialog { width: min(480px, 100%); padding: 28px; border-radius: 14px; background: #fff; color: #1c1c1c; box-shadow: 0 18px 48px #0004; }
@@ -304,8 +311,8 @@ main.app {
 .booth-code-dialog input { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #c9c9c9; border-radius: 8px; font-size: 18px; letter-spacing: .04em; }
 .booth-code-dialog input[aria-invalid="true"] { border-color: #ed3124; }
 .booth-code-problem { min-height: 22px; margin: 8px 0 14px; font-size: 14px; color: #c42a1f; }
-.booth-code-actions { display: flex; justify-content: flex-end; gap: 10px; }
-.booth-code-actions button { min-height: 48px; padding: 0 20px; }
+.booth-code-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.booth-code-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 14px; white-space: nowrap; }
 /* 촬영 화면 예시 영상(2026-10-16, src/studio/CameraExample.tsx) — 16:9 영상을 칸에 cover로 얹는 «무대». 무대가 영상과 같은
    비율이라 말풍선은 영상 화면의 %로 놓으면 사람 머리 옆에 그대로 붙는다. 실시간 카메라처럼 좌우를 뒤집지 않는다. */
 .cameraBox.has-example-video { container-type: size; }

@@ -146,7 +146,7 @@ describe('세 단계 화면 연결', () => {
       // 실패하면 빈 그라데이션 대신 «포스터를 만들지 못했어요» 안내 창(다시 만들기, 2026-10-16)
       const dialog = document.querySelector('.generate-failure-dialog')!;
       expect(dialog.textContent).toContain('포스터를 만들지 못했어요');
-      expect(dialog.textContent).toContain('진행자 확인용: 검사 응답 실패');
+      expect(dialog.textContent).not.toContain('검사 응답 실패');   // 진행자용 원인은 화면에 없다(10/17 Bumm님)
       expect(document.getElementById('fallbackBtn')).toBeNull();
     }
   });
@@ -311,14 +311,14 @@ describe('세 단계 화면 연결', () => {
     expect(view.getByRole('button', { name: '다시 찍기' })).toBeTruthy();
   });
 
-  test('안전 기준에 걸리면 «제목·문구 고치기»로 1단계에 간다', async () => {
+  test('안전 기준에 걸리면 «제목 · 문구 고치기»로 1단계에 간다', async () => {
     const view = await act(async () => renderApp());
     await shoot();
     installFetch((url) => url.includes('/generate')
       ? new Response(JSON.stringify({ error: '안전 기준', code: 'safety' }), { status: 400 })
       : okResponse(url));
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
-    await act(async () => { view.getByRole('button', { name: '제목·문구 고치기' }).click(); });
+    await act(async () => { view.getByRole('button', { name: '제목 · 문구 고치기' }).click(); });
     expect(el('prepareView').hidden).toBe(false);
     expect(view.queryByRole('alertdialog')).toBeNull();
   });
