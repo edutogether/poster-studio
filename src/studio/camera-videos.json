@@ -1,62 +1,24 @@
 [
   {
     "mode": "solo",
-    "status": "approved",
-    "src": "/studio/camera-v1/solo-db71245c33b4.mp4",
-    "sha256": "db71245c33b45db37246239ce029a30a39ade84f0ef43afa03b913d8029211db",
-    "bytes": 1651953,
-    "still": "/studio/camera-v1/solo.webp",
-    "stillSha256": "e5b302c496788d204d14f5c3443538cd24aa4ef3b9d77f30bf9fc6670dde76fe",
-    "duration": 8,
-    "cues": [
-      {
-        "kind": "count",
-        "from": 4.6,
-        "to": 5.3,
-        "text": "3"
-      },
-      {
-        "kind": "count",
-        "from": 5.4,
-        "to": 6.1,
-        "text": "2"
-      },
-      {
-        "kind": "count",
-        "from": 6.2,
-        "to": 6.9,
-        "text": "1"
-      }
-    ]
+    "status": "pending",
+    "src": null,
+    "sha256": null,
+    "bytes": 0,
+    "still": null,
+    "stillSha256": null,
+    "duration": 0,
+    "cues": []
   },
   {
     "mode": "group",
-    "status": "approved",
-    "src": "/studio/camera-v1/group-3b9b31296455.mp4",
-    "sha256": "3b9b31296455f600c3b8d433627e8355ff699f38ca53bc285ecdb99514a5209b",
-    "bytes": 2114711,
-    "still": "/studio/camera-v1/group.webp",
-    "stillSha256": "bf7145fcaeaf926203be26d6891863773ba3dde171ca8111ee2eee0a1f50c6f0",
-    "duration": 8,
-    "cues": [
-      {
-        "kind": "count",
-        "from": 4.8,
-        "to": 5.5,
-        "text": "3"
-      },
-      {
-        "kind": "count",
-        "from": 5.6,
-        "to": 6.3,
-        "text": "2"
-      },
-      {
-        "kind": "count",
-        "from": 6.4,
-        "to": 7.1,
-        "text": "1"
-      }
-    ]
+    "status": "pending",
+    "src": null,
+    "sha256": null,
+    "bytes": 0,
+    "still": null,
+    "stillSha256": null,
+    "duration": 0,
+    "cues": []
   }
 ]
