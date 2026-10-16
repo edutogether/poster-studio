@@ -1,11 +1,13 @@
 /** @vitest-environment jsdom */
 /* 부스 코드 보관(src/boothCode.ts): 화면 입력칸 없이 주소 뒤 #booth=<코드>로만 받고,
    받은 뒤에는 주소창에서 지운다. 형식이 틀린 값은 보관하지 않는다. */
-import { test, expect, beforeEach } from "vitest";
+import { test, expect, beforeEach, vi } from "vitest";
 import { captureBoothCode, boothCodeHeaders } from "../src/boothCode";
 
 const KEY = "poster-studio-booth-code";
 beforeEach(() => {
+  history.replaceState(null, "", "/#booth=");
+  captureBoothCode();   // 보관값과 메모리 값을 함께 비운다
   localStorage.clear();
   history.replaceState(null, "", "/");
 });
@@ -93,4 +95,14 @@ test("보관은 형식이 맞을 때만, 거절 판정은 403 + code booth_code�
   expect(isBoothCodeRefusal(403, { error: "행사 부스에서만 만들 수 있어요." })).toBe(false);
   expect(isBoothCodeRefusal(400, { code: "booth_code" })).toBe(false);
   expect(isBoothCodeRefusal(403, null)).toBe(false);
+});
+
+test("저장소가 막힌 브라우저: 보관은 실패(false)해도 이 화면 동안은 헤더에 싣는다 — 입력 창이 되풀이되지 않게(10/17 감사)", () => {
+  const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+  const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+  expect(saveBoothCode("INKY-2026-ABCD")).toBe(false);
+  expect(boothCodeHeaders()).toEqual({ "x-booth-code": "INKY-2026-ABCD" });
+  set.mockRestore(); get.mockRestore();
+  open("/#booth=");   // 비우면 메모리 값도 지운다
+  expect(boothCodeHeaders()).toEqual({});
 });

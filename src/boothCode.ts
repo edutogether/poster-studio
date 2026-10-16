@@ -5,6 +5,9 @@
 const KEY = "poster-studio-booth-code";
 const FORMAT = /^[A-Za-z0-9-]{4,64}$/;
 const HASH = /^#booth=(.*)$/;
+// 저장소가 막힌 브라우저(사이트 데이터 차단 정책 등)용 — 이 문서가 열려 있는 동안만 기억한다(2026-10-17 종합감사 발견:
+// 저장이 안 되면 확인은 «맞음»인데 다시 보낸 요청이 또 거절돼 입력 창이 끝없이 되풀이됐다).
+let memoryCode: string | null = null;
 
 export function captureBoothCode(loc: Location = window.location, hist: History = window.history) {
   const match = HASH.exec(loc.hash);
@@ -12,19 +15,17 @@ export function captureBoothCode(loc: Location = window.location, hist: History 
   let code: string | null = null;
   try { code = decodeURIComponent(match[1]).trim(); } catch { /* 깨진 값은 무시한다(보관된 코드도 그대로 둔다) */ }
   try {
-    if (code === "") localStorage.removeItem(KEY);
-    else if (code && FORMAT.test(code)) localStorage.setItem(KEY, code);
+    if (code === "") { memoryCode = null; localStorage.removeItem(KEY); }
+    else if (code && FORMAT.test(code)) { memoryCode = code; localStorage.setItem(KEY, code); }
   } catch { /* 저장소가 막힌 브라우저는 코드 없이 동작한다 */ }
   hist.replaceState(hist.state, "", loc.pathname + loc.search);
 }
 
 export function boothCodeHeaders(): Record<string, string> {
-  try {
-    const code = localStorage.getItem(KEY);
-    return code && FORMAT.test(code) ? { "x-booth-code": code } : {};
-  } catch {
-    return {};
-  }
+  let code: string | null = null;
+  try { code = localStorage.getItem(KEY); } catch { /* 저장소가 막힌 브라우저 — 아래 메모리 값을 쓴다 */ }
+  code = code ?? memoryCode;
+  return code && FORMAT.test(code) ? { "x-booth-code": code } : {};
 }
 
 /* 부스 코드 입력 창(2026-10-16) — 생성 요청이 «부스 코드» 거절(403, code: "booth_code")을 받으면 화면이 입력 창을 연다.
@@ -34,8 +35,10 @@ export function isBoothCodeRefusal(status: number, body: unknown): boolean {
   return status === 403 && typeof body === "object" && body !== null && (body as { code?: unknown }).code === "booth_code";
 }
 
+/** 맞는 코드를 보관한다. 저장소에 못 쓰면(false) 이 문서가 열려 있는 동안만 메모리로 기억한다 — 다시 열면 다시 넣어야 한다. */
 export function saveBoothCode(code: string): boolean {
   if (!FORMAT.test(code)) return false;
+  memoryCode = code;
   try { localStorage.setItem(KEY, code); return true; } catch { return false; }
 }
 
