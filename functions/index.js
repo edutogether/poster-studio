@@ -550,7 +550,7 @@ async function dailyBudgetCap(req, res, next) {
   try {
     const { allowed } = await checkCounter('dailyBudgetBuckets', kstDateKey(), DAILY_BUDGET_MAX);
     if (!allowed) {
-      return denyWithCleanup(req, res, 429, '오늘의 생성 한도에 도달했습니다. 운영팀에 문의해 주세요.');
+      return denyWithCleanup(req, res, 429, '오늘의 생성 한도에 도달했습니다. 운영팀에 문의해 주세요.', 'budget');
     }
     next();
   } catch (err) {
@@ -560,7 +560,7 @@ async function dailyBudgetCap(req, res, next) {
 }
 
 function requirePhoto(req, res, next) {
-  if (!req.file) return res.status(400).json({ error: '사진 파일이 없습니다. 먼저 촬영해 주세요.' });
+  if (!req.file) return res.status(400).json({ error: '사진 파일이 없습니다. 먼저 촬영해 주세요.', code: 'no_photo' });
   next();
 }
 
@@ -573,9 +573,10 @@ function requirePhoto(req, res, next) {
    실제 위반이고, (b) Cloud Run의 /tmp는 메모리(512MiB)를 쓰므로 429가 쏟아지는
    바로 그 순간(=한도가 작동하는 순간)에 사진 12MB×N이 메모리에 쌓여 인스턴스가
    죽을 수 있는 가용성 문제이기도 하다. 모든 거부 경로를 이 함수 하나로 통일한다. */
-async function denyWithCleanup(req, res, status, message) {
+// code는 화면이 실패 종류를 문구가 아니라 표시로 가르게 하는 값이다(2026-10-16, src/generateFailure.ts).
+async function denyWithCleanup(req, res, status, message, code) {
   if (req.file) await fs.promises.unlink(req.file.path).catch(() => {});
-  return res.status(status).json({ error: message });
+  return res.status(status).json({ error: message, code });
 }
 
 async function rateLimit(req, res, next) {
@@ -583,14 +584,14 @@ async function rateLimit(req, res, next) {
   try {
     const { allowed } = await checkCounter('rateLimitBuckets', String(bucket), RATE_LIMIT_MAX);
     if (!allowed) {
-      return denyWithCleanup(req, res, 429, '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.');
+      return denyWithCleanup(req, res, 429, '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.', 'busy_global');
     }
     next();
   } catch (err) {
     // Firestore 장애로 부스 전체가 멈추면 안 되므로 통과시키되, 인스턴스별 대체 한도 안에서만.
     console.error('[rateLimit] 카운터 오류 — 인스턴스 대체 한도로 처리:', err?.message || err);
     if (!fallbackAllowed()) {
-      return denyWithCleanup(req, res, 429, '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.');
+      return denyWithCleanup(req, res, 429, '지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요.', 'busy_global');
     }
     next();
   }
@@ -602,7 +603,7 @@ async function ipRateLimit(req, res, next) {
   try {
     const { allowed } = await checkCounter('ipRateLimitBuckets', `${bucket}:${ipKey(ip)}`, IP_RATE_LIMIT_MAX);
     if (!allowed) {
-      return denyWithCleanup(req, res, 429, '이 네트워크에서 요청이 너무 많이 몰렸습니다. 잠시 후 다시 시도해 주세요.');
+      return denyWithCleanup(req, res, 429, '이 네트워크에서 요청이 너무 많이 몰렸습니다. 잠시 후 다시 시도해 주세요.', 'busy_network');
     }
     next();
   } catch (err) {
@@ -635,7 +636,7 @@ function makeGenerateWindowGate(windows, now = () => Date.now()) {
     if (!windows.length) return next();
     const t = now();
     if (windows.some((w) => t >= w.start && t < w.end)) return next();
-    return res.status(403).json({ error: '지금은 포스터 생성 운영 시간이 아닙니다. 운영 시간에 다시 시도해 주세요.' });
+    return res.status(403).json({ error: '지금은 포스터 생성 운영 시간이 아닙니다. 운영 시간에 다시 시도해 주세요.', code: 'closed' });
   };
 }
 const generateWindowGate = makeGenerateWindowGate(
@@ -652,7 +653,7 @@ function checkBoothToken(req, res, next) {
   const expected = Buffer.from(BOOTH_TOKEN.value() || '');
   const provided = Buffer.from(req.headers['x-booth-token'] || '');
   const ok = expected.length > 0 && expected.length === provided.length && crypto.timingSafeEqual(expected, provided);
-  if (!ok) return res.status(401).json({ error: '인증되지 않은 요청입니다.' });
+  if (!ok) return res.status(401).json({ error: '인증되지 않은 요청입니다.', code: 'token' });
   next();
 }
 
@@ -702,7 +703,7 @@ async function checkPhotoGenerationLimit(req, res, next) {
       // 7차 감사(2026-09-02)에서 다른 한도 미들웨어에도 같은 누락이 있는 게 확인돼
       // denyWithCleanup 하나로 통일했다 — await 없이 콜백 unlink만 쓰면 응답이 먼저 나가
       // 삭제 완료 전에 호출부가 확인하려 할 때 타이밍에 따라 실패한다(CI에서 실제로 발견).
-      return denyWithCleanup(req, res, 429, '이 사진으로는 생성 횟수를 모두 사용했어요. 다시 촬영해 주세요.');
+      return denyWithCleanup(req, res, 429, '이 사진으로는 생성 횟수를 모두 사용했어요. 다시 촬영해 주세요.', 'photo_limit');
     }
     next();
   } catch (err) {
@@ -718,21 +719,22 @@ function mapGenerateError(err) {
   const status = err?.status || err?.response?.status;
   const raw = String(err?.message || '');
   if (status === 429)
-    return { status: 429, message: '지금 요청이 몰려 잠시 대기가 필요합니다. 10~20초 후 다시 시도해 주세요.' };
+    return { status: 429, code: 'openai_busy', message: '지금 요청이 몰려 잠시 대기가 필요합니다. 10~20초 후 다시 시도해 주세요.' };
   if (/billing|quota|hard limit/i.test(raw))
-    return { status: 500, message: 'OpenAI 크레딧 잔액이 부족합니다. platform.openai.com에서 크레딧을 충전해 주세요.' };
+    return { status: 500, code: 'credit', message: 'OpenAI 크레딧 잔액이 부족합니다. platform.openai.com에서 크레딧을 충전해 주세요.' };
   if (status === 401 || /api key|incorrect key/i.test(raw))
-    return { status: 500, message: 'API 키가 올바르지 않습니다. Firebase 시크릿(OPENAI_API_KEY)을 확인해 주세요.' };
+    return { status: 500, code: 'key', message: 'API 키가 올바르지 않습니다. Firebase 시크릿(OPENAI_API_KEY)을 확인해 주세요.' };
   if (/moderation|safety|content policy/i.test(raw))
     return {
       status: 400,
+      code: 'safety',
       message: '입력한 제목·문구 또는 사진이 안전 기준에 걸렸어요. 문구를 바꾸거나 다시 촬영해 주세요.'
     };
   if (/timed? ?out|abort/i.test(raw))
-    return { status: 504, message: '생성 시간이 너무 오래 걸려 중단했습니다. 잠시 후 다시 시도해 주세요.' };
+    return { status: 504, code: 'timeout', message: '생성 시간이 너무 오래 걸려 중단했습니다. 잠시 후 다시 시도해 주세요.' };
   if (/fetch failed|network|ECONN|ENOTFOUND|EAI_AGAIN/i.test(raw))
-    return { status: 502, message: '인터넷 연결이 불안정합니다. 와이파이 연결을 확인하고 다시 시도해 주세요.' };
-  return { status: 500, message: 'AI 이미지 생성 중 알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' };
+    return { status: 502, code: 'upstream', message: '인터넷 연결이 불안정합니다. 와이파이 연결을 확인하고 다시 시도해 주세요.' };
+  return { status: 500, code: 'unknown', message: 'AI 이미지 생성 중 알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' };
 }
 
 app.post(
@@ -775,8 +777,8 @@ async function generateHandler(req, res) {
     result = { status: 200, body: { images, meta: { genre, mode, seconds: Number(sec) } } };
   } catch (err) {
     console.error('[generate]', err?.status || '', err?.message || err);
-    const { status, message } = mapGenerateError(err);
-    result = { status, body: { error: message } };
+    const { status, message, code } = mapGenerateError(err);
+    result = { status, body: { error: message, code } };
   }
   await fs.promises.unlink(req.file.path).catch(() => {});
   res.status(result.status).json(result.body);
@@ -786,9 +788,9 @@ async function generateHandler(req, res) {
 app.use((err, req, res, _next) => {
   console.error('[error]', err?.message || err);
   if (err?.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({ error: '사진 파일이 너무 큽니다(최대 12MB).' });
+    return res.status(413).json({ error: '사진 파일이 너무 큽니다(최대 12MB).', code: 'too_large' });
   }
-  res.status(400).json({ error: err?.message || '요청 처리 중 오류가 발생했습니다.' });
+  res.status(400).json({ error: err?.message || '요청 처리 중 오류가 발생했습니다.', code: 'bad_request' });
 });
 
 // Firebase Hosting(poster-studio.web.app — 2026-09-01부로 GitHub Pages에서 이전)에서만

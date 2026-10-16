@@ -334,6 +334,20 @@ test('mapGenerateError: 알 수 없는 오류는 500 + 원문(raw) 노출 없이
   expect(!message.includes('stack trace') && !message.includes('/var/secret'), '원문이 그대로 노출되면 안 된다: ' + message).toBeTruthy();
 });
 
+// 화면은 실패 종류를 문구가 아니라 code로 가른다(2026-10-16, src/generateFailure.ts) — 종류마다 code가 하나씩 정해져 있어야 한다.
+test('mapGenerateError: 실패 종류마다 화면이 가를 code를 준다', () => {
+  const cases = [
+    [{ status: 429, message: 'Rate limit exceeded' }, 'openai_busy'],
+    [{ message: 'You exceeded your current quota, billing details required' }, 'credit'],
+    [{ status: 401, message: 'Incorrect API key provided' }, 'key'],
+    [{ message: 'Your request was rejected by our content moderation system' }, 'safety'],
+    [{ message: 'Request timed out' }, 'timeout'],
+    [{ message: 'fetch failed: ENOTFOUND api.openai.com' }, 'upstream'],
+    [{ message: 'something else' }, 'unknown']
+  ];
+  for (const [err, code] of cases) expect(mapGenerateError(err).code, JSON.stringify(err)).toBe(code);
+});
+
 // ── /generate 레이트리밋(실제 OpenAI 호출 전에 막히는 경로만 검증) ────
 // 플랫폼처럼 본문을 다 읽어 req.rawBody로 넘기되, 플랫폼의 HTTP 요청 한도(32MiB)까지만 받는다.
 // 시험 중에만 잠깐 뜨는 서버라도 이 컴퓨터(127.0.0.1)에서만 연다.
@@ -494,6 +508,7 @@ test(`checkPhotoGenerationLimit: 같은 사진으로 ${PHOTO_GENERATION_LIMIT}�
   const last = results[PHOTO_GENERATION_LIMIT];
   expect(last.blocked, `${PHOTO_GENERATION_LIMIT + 1}번째는 막혀야 한다`).toBe(true);
   expect(last.code).toBe(429);
+  expect(last.body.code, "화면이 «다시 촬영»을 고르는 표시").toBe("photo_limit");
 });
 
 test('checkPhotoGenerationLimit: 한도 초과로 막힌 요청의 임시파일은 직접 정리된다(고아 파일 방지)', async () => {
