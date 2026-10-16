@@ -58,6 +58,7 @@ export interface StudioViewProps {
   onGenerate: Action;
   onPrint: Action;
   onNewPerson: Action;
+  onHome: Action;
   stopCamera: Action;
 }
 
@@ -216,7 +217,7 @@ export default function StudioView(p: StudioViewProps) {
       </a>
       <header className="app-header">
         <div className="header-inner">
-          <div className="brand">
+          <button type="button" className="brand header-home" onClick={p.onHome} aria-label="CGV · 인천광역시교육청 — 처음으로" title="처음부터 다시 시작">
             <span className="cgv-symbol">
               <img
                 src="/studio/cgv-app-logo.jpg"
@@ -236,7 +237,7 @@ export default function StudioView(p: StudioViewProps) {
                 height="53"
               />
             </span>
-          </div>
+          </button>
           <nav aria-label="포스터 만들기 진행 단계">
             <ol className="stepper">
               {["영화 준비", "사진 촬영", "포스터 선택"].map((label, i) => (
@@ -256,7 +257,7 @@ export default function StudioView(p: StudioViewProps) {
             </ol>
           </nav>
           <div className="header-tools">
-            <div className="festival-brand">
+            <button type="button" className="festival-brand header-home" onClick={p.onHome} aria-label="InKY Film Festival — 처음으로" title="처음부터 다시 시작">
               <span className="festival-symbol">
                 <img
                   src="/studio/inky-logo.png"
@@ -268,7 +269,7 @@ export default function StudioView(p: StudioViewProps) {
               <span>
                 InKY <strong>Film Festival</strong>
               </span>
-            </div>
+            </button>
             <a
               className="privacy-link"
               href="privacy.html"

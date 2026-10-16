@@ -19,6 +19,7 @@ import StudioView from "./studio/StudioView.js";
 import { SCENE_MS } from "./studio/GenerationWait.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
+import { restartAtHome } from "./restartHome.js";
 
 /* 한 장의 사진으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만 허용한다
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
@@ -567,6 +568,16 @@ export default function PosterStudio() {
     setPhase("idle");
     onReset();
   };
+  /* 헤더의 두 로고를 누르면 처음으로(2026-10-03 Bumm님 요청 — 10/16 결정 8로 master에 옮김). 카메라를 끄고
+     촬영 사진·인쇄용 화면을 버린 뒤 문서를 새로 연다(앱 상태를 남김없이 버리는 가장 확실한 방법). */
+  const onHome = () => {
+    stopCamera();
+    capturedBlobRef.current = null;
+    if (snapshotURLRef.current) URL.revokeObjectURL(snapshotURLRef.current);
+    snapshotURLRef.current = null;
+    $("printArea")?.remove();
+    restartAtHome();
+  };
   return (
     <StudioView
       mode={mode}
@@ -604,6 +615,7 @@ export default function PosterStudio() {
       onGenerate={sampleMode ? onSample : onGenerate}
       onPrint={onPrint}
       onNewPerson={onNewPerson}
+      onHome={onHome}
       stopCamera={stopCamera}
     />
   );

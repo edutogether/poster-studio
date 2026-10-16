@@ -14,7 +14,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import PosterStudio from './PosterStudio.js';
 import { captureBoothCode } from './boothCode.js';
+import { finishHomeRestart } from './restartHome.js';
 
+finishHomeRestart();
 captureBoothCode();
 const container = document.querySelector('main.app');
 if (container) {
