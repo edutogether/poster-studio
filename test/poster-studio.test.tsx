@@ -252,7 +252,7 @@ describe('세 단계 화면 연결', () => {
   test('권한 응답을 기다리다 돌아간 경우 늦게 도착한 카메라도 끈다', async () => {
     let resolveCamera!: (stream: MediaStream) => void;
     const stop = vi.fn();
-    navigator.mediaDevices.getUserMedia = vi.fn(() => new Promise(resolve => { resolveCamera = resolve; }));
+    navigator.mediaDevices.getUserMedia = vi.fn(() => new Promise<MediaStream>(resolve => { resolveCamera = resolve; }));
     const view = await act(async () => renderApp());
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await act(async () => { el<HTMLButtonElement>('startBtn').click(); el<HTMLButtonElement>('startBtn').click(); });
@@ -394,13 +394,13 @@ describe('세 단계 화면 연결', () => {
     vi.useFakeTimers();   // 연결 확인 간격(5초)을 가짜 시계로 지나가게 한다
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); await vi.advanceTimersByTimeAsync(0); });
     expect(view.getByRole('alertdialog').textContent).toContain('인터넷 연결이 끊겼어요');
-    expect(view.getByRole<HTMLButtonElement>('button', { name: '다시 만들기' }).disabled).toBe(true);
+    expect((view.getByRole('button', { name: '다시 만들기' }) as HTMLButtonElement).disabled).toBe(true);
     await act(async () => { await vi.advanceTimersByTimeAsync(5_100); });
-    expect(view.getByRole<HTMLButtonElement>('button', { name: '다시 만들기' }).disabled, '아직 끊겨 있으면 그대로 꺼져 있다').toBe(true);
+    expect((view.getByRole('button', { name: '다시 만들기' }) as HTMLButtonElement).disabled, '아직 끊겨 있으면 그대로 꺼져 있다').toBe(true);
     up = true;
     await act(async () => { await vi.advanceTimersByTimeAsync(5_100); });
     vi.useRealTimers();
-    expect(view.getByRole<HTMLButtonElement>('button', { name: '다시 만들기' }).disabled).toBe(false);
+    expect((view.getByRole('button', { name: '다시 만들기' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   test('부스 코드로 거절되면 입력 창을 열고, 맞는 코드를 넣으면 보관한 뒤 같은 사진으로 다시 만든다', async () => {
