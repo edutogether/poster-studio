@@ -670,3 +670,29 @@ lines in Korean by the matching person: 1.8-2.6s A: "야, 빨리 와~". 3.6-4.4s
    단체는 10/12 Bumm님 최종 배정으로 v4를 그린다(위 «단체 v4 계획»). C 카디건 하트 색과 동선을 Bumm님이 확인하신 뒤 그린다.
 2. 통과하면 검토 페이지 «촬영 화면 영상» 칸과 이 문서의 «영상 만들기 전 확인»을 Bumm님께 보여 드린다.
 3. 허락을 받은 편만 Seedance로 만든다(소리를 켜므로 생성 직전에 비용을 다시 확인).
+
+## 앱 연결(2026-10-16 — 영상이 오면 넣기만 하면 되게 미리 만듦, 생성 0)
+
+- 부품은 `src/studio/CameraExample.tsx`이고, 목록은 `src/studio/camera-videos.json`이다.
+  - 목록의 `status`가 `approved`가 아니면 지금 정지 그림 그대로다(화면 변화 0, 영상 요청 0).
+- 순서:
+  1. 생성 원본(1920×1080, 소리 있음)을 받는다.
+  2. `scripts/media/camera-shot-post.py`로 셔터 소리·플래시·멈춘 장면을 넣는다.
+  3. `scripts/media/encode-camera-videos.py <목록.json> public/studio/camera-v1`로 웹용 mp4와 첫 프레임 정지 그림을 굽는다.
+     표준 출력의 JSON을 `src/studio/camera-videos.json`에 넣는다.
+  4. `npm run build` 뒤 `node scripts/verify/camera-example-probe.mjs http://localhost:5500/ <결과 폴더> --mode solo|group`으로 세 크기(2560×1600·1366×768·휴대폰 3배)를 재고 캡처한다.
+- 숫자 3·2·1과 대사 말풍선은 굽기 목록의 `cues`에 영상 초로 적는다. 시각은 영상을 보고 맞춘다.
+  - 숫자: `{"kind":"count","from":7.0,"to":7.5,"text":"3"}`
+  - 말풍선: `{"kind":"say","from":2.0,"to":3.5,"text":"…","x":40,"y":12}` — x·y는 영상 화면 %, 말풍선 아래 가운데가 그 점에 닿는다.
+  - 말풍선은 위 20% 띠·가운데 62% 안이어야 한다. 굽기 도구와 테스트(`test/camera-example.test.tsx`)가 같은 규칙으로 막는다.
+- 재생:
+  - 정지 그림(첫 프레임)을 먼저 보이고, 실제로 재생되면 영상으로 넘긴다. 소리를 켜고 한 번 재생한 뒤 마지막 프레임에 머문다.
+  - 2단계로 오는 단추를 누른 뒤라 소리 있는 자동 재생이 허용된다(헤드리스 크롬에서 «진짜 클릭»으로 확인).
+  - 거부되면 소리 없이, 그것도 안 되면 정지 그림이다. 4초 정체·오류면 정지 그림, «움직임 줄이기»면 영상을 받지 않는다.
+  - 카메라를 켜거나 2단계를 떠나면 영상 요소를 내려 소리가 멈춘다.
+- 대사 글자는 JSON에 있다. 그래서 글자 집합 추출기(`scripts/fonts/charset.mjs`)가 `src` 아래 JSON 문자열도 훑는다.
+  대사를 넣으면 `npm run fonts:charset` → `python scripts/fonts/subset.py` → `npm run fonts:check` 순서로 서브셋을 다시 만든다.
+- 확인한 것(10/16, 합성 영상 1920×1080 10초를 잠깐 넣어서): 세 크기 18개 표본이 모두 통과했다.
+  - 무대가 칸을 가운데로 덮고, 영상이 뒤집히지 않고, 소리가 켜져 있다.
+  - 숫자·말풍선이 제때 칸 위 20% 띠 안에 나오고, 끝나면 사라진다.
+  - 확인 뒤 합성 영상과 목록은 되돌렸다.

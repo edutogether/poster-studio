@@ -4,6 +4,8 @@ import type { Poster } from "../state.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "../defaults.js";
 import MemberField from "./MemberField.js";
 import GenerationWait from "./GenerationWait.js";
+import CameraExample from "./CameraExample.js";
+import { approvedCameraVideo } from "./cameraVideo.js";
 
 const choices = [
   ["sf", "SF", "reference-sf.jpg"],
@@ -184,6 +186,7 @@ export default function StudioView(p: StudioViewProps) {
     .filter(Boolean)
     .join(" · ");
   const groupExample = !preview.group && !members;
+  const exampleVideo = approvedCameraVideo(p.mode);
   const cast =
     p.mode === "solo"
       ? preview.name || DEFAULT_PERSON_NAME
@@ -489,8 +492,8 @@ export default function StudioView(p: StudioViewProps) {
       <section id="cameraView" className="camera-layout" hidden={step !== 2} aria-label="사진 촬영">
         <div className="camera-surface">
           <div className="camera-top"><span>카메라 미리 보기</span><span>{p.phase === "shot" ? "촬영 완료" : p.phase === "live" ? "카메라 연결됨" : "촬영 구도 예시"}</span></div>
-          <div className="camera-large cameraBox">
-            <img className={`camera-example${p.mode === "group" ? " camera-example-group" : ""}`} src={p.mode === "group" ? "/studio/camera-group.webp" : "/studio/camera-student.webp"} alt={p.mode === "group" ? "모두의 얼굴이 보이게 모여 웃는 단체 촬영 구도 예시" : "얼굴과 어깨를 담고 편하게 웃는 촬영 구도 예시"} hidden={p.phase !== "idle"} />
+          <div className={`camera-large cameraBox${exampleVideo ? " has-example-video" : ""}`}>
+            <CameraExample mode={p.mode} video={exampleVideo} hidden={p.phase !== "idle"} offstage={step !== 2} />
             <video id="video" ref={p.videoRef} autoPlay playsInline muted className={p.phase === "live" ? "" : "hidden"}/>
             <img id="snapshot" src={p.snapshotURL ?? undefined} className={p.phase === "shot" ? "" : "hidden"} alt="촬영 사진"/>
             <div id="camHint" className={p.phase === "idle" ? "camHint camera-example-caption" : "camHint hidden"}>

@@ -1,0 +1,24 @@
+[
+  {
+    "mode": "solo",
+    "status": "pending",
+    "src": null,
+    "sha256": null,
+    "bytes": 0,
+    "still": null,
+    "stillSha256": null,
+    "duration": 0,
+    "cues": []
+  },
+  {
+    "mode": "group",
+    "status": "pending",
+    "src": null,
+    "sha256": null,
+    "bytes": 0,
+    "still": null,
+    "stillSha256": null,
+    "duration": 0,
+    "cues": []
+  }
+]

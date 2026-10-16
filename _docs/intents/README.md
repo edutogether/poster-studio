@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-10-16 | [camera-example-video](2026-10-16-camera-example-video/intent.md) | 2 | in-progress | 촬영 화면 «자리 잡는 영상» 2편을 앱에 연결하는 자리 — 승인 전에는 화면 변화 0, 숫자·말풍선은 앱이 얹음 |
 | 2026-10-15 | [local-deploy-github-suspended](2026-10-15-local-deploy-github-suspended/intent.md) | 2 | done | GitHub 정지 중 master를 이 컴퓨터에서 Firebase로 직접 배포 — LF 사본·CI와 같은 검사·되돌림 채널 |
 | 2026-10-14 | [ai-retry-instead-of-fallback](2026-10-14-ai-retry-instead-of-fallback/intent.md) | 2 | draft | AI가 실패하면 «AI 없이 계속하기»(빈 그라데이션) 대신 «다시 만들기» — 결정 5개 Bumm님 확인 대기 |
 | 2026-10-14 | [poster-select-redesign](2026-10-14-poster-select-redesign/intent.md) | 2 | in-progress | 포스터 고르기 화면 단추·여백 다듬기와 포스터 7종을 세계 수준 레퍼런스로 다시 설계 |
