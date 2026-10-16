@@ -44,7 +44,19 @@ const SAMPLE_WAIT_SCENES = 5;
    개발 서버(npm run dev)에서 주소 끝에 ?preview=posters를 붙이면 샘플 원화로 8개 디자인을 채운 3단계가 곧장 열린다.
    import.meta.env.DEV는 운영 빌드에서 false로 바뀌어 이 갈래가 번들에서 통째로 빠진다 — 라이브에는 노출되지 않는다.
    서버 확인(/health)·카메라·AI 요청은 하나도 하지 않는다. */
-const POSTER_PREVIEW = import.meta.env.DEV && new URLSearchParams(location.search).get("preview") === "posters";
+const PREVIEW = import.meta.env.DEV ? new URLSearchParams(location.search).get("preview") : null;
+const POSTER_PREVIEW = PREVIEW === "posters";
+
+/* 안내 창 미리보기(2026-10-16, 개발 서버 전용 — 위와 같은 이유로 운영 빌드에서 빠진다). 실패를 일으키지 않고 창을 본다.
+   ?preview=failure-retry|wait|fix|retake|offline|staff · ?preview=booth-code. 서버 확인(/health)도 하지 않는다. */
+const PREVIEW_FAILURES: Record<string, Parameters<typeof classifyGenerateFailure>[0]> = {
+  "failure-retry": { status: 504, body: { code: "timeout", error: "생성 시간이 너무 오래 걸려 중단했습니다. 잠시 후 다시 시도해 주세요." } },
+  "failure-wait": { status: 429, body: { code: "busy_global", error: "지금 여러 부스에서 요청이 몰려 있습니다. 잠시 후 다시 시도해 주세요." } },
+  "failure-fix": { status: 400, body: { code: "safety", error: "입력한 제목·문구 또는 사진이 안전 기준에 걸렸어요. 문구를 바꾸거나 다시 촬영해 주세요." } },
+  "failure-retake": { status: 429, body: { code: "photo_limit", error: "이 사진으로는 생성 횟수를 모두 사용했어요. 다시 촬영해 주세요." } },
+  "failure-offline": { network: true },
+  "failure-staff": { status: 429, body: { code: "budget", error: "오늘의 생성 한도에 도달했습니다. 운영팀에 문의해 주세요." } },
+};
 
 /** 화면 입력값 수집. 비어 있는 영화 제목은 준비 화면과 같은 예시로 채운다. */
 export function getMeta(mode: string): Meta {
@@ -170,7 +182,7 @@ export default function PosterStudio() {
      되는 것보다, 페이지를 여는 순간 문제를 아는 게 낫다. 실패해도 촬영은 막지
      않는다(연결이 잠깐 불안정했을 수도 있으므로 fail-open). */
   useEffect(() => {
-    if (sampleMode || POSTER_PREVIEW) return;
+    if (sampleMode || PREVIEW) return;
     let alive = true;
     (async () => {
       try {
@@ -506,6 +518,8 @@ export default function PosterStudio() {
   };
 
   useEffect(() => {
+    if (PREVIEW && PREVIEW_FAILURES[PREVIEW]) { showFailure(classifyGenerateFailure(PREVIEW_FAILURES[PREVIEW])); return; }
+    if (PREVIEW === "booth-code") { setBoothOpen(true); return; }
     if (!POSTER_PREVIEW) return;
     let alive = true;
     (async () => {
