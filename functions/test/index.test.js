@@ -58,7 +58,8 @@ import {
   makeBoothCodeGate,
   _setBoothCodeForTesting,
   markRequestStart,
-  generateHandler
+  generateHandler,
+  _setReleaseImplForTesting
 } from '../index.js';
 
 // 레이트리밋/사진별 생성한도는 이제 Firestore 트랜잭션으로 전역 강제되는데(5차
@@ -1456,6 +1457,31 @@ test('generateHandler: 시간 예산은 요청이 들어온 순간부터 잰다(
     expect(calls).toBe(0);
     expect(r.code).toBe(504);
   } finally {
+    _setClientForTesting(null);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+});
+
+// 생성 실패 뒤 사진 카운터 되돌리기가 실패하거나(Firestore 오류) 멈춰도(5초 제한) 응답은 원래 실패 그대로 나가고
+// 임시 사진은 지운다 — 되돌리기는 아이의 기회 하나를 아끼는 것일 뿐이다(2026-10-17 종합감사: 이 .catch를 지워도 시험이 통과했다).
+test.each([
+  ['오류', () => Promise.reject(new Error('Firestore 오류'))],
+  ['멈춤', () => new Promise(() => {})]
+])('generateHandler: 사진 카운터 되돌리기가 %s이어도 원래 실패로 응답하고 임시 사진을 지운다', async (_label, release) => {
+  const calls = [];
+  _setReleaseImplForTesting((collectionName, docId) => { calls.push(`${collectionName}/${docId}`); return release(); });
+  _setCounterTimeoutForTesting(50);
+  _setClientForTesting(makeFakeClient(async () => { const e = new Error('Request timed out'); e.status = 400; throw e; }));
+  const filePath = makeTempFile(Buffer.from([0xff, 0xd8, 0xff, ...crypto.randomBytes(8)]));
+  try {
+    const r = await runHandler({ file: { path: filePath, mimetype: 'image/jpeg' }, body: {}, startedAt: Date.now(), photoCounted: 'h-release' });
+    expect(calls, '되돌리기를 실제로 시도했다').toEqual(['photoGenCounts/h-release']);
+    expect(r.code).toBe(504);
+    expect(r.body.code).toBe('timeout');
+    expect(r.fileExistedAtResponse, '응답 순간에 사진이 이미 지워져 있어야 한다').toBe(false);
+  } finally {
+    _setReleaseImplForTesting(null);
+    _setCounterTimeoutForTesting(null);
     _setClientForTesting(null);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
