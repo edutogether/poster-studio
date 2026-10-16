@@ -17,6 +17,7 @@ import { render, act, cleanup, fireEvent, waitFor } from '@testing-library/react
 import { TEMPLATES } from '../src/templates.js';
 import PosterStudio, { getMeta } from '../src/PosterStudio.js';
 import * as homeRestart from '../src/restartHome.js';
+import * as posterModule from '../src/poster.js';
 import { captureBoothCode } from '../src/boothCode.js';
 
 /** 보관한 부스 코드와 메모리 값을 함께 지운다(#booth= 로 여는 것과 같다 — 저장소가 막힌 브라우저용 메모리 값이 다음 테스트로 새지 않게). */
@@ -213,6 +214,18 @@ describe('세 단계 화면 연결', () => {
     expect(options[0].getAttribute('aria-pressed')).toBe('false');
   });
 
+  test('단계를 넘기면 맨 위에서 시작하고 제목 초점은 화면을 끌어내리지 않는다(휴대폰, 10/17)', async () => {
+    await act(async () => { renderApp(); });
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    vi.stubGlobal('scrollY', 900);   // 1단계 맨 아래에서 «다음»을 누른 휴대폰
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(document.activeElement).toBe(el('cameraView').querySelector('h1'));
+    expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+  });
+
   test('완료 알림은 2.2초 뒤 닫히고 새 생성 때만 다시 표시한다', async () => {
     await act(async () => { renderApp(); });
     await shoot();
@@ -251,7 +264,7 @@ describe('세 단계 화면 연결', () => {
   test('권한 응답을 기다리다 돌아간 경우 늦게 도착한 카메라도 끈다', async () => {
     let resolveCamera!: (stream: MediaStream) => void;
     const stop = vi.fn();
-    navigator.mediaDevices.getUserMedia = vi.fn(() => new Promise(resolve => { resolveCamera = resolve; }));
+    navigator.mediaDevices.getUserMedia = vi.fn(() => new Promise<MediaStream>(resolve => { resolveCamera = resolve; }));
     const view = await act(async () => renderApp());
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await act(async () => { el<HTMLButtonElement>('startBtn').click(); el<HTMLButtonElement>('startBtn').click(); });
@@ -316,6 +329,60 @@ describe('세 단계 화면 연결', () => {
     expect(view.getByRole('button', { name: '다시 찍기' })).toBeTruthy();
   });
 
+  test('성공하면 실패 횟수를 0으로 되돌린다 — 실패 2번 → 성공 → 실패 1번은 «다시 만들기»', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    const answers = ['fail', 'fail', 'ok', 'fail'];
+    installFetch((url) => url.includes('/generate') && answers.shift() === 'fail'
+      ? new Response(JSON.stringify({ error: 'x', code: 'unknown' }), { status: 500 })
+      : okResponse(url));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    expect(el('resultView').hidden).toBe(false);
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(view.getByRole('alertdialog').textContent).not.toContain('여러 번 만들지 못했어요');
+    expect(view.getByRole('button', { name: '다시 만들기' })).toBeTruthy();
+  });
+
+  /* 응답을 받은 뒤의 실패(2026-10-17 종합감사): 서버는 200인데 그림을 쓸 수 없는 경우. 예전엔 «인터넷 연결이 끊겼어요»가 뜨거나
+     아무 안내 없이 끝났고 원인이 어디에도 남지 않았다. 이미 과금된 생성이라 진행자가 콘솔에서 원인을 볼 수 있어야 한다. */
+  test.each([
+    ['본문이 HTML', () => new Response('<html>점검 중</html>', { status: 200, headers: { 'content-type': 'text/html' } })],
+    ['그림 0장', () => new Response(JSON.stringify({ images: [] }), { status: 200 })],
+  ])('서버가 200인데 그림이 없으면(%s) 인터넷 끊김이 아니라 «다시 만들기»로 안내하고 원인을 남긴다', async (_label, answer) => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    installFetch((url) => url.includes('/generate') ? answer() : okResponse(url));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(el('resultView').hidden).toBe(true);
+    const dialog = view.getByRole('alertdialog');
+    expect(dialog.textContent).toContain('그림을 다 그리지 못했어요');
+    expect(dialog.textContent).not.toContain('인터넷');
+    expect(view.getByRole('button', { name: '다시 만들기' })).toBeTruthy();
+    expect(error).toHaveBeenCalledWith('[포스터 생성 실패] 응답에 그림이 없음', 200, expect.anything());
+    expect(warn).toHaveBeenCalledWith('[포스터 생성 실패]', '응답에 그림이 없음(응답 200)');
+  });
+
+  test('조판이 실패해도 원인을 남기고 «다시 만들기»로 안내한다(사진 횟수는 쓰지 않는다)', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(posterModule, 'buildPosters').mockRejectedValueOnce(new Error('캔버스 오류'));
+    const f = installFetch((url) => okResponse(url));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(el('resultView').hidden).toBe(true);
+    expect(view.getByRole('alertdialog').textContent).toContain('그림을 다 그리지 못했어요');
+    expect(warn).toHaveBeenCalledWith('[포스터 생성 실패]', '포스터 조판 실패: 캔버스 오류');
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(f.bodies, '조판 실패는 성공으로 세지 않아 성공 두 번이 남는다').toHaveLength(3);
+    expect(el('resultView').hidden).toBe(false);
+  });
+
   test('안전 기준에 걸리면 «제목 · 문구 고치기»로 1단계에 간다', async () => {
     const view = await act(async () => renderApp());
     await shoot();
@@ -339,13 +406,13 @@ describe('세 단계 화면 연결', () => {
     vi.useFakeTimers();   // 연결 확인 간격(5초)을 가짜 시계로 지나가게 한다
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); await vi.advanceTimersByTimeAsync(0); });
     expect(view.getByRole('alertdialog').textContent).toContain('인터넷 연결이 끊겼어요');
-    expect(view.getByRole<HTMLButtonElement>('button', { name: '다시 만들기' }).disabled).toBe(true);
+    expect((view.getByRole('button', { name: '다시 만들기' }) as HTMLButtonElement).disabled).toBe(true);
     await act(async () => { await vi.advanceTimersByTimeAsync(5_100); });
-    expect(view.getByRole<HTMLButtonElement>('button', { name: '다시 만들기' }).disabled, '아직 끊겨 있으면 그대로 꺼져 있다').toBe(true);
+    expect((view.getByRole('button', { name: '다시 만들기' }) as HTMLButtonElement).disabled, '아직 끊겨 있으면 그대로 꺼져 있다').toBe(true);
     up = true;
     await act(async () => { await vi.advanceTimersByTimeAsync(5_100); });
     vi.useRealTimers();
-    expect(view.getByRole<HTMLButtonElement>('button', { name: '다시 만들기' }).disabled).toBe(false);
+    expect((view.getByRole('button', { name: '다시 만들기' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   test('부스 코드로 거절되면 입력 창을 열고, 맞는 코드를 넣으면 보관한 뒤 같은 사진으로 다시 만든다', async () => {

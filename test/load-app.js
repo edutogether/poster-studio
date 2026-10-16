@@ -14,8 +14,8 @@
 import { vi } from 'vitest';
 
 /* measureText가 "글자 수 × 현재 폰트 크기 비례"로 너비를 흉내낸다 — 실제 폰트와
-   글자 폭은 다르지만, "폰트를 줄이면 measureText 너비도 줄어든다"는 setFitFont/
-   layoutTitle이 의존하는 유일한 성질만 정확히 재현하면 그 알고리즘을 검증하기에
+   글자 폭은 다르지만, "폰트를 줄이면 measureText 너비도 줄어든다"는 setFitFont가
+   의존하는 유일한 성질만 정확히 재현하면 그 알고리즘을 검증하기에
    충분하다. */
 class FakeCtx {
   constructor() {

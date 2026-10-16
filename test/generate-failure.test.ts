@@ -21,21 +21,34 @@ test("서버가 주는 code는 전부 이 함수가 안다(모르는 code가 «�
   for (const code of FAILURE_CODES) expect(classifyGenerateFailure({ status: 500, body: { code, error: "원인" } }).staffNote, code).toBe("원인");
 });
 
-test("종류별 행동", () => {
-  const act = (code: string, status = 500) => classifyGenerateFailure({ status, body: { code, error: "x" } });
-  expect(act("timeout", 504).action).toBe("retry");
-  expect(act("upstream", 502).action).toBe("retry");
-  expect(act("unknown").action).toBe("retry");
-  expect(act("openai_busy", 429)).toMatchObject({ action: "wait", waitSeconds: 15 });
-  expect(act("busy_global", 429)).toMatchObject({ action: "wait", waitSeconds: 20 });
-  expect(act("busy_network", 429)).toMatchObject({ action: "wait", waitSeconds: 20 });
-  expect(act("safety", 400).action).toBe("fix");
-  expect(act("photo_limit", 429).action).toBe("retake");
-  expect(act("budget", 429).action).toBe("staff");
-  expect(act("credit").action).toBe("staff");
-  expect(act("key").action).toBe("staff");
-  expect(act("closed", 403).action).toBe("staff");
-  expect(act("booth_code", 403).action).toBe("booth");
+/* code 17종 전부 → 단추(2026-10-17 종합감사: token · too_large · no_photo · bad_request의 종류를 바꿔도 통과했다).
+   표의 열쇠가 FAILURE_CODES와 꼭 같아야 해서 code를 새로 만들면 여기도 채워야 한다(타입과 첫 단언이 함께 막는다). */
+const EXPECTED: Record<(typeof FAILURE_CODES)[number], { action: string; waitSeconds?: number }> = {
+  booth_code: { action: "booth" },
+  busy_global: { action: "wait", waitSeconds: 20 },
+  busy_network: { action: "wait", waitSeconds: 20 },
+  openai_busy: { action: "wait", waitSeconds: 15 },
+  timeout: { action: "retry" },
+  upstream: { action: "retry" },
+  unknown: { action: "retry" },
+  bad_request: { action: "retry" },
+  safety: { action: "fix" },
+  photo_limit: { action: "retake" },
+  too_large: { action: "retake" },
+  no_photo: { action: "retake" },
+  budget: { action: "staff" },
+  credit: { action: "staff" },
+  key: { action: "staff" },
+  token: { action: "staff" },
+  closed: { action: "staff" },
+};
+
+test("종류별 행동 — 서버 code 17종 전부", () => {
+  expect(Object.keys(EXPECTED).sort()).toEqual([...FAILURE_CODES].sort());
+  for (const [code, want] of Object.entries(EXPECTED)) {
+    const got = classifyGenerateFailure({ status: 500, body: { code, error: "x" } });
+    expect({ action: got.action, waitSeconds: got.waitSeconds }, code).toEqual({ waitSeconds: undefined, ...want });
+  }
 });
 
 test("화면 시간 제한·인터넷 끊김·code 없는 응답", () => {
@@ -44,4 +57,6 @@ test("화면 시간 제한·인터넷 끊김·code 없는 응답", () => {
   expect(classifyGenerateFailure({ status: 429, body: {} })).toMatchObject({ action: "wait", waitSeconds: 20 });
   expect(classifyGenerateFailure({ status: 403, body: "<html>" }).action).toBe("staff");
   expect(classifyGenerateFailure({ status: 500, body: null })).toMatchObject({ action: "retry", staffNote: "응답 500" });
+  // 서버는 성공(200)이라 했는데 그림을 쓸 수 없다 — 인터넷 끊김이 아니라 다시 만들기, 원인은 진행자용으로(2026-10-17)
+  expect(classifyGenerateFailure({ malformed: "응답에 그림이 없음(응답 200)" })).toEqual({ action: "retry", message: "그림을 다 그리지 못했어요.", staffNote: "응답에 그림이 없음(응답 200)" });
 });
