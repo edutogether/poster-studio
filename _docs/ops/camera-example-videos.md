@@ -673,6 +673,13 @@ lines in Korean by the matching person: 1.8-2.6s A: "야, 빨리 와~". 3.6-4.4s
 
 ## 앱 연결(2026-10-16 — 영상이 오면 넣기만 하면 되게 미리 만듦, 생성 0)
 
+> **지금 들어 있는 것은 임시 «슬라이드식 영상»이다(2026-10-17, Bumm님 «진짜 영상은 일요일에 내가 만든다 · 힉스필드 절대 금지»).**
+> 새로 그린 키프레임(개인 `cam-v10/final/ps-cam10-K0~K4.png`, 단체 `cam-g10/final/ps-cam10g-K0~K4.png`)을 컷으로 넘긴다:
+> K0 0~0.6 · K1 0.6~1.5 · K2 1.5~3.0 · K3 3.0~4.5 · K4 4.5~8.0초, 7.45초 찰칵(직접 합성 소리)·플래시, 7.6초부터 멈춤, 숫자 3·2·1은 위 8초 동선 그대로.
+> 다시 만들기: `python scripts/media/camera-slideshow.py <목록.json> <컷.mp4>` → `camera-shot-post.py <컷.mp4> <뒤처리.mp4>` → 아래 3·4번.
+> 목록 예: `{"crop_top": 48, "frames": [{"image": "…/ps-cam10-K0.png", "seconds": 0.6}, …]}`(개인 48 · 단체 32 — 머리 위가 잘리지 않게, 모든 장에 같은 값).
+> 진짜 영상이 오면 같은 순서(뒤처리 → 굽기 → 목록 → 확인)로 바꿔 넣는다.
+
 - 부품은 `src/studio/CameraExample.tsx`이고, 목록은 `src/studio/camera-videos.json`이다.
   - 목록의 `status`가 `approved`가 아니면 지금 정지 그림 그대로다(화면 변화 0, 영상 요청 0).
 - 순서:

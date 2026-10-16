@@ -13,6 +13,7 @@
 import fs from 'node:fs/promises';
 import fss from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 
@@ -29,7 +30,9 @@ const approved = entry.status === 'approved';
 await fs.mkdir(out, { recursive: true });
 
 const port = 9547;
-const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${out}/chrome`, '--window-size=1920,1080', 'about:blank'], { windowsHide: true, stdio: 'ignore' });
+// 크롬 프로필은 임시 폴더에 둔다 — 결과 폴더(.cache 안)에 두면 확장 코드 수천 줄을 린트가 훑는다(2026-10-17).
+const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'probe-chrome-'));
+const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--window-size=1920,1080', 'about:blank'], { windowsHide: true, stdio: 'ignore' });
 const delay = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
 let socket, seq = 0;
 const pending = new Map();
@@ -51,8 +54,9 @@ try {
       for (const fy of [0.5, 0.3, 0.7]) for (const fx of [0.5, 0.8, 0.95, 0.2, 0.05]) {
         const x = r.x + r.width * fx, y = r.y + r.height * fy; if (el.contains(document.elementFromPoint(x, y))) return { x, y };
       }
-      return null; })()`);
-    assert.ok(b, `${selector}가 화면에서 모두 가려져 누를 수 없다`);
+      const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return { covered: top ? top.outerHTML.slice(0, 200) : '(화면 밖 — 단추 자리 ' + [r.x, r.y, r.width, r.height].map(Math.round) + ', 창 ' + innerWidth + '×' + innerHeight + ')' }; })()`);
+    assert.ok(b && !b.covered, `${selector}가 화면에서 모두 가려져 누를 수 없다 — 가운데에 있는 것: ${b && b.covered}`);
     for (const type of ['mousePressed', 'mouseReleased']) await call('Input.dispatchMouseEvent', { type, x: b.x, y: b.y, button: 'left', clickCount: 1 });
   };
   const capture = async (name) => { const s = await call('Page.captureScreenshot', { format: 'png' }); await fs.writeFile(path.join(out, `${name}.png`), Buffer.from(s.data, 'base64')); };
@@ -60,6 +64,8 @@ try {
   await call('Network.setBlockedURLs', { urls: ['https://*'] });
   await call('Page.enable');
   await call('Page.addScriptToEvaluateOnNewDocument', { source: "if(navigator.mediaDevices){navigator.mediaDevices.getUserMedia=async()=>{throw Error('확인 중 카메라 차단');};}window.print=()=>{throw Error('확인 중 인쇄 차단');};" });
+  // https를 막아 생기는 «AI 서버 연결» 알림은 이 확인과 상관없고 캡처를 가린다 — 이 확인에서만 숨긴다(알림 자리는 status-toast-probe.mjs가 따로 본다).
+  await call('Page.addScriptToEvaluateOnNewDocument', { source: "document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.studio-status{display:none!important}';document.head.append(s);});" });
   for (const { w, h, dpr } of sizes) {
     const tag = `${w}x${h}${dpr > 1 ? '@' + dpr : ''}`;
     await call('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: dpr, mobile: w < 768 });
@@ -69,6 +75,8 @@ try {
     await evaluate(`document.querySelector('[data-mode="${mode}"]').click()`);
     await delay(200);
     await click('#prepareNextBtn');
+    await delay(300);
+    await evaluate("document.querySelector('.cameraBox').scrollIntoView({ block: 'center' }) || true");   // 휴대폰은 스크롤된다 — 촬영 칸이 화면 가운데 오게 해서 캡처한다
     const measure = () => evaluate(`(() => {
       const box = document.querySelector('.cameraBox'), stage = box.querySelector('.camera-example-stage'), v = stage && stage.querySelector('video');
       const r = (el) => { const b = el.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height }; };
@@ -92,7 +100,11 @@ try {
     for (const s of samples) {
       for (let i = 0; i < 400; i++) { const m = await measure(); if (!m.video || m.video.ended || m.video.t >= s.at) break; await delay(25); }
       const m = await measure();
+      // 큰 화면 캡처는 1초 가까이 걸려 그동안 영상이 흐르면 다음 표본을 신호가 지난 뒤에 잰다(2560에서 실제로 6.13초에 잼, 10/17).
+      // 그래서 캡처하는 동안만 멈췄다가 다시 재생한다 — 신호는 영상 시각으로 정해지므로 멈춰도 같은 장면이 찍힌다.
+      const paused = !s.end && await evaluate(`(() => { const v = document.querySelector('.camera-example-video'); if (!v || v.ended) return false; v.pause(); return true; })()`);
       await capture(`${tag}-${s.end ? 'end' : s.at.toFixed(2)}`);
+      if (paused) await evaluate(`document.querySelector('.camera-example-video').play().then(() => true, () => false)`);
       report.push({ size: tag, at: s.at, ...m });
       const { box, stage, video } = m;
       if (!video) { fails.push(`${tag} ${s.at}: 영상 요소가 없다(정지 그림으로 돌아감)`); continue; }
@@ -120,5 +132,5 @@ try {
   await fs.writeFile(path.join(out, 'report.json'), JSON.stringify(report, null, 1));
   console.log(JSON.stringify({ mode, approved, 표본: report.length, 실패: fails }, null, 1));
   await call('Browser.close');
-} finally { socket?.close(); chrome.kill(); }
+} finally { socket?.close(); chrome.kill(); await delay(500); await fs.rm(profile, { recursive: true, force: true }).catch(() => {}); }
 process.exit(fails.length ? 1 : 0);

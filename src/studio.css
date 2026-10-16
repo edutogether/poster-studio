@@ -149,13 +149,15 @@ main.app {
 .result-secondary .quiet-button {
   font-size: 14px;
 }
+/* 알림은 단추 없는 그림 칸 위에 띄운다(2026-10-17). 가운데 아래였을 때 «AI 서버 연결» 알림이 1366×768 2단계 «이전»을 통째로,
+   1단계 주 단추 일부를 덮었다(scripts/verify/status-toast-probe.mjs). PC는 왼쪽 40%가 단추 없는 그림 칸(1단계 극장 그림 · 2단계 촬영 칸
+   왼쪽 · 3단계 고른 포스터)이라 왼쪽 아래에 그 폭 안으로 묶는다. */
 .studio-status {
   position: fixed;
-  left: 50%;
+  left: 16px;
   bottom: 18px;
-  transform: translateX(-50%);
   width: max-content;
-  max-width: calc(100vw - 32px);
+  max-width: calc(40vw - 32px);
   z-index: 30;
   background: #222;
   color: #fff;
@@ -266,8 +268,12 @@ main.app {
     width: 100%;
     height: auto;
   }
+  /* 휴대폰은 한 줄로 쌓여 스크롤되므로 단추 없는 빈자리가 따로 없다 — 늘 보이게 화면 아래에 고정하고, 알림은 누르는 것이 없으니
+     손가락 입력을 아래로 흘려보내 덮인 입력칸·단추도 그대로 눌리게 한다(문서 위에 붙이면 3단계처럼 스크롤된 화면에서 안 보였다). */
   .studio-status {
     bottom: 8px;
+    max-width: calc(100vw - 32px);
+    pointer-events: none;
     font-size: 14px;
   }
   .result-actions {

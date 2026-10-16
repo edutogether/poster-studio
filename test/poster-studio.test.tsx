@@ -155,7 +155,8 @@ describe('세 단계 화면 연결', () => {
     const f = installFetch();
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
-    const example = document.querySelector<HTMLImageElement>('.camera-example')!;
+    // 예시 칸: 승인된 영상이 없으면 정지 그림(.camera-example), 있으면 영상 무대(.camera-example-stage) — 어느 쪽이든 같은 규칙
+    const example = document.querySelector<HTMLElement>('.camera-example-stage, .camera-example')!;
     expect(example.hidden).toBe(false);
     expect(el('snapshot').getAttribute('src')).toBe(null);
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
@@ -435,7 +436,7 @@ describe('카메라', () => {
     expect(cam.stopped).toEqual(['video']);
     expect(el<HTMLVideoElement>('video').srcObject).toBe(null);
     expect(document.querySelector('.camera-live-indicator')).toBe(null);
-    expect(document.querySelector<HTMLImageElement>('.camera-example')!.hidden).toBe(false);
+    expect(document.querySelector<HTMLElement>('.camera-example-stage, .camera-example')!.hidden).toBe(false);
     await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
     expect(document.querySelector('.camera-ready-notice')).not.toBe(null);
     await act(async () => { view.getByRole('button', { name: '이전 단계로' }).click(); });
