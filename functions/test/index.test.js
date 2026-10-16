@@ -1660,3 +1660,53 @@ test('POST /generate: 같은 사진이 실패하면 카운터가 되돌아가 �
     useSharedCounterImpl();
   }
 });
+
+// ── 실패 code 고정(2026-10-17 종합감사) ───────────────────────────────────
+// 서버가 주는 code는 화면이 다음 단추(다시 만들기 · 기다리기 · 다시 찍기 · 선생님)를 고르는 값이다(src/generateFailure.ts).
+// 미들웨어마다 실제로 그 code를 내는지 고정한다 — 전에는 'budget'을 'zzz'로 바꿔도 시험 94개가 모두 통과했다.
+// 화면 쪽 표(code → 단추)는 test/generate-failure.test.ts가 전부 고정한다.
+function runMiddleware(mw, req = {}) {
+  return new Promise((resolve, reject) => {
+    const res = {
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(body) {
+        resolve({ status: this.statusCode, code: body.code });
+      }
+    };
+    Promise.resolve(mw({ headers: {}, ...req }, res, () => resolve('next'))).catch(reject);
+  });
+}
+
+test('실패 code: 한도 · 토큰 · 시간창 · 사진 없음 · 업로드 오류가 화면이 아는 code를 낸다', async () => {
+  try {
+    _setCounterImplForTesting(async () => ({ allowed: false, count: 999 }));
+    expect(await runMiddleware(rateLimit)).toEqual({ status: 429, code: 'busy_global' });
+    expect(await runMiddleware(ipRateLimit, { headers: { 'x-forwarded-for': '203.0.113.7' } })).toEqual({ status: 429, code: 'busy_network' });
+    expect(await runMiddleware(dailyBudgetCap)).toEqual({ status: 429, code: 'budget' });
+
+    // 카운터를 못 쓸 때 대체 한도를 넘긴 경우도 같은 code다
+    _setCounterImplForTesting(async () => {
+      throw new Error('시뮬레이션: Firestore 연결 실패');
+    });
+    _resetFallbackForTesting();
+    for (let i = 0; i < FALLBACK_LIMIT_PER_INSTANCE; i++) expect(await runMiddleware(rateLimit)).toBe('next');
+    expect(await runMiddleware(rateLimit)).toEqual({ status: 429, code: 'busy_global' });
+
+    expect(await runMiddleware(checkBoothToken, { headers: { 'x-booth-token': 'wrong-token' } })).toEqual({ status: 401, code: 'token' });
+    const past = makeGenerateWindowGate(parseGenerateWindows('2020-01-01T09:00~2020-01-01T18:00'));
+    expect(await runMiddleware(past)).toEqual({ status: 403, code: 'closed' });
+    expect(await runMiddleware(requirePhoto)).toEqual({ status: 400, code: 'no_photo' });
+
+    const router = app.router || app._router;
+    const errorHandler = router.stack.find((l) => l.handle.length === 4).handle;
+    const viaErrorHandler = (err) => runMiddleware((req, res, next) => errorHandler(err, req, res, next));
+    expect(await viaErrorHandler(Object.assign(new Error('File too large'), { code: 'LIMIT_FILE_SIZE' }))).toEqual({ status: 413, code: 'too_large' });
+    expect(await viaErrorHandler(new Error('요청 형식이 올바르지 않습니다.'))).toEqual({ status: 400, code: 'bad_request' });
+  } finally {
+    _resetFallbackForTesting();
+    useSharedCounterImpl();
+  }
+});
