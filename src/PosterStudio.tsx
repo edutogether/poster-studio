@@ -578,6 +578,14 @@ export default function PosterStudio() {
     $("printArea")?.remove();
     restartAtHome();
   };
+  /* 부스 코드 창 «취소»(2026-10-17 Bumm님: «취소를 누르면 페이지를 꺼 버림» — 행사 기기가 아니면 쓰지 않게). 먼저 탭을 닫아 본다.
+     사람이 연 탭은 브라우저가 스크립트로 닫지 못하게 막는다(Chrome·Edge 기본 — 막혀도 오류 없이 그대로 남는다). 그래서 0.3초 뒤에도
+     남아 있으면 가장 가까운 동작으로 처음 화면에 되돌린다(onHome: 카메라 끔 · 사진 · 인쇄 화면 폐기 후 새 문서). */
+  const onBoothCodeCancel = () => {
+    setBoothOpen(false);
+    window.close();
+    window.setTimeout(() => { if (!window.closed) onHome(); }, 300);
+  };
   return (
     <StudioView
       mode={mode}
@@ -594,7 +602,7 @@ export default function PosterStudio() {
       onRetakeFailure={onRetakeFailure}
       onDismissFailure={onDismissFailure}
       onBoothCodeSaved={onBoothCodeSaved}
-      onBoothCodeClose={() => setBoothOpen(false)}
+      onBoothCodeClose={onBoothCodeCancel}
       verifyBooth={verifyBooth}
       status={status}
       completionId={completionId}

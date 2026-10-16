@@ -367,6 +367,34 @@ describe('세 단계 화면 연결', () => {
     localStorage.clear();
   });
 
+  test('부스 코드 창 «취소»는 탭을 닫아 보고, 브라우저가 막으면 처음 화면으로 되돌린다(10/17 Bumm님)', async () => {
+    const restart = vi.spyOn(homeRestart, 'restartAtHome').mockImplementation(() => {});
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    const view = await act(async () => renderApp());
+    await shoot();
+    vi.stubGlobal('fetch', vi.fn(async (input: any) => String(input).includes('/generate')
+      ? new Response(JSON.stringify({ error: '행사 부스에서만 만들 수 있어요.', code: 'booth_code' }), { status: 403 })
+      : new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    const wait = () => act(async () => { await new Promise(r => setTimeout(r, 350)); });   // 앱은 0.3초 뒤 탭이 남았는지 본다
+    // ① 브라우저가 닫기를 막음(사람이 연 탭) — 창이 그대로라 처음 화면으로
+    await act(async () => { view.getByRole('button', { name: '취소' }).click(); });
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(view.queryByLabelText('부스 코드')).toBeNull();
+    expect(restart).not.toHaveBeenCalled();
+    await wait();
+    expect(restart).toHaveBeenCalledTimes(1);
+    // ② 닫기가 받아들여짐 — 처음 화면으로 되돌리지 않는다(①의 처음으로가 사진을 버렸으므로 다시 찍는다)
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    close.mockImplementation(() => { Object.defineProperty(window, 'closed', { value: true, configurable: true }); });
+    await act(async () => { view.getByRole('button', { name: '취소' }).click(); });
+    await wait();
+    expect(close).toHaveBeenCalledTimes(2);
+    expect(restart).toHaveBeenCalledTimes(1);
+    Object.defineProperty(window, 'closed', { value: false, configurable: true });
+  });
+
   test('다음 주인공은 이전 사진·입력·결과를 모두 지운다', async () => {
     const view = await act(async () => renderApp());
     await shoot();
