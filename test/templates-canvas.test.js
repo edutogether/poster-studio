@@ -20,14 +20,11 @@ GlobalFonts.registerFromPath(path.join(__dirname, '..', 'public', 'fonts', 'Pret
 GlobalFonts.registerFromPath(path.join(__dirname, '..', 'public', 'fonts', 'Pretendard-Black.woff2'), 'PretendardFull');
 
 const app = await loadApp({ createRealCanvas: createCanvas });
-// 포스터 판정에서 라이브 디자인으로 바꿔 끼운 동안(src/templates.ts KEEP_LIVE) 다시 고치는 새 디자인도 함께 검사한다 —
-// 앱이 쓰는 TEMPLATES만 돌면 고치는 중인 디자인이 검사에서 통째로 빠진다(2026-10-19).
-const DESIGNS = [...app.TEMPLATES, ...app.NEW_TEMPLATES.filter((t) => !app.TEMPLATES.includes(t)).map((t) => ({ label: `${t.label}(다시 판정 중)`, render: t.render }))];
 const { W, H } = app;
 const GENRE_STUB = { font: "'Pretendard'", accent: '#ffd23f', taglines: ['테스트 문구'] };
 
 function makeFakeArt() {
-  // coverDraw()가 drawImage()에 넘길 수 있는 실제 이미지가 필요 — 작은 캔버스를
+  // 그림 그리기(drawImage)에 넘길 수 있는 실제 이미지가 필요 — 작은 캔버스를
   // 색으로 채워 "촬영된 인물 사진" 자리에 대신 넣는다.
   const art = createCanvas(400, 600);
   const actx = art.getContext('2d');
@@ -58,7 +55,7 @@ function countNonBackgroundPixels(canvas) {
   return diff;
 }
 
-for (const template of DESIGNS) {
+for (const template of app.TEMPLATES) {
   test(`TEMPLATES[${template.label}].render(): 실제 캔버스에 빈 화면이 아닌 픽셀을 그린다`, () => {
     const canvas = createCanvas(W, H);
     const ctx = canvas.getContext('2d');
@@ -78,7 +75,7 @@ for (const template of DESIGNS) {
 
 test('8종 디자인의 긴 제목·단체명·출연진도 글자끼리 겹치거나 인화지 밖으로 나가지 않는다', () => {
   const cases=[META,{...META,title:'우주를 건너 별들의 바다로 떠나는 아주 길고 긴 모험 이야기',mode:'group',groupName:'햇살초등학교 영화 동아리',members:'김인키 · 이영화 · 박감독 · 최배우 · 정연출 · 한제작'}, {...META,title:'가'.repeat(30)}];
-  for(const template of DESIGNS)for(const meta of cases){
+  for(const template of app.TEMPLATES)for(const meta of cases){
     const canvas=createCanvas(W,H),ctx=canvas.getContext('2d'),texts=[];
     const draw=ctx.fillText.bind(ctx);
     ctx.fillText=(text,x,y,maxWidth)=>{

@@ -9,7 +9,6 @@
  *  - 요소는 고정 좌표가 아니라 아래에서 위로 쌓는다 — 긴 제목·단체 출연진이 와도 서로 겹치지 않고 간격이 유지된다.
  *  - 바깥 여백은 디자인마다 한 값, 정렬은 디자인마다 한 축(왼쪽 선 또는 가운데 선)만 쓴다.
  *  - 문구는 바꾸지 않는다: 두 로고 · 홍보 문구 · 제목 · 주연/단체·출연 · 영화제명 · 날짜·장소. */
-import { LIVE_TEMPLATES } from './templates-live.js';
 import { FEST, DATE, VENUE, W, H, type Genre } from './constants.js';
 import { state, type Meta } from './state.js';
 import { setLS, roundRect, drawOrgLogo } from './layout.js';
@@ -354,8 +353,7 @@ export function ean13Modules(code: string): boolean[] {
 }
 
 /* ───────────── 8종 ───────────── */
-/** 새 디자인 8종 그대로(판정 전) — 앱은 아래 TEMPLATES를 쓴다. 다시 판정받을 디자인을 그려 볼 때와 판정 시험에서 쓴다. */
-export const NEW_TEMPLATES: Template[] = [
+export const TEMPLATES: Template[] = [
   /* 1. 시네마 — 전면 그림 + 아래로 깊어지는 어둠, 가운데 축. Bumm님이 만족한 방향 그대로, 쌓는 방식만 바꿨다:
         긴 제목이 와도 문구·제목·선·빌링이 겹치지 않고, 빌링은 한 덩어리로 묶인다. 레퍼런스: Beasts of the Southern Wild, 4등. */
   { label: '시네마', render(c, art, m) {
@@ -768,15 +766,3 @@ export const NEW_TEMPLATES: Template[] = [
     brands(c);
   } },
 ];
-
-/* 포스터 판정(Bumm님) — 통과하지 못한 디자인은 지금 라이브 디자인으로 바꿔 끼운다. 이름만 넣는다.
-   4차(10/18): 시네마 · 트립틱 통과. 수정 6종 다시 판정(10/19): 전부 통과 → 8종 모두 새 디자인.
-   목록에 없는 이름을 넣으면 시작할 때 오류로 멈춘다 — 오타가 조용히 넘어가지 않게(test/templates-verdict.test.ts). */
-export const KEEP_LIVE: ReadonlySet<string> = new Set<string>([]);
-export function pickTemplates(fresh: Template[], live: Template[], keep: ReadonlySet<string>): Template[] {
-  for (const name of keep) {
-    if (!fresh.some((t) => t.label === name) || !live.some((t) => t.label === name)) throw new Error(`포스터 판정 이름 "${name}"이 디자인 목록에 없다`);
-  }
-  return fresh.map((t) => (keep.has(t.label) ? live.find((l) => l.label === t.label)! : t));
-}
-export const TEMPLATES: Template[] = pickTemplates(NEW_TEMPLATES, LIVE_TEMPLATES, KEEP_LIVE);

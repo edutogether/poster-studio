@@ -50,11 +50,6 @@ export async function ensureGlyphs(meta: Meta){
 
 /* ───────────────────── 그리기 공통 도구 ───────────────────── */
 export function loadImg(src: string): Promise<HTMLImageElement> { return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
-export function coverDraw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number,y: number,w: number,h: number, alignY=0.5){
-  const s = Math.max(w/img.width, h/img.height);
-  const iw=img.width*s, ih=img.height*s;
-  ctx.drawImage(img, x+(w-iw)/2, y+(h-ih)*alignY, iw, ih);
-}
 export function roundRect(ctx: CanvasRenderingContext2D,x: number,y: number,w: number,h: number,r: number){ ctx.beginPath(); ctx.moveTo(x+r,y);
   ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 let grainTile: HTMLCanvasElement | null = null;

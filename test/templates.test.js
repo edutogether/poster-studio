@@ -11,9 +11,6 @@ import { test, expect } from 'vitest';
 import { loadApp, FakeCtx } from './load-app.js';
 
 const app = await loadApp();
-// 포스터 판정에서 라이브 디자인으로 바꿔 끼운 동안(src/templates.ts KEEP_LIVE) 다시 고치는 새 디자인도 함께 검사한다 —
-// 앱이 쓰는 TEMPLATES만 돌면 고치는 중인 디자인이 검사에서 통째로 빠진다(2026-10-19).
-const DESIGNS = [...app.TEMPLATES, ...app.NEW_TEMPLATES.filter((t) => !app.TEMPLATES.includes(t)).map((t) => ({ label: `${t.label}(다시 판정 중)`, render: t.render }))];
 const FAKE_ART = { width: 1024, height: 1536 };
 
 const GENRE_STUB = { font: "'Black Han Sans'", accent: '#ffd23f', taglines: ['테스트 문구'] };
@@ -46,7 +43,7 @@ const METAS = {
   }
 };
 
-for (const template of DESIGNS) {
+for (const template of app.TEMPLATES) {
   for (const [metaName, meta] of Object.entries(METAS)) {
     test(`TEMPLATES[${template.label}].render(): "${metaName}" 입력에서도 예외 없이 끝난다`, () => {
       const ctx = new FakeCtx();
@@ -65,7 +62,7 @@ test('TEMPLATES: 서로 다른 조판 방식의 8개 디자인이다', () => {
   expect(labels).toEqual(['시네마', '에디토리얼', '컬러 블록', '아치 프레임', '필름스트립', '폴라로이드', '타이포그래피', '트립틱']);
 });
 
-for (const template of DESIGNS) {
+for (const template of app.TEMPLATES) {
   test(`${template.label}: 브랜드는 위 양쪽에, 영화제명은 하단 한 곳에만 조판한다`, () => {
     const ctx = new FakeCtx();
     const texts = [];
