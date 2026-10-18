@@ -82,10 +82,11 @@ test('세트끼리 겹치지 않는다: 컬러 블록 위 면 색끼리 RGB 거�
 
 for (const [key, variant] of combos) {
   const name = `${key}/${variant ? '선명' : '차분'}`;
-  test(`컬러 블록 ${name}: 아래 면 위 제목·크레딧·작은 글, 위 면 위 세로 문구 모두 4.5:1 이상`, () => {
+  test(`컬러 블록 ${name}: 제목은 먹색이 아니고 3:1 이상(큰 글), 크레딧·작은 글·세로 문구는 4.5:1 이상`, () => {
     const k = colorBlockSet(...inputs(key, variant));
     expect([k.key, k.variant]).toEqual([key, variant]);
-    expect(contrast(k.title, k.bottom)).toBeGreaterThanOrEqual(4.5);
+    expect(k.title).not.toEqual([28, 28, 28]);
+    expect(contrast(k.title, k.bottom)).toBeGreaterThanOrEqual(3);
     expect(contrast(k.credit, k.bottom)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(k.soft, k.bottom)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(k.ink, k.top)).toBeGreaterThanOrEqual(4.5);

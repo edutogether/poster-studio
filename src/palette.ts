@@ -109,12 +109,21 @@ const onPlane = (plane: Rgb) => (contrast(plane, DARK_INK) >= contrast(plane, WH
 /** 면 위 작은 글: 같은 쪽 색을 조금 누그러뜨리되 4.5:1은 지킨다. */
 const softOn = (plane: Rgb) => { const base = onPlane(plane); for (let k = 0.3; k >= 0; k -= 0.05) { const c = base.map((v, i) => Math.round(v + (plane[i] - v) * k)) as Rgb; if (contrast(c, plane) >= 4.5) return c; } return base; };
 
+/** 아래 면 위 제목 색. 위 면 색(4.5:1) → 흰색/먹색 중 대비가 큰 쪽. 그 쪽이 먹색이면 먹색 대신(2026-10-18 Bumm님 «로봇 불꽃 · 음악 · SF의
+ *  제목 글자 검정이 별로»): 위 면 색 → 흰색(제목은 64px 넘는 큰 글이라 WCAG 큰 글 기준 3:1) → 위 면 색을 같은 색조로 어둡게 한 것(4.5:1). */
+function titleOn(top: Rgb, bottom: Rgb): Rgb {
+  if (contrast(top, bottom) >= 4.5) return top;
+  const plain = onPlane(bottom);
+  if (plain !== DARK_INK) return plain;
+  if (contrast(top, bottom) >= 3) return top;
+  if (contrast(WHITE, bottom) >= 3) return WHITE;
+  for (let k = 0.9; k > 0; k -= 0.05) { const d = top.map((v) => Math.round(v * k)) as Rgb; if (contrast(d, bottom) >= 4.5) return d; }
+  return plain;
+}
 export function colorBlockSet(c: ArtColors, t: ArtTone) {
   const key = setKey(c, t), set = COLOR_BLOCK_SETS[key], variant = vividOf(c);
   const top = hex(set.top), bottom = hex(set.bottoms[variant]);
-  // 제목은 아래 면 위에 위 면 색으로 — 대비가 모자라면 아래 면에 맞는 먹색/흰색
-  const title = contrast(top, bottom) >= 4.5 ? top : onPlane(bottom);
-  return { key, variant, top, bottom, title, credit: onPlane(bottom), soft: softOn(bottom), ink: onPlane(top) };
+  return { key, variant, top, bottom, title: titleOn(top, bottom), credit: onPlane(bottom), soft: softOn(bottom), ink: onPlane(top) };
 }
 
 /** 아치 세트: 막(아주 깊은 색, 그림이 밝을수록 조금 덜 깊게) · 선·제목 두 가지([차분한 그림 = 은은한 색, 선명한 그림 = 밝은 색]).

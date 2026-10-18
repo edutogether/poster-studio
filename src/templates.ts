@@ -256,6 +256,27 @@ function halation(c: Ctx, art: HTMLImageElement, x: number, y: number, w: number
     c.drawImage(t, x - 12, y - 12, w + 24, h + 24); c.restore();
   } catch { /* 그림을 읽을 수 없으면 번짐 없이 */ }
 }
+/** 옛 필름 색(2026-10-18 Bumm님 필름스트립 «옛날 진짜 필름 색(필름 필터)을 씌워 봄»): 칸 안 화소에 직접 —
+ *  색을 조금 빼고(0.78), 완만한 S자 대비, 중간 밝기를 살짝 따뜻하게, 검정은 갈색으로 들뜨고 흰색은 크림색으로 눌린다(바랜 인화 필름).
+ *  화소를 읽을 수 없는 환경이면 건너뛴다. */
+function filmGrade(c: Ctx, x: number, y: number, w: number, h: number) {
+  if (typeof c.getImageData !== 'function') return;
+  try {
+    const id = c.getImageData(Math.round(x), Math.round(y), Math.round(w), Math.round(h)), d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const r0 = d[i] / 255, g0 = d[i + 1] / 255, b0 = d[i + 2] / 255;
+      const l = 0.2126 * r0 + 0.7152 * g0 + 0.0722 * b0, mid = 4 * l * (1 - l);
+      const tone = (v: number, warm: number, black: number, white: number) => {
+        v = l + (v - l) * 0.78;
+        v += (v * v * (3 - 2 * v) - v) * 0.3;
+        v = Math.min(1, Math.max(0, v + warm * mid));
+        return Math.round(255 * (black + (white - black) * v));
+      };
+      d[i] = tone(r0, 0.035, 0.1, 0.98); d[i + 1] = tone(g0, 0.012, 0.072, 0.95); d[i + 2] = tone(b0, -0.04, 0.05, 0.86);
+    }
+    c.putImageData(id, Math.round(x), Math.round(y));
+  } catch { /* 화소를 읽을 수 없으면 그대로 */ }
+}
 function hairline(c: Ctx, x: number, y: number, w: number, color: string, t = 2) { c.fillStyle = color; c.fillRect(x, Math.round(y), w, t); }
 
 /* ───────────── 로고 두 개(윗줄 크레딧) — 자리·크기는 그대로(테스트로 고정) ───────────── */
@@ -310,13 +331,13 @@ function archPath(c: Ctx, cx: number, spring: number, r: number, bottom: number)
   c.moveTo(cx - r, bottom); c.lineTo(cx - r, spring); c.arc(cx, spring, r, Math.PI, 0); c.lineTo(cx + r, bottom); c.closePath();
 }
 
-/* ISBN 바코드(EAN-13)와 부가기호(EAN-5) — 표준 부호표 그대로 막대를 만든다(에디토리얼 «잡지 표지»의 뒤표지 바코드, 2026-10-17).
-   ean13('979112026114') → 확인 숫자를 붙인 13자리. *Modules는 막대 칸(1 = 검정)을 돌려준다(EAN-13 95칸, EAN-5 48칸). */
+/* ISBN 바코드(EAN-13) — 표준 부호표 그대로 막대를 만든다(에디토리얼 «잡지 표지»의 뒤표지 바코드, 2026-10-17).
+   ean13('979112026114') → 확인 숫자를 붙인 13자리. ean13Modules는 막대 칸(1 = 검정) 95칸을 돌려준다.
+   5자리 부가기호(EAN-5)는 2026-10-18 Bumm님 «바코드가 왜 두 개 ? → 하나로»로 뺐다. */
 const EAN_L = ['0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'];
 const EAN_G = ['0100111', '0110011', '0011011', '0100001', '0011101', '0111001', '0000101', '0010001', '0001001', '0010111'];
 const EAN_R = ['1110010', '1100110', '1101100', '1000010', '1011100', '1001110', '1010000', '1000100', '1001000', '1110100'];
 const EAN13_PARITY = ['LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG', 'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL'];
-const EAN5_PARITY = ['GGLLL', 'GLGLL', 'GLLGL', 'GLLLG', 'LGGLL', 'LLGGL', 'LLLGG', 'LGLGL', 'LGLLG', 'LLGLG'];
 export function ean13(twelve: string) {
   const d = [...twelve].map(Number);
   const sum = d.reduce((s, v, i) => s + v * (i % 2 ? 3 : 1), 0);
@@ -331,15 +352,10 @@ export function ean13Modules(code: string): boolean[] {
   bits += '101';
   return [...bits].map((b) => b === '1');
 }
-export function ean5Modules(code: string): boolean[] {
-  const d = [...code].map(Number), check = (3 * (d[0] + d[2] + d[4]) + 9 * (d[1] + d[3])) % 10, parity = EAN5_PARITY[check];
-  let bits = '01011';
-  d.forEach((v, i) => { if (i) bits += '01'; bits += (parity[i] === 'L' ? EAN_L : EAN_G)[v]; });
-  return [...bits].map((b) => b === '1');
-}
 
 /* ───────────── 8종 ───────────── */
-const NEW_TEMPLATES: Template[] = [
+/** 새 디자인 8종 그대로(판정 전) — 앱은 아래 TEMPLATES를 쓴다. 다시 판정받을 디자인을 그려 볼 때와 판정 시험에서 쓴다. */
+export const NEW_TEMPLATES: Template[] = [
   /* 1. 시네마 — 전면 그림 + 아래로 깊어지는 어둠, 가운데 축. Bumm님이 만족한 방향 그대로, 쌓는 방식만 바꿨다:
         긴 제목이 와도 문구·제목·선·빌링이 겹치지 않고, 빌링은 한 덩어리로 묶인다. 레퍼런스: Beasts of the Southern Wild, 4등. */
   { label: '시네마', render(c, art, m) {
@@ -370,7 +386,7 @@ const NEW_TEMPLATES: Template[] = [
 
   /* 2. 에디토리얼 — «서점 잡지 표지». 시네마가 극장에 붙는 포스터라면 이건 서점에 꽂힌 영화 잡지다:
         흰 테두리 안의 사진, 맨 위 폭 가득한 제호(= 영화 제목)와 발행 줄(날짜 · 장소), 왼쪽 아래 표지 문구(홍보 문구가 가장 크다),
-        오른쪽 아래 실제 규칙대로 부호화한 ISBN 바코드(EAN-13 + 부가기호, 2026-10-17)와 영화제 이름. 주인공은 제호·표지 문구와 겹치지 않는 안전 영역에 둔다(placeArt).
+        오른쪽 아래 실제 규칙대로 부호화한 ISBN 바코드 하나(EAN-13, 2026-10-17 · 10-18)와 영화제 이름. 주인공은 제호·표지 문구와 겹치지 않는 안전 영역에 둔다(placeArt).
         레퍼런스: references-round2.md B — Sight and Sound(제호), Little White Lies(일러스트 초상 표지), 잡지 표지 문법. */
   { label: '에디토리얼', render(c, art, m) {
     const B = 28, frame: Rect = { x: B, y: B, w: W - 2 * B, h: H - 2 * B };
@@ -405,25 +421,22 @@ const NEW_TEMPLATES: Template[] = [
     draw(c, dateB, 62, issueY + 14, '#fff', 'left');
     draw(c, venueB, W - 62, issueY + 14, '#fff', 'right');
     cover.draw(62, coverTop);
-    // 바코드(2026-10-17 Bumm님 «ISBN 바코드 부분만 좀 더 현실적으로»): 실제 책 뒤표지처럼 흰 칸에 ISBN 글자, EAN-13 막대(규칙대로 부호화한
-    // 진짜 막대 — 가운데·양끝 긴 막대, 아래 숫자 13자리)와 오른쪽 5자리 부가기호 막대. 번호는 행사 날짜로 지은 979-11-2026-1114 계열이다.
-    const isbn = ean13('979112026114'), addon = '07680';
-    // 흰 칸 = 여백 12 + 앞 빈 칸 9칸 + EAN-13 95칸 + 사이 9칸 + 부가기호 48칸 + 뒤 빈 칸 6칸 + 여백 12
-    const mod = 2.6, barH = 92, boxW = 2 * 12 + (9 + 95 + 9 + 48 + 6) * mod, boxH = 30 + barH + 34 + 12;
+    // 바코드(2026-10-17 Bumm님 «ISBN 바코드 부분만 좀 더 현실적으로», 10-18 «바코드가 왜 두 개 ? → 하나로»): 실제 책 뒤표지처럼 흰 칸에
+    // ISBN 글자와 EAN-13 막대 하나(규칙대로 부호화한 진짜 막대 — 가운데·양끝 긴 막대, 아래 숫자 13자리). 번호는 행사 날짜로 지은 979-11-2026-1114 계열이다.
+    const isbn = ean13('979112026114');
+    // 흰 칸 = 여백 12 + 앞 빈 칸 9칸 + EAN-13 95칸 + 뒤 빈 칸 7칸 + 여백 12
+    const mod = 3, barH = 100, boxW = 2 * 12 + (9 + 95 + 7) * mod, boxH = 30 + barH + 34 + 12;
     const bx = W - B - 24 - boxW, by = H - B - 24 - boxH;
     c.fillStyle = '#fff'; c.fillRect(bx, by, boxW, boxH);
     c.fillStyle = '#111'; c.textBaseline = 'alphabetic';
     c.font = `500 19px ${SANS}`; setLS(c, 1.2); c.fillText(`ISBN ${isbn.slice(0, 3)}-${isbn.slice(3, 5)}-${isbn.slice(5, 9)}-${isbn.slice(9, 12)}-${isbn[12]}`, bx + 12 + 11 * mod, by + 22);
     const x0 = bx + 12 + 9 * mod, barTop = by + 30;
     ean13Modules(isbn).forEach((on, i) => { if (on) c.fillRect(x0 + i * mod, barTop, mod, barH + (i < 3 || (i >= 45 && i < 50) || i >= 92 ? 12 : 0)); });
-    const a0 = x0 + (95 + 9) * mod;
-    ean5Modules(addon).forEach((on, i) => { if (on) c.fillRect(a0 + i * mod, barTop + 18, mod, barH - 6); });
     c.font = `500 20px ${SANS}`; setLS(c, 0); c.textAlign = 'center';
     const digitY = barTop + barH + 30;
     c.fillText(isbn[0], x0 - 5 * mod, digitY);
     for (let i = 0; i < 6; i++) c.fillText(isbn[1 + i], x0 + (3 + 7 * i + 3.5) * mod, digitY);
     for (let i = 0; i < 6; i++) c.fillText(isbn[7 + i], x0 + (50 + 7 * i + 3.5) * mod, digitY);
-    for (let i = 0; i < 5; i++) c.fillText(addon[i], a0 + (5 + 9 * i + 3.5) * mod, barTop + 12);
     c.textAlign = 'left';
     const fest = fitSmall(c, FEST, { family: SANS, weight: 600, tracking: 0.02 }, 20, 300, 1.2, 15, true);
     draw(c, fest, W - B - 24, by - 12 - fest.height, '#fff', 'right');
@@ -461,8 +474,8 @@ const NEW_TEMPLATES: Template[] = [
   } },
 
   /* 4. 아치 프레임 — 아치 모양 창 안에 주인공이 온전히 들어오게 그림을 놓는다(placeArt — 창 안쪽의 안전 영역에 주인공 상자).
-        바깥은 같은 그림을 흐려 깐 위에 깊은 색 막 — 위쪽은 옅게 덮어 흐린 그림이 은은히 비치고, 글자가 놓이는 아래로 갈수록 짙게(2026-10-17
-        «바깥쪽도 블러로 은은하게 보이게»). 색은 정해 둔 20세트 × 차분/선명 2가지에서 고른다(src/palette.ts, 대비·겹침 수치 고정).
+        바깥은 같은 그림을 흐려 깐 위에 깊은 색 막 — 위쪽은 옅게 덮어 흐린 그림이 보이고, 글자가 놓이는 아래로 갈수록 짙게(2026-10-17
+        «바깥쪽도 블러로 은은하게 보이게», 10-18 «바깥이 거의 안 보임 → 투명도 · 블러를 줄여»). 색은 정해 둔 20세트 × 차분/선명 2가지에서 고른다(src/palette.ts, 대비·겹침 수치 고정).
         레퍼런스: Criterion «The Spirit of the Beehive»(모양이 곧 색 창문), Mucha(세로로 긴 비례). */
   { label: '아치 프레임', render(c, art, m) {
     const k = archSet(artColors(art), artTone(art));
@@ -480,16 +493,23 @@ const NEW_TEMPLATES: Template[] = [
     const tag = fitSmall(c, m.tagline, { family: SERIF, weight: 500, tracking: 0.14 }, 26, 960);
     const tagTop = titleTop - 30 - tag.height;
     const archBottom = tagTop - 56, r = 440, cx = W / 2, spring = 176 + r;
-    // 바깥: 같은 그림을 크게 흐려 깔고(막 아래로 비친다), 창 안에는 주인공을 지키며 선명한 그림.
-    c.save(); if ('filter' in c) c.filter = 'blur(28px)'; photo(c, art, 0, 0, W, H, 0.45); c.restore();
+    // 창 안: 주인공을 지키며 선명한 그림.
     const win: Rect = { x: cx - r, y: spring - r, w: 2 * r, h: archBottom - (spring - r) };
     const safe: Rect = { x: cx - 0.8 * r, y: spring - 0.62 * r, w: 1.6 * r, h: archBottom - 18 - (spring - 0.62 * r) };
     c.save(); c.beginPath(); archPath(c, cx, spring, r, archBottom); c.clip();
     placeArt(c, art, win, safe, subjectBox(m));
     c.restore();
+    // 바깥: 같은 그림을 화면 크기로 흐려 깐다 — 2026-10-18 Bumm님 «바깥 흐림과 색이 너무 세서 바깥이 거의 안 보임»: 흐림 28 → 16px, 막을 옅게.
+    // 가장자리가 흐림에 비어 보이지 않게 화면보다 30px씩 크게 깐다.
+    const pad = 30;
+    c.save(); c.beginPath(); rectPath(c, 0, 0, W, H); archPath(c, cx, spring, r, archBottom); c.clip('evenodd');
+    if ('filter' in c) c.filter = 'blur(16px)';
+    photo(c, art, -pad, -pad, W + 2 * pad, H + 2 * pad, 0.45);
+    c.restore();
+    // 막: 위·옆은 옅게(그림이 보이게), 글자가 놓이는 아래로 갈수록 짙게(글자 대비).
     const vg = c.createLinearGradient(0, 0, 0, H);
-    vg.addColorStop(0, css(k.veil, 0.5)); vg.addColorStop(Math.max(0.05, (archBottom - 120) / H), css(k.veil, 0.58));
-    vg.addColorStop(Math.min(0.98, (tagTop - 10) / H), css(k.veil, 0.86)); vg.addColorStop(1, css(k.veil, 0.92));
+    vg.addColorStop(0, css(k.veil, 0.22)); vg.addColorStop(Math.max(0.05, (archBottom - 120) / H), css(k.veil, 0.3));
+    vg.addColorStop(Math.min(0.98, (tagTop - 10) / H), css(k.veil, 0.84)); vg.addColorStop(1, css(k.veil, 0.92));
     c.save(); c.fillStyle = vg;
     c.beginPath(); rectPath(c, 0, 0, W, H); archPath(c, cx, spring, r, archBottom); c.fill('evenodd'); c.restore();
     c.save(); c.strokeStyle = gold; c.lineWidth = 2; c.beginPath(); archPath(c, cx, spring, r + 14, archBottom + 14); c.stroke(); c.restore();
@@ -543,6 +563,7 @@ const NEW_TEMPLATES: Template[] = [
       photo(c, art, imgX, y0 < 0 ? y1 - frame.h : y0, imgW, frame.h, 0.45);
       c.fillStyle = 'rgba(10,7,4,.55)'; c.fillRect(imgX, y0, imgW, y1 - y0); c.restore();
     }
+    filmGrade(c, imgX, 0, imgW, H);   // 그림 칸과 앞·뒤 칸 끝자락을 한 필름처럼 같은 색으로
     // 구멍: 라이트박스에 비춘 필름처럼 테두리 없는 맑은 흰빛 + 둘레 필름으로 번지는 따뜻한 빛, 모서리 0.5mm 둥글게,
     // 윗변에만 필름 두께 그늘(4차 «베이지 구멍이 싸 보임» — 베이지 바탕·회색 테두리를 걷었다).
     const perf = (x: number, y: number) => {
@@ -580,121 +601,125 @@ const NEW_TEMPLATES: Template[] = [
     brands(c, false, false, imgX + 18, W - imgX - 18);
   } },
 
-  /* 6. 폴라로이드 — 짙은 차콜 펠트 위에 놓인 진짜 즉석 사진 한 장(i-Type 비례: 카드 88×107mm, 사진 79×79mm 정사각, 아래 여백 22mm),
-        2도 기울기, 제목은 아래 흰 여백에 유성 매직 손글씨. 영화제·교육청 로고는 즉석 사진의 위쪽 흰 테두리 안에 둔다(2026-10-17 Bumm님:
-        «로고가 폴라로이드 필름 안 상단에» · «빈 상단과 하단을 써서 사진을 더 크게» · «베이지 바탕은 AI 기본 웹페이지 톤» → 차콜).
-        레퍼런스: Memento(아래 여백이 글 쓰는 자리). */
+  /* 6. 폴라로이드 — 짙은 차콜 펠트 위에 놓인 즉석 사진 한 장, 2도 기울기. 영화제·교육청 로고는 위쪽 흰 테두리 안(2026-10-17 Bumm님).
+        2026-10-18 Bumm님: «위·옆 여백은 지금 정도(살짝 비뚤어진 느낌 좋음)인데 아래가 너무 짧음 → 아래 글씨가 있는 데까지 길게» ·
+        «사진 부분을 더 폴라로이드답게, 더 길고 크게» · «그 글씨는 폴라로이드 종이 위에 인쇄된 것처럼(예: 오른쪽에)».
+        → 카드가 화면 거의 전체(위·옆 테두리는 그대로), 사진은 세로로 긴 칸, 아래 흰 여백 왼쪽에 유성 매직 손글씨 제목,
+        오른쪽에 종이에 찍힌 글(홍보 문구 · 크레딧 · 영화제 · 날짜 · 장소). 사진은 즉석 사진처럼: 검정이 들뜨고 따뜻하게 바랜 색,
+        가장자리가 살짝 어둡고(주변 감광), 종이 테두리 안쪽으로 한 단 들어간 그늘. 레퍼런스: Memento(아래 여백이 글 쓰는 자리). */
   { label: '폴라로이드', render(c, art, m) {
-    const text = '#ece6dc', mute = '#b9b1a5';
+    const ink = '#2a2723', inkSoft = '#5f5a52';
     // 바탕: 짙은 차콜 펠트 — 고른 잡음 결 + 가운데가 살짝 밝은 조명
     c.fillStyle = '#26241f'; c.fillRect(0, 0, W, H);
     grain(c, 0, 0, W, H, 0.22, 'overlay');
     const light = c.createRadialGradient(W / 2, H * 0.42, H * 0.1, W / 2, H * 0.5, H * 0.78);
     light.addColorStop(0, 'rgba(255,240,220,.09)'); light.addColorStop(1, 'rgba(0,0,0,.42)');
     c.fillStyle = light; c.fillRect(0, 0, W, H);
-    const bill = billing(c, m, {
-      main: { family: SANS, weight: 700 }, mainSize: 28, mainColor: text,
-      sub: { family: SANS, weight: 400 }, subSize: 22, subColor: mute,
-      fest: { family: SANS, weight: 600 }, festSize: 23, festColor: mute,
-      when: { family: SANS, weight: 700 }, whenSize: 25, whenColor: text, gapCredits: 26, gapFest: 6,
-    }, 1000);
-    const billTop = 1736 - bill.height;
-    const tag = fitSmall(c, m.tagline, { family: SERIF, weight: 500 }, 28, 1000);
-    const tagTop = billTop - 28 - tag.height;
-    // 카드: 즉석 사진 비례 그대로, 위 로고 자리가 화면 위 끝 가까이까지 오게 크게(폭 최대 1140px — 4차: 아래 빈 자리까지 써서 사진을 더 크게)
-    const cardTop = 52, room = tagTop - 46 - cardTop, mmPx = Math.min(1140 / 88, room / 107);
-    const cardW = 88 * mmPx, cardH = 107 * mmPx, cardX = (W - cardW) / 2, cardBottom = cardTop + cardH;
-    const side = 4.5 * mmPx, topB = 5.5 * mmPx, photoS = 79 * mmPx, capTop = cardTop + topB + photoS, capH = cardBottom - capTop;
-    const title = fitTitle(c, m.title, { family: MARKER, weight: 700, tracking: -0.03 }, { width: photoS - 24, max: 140, oneLineMin: 80, max2: 78, min: 48, maxLines: 2, lh: 1.6, maxHeight: capH - 30 });   // 줄 간격 1.6: 2도 기운 카드에서 두 줄 캡션의 테두리 상자가 겹치지 않게
+    // 카드: 위 52px부터 아래 52px까지. 테두리는 4차와 같은 옆 58 · 위 71px.
+    const cardW = 1140, cardX = (W - cardW) / 2, cardTop = 52, cardBottom = H - 52, cardH = cardBottom - cardTop;
+    const side = 58, topB = 71, photoW = cardW - 2 * side;
+    // 아래 흰 여백: 왼쪽 손글씨 제목 | 오른쪽 인쇄된 글. 줄 간격은 2도 기운 카드에서 줄끼리 테두리 상자가 겹치지 않게 넉넉히(1.5).
+    // 글 크기는 다른 디자인의 빌링과 같은 급(4×6 인화에서 읽히게).
+    const gut = 44, rightW = 420, leftW = photoW - rightW - gut;
+    const printed = column(c, [
+      { text: m.tagline, s: { family: SERIF, weight: 600 }, size: 27, color: ink, lh: 1.5 },
+      { text: creditMain(m), s: { family: SANS, weight: 700 }, size: 24, color: ink, gap: 22, lh: 1.55 },
+      { text: creditSub(m), s: { family: SANS, weight: 400 }, size: 20, color: inkSoft, gap: 6, lh: 1.6 },
+      { text: FEST, s: { family: SANS, weight: 600 }, size: 20, color: inkSoft, gap: 22, oneLine: true },
+      { text: WHEN, s: { family: SANS, weight: 700 }, size: 22, color: ink, gap: 10, oneLine: true },
+    ], rightW);
+    const title = fitTitle(c, m.title, { family: MARKER, weight: 700, tracking: -0.03 }, { width: leftW, max: 132, oneLineMin: 80, max2: 84, min: 44, maxLines: 3, lh: 1.3, maxHeight: 360 });
+    const stripH = Math.max(320, Math.max(title.height, printed.height) + 100);
+    const photoH = cardH - topB - stripH, capTop = cardTop + topB + photoH;
     c.save(); c.translate(W / 2, cardTop + cardH / 2); c.rotate(-0.026); c.translate(-W / 2, -(cardTop + cardH / 2));
+    // 종이: 살짝 누런 흰 종이 + 결 + 위에서 오는 은은한 광택
     c.save(); c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 34; c.shadowOffsetY = 14;
-    c.fillStyle = '#fbfaf6'; c.fillRect(cardX, cardTop, cardW, cardH); c.restore();
-    const sq: Rect = { x: cardX + side, y: cardTop + topB, w: photoS, h: photoS };
-    placeArt(c, art, sq, sq, subjectBox(m));   // 정사각으로 자를 때도 주인공 상자를 지킨다
-    // 즉석 사진 색: 검정이 살짝 들뜨고 따뜻하게.
-    c.save(); c.globalCompositeOperation = 'screen'; c.fillStyle = 'rgba(46,34,24,.16)'; c.fillRect(sq.x, sq.y, photoS, photoS);
-    c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,214,160,.22)'; c.fillRect(sq.x, sq.y, photoS, photoS); c.restore();
+    c.fillStyle = '#f9f7f1'; c.fillRect(cardX, cardTop, cardW, cardH); c.restore();
+    grain(c, cardX, cardTop, cardW, cardH, 0.05);
+    const sheen = c.createLinearGradient(cardX, cardTop, cardX + cardW * 0.6, cardBottom);
+    sheen.addColorStop(0, 'rgba(255,255,255,.35)'); sheen.addColorStop(1, 'rgba(225,218,204,.25)');
+    c.fillStyle = sheen; c.fillRect(cardX, cardTop, cardW, cardH);
+    const ph: Rect = { x: cardX + side, y: cardTop + topB, w: photoW, h: photoH };
+    placeArt(c, art, ph, ph, subjectBox(m));
+    // 즉석 사진 색: 검정이 들뜨고(바램), 따뜻하게, 가장자리가 살짝 어둡다(주변 감광).
+    c.save();
+    c.globalCompositeOperation = 'screen'; c.fillStyle = 'rgba(52,40,30,.2)'; c.fillRect(ph.x, ph.y, ph.w, ph.h);
+    c.globalCompositeOperation = 'soft-light'; c.fillStyle = 'rgba(255,212,156,.28)'; c.fillRect(ph.x, ph.y, ph.w, ph.h);
+    c.globalCompositeOperation = 'multiply';
+    const vig = c.createRadialGradient(ph.x + ph.w / 2, ph.y + ph.h * 0.45, ph.h * 0.3, ph.x + ph.w / 2, ph.y + ph.h / 2, ph.h * 0.78);
+    vig.addColorStop(0, 'rgba(255,255,255,1)'); vig.addColorStop(1, 'rgba(150,132,112,1)');
+    c.fillStyle = vig; c.fillRect(ph.x, ph.y, ph.w, ph.h);
+    c.restore();
+    // 사진이 종이 테두리 안쪽으로 한 단 들어간 그늘(위·왼쪽 안쪽 그늘 + 가는 테)
+    c.save(); c.beginPath(); rectPath(c, ph.x, ph.y, ph.w, ph.h); c.clip();
+    const inTop = c.createLinearGradient(0, ph.y, 0, ph.y + 14); inTop.addColorStop(0, 'rgba(0,0,0,.3)'); inTop.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = inTop; c.fillRect(ph.x, ph.y, ph.w, 14);
+    const inLeft = c.createLinearGradient(ph.x, 0, ph.x + 10, 0); inLeft.addColorStop(0, 'rgba(0,0,0,.22)'); inLeft.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = inLeft; c.fillRect(ph.x, ph.y, 10, ph.h);
+    c.restore();
+    c.strokeStyle = 'rgba(60,50,40,.35)'; c.lineWidth = 1.5; c.strokeRect(ph.x + 0.75, ph.y + 0.75, ph.w - 1.5, ph.h - 1.5);
     // 위쪽 흰 테두리 안의 로고(작게, 사진 폭 양끝에 맞춤)
     const logoH = Math.min(46, topB * 0.62), logoY = cardTop + (topB - logoH) / 2;
     if (state.LOGO_FESTIVAL) {
       const lw = logoH * (93 / 58);
-      c.drawImage(state.LOGO_FESTIVAL, 120, 0, 145, 90, sq.x, logoY, lw, logoH);
+      c.drawImage(state.LOGO_FESTIVAL, 120, 0, 145, 90, ph.x, logoY, lw, logoH);
       c.save(); c.textBaseline = 'middle'; c.fillStyle = '#1d1d1b';
-      const fs = logoH * 0.55; c.font = `800 ${fs}px ${SANS}`; setLS(c, 0); c.fillText('InKY', sq.x + lw + fs * 0.35, logoY + logoH / 2);
-      const iw = c.measureText('InKY').width; c.font = `400 ${fs}px ${SANS}`; c.fillText('Film Festival', sq.x + lw + fs * 0.35 + iw + fs * 0.28, logoY + logoH / 2);
+      const fs = logoH * 0.55; c.font = `800 ${fs}px ${SANS}`; setLS(c, 0); c.fillText('InKY', ph.x + lw + fs * 0.35, logoY + logoH / 2);
+      const iw = c.measureText('InKY').width; c.font = `400 ${fs}px ${SANS}`; c.fillText('Film Festival', ph.x + lw + fs * 0.35 + iw + fs * 0.28, logoY + logoH / 2);
       c.restore();
     }
     const org = state.LOGO_DARK, oh = logoH * (72 / 58), ratio = org?.naturalWidth && org.naturalHeight ? org.naturalWidth / org.naturalHeight : 3.8;
     // 상단 띠(brands)와 같은 비례(영화제 아이콘 58 : 교육청 72, 같은 굵기 보정) — 3차 렌더에서 교육청 로고가 눈에 띄게 작았다.
-    c.save(); c.shadowColor = '#1d1d1b'; c.shadowBlur = 1.2; drawOrgLogo(c, sq.x + photoS - (oh * ratio) / 2, logoY + logoH / 2, oh, 'dark'); c.restore();
-    draw(c, title, sq.x + 12, capTop + (capH - title.height) / 2 - 2, '#1d1b19', 'left');
+    c.save(); c.shadowColor = '#1d1d1b'; c.shadowBlur = 1.2; drawOrgLogo(c, ph.x + photoW - (oh * ratio) / 2, logoY + logoH / 2, oh, 'dark'); c.restore();
+    // 아래 흰 여백: 손글씨 제목(왼쪽, 세로 가운데) | 종이에 찍힌 글(오른쪽 끝 맞춤, 세로 가운데)
+    draw(c, title, ph.x + 8, capTop + (stripH - title.height) / 2 - 4, '#1d1b19', 'left');
+    printed.draw(ph.x + photoW, capTop + (stripH - printed.height) / 2, 'right');
     c.restore();
-    draw(c, tag, W / 2, tagTop, text, 'center');
-    bill.draw(W / 2, 1736, 'center');
   } },
 
-  /* 7. 타이포그래피 — 제목 글자가 곧 그림(2026-10-17 Bumm님: «뭘 말하고 싶은지 모르겠음 · 에디토리얼과 겹치고 · 사진은 작고 ·
-        타이포그래피라기엔 제목이 그냥 명조로 일관됨» → «타이포그래피가 주인공인 포스터로 새로»).
-        제목을 줄마다 화면 폭에 꽉 차게 키운 거대한 활자 더미 — 줄마다 글자 수가 달라 크기도 달라진다(스위스 활판 포스터의
-        «양끝 맞춘 활자 더미»). 줄 나눔은 활자 더미 높이가 목표에 가장 가까운 것을 고른다(한 음절 낱말 뒤에서는 끊지 않는다).
-        가장 큰 줄은 주홍, 나머지는 먹색. 그 아래는 스위스식 격자: 왼쪽 좁은 단(홍보 문구 · 크레딧 · 영화제 정보) | 오른쪽 큰 세로 사진
-        (칸을 덮게 자르고 주인공 상자를 지킴 — 4차 첫 렌더의 «폭 가득 사진 띠»는 세로 그림이라 양옆을 흐린 그림으로 채워 싸 보였다).
-        레퍼런스: Müller-Brockmann «der Film»·콘서트 포스터(활자가 화면을 채움), 슬기와 민(한글 활자 더미). */
+  /* 7. 타이포그래피 — «타이포그래피 잡지 표지»(2026-10-18 Bumm님: «매번 제일 마음에 안 듦 → 진짜 타이포그래피 매거진 느낌으로 새로.
+        기본은 포스터라 사진 위주여야 하고, 지금은 사진이 너무 작음»). 사진이 화면 위쪽 3분의 2 남짓을 가장자리까지 채우고,
+        아주 큰 제목이 사진과 종이의 경계에 걸쳐 놓인다 — 같은 글자가 사진 위에서는 흰색, 종이 위에서는 먹색으로 갈린다
+        (경계에서 글자 색이 바뀌는 잡지 표지 활자 기법 — 줄마다 한 번만 그리고 색만 경계에서 나눈다).
+        종이 쪽은 스위스식 3단 격자: 굵은 먹선과 주홍 표지 아래 홍보 문구 | 크레딧 | 영화제 · 날짜(주홍) · 장소.
+        레퍼런스: Müller-Brockmann 격자, 잡지 «Eye» · «Slanted» 표지(활자와 사진이 한 면을 나눠 씀). */
   { label: '타이포그래피', render(c, art, m) {
-    const ink = '#141414', red = '#E0412B', M = 60, colW = W - 2 * M;
+    const ink = '#141414', red = '#E0412B', M = 56, colW = W - 2 * M;
     c.fillStyle = '#F2F1EC'; c.fillRect(0, 0, W, H); grain(c, 0, 0, W, H, 0.05);
-    brands(c, true, false);
-    const st: Style = { family: DISPLAY, weight: 400, tracking: -0.02 };
-    // 아래 격자: 왼쪽 좁은 단(위 = 홍보 문구, 아래 = 크레딧 · 영화제 · 날짜(주홍) · 장소) | 오른쪽 큰 세로 사진.
-    const bottom = H - M, gut = 32, sideW = 330, photoW = colW - sideW - gut;
-    const head = column(c, [{ text: m.tagline, s: { family: SONG, weight: 400 }, size: 34, color: ink, lh: 1.3 }], sideW);
-    const foot = column(c, [
-      { text: creditMain(m), s: { family: SANS, weight: 700, tracking: 0.02 }, size: 24, color: ink, lh: 1.35 },
-      { text: creditSub(m), s: { family: SANS, weight: 400 }, size: 20, color: '#55524c', gap: 6, lh: 1.45 },
-      { text: FEST, s: { family: SANS, weight: 600 }, size: 20, color: ink, gap: 34, oneLine: true },
-      { text: DATE, s: { family: SANS, weight: 800, tracking: 0.02 }, size: 26, color: red, gap: 8, oneLine: true },
-      { text: VENUE, s: { family: SANS, weight: 600 }, size: 20, color: ink, gap: 8, oneLine: true },
-    ], sideW);
-    // 활자 더미: 낱말을 몇 줄로 묶을지 정한다 — 줄마다 폭에 맞춘 크기의 합(줄 간격 0.94)이 목표 높이에 가장 가깝게.
-    // 사진 칸은 높이 720 이상(이보다 낮으면 세로 그림이 칸을 덮지 못해 주인공 상자를 지키려 줄어든다).
-    const stackTop = 150, minPhoto = 720, stackMax = bottom - minPhoto - 40 - stackTop, target = Math.min(stackMax, 700);
-    const words = m.title.trim().split(/\s+/).filter(Boolean);
-    const units = words.length > 1 ? words : [...(words[0] ?? '')];   // 띄어쓰기가 없으면 글자 단위로 나눈다
-    const joiner = words.length > 1 ? ' ' : '';
-    const sizeOf = (line: string) => Math.min(560, colW / inkWidth(c, st, 100, line) * 100);
-    let best: string[] = [units.join(joiner)], bestScore = Infinity;
-    const partitions = (from: number, k: number): string[][][] => {
-      if (k === 1) return [[units.slice(from)]];
-      const out: string[][][] = [];
-      for (let i = from + 1; i <= units.length - k + 1; i++) for (const rest of partitions(i, k - 1)) out.push([units.slice(from, i), ...rest]);
-      return out;
-    };
-    for (let k = 1; k <= Math.min(5, units.length); k++) {
-      for (const parts of partitions(0, k)) {
-        const lines = parts.map(p => p.join(joiner));
-        const total = lines.reduce((sum, l) => sum + sizeOf(l) * 0.94, 0);
-        // 한 음절 낱말 뒤에서 끊으면 벌점(띄어쓰기로 나눈 경우만), 목표보다 크면 큰 벌점
-        const orphan = words.length > 1 ? parts.slice(0, -1).filter(p => [...p[p.length - 1]].length === 1).length * 400 : 0;
-        const score = Math.abs(total - target) + (total > stackMax ? (total - stackMax) * 6 : 0) + orphan;
-        if (score < bestScore) { bestScore = score; best = lines; }
-      }
-    }
-    let sizes = best.map(sizeOf);
-    const total = sizes.reduce((s, v) => s + v * 0.94, 0);
-    if (total > stackMax) sizes = sizes.map(v => v * stackMax / total);   // 그래도 넘치면 전체를 같은 비율로 줄인다
-    const biggest = sizes.indexOf(Math.max(...sizes));
-    let y = stackTop;
-    best.forEach((line, i) => {
-      const b = block(c, [line], st, sizes[i], 1);
-      draw(c, b, M, y + (sizes[i] * 0.94 - b.height) / 2, i === biggest && best.length > 1 ? red : ink, 'left');
-      y += sizes[i] * 0.94;
-    });
-    // 사진: 활자 더미 아래 40px부터 바닥 여백까지, 오른쪽 큰 칸(칸을 덮게 — 늘리지 않고 남는 쪽을 자른다)
-    const photoTop = y + 40, box: Rect = { x: W - M - photoW, y: photoTop, w: photoW, h: bottom - photoTop };
-    placeArt(c, art, box, box, subjectBox(m));
-    hairline(c, M, photoTop, sideW, ink, 3);
-    head.draw(M, photoTop + 26);
-    foot.draw(M, bottom - foot.height);
+    // 아래 격자(종이)를 먼저 잰다.
+    const gap = 36, cw = (colW - 2 * gap) / 3;
+    const cols = [
+      column(c, [{ text: m.tagline, s: { family: SONG, weight: 400 }, size: 32, color: ink, lh: 1.3 }], cw),
+      column(c, [
+        { text: creditMain(m), s: { family: SANS, weight: 700 }, size: 24, color: ink, lh: 1.4 },
+        { text: creditSub(m), s: { family: SANS, weight: 400 }, size: 20, color: '#55524c', gap: 8, lh: 1.45 },
+      ], cw),
+      column(c, [
+        { text: FEST, s: { family: SANS, weight: 600 }, size: 20, color: ink, oneLine: true },
+        { text: DATE, s: { family: SANS, weight: 800 }, size: 30, color: red, gap: 10, oneLine: true },
+        { text: VENUE, s: { family: SANS, weight: 600 }, size: 20, color: ink, gap: 8, oneLine: true },
+      ], cw),
+    ];
+    const gridTop = H - M - Math.max(...cols.map((k) => k.height)), ruleY = gridTop - 36;
+    // 제목: 폭 가득(짧으면 한 줄로 아주 크게), 마지막 줄 글자 한가운데를 사진과 종이의 경계가 지나간다.
+    const title = fitTitle(c, m.title, { family: DISPLAY, weight: 400, tracking: -0.03 }, { width: colW, max: 360, oneLineMin: 150, max2: 190, min: 84, maxLines: 3, lh: 1.0, maxHeight: 560 });
+    const titleTop = ruleY - 48 - title.height;
+    const lastBase = titleTop + title.asc + (title.lines.length - 1) * title.step;
+    const edge = Math.round(lastBase - title.size * 0.36);
+    // 사진: 위쪽 가장자리까지 꽉. 주인공은 로고 아래 ~ 제목 위 안전 영역에 지킨다.
+    const safeTop = 150, safe: Rect = { x: M, y: safeTop, w: colW, h: Math.max(240, titleTop - 24 - safeTop) };
+    placeArt(c, art, { x: 0, y: 0, w: W, h: edge }, safe, subjectBox(m));
+    const shade = c.createLinearGradient(0, titleTop - 160, 0, edge);
+    shade.addColorStop(0, 'rgba(0,0,0,0)'); shade.addColorStop(1, 'rgba(0,0,0,.52)');
+    c.fillStyle = shade; c.fillRect(0, titleTop - 160, W, edge - titleTop + 160);
+    brands(c);
+    const split = c.createLinearGradient(0, edge - 0.5, 0, edge + 0.5);
+    split.addColorStop(0, '#fff'); split.addColorStop(1, ink);
+    draw(c, title, M - 6, titleTop, split, 'left');
+    // 굵은 먹선 + 왼쪽 주홍 표지, 그 아래 3단
+    c.fillStyle = ink; c.fillRect(M, ruleY, colW, 6);
+    c.fillStyle = red; c.fillRect(M, ruleY - 14, 64, 14);
+    cols.forEach((k, i) => k.draw(M + i * (cw + gap), gridTop));
   } },
 
   /* 8. 트립틱 — 한 그림을 30·40·30 세 칸으로 화면 가득(4px 가는 틈), 칸마다 색조를 달리해(새벽 파랑 · 원래 색 · 밤 보라)
