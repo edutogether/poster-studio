@@ -769,10 +769,10 @@ export const NEW_TEMPLATES: Template[] = [
   } },
 ];
 
-/* 포스터 4차 판정(2026-10-18 Bumm님) — 통과하지 못한 디자인은 지금 라이브 디자인으로 바꿔 끼운다. 이름만 넣는다.
-   통과: 시네마 · 트립틱. 수정 6종은 고친 뒤 다시 판정받을 때까지 라이브 디자인 그대로 나간다.
+/* 포스터 판정(Bumm님) — 통과하지 못한 디자인은 지금 라이브 디자인으로 바꿔 끼운다. 이름만 넣는다.
+   4차(10/18): 시네마 · 트립틱 통과. 수정 6종 다시 판정(10/19): 전부 통과 → 8종 모두 새 디자인.
    목록에 없는 이름을 넣으면 시작할 때 오류로 멈춘다 — 오타가 조용히 넘어가지 않게(test/templates-verdict.test.ts). */
-export const KEEP_LIVE: ReadonlySet<string> = new Set<string>(['에디토리얼', '컬러 블록', '아치 프레임', '필름스트립', '폴라로이드', '타이포그래피']);
+export const KEEP_LIVE: ReadonlySet<string> = new Set<string>([]);
 export function pickTemplates(fresh: Template[], live: Template[], keep: ReadonlySet<string>): Template[] {
   for (const name of keep) {
     if (!fresh.some((t) => t.label === name) || !live.some((t) => t.label === name)) throw new Error(`포스터 판정 이름 "${name}"이 디자인 목록에 없다`);

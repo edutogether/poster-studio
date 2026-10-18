@@ -21,10 +21,7 @@ test('목록에 없는 이름(오타)은 조용히 넘어가지 않고 멈춘다
   expect(() => pickTemplates(TEMPLATES, LIVE_TEMPLATES, new Set(['폴라로이도']))).toThrow('폴라로이도');
 });
 
-test('4차 판정(10/18): 통과한 시네마 · 트립틱만 새 디자인이고 수정 6종은 지금 라이브 디자인이다', () => {
-  expect([...KEEP_LIVE]).toEqual(['에디토리얼', '컬러 블록', '아치 프레임', '필름스트립', '폴라로이드', '타이포그래피']);
-  for (const [i, t] of TEMPLATES.entries()) {
-    if (t.label === '시네마' || t.label === '트립틱') expect(t, t.label).not.toBe(LIVE_TEMPLATES[i]);
-    else expect(t, t.label).toBe(LIVE_TEMPLATES[i]);
-  }
+test('판정 끝(10/19): 8종 모두 새 디자인이다', () => {
+  expect(KEEP_LIVE.size).toBe(0);
+  for (const [i, t] of TEMPLATES.entries()) expect(t, t.label).not.toBe(LIVE_TEMPLATES[i]);
 });
