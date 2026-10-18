@@ -181,7 +181,10 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    - 명령: `firebase hosting:clone poster-studio:rollback-<날짜> poster-studio:live --project inky-poster-studio`
    - functions도 냈으면 `base` 사본에서 `firebase deploy --only functions --project inky-poster-studio --non-interactive`로 되돌리고,
      7번의 스모크테스트를 다시 통과시킨 뒤 6번에 적은 지문과 `functions:list`를 견준다. 생성 요청이 없어 비용은 들지 않는다.
-     🟠 [확인] 로컬에서 함수를 되돌려 본 적은 아직 없다(2026-10-17 종합감사 지적 — «눌러 본 것만 롤백 지점»). 배포 승인을 받을 때 이 연습도 함께 승인받아 한 번 해 본다.
+     2026-10-19에 실제로 해 봤다(`86c43b1` 배포 직후): `8d752d4` 사본에서 함수 배포 → 스모크 400 → 지문이 배포 전 기록과 세 함수 모두 같음 →
+     새 함수 다시 배포 → 지문이 배포 직후 기록과 같음. 한 번에 약 1분 20초.
+     🟠 `base` 사본에는 `functions/node_modules`가 없다 — `git diff <라이브 커밋> master -- functions/package*.json`이 비어 있으면
+     본 체크아웃의 것을 연결하고(`cmd //c "mklink /J node_modules <본 체크아웃>\functions\node_modules"`, 끝나면 `rmdir`로 연결만 걷는다), 다르면 `npm ci`.
    - 되돌린 뒤 `dist-vs-live.mjs ../base/dist`로 확인한다. Firebase 콘솔 Hosting의 출시 기록에서도 이전 판으로 되돌릴 수 있다.
 10. **기록한다.** CHANGELOG에 한 줄, 공통 인계 문서(`_docs/ops/HANDOFF_CURRENT.md`)에 배포 커밋·라이브 판 번호·되돌림 채널을 적는다.
     GitHub가 돌아오면 master를 push한다. CI가 같은 파일을 다시 배포한다(바이트가 같으므로 화면 변화 없음).
