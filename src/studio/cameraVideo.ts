@@ -13,17 +13,20 @@ export type CameraVideoEntry = {
   bytes: number;
   still: string | null;
   stillSha256: string | null;
+  /** 마지막 프레임(찰칵 뒤 멈춘 장면) — 영상을 못 틀 때 보이는 그림(10/19). */
+  endStill: string | null;
+  endStillSha256: string | null;
   duration: number;
   cues: CameraCue[];
 };
 
-export type ApprovedCameraVideo = CameraVideoEntry & { src: string; still: string };
+export type ApprovedCameraVideo = CameraVideoEntry & { src: string; still: string; endStill: string };
 
 // 촬영 화면 예시 영상(2026-10-16) — 검수된 파일만 연결한다(대기 영상과 같은 규칙). 승인 전에는 주소조차 요청하지 않아
 // 지금 정지 그림(camera-student.webp·camera-group.webp) 그대로다. 이름에 내용 해시 앞 12자리가 들어가야 옛 캐시에 갇히지 않는다.
 export function approvedCameraVideo(mode: string): ApprovedCameraVideo | undefined {
   const item = (manifest as CameraVideoEntry[]).find(entry => entry.mode === mode);
-  if (!item || item.status !== "approved" || !item.src || !item.still || !item.sha256 || !/^[a-f0-9]{64}$/.test(item.sha256)) return;
+  if (!item || item.status !== "approved" || !item.src || !item.still || !item.endStill || !item.sha256 || !/^[a-f0-9]{64}$/.test(item.sha256)) return;
   if (item.src !== `/studio/camera-v1/${mode}-${item.sha256.slice(0, 12)}.mp4`) return;
   return item as ApprovedCameraVideo;
 }

@@ -596,7 +596,14 @@ main.app {
   #cameraView .camera-surface { padding: 34px 22px 14px; }
   /* 이름표 줄(카메라 미리 보기 · 촬영 구도 예시)은 머리말 아래 «개인정보처리방침»과 겹쳐 휴대폰에서는 뺀다 — 상태는 칸 안의 표시(실시간 미리보기 · 촬영 완료)가 알린다 */
   #cameraView .camera-top { display: none; }
-  #cameraView .camera-large { min-height: 0; aspect-ratio: auto; height: clamp(200px, 32svh, 300px); }
+  #cameraView .camera-large { min-height: 0; aspect-ratio: auto; height: clamp(176px, 26svh, 280px); }
+  /* 10/19 Bumm님 «첫 화면에서 맨 아래 “이전 · 샘플 포스터 보기” 단추가 잘림 → 사진 칸 · 안내 간격을 줄여서라도 첫 화면 안에»:
+     사진 칸 32 → 26svh, 제목 아래 · 안내 사이 · 안내 아래 · 단추 줄 위 여백을 줄이고, 안내와 같은 칸에 숨어 있는 «찍은 뒤» 안내의 아래 여백 40px를 뺀다.
+     360 · 390 · 430 모두 단추 줄이 첫 화면 안(mobile-layout-probe «단추 줄이 첫 화면»). */
+  #cameraWorkspace .page-heading { margin-bottom: 14px; }
+  #cameraView .camera-tips { gap: 10px; margin: 0 0 12px; }
+  #cameraView .photo-review { margin-bottom: 12px; }
+  #cameraWorkspace .camera-actions { padding-top: 12px; }
   #cameraView .camera-bottom { display: none; }
   #cameraWorkspace { padding-top: 18px; }
   /* ⑥ 엄지 자리 빨간 원형 촬영 단추 — 카메라 칸 아래 가운데에 반쯤 걸친다(Lucide camera) */

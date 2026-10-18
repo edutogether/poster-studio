@@ -8,7 +8,7 @@ import CameraExample from "../src/studio/CameraExample";
 import { activeCues, approvedCameraVideo, type ApprovedCameraVideo, type CameraCue } from "../src/studio/cameraVideo";
 import manifest from "../src/studio/camera-videos.json";
 
-// 촬영 화면 예시 영상 연결 부품(2026-10-16). 영상 파일은 Bumm님 판정 뒤에 들어오므로, 여기서는 가짜 항목으로 동작을 고정한다.
+// 촬영 화면 예시 영상 연결 부품(2026-10-16). 동작은 가짜 항목으로 고정하고, 실제 목록(10/19 장착)은 파일 해시로 따로 본다.
 const cues: CameraCue[] = [
   { kind: "say", from: 2, to: 3.5, text: "여기 서 볼까?", x: 40, y: 12 },
   { kind: "count", from: 7, to: 7.5, text: "3" },
@@ -17,7 +17,7 @@ const cues: CameraCue[] = [
 ];
 const fake: ApprovedCameraVideo = {
   mode: "group", status: "approved", src: "/test-only.mp4", sha256: "0".repeat(64), bytes: 1,
-  still: "/test-only.webp", stillSha256: "0".repeat(64), duration: 12, cues,
+  still: "/test-only.webp", stillSha256: "0".repeat(64), endStill: "/test-only-end.webp", endStillSha256: "0".repeat(64), duration: 12, cues,
 };
 const base = { mode: "group", video: fake, hidden: false, offstage: false };
 let reduce = false;
@@ -63,6 +63,8 @@ test("승인 항목은 파일 해시·크기·정지 그림·신호 위치가 �
     expect(sha(file)).toBe(item.sha256);
     expect(fs.statSync(file).size).toBe(item.bytes);
     expect(sha(path.join(pub, item.still!))).toBe(item.stillSha256);
+    expect(sha(path.join(pub, item.endStill!))).toBe(item.endStillSha256);
+    expect(item.endStillSha256).not.toBe(item.stillSha256);
     for (const cue of item.cues as CameraCue[]) {
       expect(cue.from).toBeGreaterThanOrEqual(0);
       expect(cue.to).toBeGreaterThan(cue.from);
@@ -77,6 +79,11 @@ test("승인 항목은 파일 해시·크기·정지 그림·신호 위치가 �
     }
   }
   expect(approvedCameraVideo("nobody")).toBeUndefined();
+  // 폴더에는 목록이 가리키는 파일만 — 옛 영상이 남아 배포되지 않게(대기 영상과 같은 규칙)
+  const listed = manifest.filter(entry => entry.status === "approved").flatMap(entry => [entry.src!, entry.still!, entry.endStill!]);
+  const dir = path.join(pub, "studio", "camera-v1");
+  const present = fs.existsSync(dir) ? fs.readdirSync(dir).map(name => `/studio/camera-v1/${name}`) : [];
+  expect(new Set(present)).toEqual(new Set(listed));
 });
 
 test("신호는 from 이상 to 미만에만 보인다", () => {
@@ -94,23 +101,27 @@ test("실제 playing 전에는 정지 그림을 유지하고, 소리를 켠 채 
   expect(video.getAttribute("src")).toBe(fake.src);
   expect(video.muted).toBe(false); expect(video.playsInline).toBe(true); expect(video.loop).toBe(false);
   expect(still.dataset.active).toBe("true"); expect(video.dataset.active).toBe("false");
+  expect(still.getAttribute("src")).toBe(fake.still);
   fireEvent.playing(video);
   expect(video.dataset.active).toBe("true"); expect(still.dataset.active).toBe("false");
 });
 
-test("소리 있는 재생이 거부되면 소리 없이, 그것도 거부되면 정지 그림으로", async () => {
+test("소리 있는 재생이 거부되면 소리 없이, 그것도 거부되면 끝 정지 그림으로", async () => {
   const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(new Error("NotAllowedError"));
   const view = render(<CameraExample {...base} />);
   await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
   expect(play).toHaveBeenCalledTimes(2);
   expect(view.container.querySelector("video")).toBeNull();
-  expect((view.container.querySelector(".camera-example-still") as HTMLImageElement).dataset.active).toBe("true");
+  const still = view.container.querySelector(".camera-example-still") as HTMLImageElement;
+  expect(still.dataset.active).toBe("true");
+  expect(still.getAttribute("src")).toBe(fake.endStill);
 });
 
-test("4초 동안 재생이 시작되지 않으면 정지 그림으로 돌아간다", () => {
+test("4초 동안 재생이 시작되지 않으면 끝 정지 그림으로 돌아간다", () => {
   const view = render(<CameraExample {...base} />);
   act(() => vi.advanceTimersByTime(4_000));
   expect(view.container.querySelector("video")).toBeNull();
+  expect(view.container.querySelector(".camera-example-still")!.getAttribute("src")).toBe(fake.endStill);
 });
 
 test("숫자·말풍선은 영상 시각에 맞춰 얹고, 끝나면 지운다(다시 재생하지 않음)", () => {
@@ -147,6 +158,6 @@ test("움직임 줄이기는 영상 요소를 만들지 않는다", () => {
   reduce = true;
   const view = render(<CameraExample {...base} />);
   expect(view.container.querySelector("video")).toBeNull();
-  expect(view.container.querySelector(".camera-example-still")).not.toBeNull();
+  expect(view.container.querySelector(".camera-example-still")!.getAttribute("src")).toBe(fake.endStill);
   expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
 });

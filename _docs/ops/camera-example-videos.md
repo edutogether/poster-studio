@@ -673,7 +673,16 @@ lines in Korean by the matching person: 1.8-2.6s A: "야, 빨리 와~". 3.6-4.4s
 
 ## 앱 연결(2026-10-16 — 영상이 오면 넣기만 하면 되게 미리 만듦, 생성 0)
 
-> **출시 후보(`release-20261018`)에는 넣지 않았다 — 작업 가지 `retry-star-20261016`에만 있다(Bumm님 판정 대기, 넣을 때는 «B 임시 영상 빼기» 커밋을 되돌린다).**
+> **2026-10-19 장착 — 진짜 영상(개인·단체 각 한 편).** Bumm님이 Higgsfield 금지를 직접 풀었다(«힉스필드로 영상까지 만들어서 올려 —
+> 무성으로 하지 말고 자연스러운 소리들까지 넣어서», 팀장 전달). 허락 범위는 이 두 편뿐이다 — 편당 1회, 명백히 깨졌을 때만 1회 더.
+> - 생성: Seedance 2.0(Higgsfield) · 1080p · 8초 · 소리 켬, 시작·끝 그림 = Bumm님이 통과시킨 b3 그림(개인·단체). 편당 96크레딧, 두 편 192크레딧(다시 만들기 0).
+> - 원본·뒤처리·굽기 입력은 `.cache/camera-video-20261019/`(`raw-*.mp4` → `camera-shot-post.py` → `post-*.mp4`, 목록 `encode.json`).
+>   숫자 3·2·1: 개인 4.6·5.4·6.2초, 단체 4.8·5.6·6.4초(각 0.7초). 말풍선 없음.
+> - 앱 장착본: `public/studio/camera-v1/`(mp4 · 첫 프레임 `<모드>.webp` · 끝 프레임 `<모드>-end.webp`), 목록 `src/studio/camera-videos.json`(`approved`).
+> - 끝 정지 그림(10/19 추가): 이 영상은 손이 렌즈를 가린 어두운 장면으로 시작해, 영상을 못 틀 때 첫 프레임을 두면 칸이 거의 검다.
+>   그래서 «움직임 줄이기 · 자동 재생 거부 · 4초 정체 · 오류»에는 마지막 프레임(찰칵 뒤 멈춘 장면)을 보인다. 첫 프레임은 재생 직전 이음매용이다.
+>
+> 아래 인용은 그 전 임시판 기록이다(출시 후보에는 들어가지 않았다).
 > **그 임시 «슬라이드식 영상»(2026-10-17, Bumm님 «진짜 영상은 일요일에 내가 만든다 · 힉스필드 절대 금지»).**
 > 새로 그린 키프레임(개인 `cam-v10/final/ps-cam10-K0~K4.png`, 단체 `cam-g10/final/ps-cam10g-K0~K4.png`)을 컷으로 넘긴다:
 > K0 0~0.6 · K1 0.6~1.5 · K2 1.5~3.0 · K3 3.0~4.5 · K4 4.5~8.0초, 7.45초 찰칵(직접 합성 소리)·플래시, 7.6초부터 멈춤, 숫자 3·2·1은 위 8초 동선 그대로.
@@ -686,7 +695,7 @@ lines in Korean by the matching person: 1.8-2.6s A: "야, 빨리 와~". 3.6-4.4s
 - 순서:
   1. 생성 원본(1920×1080, 소리 있음)을 받는다.
   2. `scripts/media/camera-shot-post.py`로 셔터 소리·플래시·멈춘 장면을 넣는다.
-  3. `scripts/media/encode-camera-videos.py <목록.json> public/studio/camera-v1`로 웹용 mp4와 첫 프레임 정지 그림을 굽는다.
+  3. `scripts/media/encode-camera-videos.py <목록.json> public/studio/camera-v1`로 웹용 mp4와 첫·끝 프레임 정지 그림을 굽는다.
      표준 출력의 JSON을 `src/studio/camera-videos.json`에 넣는다.
   4. `npm run build` 뒤 `node scripts/verify/camera-example-probe.mjs http://localhost:5500/ <결과 폴더> --mode solo|group`으로 세 크기(2560×1600·1366×768·휴대폰 3배)를 재고 캡처한다.
 - 숫자 3·2·1과 대사 말풍선은 굽기 목록의 `cues`에 영상 초로 적는다. 시각은 영상을 보고 맞춘다.
@@ -696,7 +705,7 @@ lines in Korean by the matching person: 1.8-2.6s A: "야, 빨리 와~". 3.6-4.4s
 - 재생:
   - 정지 그림(첫 프레임)을 먼저 보이고, 실제로 재생되면 영상으로 넘긴다. 소리를 켜고 한 번 재생한 뒤 마지막 프레임에 머문다.
   - 2단계로 오는 단추를 누른 뒤라 소리 있는 자동 재생이 허용된다(헤드리스 크롬에서 «진짜 클릭»으로 확인).
-  - 거부되면 소리 없이, 그것도 안 되면 정지 그림이다. 4초 정체·오류면 정지 그림, «움직임 줄이기»면 영상을 받지 않는다.
+  - 거부되면 소리 없이, 그것도 안 되면 끝 정지 그림이다. 4초 정체·오류면 끝 정지 그림, «움직임 줄이기»면 영상을 받지 않고 끝 정지 그림이다.
   - 카메라를 켜거나 2단계를 떠나면 영상 요소를 내려 소리가 멈춘다.
 - 대사 글자는 JSON에 있다. 그래서 글자 집합 추출기(`scripts/fonts/charset.mjs`)가 `src` 아래 JSON 문자열도 훑는다.
   대사를 넣으면 `npm run fonts:charset` → `python scripts/fonts/subset.py` → `npm run fonts:check` 순서로 서브셋을 다시 만든다.
@@ -704,3 +713,5 @@ lines in Korean by the matching person: 1.8-2.6s A: "야, 빨리 와~". 3.6-4.4s
   - 무대가 칸을 가운데로 덮고, 영상이 뒤집히지 않고, 소리가 켜져 있다.
   - 숫자·말풍선이 제때 칸 위 20% 띠 안에 나오고, 끝나면 사라진다.
   - 확인 뒤 합성 영상과 목록은 되돌렸다.
+- 확인한 것(10/19, 진짜 영상 장착): 개인·단체 각 세 크기 12개 표본이 모두 통과했다(`camera-example-probe.mjs`, 캡처 `.cache/camera-video-20261019/probe/`).
+  - 폴더에는 목록이 가리키는 파일만 있어야 한다 — `test/camera-example.test.tsx`가 남은 옛 파일을 막는다(일부러 남겨 실패 확인).
