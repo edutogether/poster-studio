@@ -239,15 +239,6 @@ export default function StudioView(p: StudioViewProps) {
     if (!isPhone()) return;
     document.getElementById("prepareWorkspace")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
   };
-  /* ⑦ 휴대폰 2단계: 다 찍으면 «오늘 촬영할 영화» 카드와 단추 줄(이 사진으로 만들기 · 샘플 포스터 보기)까지 부드럽게 내려간다. */
-  const toFilmCard = () => {
-    if (!isPhone()) return;
-    document.querySelector(".camera-film-heading")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
-  };
-  useEffect(() => {
-    if (step === 2 && p.phase === "shot") toFilmCard();
-  }, [p.phase, step]);
-
   /* ⑧~⑩ 휴대폰 3단계: 큰 포스터 줄(과 크게 보기 창의 줄)을 밀어 멈추면 가운데 장이 선택된다. 썸네일을 누르면 거꾸로 줄이 그 장으로 간다. */
   const onSwipe = (el: HTMLDivElement) => {
     window.clearTimeout(swipeTimer.current);
@@ -607,10 +598,11 @@ export default function StudioView(p: StudioViewProps) {
             {p.phase === "shot" && <span className="captured-badge">✓ 촬영 완료</span>}
             <div id="countdown" className={p.countdown === null ? "countdown hidden" : "countdown"} aria-live="assertive">{p.countdown}</div>
           </div>
-          {/* ⑥ 휴대폰: 엄지 자리 빨간 원형 촬영 단추(PC에서는 숨김). 샘플 모드는 찍을 카메라가 없어 «샘플 포스터 보기» 자리로 내려간다(⑦). */}
+          {/* ⑥ 휴대폰: 엄지 자리 빨간 원형 촬영 단추(PC에서는 숨김) — 아래 «3초 뒤 사진 찍기»와 같은 일을 한다. 휴대폰 2단계에는
+              이 단추 하나만 남는다(10/18 Bumm님 «사진과 카메라 단추만 남기고»). 샘플 모드는 찍을 카메라가 없어 바로 샘플 포스터로 간다. */}
           <button type="button" id="phoneShotBtn" className="phone-shot" hidden={p.phase === "shot"} disabled={locked}
-            aria-label={p.sampleMode ? "샘플 포스터 보기로 내려가기" : "3초 뒤 사진 찍기"}
-            onClick={p.sampleMode ? toFilmCard : p.onShot}>
+            aria-label={p.sampleMode ? "샘플 포스터 보기" : "3초 뒤 사진 찍기"}
+            onClick={p.onShot}>
             <StudioIcon name="camera"/>
           </button>
           <p className="camera-bottom">{p.mode === "group" ? "모두의 얼굴이 잘 보이도록, 조금씩 가까이 모여주세요." : "얼굴과 어깨가 화면 안에 들어오도록 맞춰주세요."}</p>
@@ -681,6 +673,13 @@ export default function StudioView(p: StudioViewProps) {
                 </button>
               ))}
             </div>
+            {/* 10/19 Bumm님 «양쪽에 화살표를 두어 넘기며 보게» — 누르면 앞 · 뒤 장을 고르고, 줄은 고른 장으로 따라간다(showSelected) */}
+            <button type="button" className="carousel-arrow prev" aria-label="이전 포스터" disabled={p.selected <= 0} onClick={() => p.select(p.selected - 1)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <button type="button" className="carousel-arrow next" aria-label="다음 포스터" disabled={p.selected >= p.posters.length - 1} onClick={() => p.select(p.selected + 1)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
           </div>
           {p.posters[p.selected] && <p className="poster-carousel-caption">{p.posters[p.selected].label} · {p.selected + 1} / {p.posters.length}</p>}
         </div>

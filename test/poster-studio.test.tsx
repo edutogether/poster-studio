@@ -937,7 +937,7 @@ describe('휴대폰 흐름', () => {
     expect(scrolled.filter((e) => e.id === 'prepareWorkspace')).toHaveLength(count);
   });
 
-  test('2단계 빨간 원형 단추: 실제 모드는 촬영을 시작하고, 다 찍으면 «오늘 촬영할 영화»까지 내려간다', async () => {
+  test('2단계 빨간 원형 단추: 실제 모드는 촬영을 시작하고, 다 찍으면 원형 단추 대신 «이 사진으로 만들기» — 저절로 내려가지 않는다', async () => {
     asPhone(true);
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
@@ -949,20 +949,23 @@ describe('휴대폰 흐름', () => {
     await runCountdown();
     vi.useRealTimers();
     await act(async () => { await Promise.resolve(); });
-    expect(el('phoneShotBtn').hidden).toBe(true);   // 찍은 뒤에는 원형 단추가 없다(«이 사진으로 만들기»로)
-    expect(scrolled.some((e) => e.classList.contains('camera-film-heading'))).toBe(true);
+    expect(el('phoneShotBtn').hidden).toBe(true);   // 찍은 뒤에는 원형 단추가 없다
+    expect(el('generateBtn').hidden).toBe(false);   // 회색 칸 끝의 빨간 단추(10/19)
+    expect(el<HTMLButtonElement>('retakeBtn').disabled).toBe(false);
+    expect(scrolled).toHaveLength(0);   // 10/19 «찍은 뒤 내려간 화면을 따로 두지 않음» — 예전 ⑦(영화 카드로 내려가기)을 없앴다
   });
 
-  test('2단계 빨간 원형 단추: 샘플 모드는 카메라 없이 «샘플 포스터 보기» 자리로 내려간다', async () => {
+  test('2단계 빨간 원형 단추: 샘플 모드는 카메라 없이 바로 샘플 포스터 로딩을 시작한다', async () => {
     asPhone(true);
     vi.stubEnv('VITE_SAMPLE_MODE', '1');
     const f = installFetch();
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(el('phoneShotBtn').getAttribute('aria-label')).toBe('샘플 포스터 보기');
     await act(async () => { el<HTMLButtonElement>('phoneShotBtn').click(); });
-    expect(scrolled.some((e) => e.classList.contains('camera-film-heading'))).toBe(true);
+    expect((document.getElementById('spinner') as HTMLDialogElement).open).toBe(true);
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
-    expect(f.bodies).toHaveLength(0);
+    expect(f.calls).toHaveLength(0);
   });
 
   test('3단계: 큰 포스터 줄 — 옆 장을 누르면 그 장이 선택되고, 가운데 장을 누르면 크게 보기 창이 열린다', async () => {
@@ -981,6 +984,25 @@ describe('휴대폰 흐름', () => {
     await act(async () => { document.querySelectorAll<HTMLButtonElement>('.poster-slide')[2].click(); });
     expect(document.querySelector<HTMLDialogElement>('.poster-dialog')!.open).toBe(true);
     expect(document.querySelectorAll('.dialog-carousel img')).toHaveLength(8);
+  });
+
+  test('3단계 양쪽 화살표(10/19): 다음 · 이전 장을 고르고, 첫 장 · 끝 장에서는 그쪽 화살표를 누를 수 없다', async () => {
+    asPhone(true);
+    installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    const prev = document.querySelector<HTMLButtonElement>('.carousel-arrow.prev')!, next = document.querySelector<HTMLButtonElement>('.carousel-arrow.next')!;
+    const caption = () => document.querySelector('.poster-carousel-caption')!.textContent;
+    expect(prev.disabled).toBe(true);
+    await act(async () => { next.click(); });
+    expect(caption()).toBe(`${TEMPLATES[1].label} · 2 / 8`);
+    await act(async () => { prev.click(); });
+    expect(caption()).toBe(`${TEMPLATES[0].label} · 1 / 8`);
+    for (let i = 0; i < 7; i++) await act(async () => { next.click(); });
+    expect(caption()).toBe(`${TEMPLATES[7].label} · 8 / 8`);
+    expect(next.disabled).toBe(true);
   });
 
   test('3단계 «내 휴대폰에 저장»: 고른 포스터를 영화 제목 이름으로 저장한다', async () => {
