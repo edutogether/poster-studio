@@ -1,4 +1,4 @@
-// 에디토리얼 «잡지 표지»의 ISBN 바코드(src/templates.ts의 ean13 · ean13Modules · ean5Modules, 2026-10-17 Bumm님
+// 에디토리얼 «잡지 표지»의 ISBN 바코드(src/templates.ts의 ean13 · ean13Modules, 2026-10-17 Bumm님
 // «ISBN 바코드 부분만 좀 더 현실적으로»). 그림으로만 보면 막대가 그럴듯해도 규칙과 다를 수 있으므로,
 // 확인 숫자를 알려진 ISBN으로 맞춰 보고, 만든 막대를 표준 부호표로 «거꾸로 읽어» 같은 숫자가 나오는지 본다.
 import { test, expect } from 'vitest';
@@ -35,18 +35,5 @@ test('EAN-13 막대: 95칸이고, 표준 부호표로 거꾸로 읽으면 같은
     const s = bits(app.ean13Modules(code));
     expect(s).toHaveLength(95);
     expect(decode13(s)).toBe(code);
-  }
-});
-
-test('부가기호(EAN-5) 막대: 시작 1011, 숫자 사이 01, 첫 칸은 빈 칸(48칸), 패리티는 확인합(3·9 가중)으로 정해진다', () => {
-  const s = bits(app.ean5Modules('07680'));
-  expect(s).toHaveLength(48);
-  expect(s.slice(0, 5)).toBe('01011');
-  // 07680: 3×(0+6+0) + 9×(7+8) = 153 → 3 → GLLLG
-  const parity = 'GLLLG', digits = '07680';
-  for (let i = 0; i < 5; i++) {
-    const at = 5 + 9 * i;
-    expect(s.slice(at, at + 7)).toBe((parity[i] === 'L' ? L : G)[Number(digits[i])]);
-    if (i < 4) expect(s.slice(at + 7, at + 9)).toBe('01');
   }
 });

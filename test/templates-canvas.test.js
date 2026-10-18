@@ -24,7 +24,7 @@ const { W, H } = app;
 const GENRE_STUB = { font: "'Pretendard'", accent: '#ffd23f', taglines: ['테스트 문구'] };
 
 function makeFakeArt() {
-  // coverDraw()가 drawImage()에 넘길 수 있는 실제 이미지가 필요 — 작은 캔버스를
+  // 그림 그리기(drawImage)에 넘길 수 있는 실제 이미지가 필요 — 작은 캔버스를
   // 색으로 채워 "촬영된 인물 사진" 자리에 대신 넣는다.
   const art = createCanvas(400, 600);
   const actx = art.getContext('2d');
