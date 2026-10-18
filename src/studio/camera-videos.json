@@ -1,24 +1,66 @@
 [
   {
     "mode": "solo",
-    "status": "pending",
-    "src": null,
-    "sha256": null,
-    "bytes": 0,
-    "still": null,
-    "stillSha256": null,
-    "duration": 0,
-    "cues": []
+    "status": "approved",
+    "src": "/studio/camera-v1/solo-26d7a4d22e9a.mp4",
+    "sha256": "26d7a4d22e9a02e87b02e431541a2e535dc1853f3e3ace0ef3be5c31cc7902ad",
+    "bytes": 3934676,
+    "still": "/studio/camera-v1/solo.webp",
+    "stillSha256": "a89d6a9ef1939ab8a5413124059a4ee6a221113bad821d7a5a6391f1be161e48",
+    "endStill": "/studio/camera-v1/solo-end.webp",
+    "endStillSha256": "f227fd201a0ee04c188b0de731a228597370cc3301d0b723dad6979994fab16e",
+    "duration": 8.05,
+    "cues": [
+      {
+        "kind": "count",
+        "from": 4.6,
+        "to": 5.3,
+        "text": "3"
+      },
+      {
+        "kind": "count",
+        "from": 5.4,
+        "to": 6.1,
+        "text": "2"
+      },
+      {
+        "kind": "count",
+        "from": 6.2,
+        "to": 6.9,
+        "text": "1"
+      }
+    ]
   },
   {
     "mode": "group",
-    "status": "pending",
-    "src": null,
-    "sha256": null,
-    "bytes": 0,
-    "still": null,
-    "stillSha256": null,
-    "duration": 0,
-    "cues": []
+    "status": "approved",
+    "src": "/studio/camera-v1/group-45c9b0b5dac6.mp4",
+    "sha256": "45c9b0b5dac651e7c231bac4f36ce10c07c953761806546567604ed86404d01e",
+    "bytes": 4854179,
+    "still": "/studio/camera-v1/group.webp",
+    "stillSha256": "0b63e38430c8297c992051d4faa59db496d9dd529b8c5810bc9c42cc88f60102",
+    "endStill": "/studio/camera-v1/group-end.webp",
+    "endStillSha256": "3155ad5bbe20f87c35e038323224eaafb56d3ad7d136a55c60a1ea0d77c379e9",
+    "duration": 8.05,
+    "cues": [
+      {
+        "kind": "count",
+        "from": 4.8,
+        "to": 5.5,
+        "text": "3"
+      },
+      {
+        "kind": "count",
+        "from": 5.6,
+        "to": 6.3,
+        "text": "2"
+      },
+      {
+        "kind": "count",
+        "from": 6.4,
+        "to": 7.1,
+        "text": "1"
+      }
+    ]
   }
 ]

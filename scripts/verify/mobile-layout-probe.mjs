@@ -9,7 +9,8 @@
    ③ 서로 겹치는 단추·입력칸(모달이 떠 있으면 그 안의 것만) ④ 높이 40px 미만 단추·입력칸(손가락으로 누르기 어려움)
    ⑤ 넘쳐서 잘린 글자(넘침 숨김 + 내용이 더 큼) ⑥ 맨 아래 단추가 문서 끝에서 12px 안(화면 끝에 붙음)
    ⑦ 단계에 막 도착한 화면이 맨 위가 아닌 곳에서 시작(1단계는 끝까지 내린 뒤 «다음»을 누른다 — 사람이 그렇게 한다)
-   휴대폰만: 2단계 도착 화면에 원형 촬영 단추와 안내 1~3이 다 보인다(못 찾으면 그것도 걸림) · 3단계가 스크롤 없이 한 화면
+   휴대폰만: 2단계 도착 화면에 원형 촬영 단추 · 안내 1~3 · 회색 칸 끝 빨간 단추(«샘플 포스터 보기» / «3초 뒤 사진 찍기»)가 다 보인다
+   (못 찾으면 그것도 걸림) · 3단계가 스크롤 없이 한 화면
    (2026-10-18 · 10-19 Bumm님 휴대폰 검토). 3단계 큰 포스터 위 화살표는 일부러 포스터에 걸친 것이라 겹침으로 세지 않는다.
    전체 페이지 캡처에는 화면 위에 숨겨 둔 고정 요소(바로가기 링크 등)가 비쳐 보일 수 있다 — 사람이 보는 화면은 -view.png다.
    --desktop은 터치·휴대폰 흉내 없이 같은 흐름을 찍는다(휴대폰 규칙이 PC 화면을 바꾸지 않았는지 대조용, 판정은 휴대폰 기준이라 참고만).
@@ -137,7 +138,10 @@ try {
     // 안내 1~3: 보이는 목록이 없으면 null — 숨긴 목록의 아래 끝(0)을 재고 늘 통과하던 빈 검사였다(10/18 발견)
     const tips = document.querySelector('#cameraView:not([hidden]) .camera-tips');
     const tipsBottom = tips && vis(tips) && tips.getBoundingClientRect().height > 0 ? Math.round(tips.getBoundingClientRect().bottom) : null;
-    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, shotBottom, tipsBottom, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
+    // 2단계 회색 칸 끝의 빨간 단추(보이는 것) — 10/19 Bumm님 «첫 화면에서 잘림»
+    const dk = [...document.querySelectorAll('#cameraView:not([hidden]) .camera-actions .primary-button')].find((b) => !b.hidden && vis(b));
+    const dockBottom = dk ? Math.round(dk.getBoundingClientRect().bottom) : null;
+    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, shotBottom, tipsBottom, dockBottom, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
   })()`;
   // fit: 휴대폰 3단계는 스크롤 없이 한 화면(팀장 설계 ⑬).
   // shotInView · tips: 휴대폰 2단계 도착 화면에 원형 촬영 단추 · 안내 1~3이 다 보인다(⑤ · ⑥) — 못 찾으면 걸린다(빈 검사가 되지 않게).
@@ -148,6 +152,7 @@ try {
     m.notFit = fit && m.height > m.vh + 1 ? m.height - m.vh : 0;
     m.shotCut = shotInView ? (m.shotBottom === null ? '없음' : Math.max(0, m.shotBottom - m.vh)) : 0;
     m.tipsCut = tips ? (m.tipsBottom === null ? '없음' : Math.max(0, m.tipsBottom - m.vh)) : 0;
+    m.dockCut = tips ? (m.dockBottom === null ? '없음' : Math.max(0, m.dockBottom - m.vh)) : 0;
     const v = await call('Page.captureScreenshot', { format: 'png' });
     await fs.writeFile(path.join(out, `${tag}-${screen}-view.png`), Buffer.from(v.data, 'base64'));
     const metrics = await call('Page.getLayoutMetrics');
@@ -155,8 +160,8 @@ try {
     const s = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: metrics.cssLayoutViewport.clientWidth, height: Math.min(h, 12000), scale: 1 } });
     await fs.writeFile(path.join(out, `${tag}-${screen}.png`), Buffer.from(s.data, 'base64'));
     report.push({ size: tag, screen, ...m });
-    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut;
-    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${bad ? '  ← 확인' : ''}`);
+    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut || m.dockCut;
+    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.dockCut ? (typeof m.dockCut === 'number' ? ` · 빨간 단추가 ${m.dockCut}px 잘림` : ' · 빨간 단추를 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${bad ? '  ← 확인' : ''}`);
   };
   const fail = (tag, what) => { blocked = true; console.error(`${tag}: ${what}에서 흐름이 막힘`); };
 
@@ -215,6 +220,6 @@ try {
 }
 await fs.writeFile(path.join(out, 'report.json'), JSON.stringify(report, null, 1));
 if (blocked || !report.length) process.exit(2);
-const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.shotCut || r.tipsCut).length;
+const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.shotCut || r.tipsCut || r.dockCut).length;
 console.log(issues ? `걸린 화면 ${issues}개 / ${report.length}` : `통과 — ${report.length}개 화면 모두 결함 없음`);
 process.exit(issues ? 1 : 0);
