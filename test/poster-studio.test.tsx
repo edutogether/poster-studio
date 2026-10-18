@@ -937,7 +937,7 @@ describe('휴대폰 흐름', () => {
     expect(scrolled.filter((e) => e.id === 'prepareWorkspace')).toHaveLength(count);
   });
 
-  test('2단계 빨간 원형 단추: 실제 모드는 촬영을 시작하고, 다 찍으면 «오늘 촬영할 영화»까지 내려간다', async () => {
+  test('2단계 빨간 원형 단추: 실제 모드는 촬영을 시작하고, 다 찍으면 원형 단추 대신 «다시 찍기» · «이 사진으로 만들기»', async () => {
     asPhone(true);
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
@@ -949,20 +949,25 @@ describe('휴대폰 흐름', () => {
     await runCountdown();
     vi.useRealTimers();
     await act(async () => { await Promise.resolve(); });
-    expect(el('phoneShotBtn').hidden).toBe(true);   // 찍은 뒤에는 원형 단추가 없다(«이 사진으로 만들기»로)
-    expect(scrolled.some((e) => e.classList.contains('camera-film-heading'))).toBe(true);
+    expect(el('phoneShotBtn').hidden).toBe(true);   // 찍은 뒤에는 원형 단추가 없다
+    // 휴대폰 CSS는 #cameraView의 data-phase로 찍은 뒤에만 단추 줄을 보인다(10/18 «사진과 카메라 단추만 남기고»)
+    expect(el('cameraView').dataset.phase).toBe('shot');
+    expect(el('generateBtn').hidden).toBe(false);
+    expect(el<HTMLButtonElement>('retakeBtn').disabled).toBe(false);
   });
 
-  test('2단계 빨간 원형 단추: 샘플 모드는 카메라 없이 «샘플 포스터 보기» 자리로 내려간다', async () => {
+  test('2단계 빨간 원형 단추: 샘플 모드는 카메라 없이 바로 샘플 포스터 로딩을 시작한다', async () => {
     asPhone(true);
     vi.stubEnv('VITE_SAMPLE_MODE', '1');
     const f = installFetch();
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(el('phoneShotBtn').getAttribute('aria-label')).toBe('샘플 포스터 보기');
+    expect(el('cameraView').dataset.phase).toBe('idle');
     await act(async () => { el<HTMLButtonElement>('phoneShotBtn').click(); });
-    expect(scrolled.some((e) => e.classList.contains('camera-film-heading'))).toBe(true);
+    expect((document.getElementById('spinner') as HTMLDialogElement).open).toBe(true);
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
-    expect(f.bodies).toHaveLength(0);
+    expect(f.calls).toHaveLength(0);
   });
 
   test('3단계: 큰 포스터 줄 — 옆 장을 누르면 그 장이 선택되고, 가운데 장을 누르면 크게 보기 창이 열린다', async () => {

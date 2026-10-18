@@ -516,23 +516,19 @@ main.app {
   /* 첫 화면 부제: «…나의 첫 / 번째 영화 포스터»처럼 끝줄에 한두 낱말만 남지 않게 두 줄 길이를 고른다 */
   .exhibition-description { text-wrap: balance; }
 
-  /* 머리말: InKY 로고가 혼자 맨 위 줄을 차지하던 것을 CGV×교육청과 한 줄로(세 줄 → 두 줄). 로고 단추는 누르는 높이 44px 이상. */
+  /* 머리말: InKY 로고가 혼자 맨 위 줄을 차지하던 것을 CGV×교육청과 한 줄로(세 줄 → 두 줄). 로고 단추는 누르는 높이 44px 이상.
+     10/18 Bumm님 «CGV × 인천교육청 로고를 더 줄이고 InKY 로고와 세로 정렬»: 0.78 → 0.64배, 두 로고의 세로 가운데를 같은 줄(28px)에. */
   .header-inner { padding-top: 6px; }
-  .brand.header-home { zoom: .78; padding-block: 9px; }
-  .festival-brand.header-home { top: 15px; padding-block: 14px; margin-block: -14px; transform: scale(.88); transform-origin: right center; }
+  .brand.header-home { zoom: .64; padding-block: 16px; }
+  .festival-brand.header-home { top: 17px; padding-block: 14px; margin-block: -14px; transform: scale(.88); transform-origin: right center; }
 
-  /* 개인정보처리방침 링크: 보이는 자리는 그대로, 누르는 높이만 44px로. 위는 단계 표시 단추와 닿아 아래로만 넓히고,
-     3단계는 그만큼 포스터 칸을 내려 아이콘 단추와 겹치지 않게 한다. */
+  /* 개인정보처리방침 링크: 보이는 자리는 그대로, 누르는 높이만 44px로. 위는 단계 표시 단추와 닿아 아래로만 넓힌다.
+     3단계(포스터 고르기)에서는 뺀다 — 10/18 Bumm님 «여기선 빼거나»: 입력이 끝난 화면이고, 그 자리를 포스터에 준다. */
   .privacy-link { padding-block: 4px 20px; margin-top: -4px; }
-  #resultView .result-artboard { padding-top: 48px; }
+  body[data-step="3"] .privacy-link { display: none; }
 
   /* 1단계 «단독 주연 · 우리 같이»: 120px 두 칸이 왼쪽에 몰려 있던 것을 폭 가득 같은 크기로 */
   #prepareWorkspace .segmented { max-width: none; }
-
-  /* 2단계: 촬영 칸과 안내 사이 회색 빈칸 64px → 휴대폰 설계값 28px(위 760px 규칙의 28px를 뒤의 공통 #cameraWorkspace 64px가 덮고 있었다) */
-  #cameraWorkspace { padding-top: 28px; }
-  /* 단체 티켓 출연진: 한 줄 말줄임(«… 오리온 · 카…») 대신 줄을 바꿔 다 보인다 */
-  .camera-ticket-name { white-space: normal; text-overflow: clip; overflow: visible; }
 
   /* 3단계 위 아이콘 단추(다음 주인공 · 크게 보기)와 크게 보기 창 «닫기»: 36·28px → 손가락 크기 44px */
   #resultView .result-artboard .icon-button { width: 44px; height: 44px; }
@@ -567,17 +563,40 @@ main.app {
   }
   .hero-next svg { width: 22px; height: 22px; }
 
-  /* ③ «단독 주연 / 우리 같이»: 140px 네모 카드 → 낮은 가로 칸(아이콘 왼쪽 · 글씨 오른쪽 · 고름 표시 오른쪽 끝) */
+  /* ③ «단독 주연 / 우리 같이»(10/18 Bumm님 «글씨와 단추를 줄여 왼쪽에 세로로 쌓고, 오른쪽에 영화 제목 · 이름 칸, 그 아래 공간을
+     확보해 포스터를 가로로 넘기며»): 왼쪽 좁은 단에 낮은 칸 두 개(아이콘 · 글씨 · 고름 표시)를 세로로 | 오른쪽에 입력 칸. */
+  #prepareWorkspace .identity-section { display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: start; gap: 12px; }
+  #prepareWorkspace .section-top { margin: 0; }
+  #prepareWorkspace .segmented { display: flex; flex-direction: column; gap: 8px; width: 100%; }
   #prepareWorkspace .segmented button {
-    height: 56px; min-height: 56px;
+    width: 100%; height: 48px; min-height: 48px;
     flex-direction: row; justify-content: flex-start;
-    gap: 10px; padding: 0 14px;
+    gap: 5px; padding: 0 8px;
   }
+  #prepareWorkspace .mode-copy strong { font-size: 14px; white-space: nowrap; }
   #prepareWorkspace .people-icon,
-  #prepareWorkspace .people-icon svg { width: 24px; height: 24px; }
-  #prepareWorkspace .people-icon { flex: 0 0 24px; }
+  #prepareWorkspace .people-icon svg { width: 20px; height: 20px; }
+  #prepareWorkspace .people-icon { flex: 0 0 20px; }
   #prepareWorkspace .mode-copy { flex: 1 1 auto; text-align: left; }
-  #prepareWorkspace .mode-check { position: static; flex: 0 0 18px; }
+  #prepareWorkspace .mode-check { position: static; flex: 0 0 16px; width: 16px; height: 16px; font-size: 10px; }
+  #prepareWorkspace .field-row { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+  #prepareWorkspace .field label { margin-bottom: 4px; font-size: 13px; }
+  #prepareWorkspace .field input { height: 44px; min-height: 44px; }
+  /* 장르 포스터 8장: 두 줄 격자 → 한 줄 가로 넘김. 화면 끝까지 이어 보이게 좌우 여백 밖으로 — 여백이 폭마다 20~22px로 달라
+     «(화면 폭 − 단 폭) ÷ 2»로 잰다. 단 폭은 컨테이너 단위(cqw)라 마진 · 안쪽 여백 · 넘김 여백이 모두 같은 값이 된다(%는 속성마다 기준이 다르다). */
+  #prepareWorkspace .genre-section { container-type: inline-size; }
+  #prepareWorkspace .genre-grid {
+    --bleed: calc(50vw - 50cqw);
+    display: flex; gap: 10px; margin-inline: calc(-1 * var(--bleed)); padding: 2px var(--bleed) 6px;
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding-inline: var(--bleed); scrollbar-width: none;
+  }
+  #prepareWorkspace .genre-grid::-webkit-scrollbar { display: none; }
+  #prepareWorkspace .genre-option { flex: 0 0 112px; min-width: 0; scroll-snap-align: start; }
+  /* 둘째 페이지가 머리말 아래 한 화면에 들어오게(혼자: 360×780부터, 같이: 390×844부터) 덩어리 사이 여백을 줄인다 — 48 → 16 · 36 → 26px */
+  #prepareWorkspace { padding-top: 20px; }
+  #prepareWorkspace .page-heading { margin-bottom: 16px; }
+  #prepareWorkspace .genre-section { margin-top: 16px; padding-top: 0; }
+  #prepareWorkspace .action-dock { margin-top: 14px; padding-top: 12px; }
 }
 @media (max-width: 370px) {
   :root { --phone-header-h: 129px; }
@@ -588,14 +607,13 @@ main.app {
 }
 .phone-shot { display: none; }
 @media (max-width: 760px) {
-  /* ⑤ 2단계: 카메라 칸을 화면 높이에 맞춰 줄여 «나답게, 편하게 웃어주세요.»와 안내 1~3이 첫 화면에 들어오게.
-     카메라 칸 아래 설명(«얼굴과 어깨가 … 맞춰주세요.»)은 안내 1과 같은 말이라 휴대폰에서는 원형 단추에 자리를 내준다. */
+  /* ⑤ 2단계: 카메라 칸 아래 설명(«얼굴과 어깨가 … 맞춰주세요.»)은 촬영 칸 안의 예시 글줄과 같은 말이라 휴대폰에서는 원형 단추에 자리를 내준다.
+     촬영 칸 높이는 아래 10/18 규칙(제목 · 사진 · 원형 단추만 남김)에서 화면 높이에 맞춘다. */
   #cameraView .camera-surface { padding: 34px 22px 14px; }
   /* 이름표 줄(카메라 미리 보기 · 촬영 구도 예시)은 머리말 아래 «개인정보처리방침»과 겹쳐 휴대폰에서는 뺀다 — 상태는 칸 안의 표시(실시간 미리보기 · 촬영 완료)가 알린다 */
   #cameraView .camera-top { display: none; }
-  #cameraView .camera-large { min-height: 0; aspect-ratio: auto; height: clamp(200px, 32svh, 300px); }
+  #cameraView .camera-large { min-height: 0; aspect-ratio: auto; }
   #cameraView .camera-bottom { display: none; }
-  #cameraWorkspace { padding-top: 18px; }
   /* ⑥ 엄지 자리 빨간 원형 촬영 단추 — 카메라 칸 아래 가운데에 반쯤 걸친다(Lucide camera) */
   .phone-shot {
     display: grid; place-items: center;
@@ -613,14 +631,39 @@ main.app {
   .phone-shot:active:not(:disabled) { transform: scale(.96); }
   .phone-shot:disabled { background: #bdbdbd; box-shadow: none; cursor: default; }
   .phone-shot:focus-visible { outline: 3px solid #d82d23; outline-offset: 3px; }
+
+  /* 10/18 Bumm님 «“나답게, 편하게 웃어주세요.”를 위로 올려 제목처럼. 사진과 카메라 단추만 남기고 뒤 회색 부분에 들어간 것은 전부 뺀다»:
+     오른쪽 칸(#cameraWorkspace)을 상자에서 풀어(display: contents) 제목을 촬영 칸 위로 올리고, 안내 1~3 · 오늘 촬영할 영화 · 이전 단추를 뺀다.
+     찍은 뒤에만 사진 아래에 «다시 찍기»와 «이 사진으로 만들기»가 나온다(그 전에는 원형 단추 하나). 이전 단계는 위 단계 표시로 간다. */
+  #cameraView { display: flex; flex-direction: column; }
+  #cameraWorkspace, #cameraWorkspace .camera-guide, #cameraWorkspace .camera-instructions { display: contents; }
+  #cameraWorkspace .page-heading { order: -1; margin: 0; padding: 20px 22px 0; background: #fff; }
+  #cameraWorkspace .page-heading h1 { margin: 0; }
+  #cameraView .camera-surface { padding-top: 16px; }
+  /* 빈 회색 칸이 빠진 만큼 촬영 칸을 화면 높이에 맞춰 키운다(머리말 · 제목 · 원형 단추를 뺀 나머지). 찍은 뒤에는 아래 두 단추 줄만큼 줄인다. */
+  #cameraView .camera-large { height: clamp(240px, calc(100svh - var(--phone-header-h) - 160px), 620px); }
+  #cameraView[data-phase="shot"] .camera-large { height: clamp(220px, calc(100svh - var(--phone-header-h) - 262px), 560px); }
+  #cameraWorkspace .camera-tips, #cameraWorkspace .camera-film-heading, #cameraWorkspace .camera-film-card,
+  #cameraWorkspace .camera-actions .back-button,
+  #cameraView:not([data-phase="shot"]) .photo-review,
+  #cameraView:not([data-phase="shot"]) .camera-actions { display: none; }
+  #cameraView .photo-review { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 14px 22px 0; }
+  #cameraView .photo-review p { font-size: 14px; line-height: 1.5; }
+  #cameraView .photo-review #retakeBtn { flex: none; min-height: 44px; font-size: 15px; }
+  #cameraWorkspace .camera-actions { margin: 0; padding: 12px 22px max(20px, env(safe-area-inset-bottom)); }
+  #cameraWorkspace .camera-actions #generateBtn { flex: 1 1 auto; }
 }
 .phone-stage, .poster-carousel-caption, .dialog-carousel, .label-phone, #saveBtn { display: none; }
 @media (max-width: 760px) {
   /* ⑧~⑬ 3단계: 머리말 아래를 한 화면으로 — 위 줄(Poster Studio · 다음 주인공 · 크게 보기) · 큰 포스터 넘김 · 이름과 순번 · 썸네일 한 줄 · 단추 줄.
      포스터 크기는 남은 높이(컨테이너 높이)에서 정한다 — 4×6 비율을 지키고 폭의 78%를 넘지 않는다. 폭 360~430 · 높이 740~932에서 스크롤이 없다. */
   #resultView { display: flex; flex-direction: column; height: calc(100svh - var(--phone-header-h)); min-height: 0; overflow: hidden; }
-  #resultView .result-artboard { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 46px 0 0; }   /* 46px: 위 «개인정보처리방침» 누르는 자리(머리말 아래 45px까지)와 아이콘이 겹치지 않게 */
+  #resultView .result-artboard { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 10px 0 0; }   /* 3단계에는 «개인정보처리방침»이 없다(위 «휴대폰 배열») */
+  /* 10/18 Bumm님 «포스터 일부가 잘리면 안 됨 → 로고 · 단추를 줄인다»: 위 줄(Poster Studio · 아이콘 단추)과 아래 단추 줄을 낮춰 포스터에 준다. */
   #resultView .result-artboard-top { padding: 0 22px; }
+  #resultView .result-brand { font-size: 17px; }
+  #resultView .result-brand-icon { width: 24px; height: 24px; }
+  #resultView .result-artboard .icon-button { width: 40px; height: 40px; }
   #resultView .result-poster-slot, #resultView .print-size { display: none; }
   .phone-stage { display: block; flex: 1 1 auto; align-self: stretch; width: 100%; min-height: 0; margin-top: 8px; container-type: size; }
   .poster-carousel {
@@ -646,19 +689,19 @@ main.app {
   #resultView #resultWorkspace { flex: 0 0 auto; padding: 6px 0 0; overflow: visible; }
   #resultView #resultWorkspace .page-heading { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   #resultView .section-description { display: none; }
-  /* ⑨ 썸네일 한 줄(가로로 밀기) — 고른 것은 빨간 테두리, 늘 보이게 가운데로 */
+  /* ⑨ 썸네일 한 줄 — 10/18 Bumm님 «8장을 전부»: 8장이 다 보이게 폭을 나눠 갖는다(끝 장이 화면 밖으로 잘리던 것). 고른 것은 빨간 테두리. */
   #resultView #gallery.style-grid {
-    display: flex; gap: 8px; max-width: none; margin: 0;
-    padding: 4px 22px 6px; overflow-x: auto; scrollbar-width: none;
+    display: flex; justify-content: center; gap: 6px; max-width: none; margin: 0;
+    padding: 4px 22px 6px; overflow: visible;
   }
-  #resultView #gallery.style-grid::-webkit-scrollbar { display: none; }
-  #resultView #gallery .style-option { flex: 0 0 46px; min-width: 0; padding: 0; border: 0; background: transparent; }
-  #resultView #gallery .style-image { display: block; width: 46px; height: 69px; padding: 0; border: 2px solid transparent; border-radius: 5px; overflow: hidden; }
+  #resultView #gallery .style-option { flex: 0 1 46px; min-width: 0; padding: 0; border: 0; background: transparent; }
+  #resultView #gallery .style-image { display: block; width: 100%; height: auto; aspect-ratio: 2 / 3; padding: 0; border: 2px solid transparent; border-radius: 5px; overflow: hidden; }
   #resultView #gallery .style-image img { width: 100%; height: 100%; object-fit: cover; }
   #resultView #gallery .style-option[aria-pressed="true"] .style-image { border-color: #d82d23; }
   #resultView #gallery .style-caption, #resultView #gallery .style-check { display: none; }
   /* ⑪ 단추 줄: 왼쪽 작게 «← 다시 찍기» · 오른쪽 크게 «내 휴대폰에 저장» — 화면 맨 아래 */
-  #resultView .result-actions { margin: 4px 0 0; padding: 10px 22px max(14px, env(safe-area-inset-bottom)); max-width: none; }
+  #resultView .result-actions { margin: 4px 0 0; padding: 8px 22px max(14px, env(safe-area-inset-bottom)); max-width: none; }
+  #resultView .result-actions > button { min-height: 48px; height: 48px; font-size: 15px; }
   #resultView .result-actions .back-button { flex: 0 0 auto; padding-left: 16px; padding-right: 16px; }
   #resultView #printBtn, #resultView .label-pc { display: none; }
   #resultView #saveBtn { display: inline-flex; }
