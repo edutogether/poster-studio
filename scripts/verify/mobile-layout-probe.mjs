@@ -9,6 +9,8 @@
    ③ 서로 겹치는 단추·입력칸(모달이 떠 있으면 그 안의 것만) ④ 높이 40px 미만 단추·입력칸(손가락으로 누르기 어려움)
    ⑤ 넘쳐서 잘린 글자(넘침 숨김 + 내용이 더 큼) ⑥ 맨 아래 단추가 문서 끝에서 12px 안(화면 끝에 붙음)
    ⑦ 단계에 막 도착한 화면이 맨 위가 아닌 곳에서 시작(1단계는 끝까지 내린 뒤 «다음»을 누른다 — 사람이 그렇게 한다)
+   휴대폰만: 2단계 도착 화면에 원형 촬영 단추와 안내 1~3이 다 보인다(못 찾으면 그것도 걸림) · 3단계가 스크롤 없이 한 화면
+   (2026-10-18 · 10-19 Bumm님 휴대폰 검토). 3단계 큰 포스터 위 화살표는 일부러 포스터에 걸친 것이라 겹침으로 세지 않는다.
    전체 페이지 캡처에는 화면 위에 숨겨 둔 고정 요소(바로가기 링크 등)가 비쳐 보일 수 있다 — 사람이 보는 화면은 -view.png다.
    --desktop은 터치·휴대폰 흉내 없이 같은 흐름을 찍는다(휴대폰 규칙이 PC 화면을 바꾸지 않았는지 대조용, 판정은 휴대폰 기준이라 참고만).
    결과는 <결과 폴더>/report.json. 하나라도 걸리면 종료코드 1, 화면을 하나라도 못 찍으면(흐름이 막힘) 종료코드 2.
@@ -112,6 +114,9 @@ try {
     const overlaps = [];
     for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
       const a = rects[i], b = rects[j]; if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      // 3단계 넘김 화살표는 포스터 줄 가장자리에 일부러 얹었다(10/19 «양쪽에 화살표») — 그 짝만 뺀다
+      const arrowOnSlide = (x, y) => x.el.classList.contains('carousel-arrow') && y.el.classList.contains('poster-slide');
+      if (arrowOnSlide(a, b) || arrowOnSlide(b, a)) continue;
       const ow = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), oh = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
       if (ow > 2 && oh > 2) overlaps.push(name(a.el) + ' ↔ ' + name(b.el) + ' ' + Math.round(ow) + '×' + Math.round(oh));
     }
@@ -126,16 +131,23 @@ try {
       const hides = /(hidden|clip)/.test(s.overflowX + s.overflowY) || s.textOverflow === 'ellipsis';
       if (hides && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)) clipped.push(name(el) + ' ' + el.scrollWidth + '/' + el.clientWidth + '×' + el.scrollHeight + '/' + el.clientHeight);
     }
+    // 휴대폰 2단계 원형 촬영 단추 아래 끝(보이는 단추가 없으면 null)
+    const sb = document.querySelector('#cameraView:not([hidden]) #phoneShotBtn');
+    const shotBottom = sb && vis(sb) ? Math.round(sb.getBoundingClientRect().bottom) : null;
+    // 안내 1~3: 보이는 목록이 없으면 null — 숨긴 목록의 아래 끝(0)을 재고 늘 통과하던 빈 검사였다(10/18 발견)
     const tips = document.querySelector('#cameraView:not([hidden]) .camera-tips');
-    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, tipsBottom: tips ? Math.round(tips.getBoundingClientRect().bottom) : null, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
+    const tipsBottom = tips && vis(tips) && tips.getBoundingClientRect().height > 0 ? Math.round(tips.getBoundingClientRect().bottom) : null;
+    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, shotBottom, tipsBottom, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
   })()`;
-  // fit: 휴대폰 3단계는 스크롤 없이 한 화면(팀장 설계 ⑬). tips: 휴대폰 2단계 도착 화면에 안내 1~3이 잘리지 않는다(⑤).
-  const shot = async (tag, screen, { arrival = false, fit = false, tips = false } = {}) => {
+  // fit: 휴대폰 3단계는 스크롤 없이 한 화면(팀장 설계 ⑬).
+  // shotInView · tips: 휴대폰 2단계 도착 화면에 원형 촬영 단추 · 안내 1~3이 다 보인다(⑤ · ⑥) — 못 찾으면 걸린다(빈 검사가 되지 않게).
+  const shot = async (tag, screen, { arrival = false, fit = false, shotInView = false, tips = false } = {}) => {
     await delay(400);
     const m = await evaluate(MEASURE);
     m.arrivalScroll = arrival && m.scrollY > 0 ? m.scrollY : 0;
     m.notFit = fit && m.height > m.vh + 1 ? m.height - m.vh : 0;
-    m.tipsCut = tips && m.tipsBottom !== null && m.tipsBottom > m.vh ? m.tipsBottom - m.vh : 0;
+    m.shotCut = shotInView ? (m.shotBottom === null ? '없음' : Math.max(0, m.shotBottom - m.vh)) : 0;
+    m.tipsCut = tips ? (m.tipsBottom === null ? '없음' : Math.max(0, m.tipsBottom - m.vh)) : 0;
     const v = await call('Page.captureScreenshot', { format: 'png' });
     await fs.writeFile(path.join(out, `${tag}-${screen}-view.png`), Buffer.from(v.data, 'base64'));
     const metrics = await call('Page.getLayoutMetrics');
@@ -143,8 +155,8 @@ try {
     const s = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: metrics.cssLayoutViewport.clientWidth, height: Math.min(h, 12000), scale: 1 } });
     await fs.writeFile(path.join(out, `${tag}-${screen}.png`), Buffer.from(s.data, 'base64'));
     report.push({ size: tag, screen, ...m });
-    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.tipsCut;
-    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ''}${bad ? '  ← 확인' : ''}`);
+    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut;
+    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${bad ? '  ← 확인' : ''}`);
   };
   const fail = (tag, what) => { blocked = true; console.error(`${tag}: ${what}에서 흐름이 막힘`); };
 
@@ -164,25 +176,25 @@ try {
     await shot(tag, '1-step1-group');
     await evaluate('scrollTo(0, document.scrollingElement.scrollHeight); document.getElementById("prepareNextBtn").click() || true');
     if (!await waitFor('!document.getElementById("cameraView").hidden')) { fail(tag, '2단계(같이)'); continue; }
-    await shot(tag, '2-step2-group', { arrival: true, tips: !desktop });
-    await evaluate(`document.querySelector('.camera-actions .back-button').click() || true`);
+    await shot(tag, '2-step2-group', { arrival: true, shotInView: !desktop, tips: !desktop });
+    // 1단계로 돌아가기 — 휴대폰 2단계에는 «이전» 단추가 없어(10/18) 위 단계 표시의 «영화 준비»를 누른다(사람도 그렇게 한다)
+    await evaluate(`document.querySelector('.stepper li:first-child button').click() || true`);
     await waitFor('!document.getElementById("prepareNextBtn").closest("[hidden]")');
     await evaluate(`document.querySelector('[data-mode="solo"]').click() || true`);
     await evaluate('scrollTo(0, document.scrollingElement.scrollHeight); document.getElementById("prepareNextBtn").click() || true');
     if (!await waitFor('!document.getElementById("cameraView").hidden')) { fail(tag, '2단계(혼자)'); continue; }
-    await shot(tag, '2-step2-solo', { arrival: true, tips: !desktop });
-    // 휴대폰: 빨간 원형 단추(⑥) — 샘플 모드는 «오늘 촬영할 영화»와 단추 줄까지 내려간다(⑦). 단추가 없는 옛 빌드(대조용 «전»)는 이 화면만 건너뛴다.
-    if (!desktop && await evaluate(`!!document.getElementById('phoneShotBtn')`)) {
-      await evaluate(`document.getElementById('phoneShotBtn').click() || true`);
-      // 실제 모드: 카메라를 켜고 3·2·1 뒤 찍힌다 — «이 사진으로 만들기»가 나올 때까지 기다린다
-      if (real && !await waitFor('!document.getElementById("generateBtn").hidden', 20000)) { fail(tag, '실제 모드 촬영'); continue; }
+    await shot(tag, '2-step2-solo', { arrival: true, shotInView: !desktop, tips: !desktop });
+    // 촬영 단추: 휴대폰은 빨간 원형 단추(⑥), PC와 원형 단추가 없는 옛 빌드(대조용 «전»)는 «3초 뒤 사진 찍기» / «샘플 포스터 보기».
+    // 샘플 모드는 그 단추가 곧 샘플 포스터 로딩이다(10/18 — 예전에는 원형 단추가 아래 단추 줄로 내려가기만 했다).
+    const phoneBtn = !desktop && await evaluate(`!!document.getElementById('phoneShotBtn')`);
+    await evaluate(`document.getElementById('${phoneBtn ? 'phoneShotBtn' : 'shotBtn'}').click() || true`);
+    if (real) {
+      // 실제 모드: 카메라를 켜고 3·2·1 뒤 찍힌다 — «이 사진으로 만들기»가 나올 때까지 기다렸다가 그 화면을 재고 누른다
+      if (!await waitFor('!document.getElementById("generateBtn").hidden', 20000)) { fail(tag, '실제 모드 촬영'); continue; }
       await delay(900);
       await shot(tag, '2-step2-after-shot');
-    } else if (real) {
-      await evaluate('document.getElementById("shotBtn").click() || true');
-      if (!await waitFor('!document.getElementById("generateBtn").hidden', 20000)) { fail(tag, '실제 모드 촬영'); continue; }
+      await evaluate('document.getElementById("generateBtn").click() || true');
     }
-    await evaluate(real ? 'document.getElementById("generateBtn").click() || true' : 'document.getElementById("shotBtn").click() || true');
     if (!await waitFor('!!document.querySelector(".generation-wait, [class*=generation-wait]")', 10000)) { fail(tag, '로딩 화면'); continue; }
     await delay(1500);
     await shot(tag, '3-loading');
@@ -203,6 +215,6 @@ try {
 }
 await fs.writeFile(path.join(out, 'report.json'), JSON.stringify(report, null, 1));
 if (blocked || !report.length) process.exit(2);
-const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.tipsCut).length;
+const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.shotCut || r.tipsCut).length;
 console.log(issues ? `걸린 화면 ${issues}개 / ${report.length}` : `통과 — ${report.length}개 화면 모두 결함 없음`);
 process.exit(issues ? 1 : 0);

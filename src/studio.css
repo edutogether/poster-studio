@@ -516,23 +516,22 @@ main.app {
   /* 첫 화면 부제: «…나의 첫 / 번째 영화 포스터»처럼 끝줄에 한두 낱말만 남지 않게 두 줄 길이를 고른다 */
   .exhibition-description { text-wrap: balance; }
 
-  /* 머리말: InKY 로고가 혼자 맨 위 줄을 차지하던 것을 CGV×교육청과 한 줄로(세 줄 → 두 줄). 로고 단추는 누르는 높이 44px 이상. */
+  /* 머리말: InKY 로고가 혼자 맨 위 줄을 차지하던 것을 CGV×교육청과 한 줄로(세 줄 → 두 줄). 로고 단추는 누르는 높이 44px 이상.
+     10/18 Bumm님 «CGV × 인천교육청 로고를 더 줄이고 InKY 로고와 세로 정렬»: 0.78 → 0.64배, 두 로고의 세로 가운데를 같은 줄(28px)에. */
   .header-inner { padding-top: 6px; }
-  .brand.header-home { zoom: .78; padding-block: 9px; }
-  .festival-brand.header-home { top: 15px; padding-block: 14px; margin-block: -14px; transform: scale(.88); transform-origin: right center; }
+  .brand.header-home { zoom: .64; padding-block: 16px; }
+  .festival-brand.header-home { top: 17px; padding-block: 14px; margin-block: -14px; transform: scale(.88); transform-origin: right center; }
 
-  /* 개인정보처리방침 링크: 보이는 자리는 그대로, 누르는 높이만 44px로. 위는 단계 표시 단추와 닿아 아래로만 넓히고,
-     3단계는 그만큼 포스터 칸을 내려 아이콘 단추와 겹치지 않게 한다. */
+  /* 개인정보처리방침 링크: 보이는 자리는 그대로, 누르는 높이만 44px로. 위는 단계 표시 단추와 닿아 아래로만 넓힌다.
+     3단계(포스터 고르기)에서는 뺀다 — 10/18 Bumm님 «여기선 빼거나»: 입력이 끝난 화면이고, 그 자리를 포스터에 준다. */
   .privacy-link { padding-block: 4px 20px; margin-top: -4px; }
-  #resultView .result-artboard { padding-top: 48px; }
+  body[data-step="3"] .privacy-link { display: none; }
 
   /* 1단계 «단독 주연 · 우리 같이»: 120px 두 칸이 왼쪽에 몰려 있던 것을 폭 가득 같은 크기로 */
   #prepareWorkspace .segmented { max-width: none; }
 
   /* 2단계: 촬영 칸과 안내 사이 회색 빈칸 64px → 휴대폰 설계값 28px(위 760px 규칙의 28px를 뒤의 공통 #cameraWorkspace 64px가 덮고 있었다) */
   #cameraWorkspace { padding-top: 28px; }
-  /* 단체 티켓 출연진: 한 줄 말줄임(«… 오리온 · 카…») 대신 줄을 바꿔 다 보인다 */
-  .camera-ticket-name { white-space: normal; text-overflow: clip; overflow: visible; }
 
   /* 3단계 위 아이콘 단추(다음 주인공 · 크게 보기)와 크게 보기 창 «닫기»: 36·28px → 손가락 크기 44px */
   #resultView .result-artboard .icon-button { width: 44px; height: 44px; }
@@ -566,6 +565,10 @@ main.app {
     animation: hero-next-nudge 1.8s ease-in-out infinite;
   }
   .hero-next svg { width: 22px; height: 22px; }
+  /* 10/19 Bumm님 «제목 글씨가 너무 화면 가운데에 있음 → 더 아래로, “인천을 대표하는 …” 두 줄은 더 작고 연하게»:
+     글 덩어리를 가운데에서 아래(«내려가기» 화살표 바로 위)로 옮기고, 부제는 18 → 15px · 흰색 72%. */
+  body[data-step="1"] #prepareView .exhibition { justify-content: flex-end; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  #prepareView .exhibition-description { font-size: 15px; line-height: 1.6; color: #ffffffb8; }
 
   /* ③ «단독 주연 / 우리 같이»: 140px 네모 카드 → 낮은 가로 칸(아이콘 왼쪽 · 글씨 오른쪽 · 고름 표시 오른쪽 끝) */
   #prepareWorkspace .segmented button {
@@ -613,18 +616,27 @@ main.app {
   .phone-shot:active:not(:disabled) { transform: scale(.96); }
   .phone-shot:disabled { background: #bdbdbd; box-shadow: none; cursor: default; }
   .phone-shot:focus-visible { outline: 3px solid #d82d23; outline-offset: 3px; }
+  /* 10/19 Bumm님 «아래 “오늘 촬영할 영화” 부분은 중복이니 걷어내고 “나답게, 편하게 웃어주세요.”(1 · 2 · 3 안내)까지만, 그 회색 칸 맨 끝에
+     찍은 뒤 포스터 페이지로 넘어가는 빨간 단추» — 영화 카드를 빼면 단추 줄이 안내 바로 아래(회색 칸 끝)로 올라온다.
+     찍은 뒤 그 자리로 저절로 내려가는 움직임은 없앴다(StudioView — «찍은 뒤 내려간 화면»을 따로 두지 않음). */
+  #cameraWorkspace .camera-film-heading, #cameraWorkspace .camera-film-card { display: none; }
 }
 .phone-stage, .poster-carousel-caption, .dialog-carousel, .label-phone, #saveBtn { display: none; }
 @media (max-width: 760px) {
   /* ⑧~⑬ 3단계: 머리말 아래를 한 화면으로 — 위 줄(Poster Studio · 다음 주인공 · 크게 보기) · 큰 포스터 넘김 · 이름과 순번 · 썸네일 한 줄 · 단추 줄.
      포스터 크기는 남은 높이(컨테이너 높이)에서 정한다 — 4×6 비율을 지키고 폭의 78%를 넘지 않는다. 폭 360~430 · 높이 740~932에서 스크롤이 없다. */
   #resultView { display: flex; flex-direction: column; height: calc(100svh - var(--phone-header-h)); min-height: 0; overflow: hidden; }
-  #resultView .result-artboard { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 46px 0 0; }   /* 46px: 위 «개인정보처리방침» 누르는 자리(머리말 아래 45px까지)와 아이콘이 겹치지 않게 */
+  #resultView .result-artboard { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 10px 0 0; }   /* 3단계에는 «개인정보처리방침»이 없다(위 «휴대폰 배열») */
+  /* 10/18 Bumm님 «포스터 일부가 잘리면 안 됨 → 로고 · 단추를 줄인다»: 위 줄(Poster Studio · 아이콘 단추)과 아래 단추 줄을 낮춰 포스터에 준다. */
   #resultView .result-artboard-top { padding: 0 22px; }
+  #resultView .result-brand { font-size: 17px; }
+  #resultView .result-brand-icon { width: 24px; height: 24px; }
+  #resultView .result-artboard .icon-button { width: 40px; height: 40px; }
   #resultView .result-poster-slot, #resultView .print-size { display: none; }
-  .phone-stage { display: block; flex: 1 1 auto; align-self: stretch; width: 100%; min-height: 0; margin-top: 8px; container-type: size; }
+  .phone-stage { display: block; position: relative; flex: 1 1 auto; align-self: stretch; width: 100%; min-height: 0; margin-top: 8px; container-type: size; }
+  /* 10/19 Bumm님 «썸네일 8개는 빼고, 그만큼 포스터를 더 키우고»: 폭 상한 78 → 86% */
   .poster-carousel {
-    --slide-w: min(calc(100cqh * 2 / 3), 78cqw);
+    --slide-w: min(calc(100cqh * 2 / 3), 86cqw);
     display: flex; align-items: center; gap: 14px; height: 100%;
     padding-inline: calc(50cqw - var(--slide-w) / 2);
     overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
@@ -641,24 +653,28 @@ main.app {
   .poster-slide:focus-visible { outline: 3px solid #d82d23; outline-offset: 3px; }
   .poster-carousel[data-hint] .poster-slide { animation: carousel-hint 1.2s ease-in-out 1; }
   .poster-carousel-caption { display: block; margin: 8px 0 0; text-align: center; font-size: 14px; font-weight: 600; line-height: 20px; color: #444; }
+  /* 10/19 Bumm님 «양쪽에 화살표를 두어 넘기며 보게»: 포스터 줄 좌우 가장자리에 흰 원 화살표(밀어 넘기기도 그대로). 끝 장에서는 옅게 · 누를 수 없게. */
+  .carousel-arrow {
+    position: absolute; top: 50%; z-index: 2; display: grid; place-items: center;
+    width: 44px; height: 44px; margin-top: -22px; padding: 0;
+    border: 0; border-radius: 50%; background: #ffffffeb; color: #1c1c1c;
+    box-shadow: 0 4px 14px #00000038; cursor: pointer;
+  }
+  .carousel-arrow svg { width: 22px; height: 22px; }
+  .carousel-arrow.prev { left: 6px; }
+  .carousel-arrow.next { right: 6px; }
+  .carousel-arrow:disabled { opacity: .35; cursor: default; }
+  .carousel-arrow:focus-visible { outline: 3px solid #d82d23; outline-offset: 2px; }
 
   /* 제목·설명은 화면에서 빼고(완성 알림이 대신 알린다) 읽기 도구에는 남긴다 — 단계 이동 때 초점이 가는 자리다 */
   #resultView #resultWorkspace { flex: 0 0 auto; padding: 6px 0 0; overflow: visible; }
   #resultView #resultWorkspace .page-heading { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   #resultView .section-description { display: none; }
-  /* ⑨ 썸네일 한 줄(가로로 밀기) — 고른 것은 빨간 테두리, 늘 보이게 가운데로 */
-  #resultView #gallery.style-grid {
-    display: flex; gap: 8px; max-width: none; margin: 0;
-    padding: 4px 22px 6px; overflow-x: auto; scrollbar-width: none;
-  }
-  #resultView #gallery.style-grid::-webkit-scrollbar { display: none; }
-  #resultView #gallery .style-option { flex: 0 0 46px; min-width: 0; padding: 0; border: 0; background: transparent; }
-  #resultView #gallery .style-image { display: block; width: 46px; height: 69px; padding: 0; border: 2px solid transparent; border-radius: 5px; overflow: hidden; }
-  #resultView #gallery .style-image img { width: 100%; height: 100%; object-fit: cover; }
-  #resultView #gallery .style-option[aria-pressed="true"] .style-image { border-color: #d82d23; }
-  #resultView #gallery .style-caption, #resultView #gallery .style-check { display: none; }
+  /* ⑨ 썸네일 줄은 휴대폰에서 뺀다 — 10/19 Bumm님 «맨 아래 눈에도 잘 안 보이는 작은 썸네일 8개는 빼고»(고르기는 큰 포스터 넘기기 · 화살표로) */
+  #resultView #gallery.style-grid { display: none; }   /* result.css의 #resultView #gallery.style-grid보다 뒤 · 같은 무게라 이긴다 */
   /* ⑪ 단추 줄: 왼쪽 작게 «← 다시 찍기» · 오른쪽 크게 «내 휴대폰에 저장» — 화면 맨 아래 */
-  #resultView .result-actions { margin: 4px 0 0; padding: 10px 22px max(14px, env(safe-area-inset-bottom)); max-width: none; }
+  #resultView .result-actions { margin: 4px 0 0; padding: 8px 22px max(14px, env(safe-area-inset-bottom)); max-width: none; }
+  #resultView .result-actions > button { min-height: 48px; height: 48px; font-size: 15px; }
   #resultView .result-actions .back-button { flex: 0 0 auto; padding-left: 16px; padding-right: 16px; }
   #resultView #printBtn, #resultView .label-pc { display: none; }
   #resultView #saveBtn { display: inline-flex; }
