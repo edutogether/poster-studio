@@ -1,11 +1,13 @@
 /** @vitest-environment jsdom */
 /* 부스 코드 보관(src/boothCode.ts): 화면 입력칸 없이 주소 뒤 #booth=<코드>로만 받고,
    받은 뒤에는 주소창에서 지운다. 형식이 틀린 값은 보관하지 않는다. */
-import { test, expect, beforeEach } from "vitest";
+import { test, expect, beforeEach, vi } from "vitest";
 import { captureBoothCode, boothCodeHeaders } from "../src/boothCode";
 
 const KEY = "poster-studio-booth-code";
 beforeEach(() => {
+  history.replaceState(null, "", "/#booth=");
+  captureBoothCode();   // 보관값과 메모리 값을 함께 비운다
   localStorage.clear();
   history.replaceState(null, "", "/");
 });
@@ -56,5 +58,72 @@ test("다른 주소 조각(#...)과 보통 방문은 건드리지 않는다", ()
 
 test("저장소에 형식이 틀린 값이 있으면 헤더로 싣지 않는다", () => {
   localStorage.setItem(KEY, "한글코드");
+  expect(boothCodeHeaders()).toEqual({});
+});
+
+/* 부스 코드 입력 창(2026-10-16)이 쓰는 확인·보관. 확인은 사진 없는 요청이라 맞으면 400(사진 확인에서 끝남), 틀리면 403 booth_code다. */
+import { isBoothCodeRefusal, saveBoothCode, verifyBoothCode, VERIFY_TIMEOUT_MS } from "../src/boothCode";
+
+const respond = (status: number, body: unknown) => async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+
+test("확인: 400이면 맞음, 403 booth_code면 틀림, 다른 403·500은 오류, 연결 실패는 오프라인, 형식이 틀리면 요청하지 않는다", async () => {
+  const deps = (f: () => Promise<Response>) => ({ apiBase: "https://api.test", boothToken: "t", fetch: f as unknown as typeof fetch });
+  expect(await verifyBoothCode(" INKY-2026-ABCD ", deps(respond(400, { error: "사진 파일이 없습니다." })))).toBe("ok");
+  expect(await verifyBoothCode("INKY-2026-ABCD", deps(respond(403, { error: "행사 부스에서만 만들 수 있어요.", code: "booth_code" })))).toBe("wrong");
+  expect(await verifyBoothCode("INKY-2026-ABCD", deps(respond(403, { error: "운영 시간이 아닙니다" })))).toBe("error");
+  expect(await verifyBoothCode("INKY-2026-ABCD", deps(respond(500, {})))).toBe("error");
+  expect(await verifyBoothCode("INKY-2026-ABCD", deps(async () => { throw new TypeError("Failed to fetch"); }))).toBe("offline");
+  let called = 0;
+  expect(await verifyBoothCode("한글", deps(async () => { called++; return new Response("{}", { status: 400 }); }))).toBe("format");
+  expect(called).toBe(0);
+});
+
+test("확인이 제한 시간(6초) 안에 끝나지 않으면 요청을 끊고 오프라인으로 본다 — 확인 중엔 «취소»가 꺼져 창이 잠기므로", async () => {
+  vi.useFakeTimers();
+  try {
+    let aborted = false;
+    const hang = ((_url: string, init: RequestInit) => new Promise((_, reject) => init.signal!.addEventListener("abort", () => {
+      aborted = true;
+      reject(new DOMException("aborted", "AbortError"));
+    }))) as unknown as typeof fetch;
+    let result: string | null = null;
+    void verifyBoothCode("INKY-2026-ABCD", { apiBase: "https://api.test", boothToken: "t", fetch: hang }).then((r) => { result = r; });
+    await vi.advanceTimersByTimeAsync(VERIFY_TIMEOUT_MS - 1);
+    expect(result).toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(aborted).toBe(true);
+    expect(result).toBe("offline");
+    expect(VERIFY_TIMEOUT_MS).toBe(6_000);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("확인 요청은 사진 없이 토큰·코드 헤더만 싣는다", async () => {
+  let seen: { url: string; init: RequestInit } | null = null;
+  await verifyBoothCode("INKY-2026-ABCD", { apiBase: "https://api.test", boothToken: "tok", fetch: (async (url: string, init: RequestInit) => { seen = { url, init }; return new Response("{}", { status: 400 }); }) as unknown as typeof fetch });
+  expect(seen!.url).toBe("https://api.test/generate");
+  expect(seen!.init.body).toBe("{}");
+  expect(seen!.init.headers).toEqual({ "content-type": "application/json", "x-booth-token": "tok", "x-booth-code": "INKY-2026-ABCD" });
+});
+
+test("보관은 형식이 맞을 때만, 거절 판정은 403 + code booth_code일 때만", () => {
+  expect(saveBoothCode("abc")).toBe(false);
+  expect(localStorage.getItem(KEY)).toBeNull();
+  expect(saveBoothCode("INKY-2026-ABCD")).toBe(true);
+  expect(boothCodeHeaders()).toEqual({ "x-booth-code": "INKY-2026-ABCD" });
+  expect(isBoothCodeRefusal(403, { code: "booth_code" })).toBe(true);
+  expect(isBoothCodeRefusal(403, { error: "행사 부스에서만 만들 수 있어요." })).toBe(false);
+  expect(isBoothCodeRefusal(400, { code: "booth_code" })).toBe(false);
+  expect(isBoothCodeRefusal(403, null)).toBe(false);
+});
+
+test("저장소가 막힌 브라우저: 보관은 실패(false)해도 이 화면 동안은 헤더에 싣는다 — 입력 창이 되풀이되지 않게(10/17 감사)", () => {
+  const set = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+  const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+  expect(saveBoothCode("INKY-2026-ABCD")).toBe(false);
+  expect(boothCodeHeaders()).toEqual({ "x-booth-code": "INKY-2026-ABCD" });
+  set.mockRestore(); get.mockRestore();
+  open("/#booth=");   // 비우면 메모리 값도 지운다
   expect(boothCodeHeaders()).toEqual({});
 });

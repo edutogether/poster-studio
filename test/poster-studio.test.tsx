@@ -16,6 +16,14 @@ import { StrictMode } from 'react';
 import { render, act, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { TEMPLATES } from '../src/templates.js';
 import PosterStudio, { getMeta } from '../src/PosterStudio.js';
+import * as homeRestart from '../src/restartHome.js';
+import * as posterModule from '../src/poster.js';
+import * as saveModule from '../src/savePoster.js';
+import { PHONE_QUERY, slideAt } from '../src/studio/StudioView.js';
+import { captureBoothCode } from '../src/boothCode.js';
+
+/** 보관한 부스 코드와 메모리 값을 함께 지운다(#booth= 로 여는 것과 같다 — 저장소가 막힌 브라우저용 메모리 값이 다음 테스트로 새지 않게). */
+function forgetBoothCode() { history.replaceState(null, '', '/#booth='); captureBoothCode(); }
 import { heightToApply, TWO_COL_MIN_WIDTH } from '../src/useLayoutMatch.js';
 import {
   installCanvas, installCamera, installFetch, installImage, installFonts,
@@ -75,6 +83,32 @@ function renderApp(strict = false) {
   return render(ui, { container: document.querySelector('main.app') as HTMLElement });
 }
 
+describe('헤더에서 처음으로(10/3 Bumm님 요청, 10/16 결정 8)', () => {
+  test.each(['.brand.header-home', '.festival-brand.header-home'])('%s는 카메라를 끄고 새 홈 문서로 이동한다', async selector => {
+    const restart = vi.spyOn(homeRestart, 'restartAtHome').mockImplementation(() => {});
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    expect(cam.stopped).toEqual([]);
+    fireEvent.click(document.querySelector(selector)!);
+    expect(cam.stopped).toEqual(['video']);
+    expect(restart).toHaveBeenCalledTimes(1);
+  });
+
+  test('촬영한 사진 URL과 인쇄용 화면을 폐기한 뒤 재시작한다', async () => {
+    const restart = vi.spyOn(homeRestart, 'restartAtHome').mockImplementation(() => {});
+    await act(async () => { renderApp(); });
+    await shoot();
+    const snapshot = el<HTMLImageElement>('snapshot').src;
+    const print = document.createElement('div');
+    print.id = 'printArea';
+    document.body.append(print);
+    fireEvent.click(document.querySelector('.brand.header-home')!);
+    expect(objectUrls.revoked).toContain(snapshot);
+    expect(document.getElementById('printArea')).toBeNull();
+    expect(restart).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('주연 이름', () => {
   test.each(['', '   ', '김인키', '김태범'])('입력 %j의 성을 생략하지 않고 빈 값만 김인키로 채운다', async (name) => {
     await act(async () => { renderApp(); });
@@ -116,9 +150,11 @@ describe('세 단계 화면 연결', () => {
     expect(document.getElementById('spinner')).toBe(null);
     if (success) expect(el('resultView').hidden).toBe(false);
     else {
-      expect(el('status').parentElement!.hidden).toBe(false);
-      expect(el('status').textContent).toContain('검사 응답 실패');
-      expect(el('fallbackBtn').className).not.toContain('hidden');
+      // 실패하면 빈 그라데이션 대신 «포스터를 만들지 못했어요» 안내 창(다시 만들기, 2026-10-16)
+      const dialog = document.querySelector('.generate-failure-dialog')!;
+      expect(dialog.textContent).toContain('포스터를 만들지 못했어요');
+      expect(dialog.textContent).not.toContain('검사 응답 실패');   // 진행자용 원인은 화면에 없다(10/17 Bumm님)
+      expect(document.getElementById('fallbackBtn')).toBeNull();
     }
   });
 
@@ -126,7 +162,8 @@ describe('세 단계 화면 연결', () => {
     const f = installFetch();
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
-    const example = document.querySelector<HTMLImageElement>('.camera-example')!;
+    // 예시 칸: 승인된 영상이 없으면 정지 그림(.camera-example), 있으면 영상 무대(.camera-example-stage) — 어느 쪽이든 같은 규칙
+    const example = document.querySelector<HTMLElement>('.camera-example-stage, .camera-example')!;
     expect(example.hidden).toBe(false);
     expect(el('snapshot').getAttribute('src')).toBe(null);
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
@@ -179,6 +216,18 @@ describe('세 단계 화면 연결', () => {
     expect(options[0].getAttribute('aria-pressed')).toBe('false');
   });
 
+  test('단계를 넘기면 맨 위에서 시작하고 제목 초점은 화면을 끌어내리지 않는다(휴대폰, 10/17)', async () => {
+    await act(async () => { renderApp(); });
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    vi.stubGlobal('scrollY', 900);   // 1단계 맨 아래에서 «다음»을 누른 휴대폰
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(document.activeElement).toBe(el('cameraView').querySelector('h1'));
+    expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+  });
+
   test('완료 알림은 2.2초 뒤 닫히고 새 생성 때만 다시 표시한다', async () => {
     await act(async () => { renderApp(); });
     await shoot();
@@ -217,7 +266,7 @@ describe('세 단계 화면 연결', () => {
   test('권한 응답을 기다리다 돌아간 경우 늦게 도착한 카메라도 끈다', async () => {
     let resolveCamera!: (stream: MediaStream) => void;
     const stop = vi.fn();
-    navigator.mediaDevices.getUserMedia = vi.fn(() => new Promise(resolve => { resolveCamera = resolve; }));
+    navigator.mediaDevices.getUserMedia = vi.fn(() => new Promise<MediaStream>(resolve => { resolveCamera = resolve; }));
     const view = await act(async () => renderApp());
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await act(async () => { el<HTMLButtonElement>('startBtn').click(); el<HTMLButtonElement>('startBtn').click(); });
@@ -229,16 +278,195 @@ describe('세 단계 화면 연결', () => {
     expect(el('prepareView').hidden).toBe(false);
   });
 
-  test('생성이 실패하면 오류를 보이고 기본 버전으로 이어갈 수 있다', async () => {
-    await act(async () => { renderApp(); });
+  const okResponse = (url: string) => new Response(JSON.stringify(url.includes('/generate') ? { images: ['data:image/png;base64,FAKE'] } : { ok: true }), { status: 200 });
+
+  test('생성이 실패하면 «다시 만들기»로 같은 사진을 다시 보내고, 성공하면 결과로 간다(대체 그림 없음)', async () => {
+    const view = await act(async () => renderApp());
     await shoot();
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({error:'검사 응답 실패'}), {status:503})));
+    let fail = true;
+    const f = installFetch((url) => url.includes('/generate') && fail
+      ? new Response(JSON.stringify({ error: '생성 시간이 너무 오래 걸려 중단했습니다.', code: 'timeout' }), { status: 504 })
+      : okResponse(url));
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
-    expect(el('status').textContent).toContain('검사 응답 실패');
-    expect(el('fallbackBtn').className).not.toContain('hidden');
-    await act(async () => { el<HTMLButtonElement>('fallbackBtn').click(); });
+    expect(el('resultView').hidden).toBe(true);
+    expect(view.getByRole('alertdialog').textContent).toContain('그림을 다 그리지 못했어요');
+    fail = false;
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    expect(f.bodies).toHaveLength(2);
+    expect(f.bodies[1].get('photo')).toBeTruthy();
     expect(el('resultView').hidden).toBe(false);
     expect(document.querySelectorAll('#gallery .thumb')).toHaveLength(8);
+    expect(view.queryByRole('alertdialog')).toBeNull();
+  });
+
+  test('실패는 «사진당 2회»를 쓰지 않는다 — 실패 두 번 뒤에도 성공 두 번까지 만든다', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    let failures = 2;
+    const f = installFetch((url) => url.includes('/generate') && failures-- > 0
+      ? new Response(JSON.stringify({ error: 'x', code: 'upstream' }), { status: 502 })
+      : okResponse(url));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    expect(el('resultView').hidden).toBe(false);
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(f.bodies).toHaveLength(4);
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(f.bodies, '성공 2번 뒤에는 요청하지 않는다').toHaveLength(4);
+    expect(el('status').textContent).toContain('재생성 횟수를 모두 사용했어요');
+  });
+
+  test('같은 사진으로 다시 해 볼 만한 실패가 3번 쌓이면 «다시 찍기»로 안내한다', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    installFetch((url) => url.includes('/generate')
+      ? new Response(JSON.stringify({ error: 'x', code: 'unknown' }), { status: 500 })
+      : okResponse(url));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    expect(view.getByRole('alertdialog').textContent).toContain('여러 번 만들지 못했어요');
+    expect(view.queryByRole('button', { name: '다시 만들기' })).toBeNull();
+    expect(view.getByRole('button', { name: '다시 찍기' })).toBeTruthy();
+  });
+
+  test('성공하면 실패 횟수를 0으로 되돌린다 — 실패 2번 → 성공 → 실패 1번은 «다시 만들기»', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    const answers = ['fail', 'fail', 'ok', 'fail'];
+    installFetch((url) => url.includes('/generate') && answers.shift() === 'fail'
+      ? new Response(JSON.stringify({ error: 'x', code: 'unknown' }), { status: 500 })
+      : okResponse(url));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    expect(el('resultView').hidden).toBe(false);
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(view.getByRole('alertdialog').textContent).not.toContain('여러 번 만들지 못했어요');
+    expect(view.getByRole('button', { name: '다시 만들기' })).toBeTruthy();
+  });
+
+  /* 응답을 받은 뒤의 실패(2026-10-17 종합감사): 서버는 200인데 그림을 쓸 수 없는 경우. 예전엔 «인터넷 연결이 끊겼어요»가 뜨거나
+     아무 안내 없이 끝났고 원인이 어디에도 남지 않았다. 이미 과금된 생성이라 진행자가 콘솔에서 원인을 볼 수 있어야 한다. */
+  test.each([
+    ['본문이 HTML', () => new Response('<html>점검 중</html>', { status: 200, headers: { 'content-type': 'text/html' } })],
+    ['그림 0장', () => new Response(JSON.stringify({ images: [] }), { status: 200 })],
+  ])('서버가 200인데 그림이 없으면(%s) 인터넷 끊김이 아니라 «다시 만들기»로 안내하고 원인을 남긴다', async (_label, answer) => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    installFetch((url) => url.includes('/generate') ? answer() : okResponse(url));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(el('resultView').hidden).toBe(true);
+    const dialog = view.getByRole('alertdialog');
+    expect(dialog.textContent).toContain('그림을 다 그리지 못했어요');
+    expect(dialog.textContent).not.toContain('인터넷');
+    expect(view.getByRole('button', { name: '다시 만들기' })).toBeTruthy();
+    expect(error).toHaveBeenCalledWith('[포스터 생성 실패] 응답에 그림이 없음', 200, expect.anything());
+    expect(warn).toHaveBeenCalledWith('[포스터 생성 실패]', '응답에 그림이 없음(응답 200)');
+  });
+
+  test('조판이 실패해도 원인을 남기고 «다시 만들기»로 안내한다(사진 횟수는 쓰지 않는다)', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(posterModule, 'buildPosters').mockRejectedValueOnce(new Error('캔버스 오류'));
+    const f = installFetch((url) => okResponse(url));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(el('resultView').hidden).toBe(true);
+    expect(view.getByRole('alertdialog').textContent).toContain('그림을 다 그리지 못했어요');
+    expect(warn).toHaveBeenCalledWith('[포스터 생성 실패]', '포스터 조판 실패: 캔버스 오류');
+    await act(async () => { view.getByRole('button', { name: '다시 만들기' }).click(); });
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(f.bodies, '조판 실패는 성공으로 세지 않아 성공 두 번이 남는다').toHaveLength(3);
+    expect(el('resultView').hidden).toBe(false);
+  });
+
+  test('안전 기준에 걸리면 «제목 · 문구 고치기»로 1단계에 간다', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    installFetch((url) => url.includes('/generate')
+      ? new Response(JSON.stringify({ error: '안전 기준', code: 'safety' }), { status: 400 })
+      : okResponse(url));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { view.getByRole('button', { name: '제목 · 문구 고치기' }).click(); });
+    expect(el('prepareView').hidden).toBe(false);
+    expect(view.queryByRole('alertdialog')).toBeNull();
+  });
+
+  test('인터넷이 끊기면 연결이 돌아올 때까지 «다시 만들기»가 꺼져 있다', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    let up = false;
+    installFetch((url) => {
+      if (!up) throw new TypeError('Failed to fetch');
+      return okResponse(url);
+    });
+    vi.useFakeTimers();   // 연결 확인 간격(5초)을 가짜 시계로 지나가게 한다
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); await vi.advanceTimersByTimeAsync(0); });
+    expect(view.getByRole('alertdialog').textContent).toContain('인터넷 연결이 끊겼어요');
+    expect((view.getByRole('button', { name: '다시 만들기' }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(5_100); });
+    expect((view.getByRole('button', { name: '다시 만들기' }) as HTMLButtonElement).disabled, '아직 끊겨 있으면 그대로 꺼져 있다').toBe(true);
+    up = true;
+    await act(async () => { await vi.advanceTimersByTimeAsync(5_100); });
+    vi.useRealTimers();
+    expect((view.getByRole('button', { name: '다시 만들기' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  test('부스 코드로 거절되면 입력 창을 열고, 맞는 코드를 넣으면 보관한 뒤 같은 사진으로 다시 만든다', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    const sent: (string | null)[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: any, init?: any) => {
+      const url = String(input); const headers = (init?.headers ?? {}) as Record<string, string>;
+      if (!url.includes('/generate')) return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      sent.push(headers['x-booth-code'] ?? null);
+      if (init?.body === '{}') return new Response(JSON.stringify({ error: '사진 파일이 없습니다.', code: 'no_photo' }), { status: 400 });
+      return headers['x-booth-code'] === 'INKY-TEST-0001'
+        ? new Response(JSON.stringify({ images: ['data:image/png;base64,FAKE'] }), { status: 200 })
+        : new Response(JSON.stringify({ error: '행사 부스에서만 만들 수 있어요.', code: 'booth_code' }), { status: 403 });
+    }));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(view.queryByRole('alertdialog')).toBeNull();
+    (view.getByLabelText('부스 코드') as HTMLInputElement).value = 'INKY-TEST-0001';
+    await act(async () => { view.getByRole('button', { name: '확인' }).click(); });
+    expect(sent).toEqual([null, 'INKY-TEST-0001', 'INKY-TEST-0001']);
+    expect(localStorage.getItem('poster-studio-booth-code')).toBe('INKY-TEST-0001');
+    expect(el('resultView').hidden).toBe(false);
+    localStorage.clear();
+    forgetBoothCode();
+  });
+
+  test('부스 코드 창 «취소»는 탭을 닫아 보고, 브라우저가 막으면 처음 화면으로 되돌린다(10/17 Bumm님)', async () => {
+    const restart = vi.spyOn(homeRestart, 'restartAtHome').mockImplementation(() => {});
+    const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+    const view = await act(async () => renderApp());
+    await shoot();
+    vi.stubGlobal('fetch', vi.fn(async (input: any) => String(input).includes('/generate')
+      ? new Response(JSON.stringify({ error: '행사 부스에서만 만들 수 있어요.', code: 'booth_code' }), { status: 403 })
+      : new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    const wait = () => act(async () => { await new Promise(r => setTimeout(r, 350)); });   // 앱은 0.3초 뒤 탭이 남았는지 본다
+    // ① 브라우저가 닫기를 막음(사람이 연 탭) — 창이 그대로라 처음 화면으로
+    await act(async () => { view.getByRole('button', { name: '취소' }).click(); });
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(view.queryByLabelText('부스 코드')).toBeNull();
+    expect(restart).not.toHaveBeenCalled();
+    await wait();
+    expect(restart).toHaveBeenCalledTimes(1);
+    // ② 닫기가 받아들여짐 — 처음 화면으로 되돌리지 않는다(①의 처음으로가 사진을 버렸으므로 다시 찍는다)
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    close.mockImplementation(() => { Object.defineProperty(window, 'closed', { value: true, configurable: true }); });
+    await act(async () => { view.getByRole('button', { name: '취소' }).click(); });
+    await wait();
+    expect(close).toHaveBeenCalledTimes(2);
+    expect(restart).toHaveBeenCalledTimes(1);
+    Object.defineProperty(window, 'closed', { value: false, configurable: true });
   });
 
   test('다음 주인공은 이전 사진·입력·결과를 모두 지운다', async () => {
@@ -310,7 +538,7 @@ describe('카메라', () => {
     expect(cam.stopped).toEqual(['video']);
     expect(el<HTMLVideoElement>('video').srcObject).toBe(null);
     expect(document.querySelector('.camera-live-indicator')).toBe(null);
-    expect(document.querySelector<HTMLImageElement>('.camera-example')!.hidden).toBe(false);
+    expect(document.querySelector<HTMLElement>('.camera-example-stage, .camera-example')!.hidden).toBe(false);
     await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
     expect(document.querySelector('.camera-ready-notice')).not.toBe(null);
     await act(async () => { view.getByRole('button', { name: '이전 단계로' }).click(); });
@@ -599,7 +827,7 @@ describe('부스 코드(서버 스위치 기본 꺼짐)', () => {
   }
 
   test('보관된 코드가 없으면 생성 요청 헤더는 예전과 같다', async () => {
-    localStorage.removeItem('poster-studio-booth-code');
+    forgetBoothCode();
     expect(Object.keys(await 생성_요청_헤더())).toEqual(['x-booth-token']);
   });
 
@@ -680,4 +908,103 @@ describe('샘플 모드',()=>{
     expect(el('shotBtn').textContent).toBe('3초 뒤 사진 찍기');
     expect(document.getElementById('startBtn')).not.toBeNull();
   });
+});
+
+/* 휴대폰 흐름(2026-10-17 Bumm님 휴대폰 지적, _docs/intents/2026-10-17-mobile-flow). 화면 배치는 CSS(@media 760px)라
+   여기서는 «휴대폰일 때만 일어나는 동작»과 «PC에서는 아무 일도 없음»을 고정한다. 배치 · 한 화면 맞춤은 mobile-layout-probe가 잰다. */
+describe('휴대폰 흐름', () => {
+  const asPhone = (phone: boolean) => vi.stubGlobal('matchMedia', (q: string) => ({ matches: phone && q === PHONE_QUERY, addEventListener() {}, removeEventListener() {} }));
+  let scrolled: Element[];
+  let restoreDialog: () => void;
+  beforeEach(() => {
+    scrolled = [];
+    Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this); };
+    Element.prototype.scrollTo = function () {} as typeof Element.prototype.scrollTo;
+    const had = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal');
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value(this: HTMLDialogElement) { this.setAttribute('open', ''); } });
+    restoreDialog = () => { if (had) Object.defineProperty(HTMLDialogElement.prototype, 'showModal', had); else delete (HTMLDialogElement.prototype as unknown as Record<string, unknown>).showModal; };
+  });
+  afterEach(() => {
+    delete (Element.prototype as unknown as Record<string, unknown>).scrollIntoView;
+    delete (Element.prototype as unknown as Record<string, unknown>).scrollTo;
+    restoreDialog();
+  });
+
+  test.each([[true, 1], [false, 0]])('1단계 극장 사진을 누르면 둘째 페이지로 넘어간다 — 휴대폰=%s', async (phone, count) => {
+    asPhone(phone);
+    await act(async () => { renderApp(); });
+    await act(async () => { (document.querySelector('.preview-panel') as HTMLElement).click(); });
+    expect(scrolled.filter((e) => e.id === 'prepareWorkspace')).toHaveLength(count);
+  });
+
+  test('2단계 빨간 원형 단추: 실제 모드는 촬영을 시작하고, 다 찍으면 «오늘 촬영할 영화»까지 내려간다', async () => {
+    asPhone(true);
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(el('phoneShotBtn').getAttribute('aria-label')).toBe('3초 뒤 사진 찍기');
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    makeVideoReady(el<HTMLVideoElement>('video'));
+    vi.useFakeTimers();
+    await act(async () => { el<HTMLButtonElement>('phoneShotBtn').click(); });
+    await runCountdown();
+    vi.useRealTimers();
+    await act(async () => { await Promise.resolve(); });
+    expect(el('phoneShotBtn').hidden).toBe(true);   // 찍은 뒤에는 원형 단추가 없다(«이 사진으로 만들기»로)
+    expect(scrolled.some((e) => e.classList.contains('camera-film-heading'))).toBe(true);
+  });
+
+  test('2단계 빨간 원형 단추: 샘플 모드는 카메라 없이 «샘플 포스터 보기» 자리로 내려간다', async () => {
+    asPhone(true);
+    vi.stubEnv('VITE_SAMPLE_MODE', '1');
+    const f = installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('phoneShotBtn').click(); });
+    expect(scrolled.some((e) => e.classList.contains('camera-film-heading'))).toBe(true);
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+    expect(f.bodies).toHaveLength(0);
+  });
+
+  test('3단계: 큰 포스터 줄 — 옆 장을 누르면 그 장이 선택되고, 가운데 장을 누르면 크게 보기 창이 열린다', async () => {
+    asPhone(true);
+    installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    const slides = document.querySelectorAll<HTMLButtonElement>('.poster-slide');
+    expect(slides).toHaveLength(8);
+    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe(`${TEMPLATES[0].label} · 1 / 8`);
+    await act(async () => { slides[2].click(); });
+    expect(document.querySelectorAll('#gallery .thumb')[2].getAttribute('aria-pressed')).toBe('true');
+    expect(document.querySelector<HTMLDialogElement>('.poster-dialog')!.open).toBe(false);
+    await act(async () => { document.querySelectorAll<HTMLButtonElement>('.poster-slide')[2].click(); });
+    expect(document.querySelector<HTMLDialogElement>('.poster-dialog')!.open).toBe(true);
+    expect(document.querySelectorAll('.dialog-carousel img')).toHaveLength(8);
+  });
+
+  test('3단계 «내 휴대폰에 저장»: 고른 포스터를 영화 제목 이름으로 저장한다', async () => {
+    asPhone(true);
+    installFetch();
+    const save = vi.spyOn(saveModule, 'savePoster').mockResolvedValue('shared');
+    await act(async () => { renderApp(); });
+    fireEvent.input(el('movieTitle'), { target: { value: '우리의 별' } });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { document.querySelectorAll<HTMLButtonElement>('#gallery .thumb')[3].click(); });
+    await act(async () => { el<HTMLButtonElement>('saveBtn').click(); });
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0][1]).toBe('우리의 별');
+    expect(save.mock.calls[0][0]).toBeInstanceOf(HTMLCanvasElement);
+  });
+});
+
+test('넘김 번호: 한 칸 = 장 너비 + 간격, 양끝을 넘지 않는다', () => {
+  expect(slideAt(0, 268, 14, 8)).toBe(0);
+  expect(slideAt(282 * 3 + 100, 268, 14, 8)).toBe(3);
+  expect(slideAt(282 * 3 + 160, 268, 14, 8)).toBe(4);
+  expect(slideAt(99999, 268, 14, 8)).toBe(7);
+  expect(slideAt(-50, 268, 14, 8)).toBe(0);
+  expect(slideAt(500, 0, 0, 8)).toBe(0);
 });

@@ -79,6 +79,15 @@ export function collectStrings(root = ROOT) {
       for (const q of m[1].matchAll(/'([^'\n]*)'|"([^"\n]*)"/g)) { push(q[1]); push(q[2]); }
     }
   }
+  /* 🔴 JSON도 훑는다(2026-10-16). 촬영 화면 예시 영상의 말풍선 대사(src/studio/camera-videos.json의 cues[].text)는
+     ts/tsx가 아니라 JSON에 있어 화면에 글자로 나오는데도 빠질 자리였다. src 아래 JSON의 문자열 값을 전부 넣는다
+     (주소·해시도 들어오지만 영문·숫자라 어차피 담는 글자다 — 넓게 잡는 쪽이 의도된 설계). */
+  const collectJson = (value) => {
+    if (typeof value === 'string') push(value);
+    else if (Array.isArray(value)) value.forEach(collectJson);
+    else if (value && typeof value === 'object') Object.values(value).forEach(collectJson);
+  };
+  for (const f of files.filter((x) => x.endsWith('.json'))) collectJson(JSON.parse(fs.readFileSync(f, 'utf8')));
 
   return out;
 }

@@ -24,7 +24,7 @@
 - 로컬로 저장한 포스터 파일은 서버 정리로 삭제되지 않는다. 개인정보 고지의 2026-12-31까지 보관 후 운영자 삭제 정책을 유지한다.
 - 업로드는 플랫폼의 `rawBody`를 busboy로 파싱한다. `/generate` 순서인 `markRequestStart → checkBoothToken → checkBoothCode → generateWindowGate → parseMultipart → requirePhoto → rateLimit → ipRateLimit → checkPhotoGenerationLimit → dailyBudgetCap`을 유지한다. 생성 성공·실패뿐 아니라 파싱 오류·429 차단에서도 임시 사진을 삭제하고 촬영 후 카메라 트랙을 해제한다.
 - 타임아웃 체인 120초(OpenAI 1회) < 125초(재시도·폴백 포함 요청 총시간) < 140초(Functions) < 150초(클라이언트)를 함께 유지한다. 변경 시 `scripts/loadtest.mjs`의 관련 값도 맞춘다.
-- IP 제한은 `clientIpForRateLimit()`의 XFF 마지막 항목을 유지한다. 전역 150건/10분·IP별 50건/10분·사진별 생성 2회·KST 하루 4000건의 트랜잭션 검증을 유지한다. 실패한 AI 요청의 카운터가 자동 복구된다고 가정하지 않는다. 부스토큰은 클라이언트와 Secret Manager를 함께 맞춘다.
+- IP 제한은 `clientIpForRateLimit()`의 XFF 마지막 항목을 유지한다. 전역 150건/10분·IP별 50건/10분·사진별 생성 2회·KST 하루 4000건의 트랜잭션 검증을 유지한다. 사진별 카운터만 생성 실패 때 하나 되돌린다(2026-10-16, 성공만 셈) — 하루 예산·전역·IP 카운터는 실패도 그대로 센다. 부스토큰은 클라이언트와 Secret Manager를 함께 맞춘다.
 - **라이브는 샘플 모드일 수 있다**: `.env.production`의 `VITE_SAMPLE_MODE=1`이면 배포 빌드가 촬영·AI 대신 «샘플 포스터 보기 → 로딩 40초 → 포스터 고르기»로 동작하고 카메라·서버 요청을 하지 않는다(2026-10-09 클로즈 베타, 부스 코드를 켤 무렵 `0`으로 되돌린다). 테스트는 `test/poster-studio.test.tsx`의 «샘플 모드».
 - 부스 코드 스위치(기본 꺼짐)는 서버 `checkBoothCode`·화면 `src/boothCode.ts`·배포 `scripts/ci/booth-code-env.mjs` 세 자리가 같은 코드 형식을 쓴다. 한 곳만 바꾸지 않는다. 켜고 끄는 절차와 코드 값은 공개 저장소에 쓰지 않는다.
 - CORS는 정식 주소 `https://poster.edutogether.kr`와 기존 주소 `https://poster-studio.web.app`을 유지하며 허용 출처 정규식의 앵커·점 이스케이프를 풀지 않는다.
@@ -35,6 +35,20 @@
 - 승인 로딩 기준은 `_docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/README.md`다. 그림·제목·상식의 12세트 짝, 한 바퀴 내 중복 없는 무작위 순서, 8초 전환, 크기·간격을 유지한다. 로딩 난수는 출력 조판의 난수와 분리한다. 향후 영상 교체도 같은 세트·표시 기준을 따른다.
 - CSP의 `script-src 'self'`와 Vite의 `modulePreload.polyfill: false`를 유지한다. 인라인 script를 추가하지 않는다. HTML·`/`는 `no-cache`, immutable은 해시가 붙은 `/assets/`에만 적용한다. 고정 이름의 `public/` 자산에는 같은 캐시 전제를 적용하지 않는다.
 - 글꼴은 전부 자체 호스팅이다(`font-src 'self'`). 포스터 글꼴 `public/fonts/poster/`는 `scripts/fonts/fetch-poster-fonts.mjs`가 받은 파일 그대로이며, 다시 받으면 40지문 대조로 출력이 같은지 확인한다. 외부 글꼴 도메인을 CSP·HTML에 다시 넣지 않는다.
+
+## 함정 9건 — 이 저장소에서 실제로 겪은 것
+
+자세한 경위는 `.claude/rules/app.md` «자주 틀리는 것»·«이 앱에서 절대 하면 안 되는 것»에 있다.
+
+1. `/generate`에 종료 경로를 새로 만들 때마다 «여기서 `req.file.path`(임시 사진)가 지워지는가»를 확인한다 — 오류 경로·429 경로·플랫폼 강제종료로 세 번 재발했다.
+2. `public/`의 파일은 `dist/` 루트로 그대로 복사돼 라이브에 서빙된다. 설정파일을 두지 않는다(`vitest.config.js`가 실제로 200으로 나갔다). CI «dist에 나가면 안 되는 것» 단계가 막는다.
+3. `public/`에 파일을 더하면 `firebase.json`의 hosting `ignore`도 함께 본다(6차 감사 규약, vitest 이전 때 재발).
+4. 레이트리밋 대량 요청 시험은 10분 버킷 경계에서 깨진다 — `runInSingleRateLimitBucket()`으로 감싼다.
+5. 문서만 고친 커밋(`**/*.md`·`_docs/**`·`.claude/**`)은 CI가 배포를 건너뛴다(시험은 돈다). 판정을 못 하면 배포하는 쪽이다.
+6. 되돌리기도 CI 경로(`git revert` + push)로 한다. 이 컴퓨터는 CRLF 체크아웃이라 로컬 빌드가 다른 파일을 낸다 — GitHub 정지 중에는 runbook §9의 LF 사본.
+7. CI 결과는 `headSha`로 내 커밋의 실행을 골라 본다. `gh run list --limit 1`은 직전 성공을 보여 «배포됐다»고 잘못 읽게 한다.
+8. Hosting 헤더 글롭 `**/*.html`은 사람이 여는 `/`를 못 잡는다 — `"source": "/"` 규칙을 따로 둔다.
+9. `functions/`에서 `npm audit fix --force`를 돌리지 않는다(firebase-functions 메이저 다운그레이드). 부스토큰(`src/constants.ts`) 변경과 Secret Manager 갱신을 다른 커밋으로 쪼개지 않는다(그 사이 전 부스가 401).
 
 ## 검사
 

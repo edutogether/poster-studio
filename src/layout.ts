@@ -17,6 +17,9 @@ export async function ensureFonts(){
       document.fonts.load("400 80px 'Bebas Neue'"),
       document.fonts.load("800 40px 'PretendardFull'"),
       document.fonts.load("900 40px 'PretendardFull'"),
+      // 2026-10-14 포스터 다시 설계: 폴라로이드 캡션 손글씨(Gaegu 700), 타이포그래피 세로 제목(Song Myung)
+      document.fonts.load("700 80px 'Gaegu'"),
+      document.fonts.load("400 80px 'Song Myung'"),
     ]);
     await document.fonts.ready;
   }catch(e){ /* 폰트 못 받아도 기본글꼴로 진행 */ }
@@ -37,7 +40,11 @@ export async function ensureGlyphs(meta: Meta){
       try{ jobs.push(document.fonts.load(`${w} 80px '${fam}'`, txt)); }catch(e){}
     }
   }
-  try{ jobs.push(document.fonts.load("400 60px 'Bebas Neue'", EN)); }catch(e){}
+  // 손글씨·세로 제목 글꼴은 굵기가 하나뿐이라 그 굵기로만 받는다(2026-10-14).
+  for(const face of ["700 80px 'Gaegu'", "400 80px 'Song Myung'"]){
+    try{ jobs.push(document.fonts.load(face, txt)); }catch(e){}
+  }
+  try{ jobs.push(document.fonts.load("400 60px 'Bebas Neue'", EN + ' 0123456789+')); }catch(e){}
   try{ await Promise.all(jobs); await document.fonts.ready; }catch(e){}
 }
 
@@ -50,11 +57,6 @@ export function coverDraw(ctx: CanvasRenderingContext2D, img: HTMLImageElement, 
 }
 export function roundRect(ctx: CanvasRenderingContext2D,x: number,y: number,w: number,h: number,r: number){ ctx.beginPath(); ctx.moveTo(x+r,y);
   ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-export function vignette(ctx: CanvasRenderingContext2D,w: number,h: number,strength=0.55){
-  const g=ctx.createRadialGradient(w/2,h*0.42,h*0.2,w/2,h*0.5,h*0.75);
-  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,`rgba(0,0,0,${strength})`);
-  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
-}
 let grainTile: HTMLCanvasElement | null = null;
 export function grain(ctx: CanvasRenderingContext2D,w: number,h: number,alpha=0.06){
   if(!grainTile){ const t=document.createElement('canvas'); t.width=t.height=128; const tc=t.getContext('2d')!;
@@ -70,31 +72,6 @@ export function setFitFont(ctx: CanvasRenderingContext2D, weight: number, px: nu
   return s;
 }
 
-/* 제목 레이아웃: 한 줄 시도 → 안 되면 두 줄(균형 분할) */
-export function layoutTitle(ctx: CanvasRenderingContext2D, text: string, font: string, maxW: number, maxSize: number, minSize: number): {lines: string[], size: number} {
-  for(let s=maxSize;s>=minSize;s-=3){ ctx.font=`900 ${s}px ${font}`; if(ctx.measureText(text).width<=maxW) return {lines:[text], size:s}; }
-  // 두 줄: 띄어쓰기 우선, 없으면 가운데 글자에서 분할
-  let cut = text.lastIndexOf(' ', Math.ceil(text.length/2));
-  if(cut<=0) cut = text.indexOf(' ', Math.floor(text.length/2));
-  if(cut<=0) cut = Math.ceil(text.length/2);
-  const a=text.slice(0,cut).trim(), b=text.slice(cut).trim();
-  for(let s=maxSize;s>=minSize;s-=3){ ctx.font=`900 ${s}px ${font}`;
-    if(ctx.measureText(a).width<=maxW && ctx.measureText(b).width<=maxW) return {lines:[a,b], size:s}; }
-  return {lines:[a,b], size:minSize};
-}
-export function drawTitle(ctx: CanvasRenderingContext2D, text: string, font: string, cx: number, cy: number, maxW: number, maxSize: number, minSize: number, fill: string, stroke=true){
-  const L = layoutTitle(ctx, text, font, maxW, maxSize, minSize);
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  const lh = L.size*1.06, startY = cy - (L.lines.length-1)*lh/2;
-  ctx.font = `900 ${L.size}px ${font}`;
-  L.lines.forEach((ln,i)=>{
-    const y = startY + i*lh;
-    if(stroke){ ctx.lineJoin='round'; ctx.strokeStyle='rgba(0,0,0,.82)'; ctx.lineWidth=L.size*0.15; ctx.strokeText(ln,cx,y); }
-    ctx.save(); ctx.shadowColor='rgba(0,0,0,.55)'; ctx.shadowBlur=L.size*0.18;
-    ctx.fillStyle = fill; ctx.fillText(ln,cx,y); ctx.restore();
-  });
-  return startY + (L.lines.length-1)*lh + L.size*0.6; // 아래 끝 y
-}
 /* 인천광역시교육청 로고: 흰글씨(어두운 배경용)·짙은글씨(밝은 배경용) 각각 로드 */
 export async function ensureLogo(){
   if(state.LOGO_TRIED) return; state.LOGO_TRIED = true;

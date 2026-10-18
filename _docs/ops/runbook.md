@@ -14,7 +14,7 @@
   돌면 순간적으로 분당 5장을 넘겨 대기가 생긴다.
   - 2단계 조건: **누적 결제 $50** → 월 한도 $500, 분당 20장. 3단계는 누적 $100.
   - 어디서: platform.openai.com → 설정 → Limits에서 현재 등급 확인. 등급은 누적 결제액에 따라 자동으로 오른다.
-- 1장당 약 $0.04다. 한도에 닿으면 그 순간부터 부스 전체의 AI 생성이 멈춘다("AI 없이 계속하기"로 인쇄는 가능).
+- 1장당 약 $0.04다. 한도에 닿으면 그 순간부터 부스 전체의 AI 생성이 멈춘다(화면은 «지금은 만들 수 없어요»를 보인다 — 대체 그림 인쇄 길은 2026-10-16에 없앴다).
 
 ### ② 노트북을 공인 IP에 고르게 붙인다
 
@@ -63,7 +63,7 @@
 - 원리: 같은 공인 IP에서 10분간 `IP_RATE_LIMIT_MAX`(현재 50)를 넘으면 뜬다. 전역 한도보다
   **먼저 뜰 수도 있다.** 50 = 전역 한도(150) ÷ 공인 IP 3개 — 한 IP가 폭주해도 나머지
   두 그룹은 계속 된다("행사 전 필수 체크리스트 ②" 참고).
-- **"이 사진으로는 생성 횟수를 모두 사용했어요" (사진별 한도)**: 같은 사진(바이트 단위로 동일)으로 이미 최초생성+재생성(2회)을 다 썼다는 뜻 — "1인당 1회 재생성" 정책이 서버에서도 강제된다(새로고침해도 우회 안 됨). 이건 그 학생 한 명에게만 영향을 준다. **대처**: 정상 동작이다 — 다시 촬영하면 새 사진으로 카운트가 초기화된다.
+- **"이 사진으로는 생성 횟수를 모두 사용했어요" (사진별 한도)**: 같은 사진(바이트 단위로 동일)으로 이미 최초생성+재생성(2회)을 다 썼다는 뜻 — "1인당 1회 재생성" 정책이 서버에서도 강제된다(새로고침해도 우회 안 됨). 이건 그 학생 한 명에게만 영향을 준다. **대처**: 정상 동작이다 — 다시 촬영하면 새 사진으로 카운트가 초기화된다. 2026-10-16부터 **실패한 생성은 이 2회에 세지 않는다**(화면도 성공만 세고, 서버도 실패 응답 직전에 그 사진 카운터를 하나 되돌린다).
 ### "오늘의 생성 한도에 도달했습니다" — 하루 총량 상한
 
 - **대처**: 🔴 **팀장·대표에게 즉시 보고.** 현장에서 풀 방법이 없다.
@@ -73,12 +73,19 @@
   물리적 안전장치다(2026-09-01 신설). 정상 사용으로 다 채웠다면 그 자체가
   "예산 목표치 도달"이라는 뜻이다.
 
-## 4. AI 생성이 계속 실패함 (크레딧 소진·API 장애 등)
-- **원인**: OpenAI 쪽 크레딧 소진, 서비스 장애, 또는 노트북 인터넷 자체가 끊김.
-- **대처**:
-  1. 화면에 뜨는 오류 문구를 확인 — "크레딧 잔액 부족", "API 키가 올바르지 않습니다" 등 구체적인 원인이 표시된다.
-  2. 여러 번 실패하면 **"🎨 AI 없이 기본 버전으로 계속하기"** 버튼이 나타난다. 이걸 누르면 AI 그림 없이(단색 그라디언트 배경) 같은 레이아웃으로 포스터를 만들어 인쇄까지는 계속할 수 있다 — 완전히 부스를 멈추지 않기 위한 최소한의 대안.
-  3. 근본 원인(크레딧/API 키)은 부스 진행자가 고칠 수 없다 — 담당자(대표/장학사)에게 즉시 연락.
+## 4. AI 생성이 실패함 — «포스터를 만들지 못했어요» 창 (2026-10-16부터)
+- 실패하면 빈 그라데이션 포스터로 넘어가지 않고, 실패 종류에 맞는 단추 두 개가 있는 창이 뜬다. 문구는 한 줄로 짧다(2026-10-17 Bumm님). 서버가 준 원인 문구는 화면에 보이지 않고, 노트북 크롬의 개발자 도구 콘솔에 «[포스터 생성 실패]»로 남는다.
+
+  | 창에 보이는 것 | 할 일 |
+  |---|---|
+  | «그림을 다 그리지 못했어요»(시간 초과·연결 불안정·알 수 없음) | «다시 만들기». 같은 사진으로 3번 실패하면 «다시 찍기»로 안내한다 |
+  | «지금 만드는 사람이 많아요» · «AI가 바빠요» | 15~20초 세고 «다시 만들기»가 켜진다. 자주 뜨면 §3 |
+  | «AI 안전 기준에 걸렸어요» | «제목 · 문구 고치기»(1단계로) 또는 «다시 찍기» |
+  | «이 사진으로는 더 만들 수 없어요» · «여러 번 만들지 못했어요» | «다시 찍기» 또는 «처음으로» |
+  | «인터넷 연결이 끊겼어요» | 그 노트북을 다른 와이파이·핫스팟으로 바꾼다. 연결이 돌아오면(5초마다 확인) «다시 만들기»가 켜진다. 사진은 그대로 있다 |
+  | «지금은 만들 수 없어요» | 하루 예산·크레딧·키·운영 시간 문제다. 현장에서 못 푼다 — 담당자(대표/장학사)에게 즉시 연락 |
+  | «부스 코드를 넣어 주세요» 창 | 부스 코드가 켜졌는데 이 노트북에 코드가 없거나 틀렸다. 비공개 별지의 코드를 넣으면 확인 뒤 같은 사진으로 다시 만든다. «취소»(와 Esc)는 행사 기기가 아닌 곳을 위한 것이라 탭을 닫고, 브라우저가 닫기를 막으면(사람이 연 탭) 0.3초 뒤 처음 화면으로 돌아간다 — 찍은 사진은 버려진다 |
+- 실패는 «사진당 2회»에 세지 않는다(§3).
 
 ## 5. 사진 업로드가 "사진 파일이 너무 큽니다" 오류
 - **원인**: 거의 발생하지 않음(브라우저가 촬영본을 자동으로 1024px로 축소해 보냄). 브라우저 확장 프로그램 등이 개입했을 가능성.
@@ -116,17 +123,21 @@ GitHub가 정지돼 CI가 돌지 않을 때만 예외로 §9 절차를 쓴다.
 GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 Bumm님 배포 승인이 있어야 한다. 정상일 때는 §8까지의 CI 경로다.
 2026-10-15에 이 절차로 master `8d752d4`를 배포했다(기록은 `_docs/CHANGELOG.md`와 `_docs/intents/2026-10-15-local-deploy-github-suspended/`).
 
-1. **무엇이 나가는지 본다.** `origin/master`가 마지막으로 push된(= CI가 마지막으로 배포한) 커밋이다.
-   - 전체: `git diff --stat origin/master master`
-   - functions: `git diff --stat origin/master master -- functions/`. 비어 있으면 hosting만 낸다.
+1. **무엇이 나가는지 본다.** 기준(`<라이브 커밋>`)은 **지금 라이브에 나가 있는 커밋**이다 — 공통 인계 문서(`_docs/ops/HANDOFF_CURRENT.md`) 맨 위
+   «라이브는 …»에 적힌 것. 🟠 이 절차로 한 번 배포한 뒤로는 `origin/master`가 아니다(2026-10-15 로컬 배포 뒤 라이브는 `8d752d4`,
+   `origin/master`는 그보다 56커밋 앞의 `a658d89` — `origin/master`를 기준으로 잡으면 3번 대조에서 멈춘다. 2026-10-17 점검에서 발견).
+   GitHub가 정상이고 CI로만 배포해 왔다면 `origin/master`와 같다.
+   - 전체: `git diff --stat <라이브 커밋> master`
+   - functions: `git diff --stat <라이브 커밋> master -- functions/`. 비어 있으면 hosting만 낸다.
 2. **LF 사본을 만든다.** 이 컴퓨터의 체크아웃은 CRLF(`core.autocrlf=true`)라 그대로 빌드하면 CI(LF)와 다른 파일이 나간다.
    ```bash
-   git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/base origin/master
+   git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/base <라이브 커밋>
    git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/master master
    ```
 3. **이 컴퓨터의 빌드가 CI를 재현하는지 본다.** `base`에서 `npm ci && npm run build`를 하고, 라이브와 바이트 대조한다.
    - 명령: `node scripts/verify/dist-vs-live.mjs ../base/dist https://poster-studio.web.app`
-   - 전부 같아야 다음으로 간다. 다르면 라이브가 마지막 push가 아니거나 빌드 환경이 다르다 — 멈추고 팀장에게 보고한다.
+   - 전부 같아야 다음으로 간다. 다르면 기준 커밋이 지금 라이브가 아니거나 빌드 환경이 다르다 — 멈추고 팀장에게 보고한다.
+   - 2026-10-17 점검: `8d752d4` LF 빌드가 두 주소 모두와 323개 파일 바이트까지 같았다.
 4. **CI 검사를 `master` 사본에서 전부 돌린다.** 하나라도 종료코드가 0이 아니면 멈춘다.
    - functions: `npm ci` · `npm run lint` · `npm test`
    - 루트: `npm ci` · `npm run lint` · `npm run typecheck` · `npm run fonts:check` · `npm test` · `npm run verify:selftest` · `npm run build`
@@ -143,9 +154,17 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    firebase hosting:clone poster-studio:live poster-studio:rollback-<날짜> --project inky-poster-studio
    node scripts/verify/dist-vs-live.mjs ../base/dist <채널 주소>
    ```
+   - functions도 낼 때는 지금 라이브 함수의 지문을 적어 둔다: `firebase functions:list --project inky-poster-studio --json`(`posterStudio`·`keepWarm`·`cleanupOldCountersSchedule`의 해시).
+     되돌릴 곳은 `base` 사본(지금 라이브와 같은 커밋)이다.
+   - 이미 만든 되돌림 채널이 아직 살아 있고 `base` 빌드와 같으면 새로 만들지 않고 그것을 쓴다(`rollback-20261016-night`는 11/15까지 — 10/17 대조 323개 같음).
+   - 2026-10-17 연습: 하루짜리 채널 `rehearsal-1017`에 새 판(미리보기 채널)을 `hosting:clone`으로 올렸다가 되돌림 채널을 다시 `hosting:clone`해
+     되돌렸다 — 두 번 다 `dist-vs-live.mjs`로 바이트까지 같았다(300개 · 323개). 9번의 hosting 되돌리기와 같은 명령 꼴이다. 라이브는 건드리지 않았다.
+     함수 지문은 그날 `posterStudio` `b327ed39…` · `keepWarm` · `cleanupOldCountersSchedule` `e0f59577…`였다.
 7. **배포한다**(`master` 사본에서, CI와 같은 순서).
    - functions가 바뀌었으면 먼저 `firebase deploy --only functions --project inky-poster-studio --non-interactive`를 낸다.
      그다음 `node scripts/ci/run-workflow-step.mjs "부스토큰 스모크테스트 (배포 직후 실제 인증 확인)"`가 통과해야 hosting으로 간다.
+     부스 코드 스위치가 켜졌으면 이 단계는 `BOOTH_CODE_REQUIRED=true`와 `BOOTH_CODE`(값은 비공개 운영 문서)를 환경변수로 넣고 돌린다 —
+     «코드 없이 403 booth_code»와 «코드를 실어 400»을 둘 다 본다(2026-10-17). 안 넣으면 403으로 실패하는 것이 맞다.
    - 🔴 **부스 코드 스위치가 켜진 뒤(11/7쯤부터)에는 functions를 그냥 내지 않는다.** CI는 배포할 때마다 «부스 코드 설정» 단계에서 환경 파일을 새로 만들어 넣는다.
      그 파일 없이 내면 켜 둔 스위치가 빠질 수 있다. 비공개 운영 문서의 절차로 같은 파일을 먼저 만들거나, 멈추고 팀장에게 보고한다.
    - hosting: `firebase deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive -m "로컬 배포 <커밋>"`
@@ -160,6 +179,9 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    - 실제 모드면 포스터 출시 기준선: `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`
 9. **문제가 있으면 되돌린다.**
    - 명령: `firebase hosting:clone poster-studio:rollback-<날짜> poster-studio:live --project inky-poster-studio`
+   - functions도 냈으면 `base` 사본에서 `firebase deploy --only functions --project inky-poster-studio --non-interactive`로 되돌리고,
+     7번의 스모크테스트를 다시 통과시킨 뒤 6번에 적은 지문과 `functions:list`를 견준다. 생성 요청이 없어 비용은 들지 않는다.
+     🟠 [확인] 로컬에서 함수를 되돌려 본 적은 아직 없다(2026-10-17 종합감사 지적 — «눌러 본 것만 롤백 지점»). 배포 승인을 받을 때 이 연습도 함께 승인받아 한 번 해 본다.
    - 되돌린 뒤 `dist-vs-live.mjs ../base/dist`로 확인한다. Firebase 콘솔 Hosting의 출시 기록에서도 이전 판으로 되돌릴 수 있다.
 10. **기록한다.** CHANGELOG에 한 줄, 공통 인계 문서(`_docs/ops/HANDOFF_CURRENT.md`)에 배포 커밋·라이브 판 번호·되돌림 채널을 적는다.
     GitHub가 돌아오면 master를 push한다. CI가 같은 파일을 다시 배포한다(바이트가 같으므로 화면 변화 없음).

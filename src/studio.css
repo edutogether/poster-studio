@@ -149,13 +149,15 @@ main.app {
 .result-secondary .quiet-button {
   font-size: 14px;
 }
+/* 알림은 단추 없는 그림 칸 위에 띄운다(2026-10-17). 가운데 아래였을 때 «AI 서버 연결» 알림이 1366×768 2단계 «이전»을 통째로,
+   1단계 주 단추 일부를 덮었다(scripts/verify/status-toast-probe.mjs). PC는 왼쪽 40%가 단추 없는 그림 칸(1단계 극장 그림 · 2단계 촬영 칸
+   왼쪽 · 3단계 고른 포스터)이라 왼쪽 아래에 그 폭 안으로 묶는다. */
 .studio-status {
   position: fixed;
-  left: 50%;
+  left: 16px;
   bottom: 18px;
-  transform: translateX(-50%);
   width: max-content;
-  max-width: calc(100vw - 32px);
+  max-width: calc(40vw - 32px);
   z-index: 30;
   background: #222;
   color: #fff;
@@ -266,8 +268,12 @@ main.app {
     width: 100%;
     height: auto;
   }
+  /* 휴대폰은 한 줄로 쌓여 스크롤되므로 단추 없는 빈자리가 따로 없다 — 늘 보이게 화면 아래에 고정하고, 알림은 누르는 것이 없으니
+     손가락 입력을 아래로 흘려보내 덮인 입력칸·단추도 그대로 눌리게 한다(문서 위에 붙이면 3단계처럼 스크롤된 화면에서 안 보였다). */
   .studio-status {
     bottom: 8px;
+    max-width: calc(100vw - 32px);
+    pointer-events: none;
     font-size: 14px;
   }
   .result-actions {
@@ -286,6 +292,43 @@ main.app {
 #cameraWorkspace .camera-tips p { font-size: 16px; line-height: 1.5; margin: 3px 0 0; }
 .cameraBox > .camera-example { object-fit: cover; object-position: center 42%; }
 .cameraBox > .camera-example-group { object-fit: cover; object-position: center; }
+/* «포스터를 만들지 못했어요» 안내 창(2026-10-16, src/studio/GenerateFailureDialog.tsx) — 부스 코드 입력 창과 같은 틀이다. */
+.generate-failure-backdrop { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; padding: 16px; background: #111a; }
+/* 2026-10-17 Bumm님: 창 크기는 종류와 상관없이 같다 · 문구는 모두 한 줄 · 단추 두 개는 같은 크기. 상태 줄(인터넷 확인 중)은 비어 있어도 자리를 둔다. */
+.generate-failure-dialog { box-sizing: border-box; width: min(520px, 100%); padding: 30px; border-radius: 14px; background: #fff; color: #1c1c1c; box-shadow: 0 18px 48px #0004; }
+.generate-failure-dialog h2, .generate-failure-dialog > p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.generate-failure-dialog h2 { margin: 0 0 12px; font-size: 24px; line-height: 1.35; font-weight: 800; }
+.generate-failure-dialog > p { margin: 0; font-size: 17px; line-height: 1.6; }
+.generate-failure-dialog > .generate-failure-state { min-height: calc(17px * 1.6); margin-top: 4px; font-size: 15px; font-weight: 700; color: #555; }
+.generate-failure-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+.generate-failure-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 14px; white-space: nowrap; }
+@media (max-width: 480px) {
+  .generate-failure-dialog { padding: 24px 20px; }
+  .generate-failure-dialog h2 { font-size: 21px; }
+  .generate-failure-dialog > p { font-size: 16px; }
+  .generate-failure-actions { grid-template-columns: 1fr; }
+}
+/* 부스 코드 입력 창(2026-10-16, src/studio/BoothCodeDialog.tsx) — 생성 요청이 «부스 코드» 거절을 받았을 때만 뜬다. */
+.booth-code-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: #111a; }
+.booth-code-dialog { width: min(480px, 100%); padding: 28px; border-radius: 14px; background: #fff; color: #1c1c1c; box-shadow: 0 18px 48px #0004; }
+.booth-code-dialog h2 { margin: 0 0 10px; font-size: 22px; font-weight: 800; }
+.booth-code-dialog > p { margin: 0 0 18px; font-size: 15px; line-height: 1.6; color: #555; }
+.booth-code-dialog label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 700; }
+.booth-code-dialog input { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #c9c9c9; border-radius: 8px; font-size: 18px; letter-spacing: .04em; }
+.booth-code-dialog input[aria-invalid="true"] { border-color: #ed3124; }
+.booth-code-problem { min-height: 22px; margin: 8px 0 14px; font-size: 14px; color: #c42a1f; }
+.booth-code-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.booth-code-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 14px; white-space: nowrap; }
+/* 촬영 화면 예시 영상(2026-10-16, src/studio/CameraExample.tsx) — 16:9 영상을 칸에 cover로 얹는 «무대». 무대가 영상과 같은
+   비율이라 말풍선은 영상 화면의 %로 놓으면 사람 머리 옆에 그대로 붙는다. 실시간 카메라처럼 좌우를 뒤집지 않는다. */
+.cameraBox.has-example-video { container-type: size; }
+.camera-example-stage { position: absolute; left: 50%; top: 50%; width: max(100cqw, 100cqh * 16 / 9); aspect-ratio: 16 / 9; transform: translate(-50%, -50%); }
+.cameraBox .camera-example-stage > img, .cameraBox .camera-example-stage > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: none; }
+.camera-example-stage > .camera-example-video { opacity: 0; transition: opacity .18s ease-out; }
+.camera-example-stage > .camera-example-video[data-active="true"] { opacity: 1; }
+.camera-example-stage > .camera-example-still[data-active="false"] { visibility: hidden; transition: visibility 0s .18s; }
+.camera-example-count { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); color: #fff; font-size: clamp(72px, 14cqh, 150px); font-weight: 800; line-height: 1; text-shadow: 0 3px 22px #0009; }
+.camera-example-say { position: absolute; transform: translate(-50%, -100%); width: max-content; max-width: 34%; padding: 8px 14px; border-radius: 16px; background: #fff; color: #1c1c1c; font-size: clamp(14px, 3.4cqh, 22px); font-weight: 700; line-height: 1.35; box-shadow: 0 4px 16px #0003; }
 .camHint.camera-example-caption {
   position: absolute; inset: auto 0 0; padding: 54px 24px 24px; gap: 16px;
   flex-direction: row; justify-content: flex-end; text-align: left;
@@ -461,4 +504,187 @@ main.app {
     size: 4in 6in;
     margin: 0;
   }
+}
+
+/* ───── 휴대폰 배열(2026-10-17 Bumm님: «요즘 애들은 다 핸드폰으로 본다. 모바일판 배열이 엉망인 것 손봐야 한다») ─────
+   760px 이하에서만 — PC 화면은 바꾸지 않는다. 앞의 여러 겹(style·atelier·cinema·compact) 뒤에 두어 여기서 정리한다.
+   확인: scripts/verify/mobile-layout-probe.mjs(360·390·430 폭 × 3배, 샘플 모드 흐름 전부). */
+@media (max-width: 760px) {
+  /* 낱말 중간에서 줄을 바꾸지 않는다(«첫 번 / 째», «포 / 스터»). 띄어쓰기 없는 긴 영문만 칸 끝에서 끊는다.
+     끝줄에 한 낱말만 남지 않게 한다(«…조금씩 가까이 / 모여주세요.»). */
+  body { word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; }
+  /* 첫 화면 부제: «…나의 첫 / 번째 영화 포스터»처럼 끝줄에 한두 낱말만 남지 않게 두 줄 길이를 고른다 */
+  .exhibition-description { text-wrap: balance; }
+
+  /* 머리말: InKY 로고가 혼자 맨 위 줄을 차지하던 것을 CGV×교육청과 한 줄로(세 줄 → 두 줄). 로고 단추는 누르는 높이 44px 이상. */
+  .header-inner { padding-top: 6px; }
+  .brand.header-home { zoom: .78; padding-block: 9px; }
+  .festival-brand.header-home { top: 15px; padding-block: 14px; margin-block: -14px; transform: scale(.88); transform-origin: right center; }
+
+  /* 개인정보처리방침 링크: 보이는 자리는 그대로, 누르는 높이만 44px로. 위는 단계 표시 단추와 닿아 아래로만 넓히고,
+     3단계는 그만큼 포스터 칸을 내려 아이콘 단추와 겹치지 않게 한다. */
+  .privacy-link { padding-block: 4px 20px; margin-top: -4px; }
+  #resultView .result-artboard { padding-top: 48px; }
+
+  /* 1단계 «단독 주연 · 우리 같이»: 120px 두 칸이 왼쪽에 몰려 있던 것을 폭 가득 같은 크기로 */
+  #prepareWorkspace .segmented { max-width: none; }
+
+  /* 2단계: 촬영 칸과 안내 사이 회색 빈칸 64px → 휴대폰 설계값 28px(위 760px 규칙의 28px를 뒤의 공통 #cameraWorkspace 64px가 덮고 있었다) */
+  #cameraWorkspace { padding-top: 28px; }
+  /* 단체 티켓 출연진: 한 줄 말줄임(«… 오리온 · 카…») 대신 줄을 바꿔 다 보인다 */
+  .camera-ticket-name { white-space: normal; text-overflow: clip; overflow: visible; }
+
+  /* 3단계 위 아이콘 단추(다음 주인공 · 크게 보기)와 크게 보기 창 «닫기»: 36·28px → 손가락 크기 44px */
+  #resultView .result-artboard .icon-button { width: 44px; height: 44px; }
+  .poster-dialog .dialog-close { width: 44px; height: 44px; }
+
+  /* 3단계 «출력하기» 단추가 문서 끝에 0px로 붙어 있었다 — 1·2단계 단추 줄처럼 아래 20px(아이폰은 홈 표시줄만큼) */
+  #resultView #resultWorkspace { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+}
+
+/* ───── 휴대폰 흐름(2026-10-17 Bumm님 휴대폰 지적 ①~⑬, 팀장 전달 — _docs/intents/2026-10-17-mobile-flow) ─────
+   위 «휴대폰 배열» 덩어리처럼 760px 이하에서만 — PC · 노트북 화면은 바꾸지 않는다(PC에서는 이 덩어리의 요소가 display: none). */
+.hero-next { display: none; }
+@media (max-width: 760px) {
+  /* 머리말 높이를 정해 두어 첫 페이지(머리말 + 극장 사진)를 CSS만으로 화면 높이에 맞춘다 — 관찰자로 재지 않는다(위험 F 규칙).
+     360px 안팎은 단계 표시가 두 줄이라 6px 더 높다(아래 370px 규칙). */
+  :root { --phone-header-h: 123px; }
+  .app-header { height: var(--phone-header-h); }
+
+  /* ② 1단계 첫 페이지 = 극장 사진이 화면을 꽉 채운다. 사진 어디를 누르거나 조금만 밀면 둘째 페이지(«오늘의 주인공, 등장 !»)로
+     세로로 착 넘어가고, 위로 밀면 돌아온다(스냅 지점: 문서 맨 위 · 둘째 페이지 머리). 둘째 페이지는 길어서 그 안에서는 자유롭게 움직인다. */
+  html:has(body[data-step="1"]) { scroll-snap-type: y mandatory; }
+  body[data-step="1"] .app-header,
+  body[data-step="1"] #prepareWorkspace { scroll-snap-align: start; }
+  body[data-step="1"] .preview-panel { height: calc(100svh - var(--phone-header-h)); min-height: 0; cursor: pointer; }
+  body[data-step="1"] .exhibition { height: 100%; }
+  .hero-next {
+    display: grid; place-items: center;
+    position: absolute; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 2;
+    width: 44px; height: 44px; margin-left: -22px;
+    border-radius: 50%; background: #ffffff24; color: #fff;
+    animation: hero-next-nudge 1.8s ease-in-out infinite;
+  }
+  .hero-next svg { width: 22px; height: 22px; }
+
+  /* ③ «단독 주연 / 우리 같이»: 140px 네모 카드 → 낮은 가로 칸(아이콘 왼쪽 · 글씨 오른쪽 · 고름 표시 오른쪽 끝) */
+  #prepareWorkspace .segmented button {
+    height: 56px; min-height: 56px;
+    flex-direction: row; justify-content: flex-start;
+    gap: 10px; padding: 0 14px;
+  }
+  #prepareWorkspace .people-icon,
+  #prepareWorkspace .people-icon svg { width: 24px; height: 24px; }
+  #prepareWorkspace .people-icon { flex: 0 0 24px; }
+  #prepareWorkspace .mode-copy { flex: 1 1 auto; text-align: left; }
+  #prepareWorkspace .mode-check { position: static; flex: 0 0 18px; }
+}
+@media (max-width: 370px) {
+  :root { --phone-header-h: 129px; }
+}
+@keyframes hero-next-nudge { 0%, 100% { translate: 0 0; } 50% { translate: 0 6px; } }
+@media (prefers-reduced-motion: reduce) {
+  .hero-next { animation: none; }
+}
+.phone-shot { display: none; }
+@media (max-width: 760px) {
+  /* ⑤ 2단계: 카메라 칸을 화면 높이에 맞춰 줄여 «나답게, 편하게 웃어주세요.»와 안내 1~3이 첫 화면에 들어오게.
+     카메라 칸 아래 설명(«얼굴과 어깨가 … 맞춰주세요.»)은 안내 1과 같은 말이라 휴대폰에서는 원형 단추에 자리를 내준다. */
+  #cameraView .camera-surface { padding: 34px 22px 14px; }
+  /* 이름표 줄(카메라 미리 보기 · 촬영 구도 예시)은 머리말 아래 «개인정보처리방침»과 겹쳐 휴대폰에서는 뺀다 — 상태는 칸 안의 표시(실시간 미리보기 · 촬영 완료)가 알린다 */
+  #cameraView .camera-top { display: none; }
+  #cameraView .camera-large { min-height: 0; aspect-ratio: auto; height: clamp(200px, 32svh, 300px); }
+  #cameraView .camera-bottom { display: none; }
+  #cameraWorkspace { padding-top: 18px; }
+  /* ⑥ 엄지 자리 빨간 원형 촬영 단추 — 카메라 칸 아래 가운데에 반쯤 걸친다(Lucide camera) */
+  .phone-shot {
+    display: grid; place-items: center;
+    position: relative; z-index: 4;
+    width: 68px; height: 68px; margin: -34px auto 0; padding: 0;
+    border: 4px solid #fff; border-radius: 50%;
+    background: #d82d23; color: #fff;
+    box-shadow: 0 8px 20px #d82d2347;
+    cursor: pointer;
+  }
+  .phone-shot[hidden] { display: none; }
+  /* 칸 아래쪽 글줄(«이렇게, …» · 실제 모드의 «카메라 켜기» / «카메라 끄기»)을 원형 단추 위로 올린다 — 실제 모드에서 «카메라 켜기»가 원형 단추와 13~28px 겹쳤다(10/17 실제 모드 검사) */
+  #cameraView .camHint.camera-example-caption { padding-bottom: 44px; }
+  .phone-shot .studio-icon { width: 30px; height: 30px; }
+  .phone-shot:active:not(:disabled) { transform: scale(.96); }
+  .phone-shot:disabled { background: #bdbdbd; box-shadow: none; cursor: default; }
+  .phone-shot:focus-visible { outline: 3px solid #d82d23; outline-offset: 3px; }
+}
+.phone-stage, .poster-carousel-caption, .dialog-carousel, .label-phone, #saveBtn { display: none; }
+@media (max-width: 760px) {
+  /* ⑧~⑬ 3단계: 머리말 아래를 한 화면으로 — 위 줄(Poster Studio · 다음 주인공 · 크게 보기) · 큰 포스터 넘김 · 이름과 순번 · 썸네일 한 줄 · 단추 줄.
+     포스터 크기는 남은 높이(컨테이너 높이)에서 정한다 — 4×6 비율을 지키고 폭의 78%를 넘지 않는다. 폭 360~430 · 높이 740~932에서 스크롤이 없다. */
+  #resultView { display: flex; flex-direction: column; height: calc(100svh - var(--phone-header-h)); min-height: 0; overflow: hidden; }
+  #resultView .result-artboard { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 46px 0 0; }   /* 46px: 위 «개인정보처리방침» 누르는 자리(머리말 아래 45px까지)와 아이콘이 겹치지 않게 */
+  #resultView .result-artboard-top { padding: 0 22px; }
+  #resultView .result-poster-slot, #resultView .print-size { display: none; }
+  .phone-stage { display: block; flex: 1 1 auto; align-self: stretch; width: 100%; min-height: 0; margin-top: 8px; container-type: size; }
+  .poster-carousel {
+    --slide-w: min(calc(100cqh * 2 / 3), 78cqw);
+    display: flex; align-items: center; gap: 14px; height: 100%;
+    padding-inline: calc(50cqw - var(--slide-w) / 2);
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
+  }
+  .poster-carousel::-webkit-scrollbar { display: none; }
+  .poster-slide {
+    flex: 0 0 var(--slide-w); height: calc(var(--slide-w) * 3 / 2); padding: 0;
+    border: 0; border-radius: 6px; overflow: hidden; background: #111;
+    box-shadow: 0 10px 26px #00000033; scroll-snap-align: center; cursor: pointer;
+    transition: opacity .2s ease;
+  }
+  .poster-slide:not([aria-current]) { opacity: .55; }
+  .poster-slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .poster-slide:focus-visible { outline: 3px solid #d82d23; outline-offset: 3px; }
+  .poster-carousel[data-hint] .poster-slide { animation: carousel-hint 1.2s ease-in-out 1; }
+  .poster-carousel-caption { display: block; margin: 8px 0 0; text-align: center; font-size: 14px; font-weight: 600; line-height: 20px; color: #444; }
+
+  /* 제목·설명은 화면에서 빼고(완성 알림이 대신 알린다) 읽기 도구에는 남긴다 — 단계 이동 때 초점이 가는 자리다 */
+  #resultView #resultWorkspace { flex: 0 0 auto; padding: 6px 0 0; overflow: visible; }
+  #resultView #resultWorkspace .page-heading { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #resultView .section-description { display: none; }
+  /* ⑨ 썸네일 한 줄(가로로 밀기) — 고른 것은 빨간 테두리, 늘 보이게 가운데로 */
+  #resultView #gallery.style-grid {
+    display: flex; gap: 8px; max-width: none; margin: 0;
+    padding: 4px 22px 6px; overflow-x: auto; scrollbar-width: none;
+  }
+  #resultView #gallery.style-grid::-webkit-scrollbar { display: none; }
+  #resultView #gallery .style-option { flex: 0 0 46px; min-width: 0; padding: 0; border: 0; background: transparent; }
+  #resultView #gallery .style-image { display: block; width: 46px; height: 69px; padding: 0; border: 2px solid transparent; border-radius: 5px; overflow: hidden; }
+  #resultView #gallery .style-image img { width: 100%; height: 100%; object-fit: cover; }
+  #resultView #gallery .style-option[aria-pressed="true"] .style-image { border-color: #d82d23; }
+  #resultView #gallery .style-caption, #resultView #gallery .style-check { display: none; }
+  /* ⑪ 단추 줄: 왼쪽 작게 «← 다시 찍기» · 오른쪽 크게 «내 휴대폰에 저장» — 화면 맨 아래 */
+  #resultView .result-actions { margin: 4px 0 0; padding: 10px 22px max(14px, env(safe-area-inset-bottom)); max-width: none; }
+  #resultView .result-actions .back-button { flex: 0 0 auto; padding-left: 16px; padding-right: 16px; }
+  #resultView #printBtn, #resultView .label-pc { display: none; }
+  #resultView #saveBtn { display: inline-flex; }
+  #resultView .label-phone { display: inline; }
+  /* ⑫ «완성 !»은 화면을 가리지 않는 짧은 알림 — 머리말 아래 작은 알약 */
+  .completion-notice {
+    top: calc(var(--phone-header-h) + 10px); transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px; width: auto; padding: 8px 16px;
+    border-radius: 999px; box-shadow: 0 8px 24px #0002;
+  }
+  .completion-notice-mark { width: 22px; height: 22px; margin: 0; font-size: 13px; }
+  .completion-notice strong { font-size: 15px; }
+  .completion-notice p { display: none; }
+  /* ⑩ 크게 보기 창: 전체 화면에서 좌우로 넘긴다 — × 닫기는 오른쪽 위 */
+  .poster-dialog { padding: 0; }
+  .poster-dialog > img { display: none; }
+  .dialog-carousel {
+    display: flex; gap: 0; width: 100vw; height: 100dvh;
+    overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none;
+  }
+  .dialog-carousel::-webkit-scrollbar { display: none; }
+  .dialog-carousel img { flex: 0 0 100vw; width: 100vw; height: 100%; padding: 56px 16px 24px; object-fit: contain; scroll-snap-align: center; }
+  .poster-dialog .dialog-close { position: fixed; top: 10px; right: 10px; }
+}
+@keyframes carousel-hint { 0%, 100% { translate: 0 0; } 40% { translate: -28px 0; } 70% { translate: 4px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .poster-carousel[data-hint] .poster-slide { animation: none; }
+  .poster-slide { transition: none; }
 }

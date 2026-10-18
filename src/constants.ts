@@ -31,8 +31,7 @@ export interface Genre {
   taglines: string[];
 }
 /* Record<string, Genre>인 이유: genre 값이 <select>에서 오는 임의 문자열이라
-   GENRES[genre] 조회가 성립해야 한다. 목록에 없는 값이 와도 makePlaceholderArt가
-   animation으로 대체하는 기존 동작을 그대로 둔다. */
+   GENRES[genre] 조회가 성립해야 한다. */
 export const GENRES: Record<string, Genre> = {
   animation:{ font:"'Black Han Sans'", accent:'#ffd23f', taglines:['상상은 현실이 된다','오늘, 가장 신나는 모험','웃음과 용기가 가득한 이야기'] },
   fantasy:  { font:"'Noto Serif KR'", accent:'#f6d27a', taglines:['전설이 깨어난다','마법의 문이 열린다','운명을 향한 모험의 시작'] },

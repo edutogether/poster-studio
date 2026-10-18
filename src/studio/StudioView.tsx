@@ -4,6 +4,13 @@ import type { Poster } from "../state.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "../defaults.js";
 import MemberField from "./MemberField.js";
 import GenerationWait from "./GenerationWait.js";
+import CameraExample from "./CameraExample.js";
+import GenerateFailureDialog from "./GenerateFailureDialog.js";
+import BoothCodeDialog from "./BoothCodeDialog.js";
+import type { GenerateFailure } from "../generateFailure.js";
+import type { BoothCodeCheck } from "../boothCode.js";
+import { approvedCameraVideo } from "./cameraVideo.js";
+import { savePoster } from "../savePoster.js";
 
 const choices = [
   ["sf", "SF", "reference-sf.jpg"],
@@ -16,6 +23,10 @@ const choices = [
   ["music", "뮤지컬", "reference-La-La-Land.png"],
 ];
 type Action = () => void | Promise<void>;
+/** 휴대폰 흐름(2026-10-17)을 켜는 기준 — studio.css의 @media (max-width: 760px)와 같은 값이다. */
+export const PHONE_QUERY = "(max-width: 760px)";
+const isPhone = () => window.matchMedia?.(PHONE_QUERY)?.matches ?? false;
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 export interface StudioViewProps {
   mode: string;
   setMode: (mode: string) => void;
@@ -24,7 +35,15 @@ export interface StudioViewProps {
   countdown: string | null;
   generating: boolean;
   spinning: boolean;
-  fallbackShown: boolean;
+  failure: GenerateFailure | null;
+  online: boolean;
+  boothOpen: boolean;
+  onRetryFailure: Action;
+  onRetakeFailure: Action;
+  onDismissFailure: Action;
+  onBoothCodeSaved: (code: string) => void;
+  onBoothCodeClose: Action;
+  verifyBooth: (code: string) => Promise<BoothCodeCheck>;
   status: string;
   completionId: number;
   posters: Poster[];
@@ -42,13 +61,25 @@ export interface StudioViewProps {
   sampleMode?: boolean;
   onRetake: Action;
   onGenerate: Action;
-  onFallback: Action;
   onPrint: Action;
   onNewPerson: Action;
+  onHome: Action;
   stopCamera: Action;
 }
 
-function StudioIcon({name}: {name: 'camera' | 'arrow' | 'reset' | 'expand' | 'print' | 'mic'}) {
+/** 가로로 밀어 넘기는 줄에서 지금 가운데에 온 장의 번호. 한 칸 = 장 너비 + 간격이고, 줄 양끝 여백이 첫 장을 가운데에 두므로
+    scrollLeft를 한 칸으로 나눈 값이 곧 번호다(2026-10-17 휴대폰 3단계 ⑧). */
+export function slideAt(scrollLeft: number, slideWidth: number, gap: number, count: number): number {
+  const step = slideWidth + gap;
+  if (!(step > 0) || count < 1) return 0;
+  return Math.min(count - 1, Math.max(0, Math.round(scrollLeft / step)));
+}
+const slideStep = (el: HTMLElement) => {
+  const first = el.firstElementChild as HTMLElement | null;
+  return first ? first.offsetWidth + (parseFloat(getComputedStyle(el).columnGap) || 0) : 0;
+};
+
+function StudioIcon({name}: {name: 'camera' | 'arrow' | 'reset' | 'expand' | 'print' | 'mic' | 'download'}) {
   // Lucide 공식 SVG: camera · rotate-ccw · maximize · mic (ISC 고지: public/studio/lucide-LICENSE.txt)
   const paths = {
     // Lucide 공식 camera 아이콘. 원본 고지: public/studio/lucide-LICENSE.txt
@@ -57,7 +88,9 @@ function StudioIcon({name}: {name: 'camera' | 'arrow' | 'reset' | 'expand' | 'pr
     reset: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></>,
     expand: <><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></>,
     mic: <><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></>,
-    print: <><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7Z"/><path d="M17 11h1"/></>
+    print: <><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7Z"/><path d="M17 11h1"/></>,
+    // Lucide 공식 download 아이콘
+    download: <><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></>
   };
   return <svg className="studio-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -102,6 +135,12 @@ export default function StudioView(p: StudioViewProps) {
     members: "",
   });
   const dialog = useRef<HTMLDialogElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const dialogCarouselRef = useRef<HTMLDivElement>(null);
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const swipeTimer = useRef(0);
+  const hinted = useRef(false);
+  const [hint, setHint] = useState(false);
   const posterURLs = useMemo(() => p.posters.map(poster => poster.canvas.toDataURL("image/png")), [p.posters]);
   const shownPosters = useRef<Poster[]>([]);
   const prevReset = useRef(p.resetKey);
@@ -132,7 +171,10 @@ export default function StudioView(p: StudioViewProps) {
     if (previousStep.current !== step) {
       const view = document.getElementById(["prepareView", "cameraView", "resultView"][step - 1]);
       const heading = view?.querySelector<HTMLHeadingElement>("h1");
-      if (heading) { heading.tabIndex = -1; heading.focus(); }
+      // 새 단계는 맨 위에서 시작한다. 제목 초점이 화면을 끌어내리면 휴대폰에서 2단계 카메라·3단계 포스터가 위로 밀린 채 열린다(2026-10-17).
+      // PC는 문서가 스크롤되지 않아 그대로다.
+      if (window.scrollY > 0) window.scrollTo(0, 0);
+      if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
       previousStep.current = step;
     }
   }, [step]);
@@ -184,6 +226,7 @@ export default function StudioView(p: StudioViewProps) {
     .filter(Boolean)
     .join(" · ");
   const groupExample = !preview.group && !members;
+  const exampleVideo = approvedCameraVideo(p.mode);
   const cast =
     p.mode === "solo"
       ? preview.name || DEFAULT_PERSON_NAME
@@ -191,6 +234,58 @@ export default function StudioView(p: StudioViewProps) {
         (groupExample
           ? "북두칠성 · 북극성 · 시리우스 · 오리온 · 카시오페아"
           : "");
+  /* ② 휴대폰 1단계: 극장 사진(첫 페이지) 어디를 눌러도 둘째 페이지(«오늘의 주인공, 등장 !»)로 넘어간다. PC에서는 아무 일도 없다. */
+  const toStoryForm = () => {
+    if (!isPhone()) return;
+    document.getElementById("prepareWorkspace")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
+  };
+  /* ⑦ 휴대폰 2단계: 다 찍으면 «오늘 촬영할 영화» 카드와 단추 줄(이 사진으로 만들기 · 샘플 포스터 보기)까지 부드럽게 내려간다. */
+  const toFilmCard = () => {
+    if (!isPhone()) return;
+    document.querySelector(".camera-film-heading")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
+  };
+  useEffect(() => {
+    if (step === 2 && p.phase === "shot") toFilmCard();
+  }, [p.phase, step]);
+
+  /* ⑧~⑩ 휴대폰 3단계: 큰 포스터 줄(과 크게 보기 창의 줄)을 밀어 멈추면 가운데 장이 선택된다. 썸네일을 누르면 거꾸로 줄이 그 장으로 간다. */
+  const onSwipe = (el: HTMLDivElement) => {
+    window.clearTimeout(swipeTimer.current);
+    swipeTimer.current = window.setTimeout(() => {
+      const first = el.firstElementChild as HTMLElement | null;
+      const i = slideAt(el.scrollLeft, first?.offsetWidth ?? 0, parseFloat(getComputedStyle(el).columnGap) || 0, p.posters.length);
+      if (i !== p.selected) p.select(i);
+    }, 90);
+  };
+  const showSelected = (behavior: ScrollBehavior) => {
+    for (const el of [carouselRef.current, dialogCarouselRef.current]) {
+      if (!el) continue;
+      const left = p.selected * slideStep(el);
+      if (Math.abs(el.scrollLeft - left) > 2) el.scrollTo({ left, behavior });
+    }
+    const gallery = galleryRef.current;
+    const thumb = gallery?.children[p.selected] as HTMLElement | undefined;
+    if (gallery && thumb) gallery.scrollTo({ left: thumb.offsetLeft - (gallery.clientWidth - thumb.offsetWidth) / 2, behavior });
+  };
+  useEffect(() => {
+    if (step === 3 && isPhone()) showSelected(reducedMotion() ? "auto" : "smooth");
+  }, [p.selected, step, p.posters]);
+  // 처음 3단계에 들어올 때 한 번만 줄을 살짝 움찔해 «옆으로 밀 수 있다»를 알린다(움직임 줄이기면 하지 않는다).
+  useEffect(() => {
+    if (step !== 3 || hinted.current || !isPhone() || reducedMotion()) return;
+    hinted.current = true;
+    setHint(true);
+    const timer = window.setTimeout(() => setHint(false), 1300);
+    return () => window.clearTimeout(timer);
+  }, [step]);
+  const openDialog = () => {
+    dialog.current?.showModal();
+    if (isPhone()) requestAnimationFrame(() => showSelected("auto"));
+  };
+  const onSave = () => {
+    const poster = p.posters[p.selected];
+    if (poster) void savePoster(poster.canvas, title);
+  };
   const selectedFilm = choices.find((c) => c[0] === genre) ?? choices[0];
   const genreLabel = selectedFilm[1];
   const locked = p.generating || p.capturing;
@@ -202,7 +297,7 @@ export default function StudioView(p: StudioViewProps) {
       </a>
       <header className="app-header">
         <div className="header-inner">
-          <div className="brand">
+          <button type="button" className="brand header-home" onClick={p.onHome} aria-label="CGV · 인천광역시교육청 — 처음으로" title="처음부터 다시 시작">
             <span className="cgv-symbol">
               <img
                 src="/studio/cgv-app-logo.jpg"
@@ -222,7 +317,7 @@ export default function StudioView(p: StudioViewProps) {
                 height="53"
               />
             </span>
-          </div>
+          </button>
           <nav aria-label="포스터 만들기 진행 단계">
             <ol className="stepper">
               {["영화 준비", "사진 촬영", "포스터 선택"].map((label, i) => (
@@ -242,7 +337,7 @@ export default function StudioView(p: StudioViewProps) {
             </ol>
           </nav>
           <div className="header-tools">
-            <div className="festival-brand">
+            <button type="button" className="festival-brand header-home" onClick={p.onHome} aria-label="InKY Film Festival — 처음으로" title="처음부터 다시 시작">
               <span className="festival-symbol">
                 <img
                   src="/studio/inky-logo.png"
@@ -254,7 +349,7 @@ export default function StudioView(p: StudioViewProps) {
               <span>
                 InKY <strong>Film Festival</strong>
               </span>
-            </div>
+            </button>
             <a
               className="privacy-link"
               href="privacy.html"
@@ -274,7 +369,7 @@ export default function StudioView(p: StudioViewProps) {
         hidden={step !== 1}
         aria-label="영화 준비"
       >
-        <div className="preview-panel">
+        <div className="preview-panel" onClick={toStoryForm}>
           <div className="exhibition">
             <img
               className="poster-wall"
@@ -322,6 +417,9 @@ export default function StudioView(p: StudioViewProps) {
               <span>2026. 11. 14. 토요일</span>
               <span>제4회 인천어린이청소년영화제</span>
             </div>
+            <span className="hero-next" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </span>
           </div>
         </div>
         <div className="workspace" id="prepareWorkspace">
@@ -489,8 +587,8 @@ export default function StudioView(p: StudioViewProps) {
       <section id="cameraView" className="camera-layout" hidden={step !== 2} aria-label="사진 촬영">
         <div className="camera-surface">
           <div className="camera-top"><span>카메라 미리 보기</span><span>{p.phase === "shot" ? "촬영 완료" : p.phase === "live" ? "카메라 연결됨" : "촬영 구도 예시"}</span></div>
-          <div className="camera-large cameraBox">
-            <img className={`camera-example${p.mode === "group" ? " camera-example-group" : ""}`} src={p.mode === "group" ? "/studio/camera-group.webp" : "/studio/camera-student.webp"} alt={p.mode === "group" ? "모두의 얼굴이 보이게 모여 웃는 단체 촬영 구도 예시" : "얼굴과 어깨를 담고 편하게 웃는 촬영 구도 예시"} hidden={p.phase !== "idle"} />
+          <div className={`camera-large cameraBox${exampleVideo ? " has-example-video" : ""}`}>
+            <CameraExample mode={p.mode} video={exampleVideo} hidden={p.phase !== "idle"} offstage={step !== 2} />
             <video id="video" ref={p.videoRef} autoPlay playsInline muted className={p.phase === "live" ? "" : "hidden"}/>
             <img id="snapshot" src={p.snapshotURL ?? undefined} className={p.phase === "shot" ? "" : "hidden"} alt="촬영 사진"/>
             <div id="camHint" className={p.phase === "idle" ? "camHint camera-example-caption" : "camHint hidden"}>
@@ -509,6 +607,12 @@ export default function StudioView(p: StudioViewProps) {
             {p.phase === "shot" && <span className="captured-badge">✓ 촬영 완료</span>}
             <div id="countdown" className={p.countdown === null ? "countdown hidden" : "countdown"} aria-live="assertive">{p.countdown}</div>
           </div>
+          {/* ⑥ 휴대폰: 엄지 자리 빨간 원형 촬영 단추(PC에서는 숨김). 샘플 모드는 찍을 카메라가 없어 «샘플 포스터 보기» 자리로 내려간다(⑦). */}
+          <button type="button" id="phoneShotBtn" className="phone-shot" hidden={p.phase === "shot"} disabled={locked}
+            aria-label={p.sampleMode ? "샘플 포스터 보기로 내려가기" : "3초 뒤 사진 찍기"}
+            onClick={p.sampleMode ? toFilmCard : p.onShot}>
+            <StudioIcon name="camera"/>
+          </button>
           <p className="camera-bottom">{p.mode === "group" ? "모두의 얼굴이 잘 보이도록, 조금씩 가까이 모여주세요." : "얼굴과 어깨가 화면 안에 들어오도록 맞춰주세요."}</p>
 
         </div>
@@ -551,7 +655,7 @@ export default function StudioView(p: StudioViewProps) {
               className="icon-button"
               type="button"
               aria-label="포스터 크게 보기"
-              onClick={() => dialog.current?.showModal()}
+              onClick={openDialog}
             >
               <StudioIcon name="expand"/>
             </button></div>
@@ -565,6 +669,20 @@ export default function StudioView(p: StudioViewProps) {
             />
           </div>
           <span className="print-size">4 × 6 인화 비율</span>
+          {/* ⑧ 휴대폰: 큰 포스터 한 장씩 좌우로 밀어 넘긴다(PC에서는 숨김 — 위 캔버스가 그대로 보인다). 가운데 장을 누르면 크게 보기(⑩). */}
+          <div className="phone-stage">
+            <div className="poster-carousel" ref={carouselRef} data-hint={hint || undefined} role="group"
+              aria-label="완성 포스터 — 옆으로 밀어 넘기기" onScroll={(event) => onSwipe(event.currentTarget)}>
+              {p.posters.map((poster, i) => (
+                <button type="button" key={poster.label + i} className="poster-slide" aria-current={i === p.selected || undefined}
+                  aria-label={i === p.selected ? `${poster.label} 크게 보기` : `${poster.label} 보기`}
+                  onClick={() => (i === p.selected ? openDialog() : p.select(i))}>
+                  <img src={posterURLs[i]} alt="" />
+                </button>
+              ))}
+            </div>
+          </div>
+          {p.posters[p.selected] && <p className="poster-carousel-caption">{p.posters[p.selected].label} · {p.selected + 1} / {p.posters.length}</p>}
         </div>
         <div className="workspace" id="resultWorkspace">
           <div className="page-heading">
@@ -577,6 +695,7 @@ export default function StudioView(p: StudioViewProps) {
             </p>
             <div
               id="gallery"
+              ref={galleryRef}
               className="gallery style-grid"
               aria-label="포스터 스타일"
             >
@@ -603,8 +722,10 @@ export default function StudioView(p: StudioViewProps) {
             </div>
           </aside>
           <div className="action-dock result-actions">
-            <button type="button" className="back-button" onClick={() => go(2)} disabled={locked}><span aria-hidden="true">←</span> 이전</button>
+            <button type="button" className="back-button" onClick={() => go(2)} disabled={locked}><span aria-hidden="true">←</span> <span className="label-pc">이전</span><span className="label-phone">다시 찍기</span></button>
             <button id="printBtn" type="button" className="primary-button" onClick={p.onPrint}><StudioIcon name="print"/>이 포스터로 출력하기</button>
+            {/* ⑪ 휴대폰: 인쇄 대신 내 휴대폰에 저장(파일 공유 → 안 되면 PNG 내려받기). PC에서는 숨김. */}
+            <button id="saveBtn" type="button" className="primary-button" onClick={onSave} disabled={!p.posters[p.selected]}><StudioIcon name="download"/>내 휴대폰에 저장</button>
           </div>
         </div>
       </section>
@@ -614,21 +735,14 @@ export default function StudioView(p: StudioViewProps) {
         <strong>완성 !</strong>
         <p>마음에 드는 버전을 고르고 인쇄하세요.</p>
       </div>}
-      <div className="studio-status" hidden={p.spinning || (!p.status && !p.fallbackShown)}>
+      <div className="studio-status" hidden={p.spinning || !p.status}>
         <p id="status" role="status">
           {p.status}
         </p>
-        <button
-          id="fallbackBtn"
-          type="button"
-          className={
-            p.fallbackShown ? "secondary-button" : "secondary-button hidden"
-          }
-          onClick={p.onFallback}
-        >
-          AI 없이 기본 버전으로 계속하기
-        </button>
       </div>
+      {!p.spinning && <GenerateFailureDialog failure={p.failure} online={p.online}
+        onRetry={p.onRetryFailure} onRetake={p.onRetakeFailure} onEditInputs={() => { void p.onDismissFailure(); go(1); }} onHome={() => void p.onHome()} />}
+      <BoothCodeDialog open={p.boothOpen && !p.spinning} verify={p.verifyBooth} onSaved={p.onBoothCodeSaved} onClose={() => void p.onBoothCodeClose()} />
       <dialog
         ref={dialog}
         className="poster-dialog"
@@ -648,6 +762,10 @@ export default function StudioView(p: StudioViewProps) {
             alt="선택한 완성 포스터"
           />
         )}
+        {/* ⑩ 휴대폰: 크게 보기 창 안에서도 좌우로 넘긴다(PC에서는 숨김 — 위 한 장이 그대로 보인다) */}
+        <div className="dialog-carousel" ref={dialogCarouselRef} onScroll={(event) => onSwipe(event.currentTarget)}>
+          {p.posters.map((poster, i) => <img key={poster.label + i} src={posterURLs[i]} alt={`${poster.label} 포스터`} />)}
+        </div>
       </dialog>
     </>
   );

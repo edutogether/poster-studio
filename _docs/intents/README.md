@@ -27,9 +27,11 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-10-16 | [camera-example-video](2026-10-16-camera-example-video/intent.md) | 2 | in-progress | 촬영 화면 «자리 잡는 영상» 2편을 앱에 연결하는 자리 — 승인 전에는 화면 변화 0, 숫자·말풍선은 앱이 얹음 |
 | 2026-10-15 | [local-deploy-github-suspended](2026-10-15-local-deploy-github-suspended/intent.md) | 2 | done | GitHub 정지 중 master를 이 컴퓨터에서 Firebase로 직접 배포 — LF 사본·CI와 같은 검사·되돌림 채널 |
-| 2026-10-14 | [ai-retry-instead-of-fallback](2026-10-14-ai-retry-instead-of-fallback/intent.md) | 2 | draft | AI가 실패하면 «AI 없이 계속하기»(빈 그라데이션) 대신 «다시 만들기» — 결정 5개 Bumm님 확인 대기 |
+| 2026-10-14 | [ai-retry-instead-of-fallback](2026-10-14-ai-retry-instead-of-fallback/intent.md) | 2 | in-progress | AI가 실패하면 «AI 없이 계속하기»(빈 그라데이션) 대신 «다시 만들기» — 결정 1~5 ⭐안 확정(Bumm 10/17), 출시 후보에 반영, 배포 뒤 done |
 | 2026-10-14 | [poster-select-redesign](2026-10-14-poster-select-redesign/intent.md) | 2 | in-progress | 포스터 고르기 화면 단추·여백 다듬기와 포스터 7종을 세계 수준 레퍼런스로 다시 설계 |
+| 2026-10-12 | [waiting-video-app](2026-10-12-waiting-video-app/intent.md) | 2 | in-progress | 대기 영상 12편을 앱 로딩 화면에 장착 — 정지 그림 먼저, 재생되면 영상으로, 첫 프레임 = 정지 그림 |
 | 2026-10-10 | [waiting-video-seedance](2026-10-10-waiting-video-seedance/intent.md) | 2 | in-progress | 대기 영상 12편을 키프레임부터 다시 — Higgsfield 프로젝트 «Poster Studio», 캐릭터 에셋, Seedance로 한 번에(정확히 8초) |
 | 2026-10-09 | [splash-font-and-sample-mode](2026-10-09-splash-font-and-sample-mode/intent.md) | 2 | done | 스플래시 글꼴 고정(띄어쓰기 서브셋·block·미리 받기)·라이브 샘플 모드 스위치 |
 | 2026-10-07 | [ops-hardening](2026-10-07-ops-hardening/intent.md) | 2 | done | 부스 코드 스위치(기본 꺼짐)·포스터 글꼴 자체 서빙·로컬 도구 정비 |

@@ -45,6 +45,7 @@ import {
   COUNTER_TTL_MS,
   cleanupOldCounters,
   _firestoreIncrementAndCheck,
+  _firestoreRelease,
   ALLOWED_ORIGINS,
   COUNTER_TTL_OVERRIDES_MS,
   MAX_REQUEST_BYTES,
@@ -57,7 +58,8 @@ import {
   makeBoothCodeGate,
   _setBoothCodeForTesting,
   markRequestStart,
-  generateHandler
+  generateHandler,
+  _setReleaseImplForTesting
 } from '../index.js';
 
 // 레이트리밋/사진별 생성한도는 이제 Firestore 트랜잭션으로 전역 강제되는데(5차
@@ -73,13 +75,22 @@ import {
 // 격리된 카운터를 만들어 쓰고 끝나면 원래(공유) 구현으로 복원한다.
 function makeInMemoryCounterImpl() {
   const counters = new Map();
-  return async (collectionName, docId, limit) => {
+  const impl = async (collectionName, docId, limit) => {
     const key = `${collectionName}/${docId}`;
     const current = counters.get(key) || 0;
     if (current >= limit) return { allowed: false, count: current };
     counters.set(key, current + 1);
     return { allowed: true, count: current + 1 };
   };
+  // 생성 실패 때 사진 카운터 되돌리기(2026-10-16)도 같은 저장소에서 한다.
+  impl.release = async (collectionName, docId) => {
+    const key = `${collectionName}/${docId}`;
+    const next = Math.max(0, (counters.get(key) || 0) - 1);
+    counters.set(key, next);
+    return { count: next };
+  };
+  impl.counters = counters;
+  return impl;
 }
 
 /* 8차 감사(2026-09-07) 발견 — 진짜 플래키 테스트였다.
@@ -103,13 +114,20 @@ async function runInSingleRateLimitBucket(body) {
 
 const _fakeCounters = new Map();
 function useSharedCounterImpl() {
-  _setCounterImplForTesting(async (collectionName, docId, limit) => {
+  const impl = async (collectionName, docId, limit) => {
     const key = `${collectionName}/${docId}`;
     const current = _fakeCounters.get(key) || 0;
     if (current >= limit) return { allowed: false, count: current };
     _fakeCounters.set(key, current + 1);
     return { allowed: true, count: current + 1 };
-  });
+  };
+  impl.release = async (collectionName, docId) => {
+    const key = `${collectionName}/${docId}`;
+    const next = Math.max(0, (_fakeCounters.get(key) || 0) - 1);
+    _fakeCounters.set(key, next);
+    return { count: next };
+  };
+  _setCounterImplForTesting(impl);
 }
 useSharedCounterImpl();
 
@@ -334,6 +352,20 @@ test('mapGenerateError: 알 수 없는 오류는 500 + 원문(raw) 노출 없이
   expect(!message.includes('stack trace') && !message.includes('/var/secret'), '원문이 그대로 노출되면 안 된다: ' + message).toBeTruthy();
 });
 
+// 화면은 실패 종류를 문구가 아니라 code로 가른다(2026-10-16, src/generateFailure.ts) — 종류마다 code가 하나씩 정해져 있어야 한다.
+test('mapGenerateError: 실패 종류마다 화면이 가를 code를 준다', () => {
+  const cases = [
+    [{ status: 429, message: 'Rate limit exceeded' }, 'openai_busy'],
+    [{ message: 'You exceeded your current quota, billing details required' }, 'credit'],
+    [{ status: 401, message: 'Incorrect API key provided' }, 'key'],
+    [{ message: 'Your request was rejected by our content moderation system' }, 'safety'],
+    [{ message: 'Request timed out' }, 'timeout'],
+    [{ message: 'fetch failed: ENOTFOUND api.openai.com' }, 'upstream'],
+    [{ message: 'something else' }, 'unknown']
+  ];
+  for (const [err, code] of cases) expect(mapGenerateError(err).code, JSON.stringify(err)).toBe(code);
+});
+
 // ── /generate 레이트리밋(실제 OpenAI 호출 전에 막히는 경로만 검증) ────
 // 플랫폼처럼 본문을 다 읽어 req.rawBody로 넘기되, 플랫폼의 HTTP 요청 한도(32MiB)까지만 받는다.
 // 시험 중에만 잠깐 뜨는 서버라도 이 컴퓨터(127.0.0.1)에서만 연다.
@@ -494,6 +526,7 @@ test(`checkPhotoGenerationLimit: 같은 사진으로 ${PHOTO_GENERATION_LIMIT}�
   const last = results[PHOTO_GENERATION_LIMIT];
   expect(last.blocked, `${PHOTO_GENERATION_LIMIT + 1}번째는 막혀야 한다`).toBe(true);
   expect(last.code).toBe(429);
+  expect(last.body.code, "화면이 «다시 촬영»을 고르는 표시").toBe("photo_limit");
 });
 
 test('checkPhotoGenerationLimit: 한도 초과로 막힌 요청의 임시파일은 직접 정리된다(고아 파일 방지)', async () => {
@@ -1429,6 +1462,31 @@ test('generateHandler: 시간 예산은 요청이 들어온 순간부터 잰다(
   }
 });
 
+// 생성 실패 뒤 사진 카운터 되돌리기가 실패하거나(Firestore 오류) 멈춰도(5초 제한) 응답은 원래 실패 그대로 나가고
+// 임시 사진은 지운다 — 되돌리기는 아이의 기회 하나를 아끼는 것일 뿐이다(2026-10-17 종합감사: 이 .catch를 지워도 시험이 통과했다).
+test.each([
+  ['오류', () => Promise.reject(new Error('Firestore 오류'))],
+  ['멈춤', () => new Promise(() => {})]
+])('generateHandler: 사진 카운터 되돌리기가 %s이어도 원래 실패로 응답하고 임시 사진을 지운다', async (_label, release) => {
+  const calls = [];
+  _setReleaseImplForTesting((collectionName, docId) => { calls.push(`${collectionName}/${docId}`); return release(); });
+  _setCounterTimeoutForTesting(50);
+  _setClientForTesting(makeFakeClient(async () => { const e = new Error('Request timed out'); e.status = 400; throw e; }));
+  const filePath = makeTempFile(Buffer.from([0xff, 0xd8, 0xff, ...crypto.randomBytes(8)]));
+  try {
+    const r = await runHandler({ file: { path: filePath, mimetype: 'image/jpeg' }, body: {}, startedAt: Date.now(), photoCounted: 'h-release' });
+    expect(calls, '되돌리기를 실제로 시도했다').toEqual(['photoGenCounts/h-release']);
+    expect(r.code).toBe(504);
+    expect(r.body.code).toBe('timeout');
+    expect(r.fileExistedAtResponse, '응답 순간에 사진이 이미 지워져 있어야 한다').toBe(false);
+  } finally {
+    _setReleaseImplForTesting(null);
+    _setCounterTimeoutForTesting(null);
+    _setClientForTesting(null);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  }
+});
+
 test('POST /generate: 요청 시작 표시가 맨 앞이고, 부스 코드·시간창은 부스 토큰 뒤·사진 파싱 앞이다', () => {
   const router = app.router || app._router;
   const layer = router.stack.find((l) => l.route?.path === '/generate');
@@ -1496,7 +1554,7 @@ test('부스 코드: 켜면 맞는 코드만 통과하고, 없거나 틀리면 4
   ]) {
     const r = await runGate(gate, headers);
     expect(r.code, JSON.stringify(headers)).toBe(403);
-    expect(r.body.error).toBe('행사 부스에서만 만들 수 있어요.');
+    expect(r.body).toEqual({ error: '행사 부스에서만 만들 수 있어요.', code: 'booth_code' }); // 화면이 이 code로 부스 코드 입력 창을 연다(src/boothCode.ts)
   }
 });
 
@@ -1561,5 +1619,94 @@ test('POST /generate: 기본(꺼짐) 상태에서는 부스 코드 없이도 지
     expect(r.status).toBe(400);
   } finally {
     server.close();
+  }
+});
+
+// ── 생성 실패는 «사진당 2회»를 쓰지 않는다(2026-10-16 Bumm님 결정 1) ──────────────
+test('사진 카운터 되돌리기: 하나씩 내리고 0 아래로는 내리지 않는다', async () => {
+  const db = makeCounterDb({ 'photoGenCounts/h1': { count: 2 } });
+  expect((await _firestoreRelease('photoGenCounts', 'h1', db)).count).toBe(1);
+  expect((await _firestoreRelease('photoGenCounts', 'h1', db)).count).toBe(0);
+  expect((await _firestoreRelease('photoGenCounts', 'h1', db)).count).toBe(0);
+  expect((await _firestoreRelease('photoGenCounts', 'none', db)).count).toBe(0);
+  expect(db._count('photoGenCounts', 'h1')).toBe(0);
+});
+
+test('POST /generate: 같은 사진이 실패하면 카운터가 되돌아가 한도보다 많이 다시 해 볼 수 있고, 성공은 한도대로 센다', async () => {
+  const photo = Buffer.from([0xff, 0xd8, 0xff, 0xdb, ...crypto.randomBytes(8)]);
+  const send = async (port) => {
+    const { headers, rawBody } = await buildMultipartRequest([['photo', { blob: new Blob([photo], { type: 'image/jpeg' }), filename: 'p.jpg' }]]);
+    const r = await fetch(`http://127.0.0.1:${port}/generate`, { method: 'POST', headers: { ...headers, 'x-booth-token': 'test-booth-token' }, body: rawBody });
+    return { status: r.status, body: await r.json() };
+  };
+  const server = await startTestServer();
+  const port = server.address().port;
+  try {
+    await runInSingleRateLimitBucket(async () => {
+      _setClientForTesting(makeFakeClient(async () => { const e = new Error('Request timed out'); e.status = 400; throw e; }));
+      const failed = [];
+      for (let i = 0; i < PHOTO_GENERATION_LIMIT + 2; i++) failed.push(await send(port));
+      expect(failed.map((r) => r.status), '실패는 사진 한도에 걸리지 않는다').toEqual(failed.map(() => 504));
+      expect(failed[0].body.code).toBe('timeout');
+      _setClientForTesting(makeFakeClient(async () => ({ data: [{ b64_json: 'AAA' }] })));
+      const ok = [];
+      for (let i = 0; i < PHOTO_GENERATION_LIMIT + 1; i++) ok.push(await send(port));
+      expect(ok.map((r) => r.status), '성공은 한도대로 세고 그 다음은 막는다').toEqual([...Array(PHOTO_GENERATION_LIMIT).fill(200), 429]);
+      expect(ok[PHOTO_GENERATION_LIMIT].body.code).toBe('photo_limit');
+    });
+  } finally {
+    server.close();
+    _setClientForTesting(null);
+    useSharedCounterImpl();
+  }
+});
+
+// ── 실패 code 고정(2026-10-17 종합감사) ───────────────────────────────────
+// 서버가 주는 code는 화면이 다음 단추(다시 만들기 · 기다리기 · 다시 찍기 · 선생님)를 고르는 값이다(src/generateFailure.ts).
+// 미들웨어마다 실제로 그 code를 내는지 고정한다 — 전에는 'budget'을 'zzz'로 바꿔도 시험 94개가 모두 통과했다.
+// 화면 쪽 표(code → 단추)는 test/generate-failure.test.ts가 전부 고정한다.
+function runMiddleware(mw, req = {}) {
+  return new Promise((resolve, reject) => {
+    const res = {
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(body) {
+        resolve({ status: this.statusCode, code: body.code });
+      }
+    };
+    Promise.resolve(mw({ headers: {}, ...req }, res, () => resolve('next'))).catch(reject);
+  });
+}
+
+test('실패 code: 한도 · 토큰 · 시간창 · 사진 없음 · 업로드 오류가 화면이 아는 code를 낸다', async () => {
+  try {
+    _setCounterImplForTesting(async () => ({ allowed: false, count: 999 }));
+    expect(await runMiddleware(rateLimit)).toEqual({ status: 429, code: 'busy_global' });
+    expect(await runMiddleware(ipRateLimit, { headers: { 'x-forwarded-for': '203.0.113.7' } })).toEqual({ status: 429, code: 'busy_network' });
+    expect(await runMiddleware(dailyBudgetCap)).toEqual({ status: 429, code: 'budget' });
+
+    // 카운터를 못 쓸 때 대체 한도를 넘긴 경우도 같은 code다
+    _setCounterImplForTesting(async () => {
+      throw new Error('시뮬레이션: Firestore 연결 실패');
+    });
+    _resetFallbackForTesting();
+    for (let i = 0; i < FALLBACK_LIMIT_PER_INSTANCE; i++) expect(await runMiddleware(rateLimit)).toBe('next');
+    expect(await runMiddleware(rateLimit)).toEqual({ status: 429, code: 'busy_global' });
+
+    expect(await runMiddleware(checkBoothToken, { headers: { 'x-booth-token': 'wrong-token' } })).toEqual({ status: 401, code: 'token' });
+    const past = makeGenerateWindowGate(parseGenerateWindows('2020-01-01T09:00~2020-01-01T18:00'));
+    expect(await runMiddleware(past)).toEqual({ status: 403, code: 'closed' });
+    expect(await runMiddleware(requirePhoto)).toEqual({ status: 400, code: 'no_photo' });
+
+    const router = app.router || app._router;
+    const errorHandler = router.stack.find((l) => l.handle.length === 4).handle;
+    const viaErrorHandler = (err) => runMiddleware((req, res, next) => errorHandler(err, req, res, next));
+    expect(await viaErrorHandler(Object.assign(new Error('File too large'), { code: 'LIMIT_FILE_SIZE' }))).toEqual({ status: 413, code: 'too_large' });
+    expect(await viaErrorHandler(new Error('요청 형식이 올바르지 않습니다.'))).toEqual({ status: 400, code: 'bad_request' });
+  } finally {
+    _resetFallbackForTesting();
+    useSharedCounterImpl();
   }
 });
