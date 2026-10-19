@@ -69,10 +69,11 @@ try {
   await call('Page.enable');
   await call('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
   // 로딩 화면의 장면·영상 사건을 페이지 안에서 적는다(media 사건은 거품이 없어 문서에서 «잡기» 단계로 받는다).
+  // 로딩 화면(#spinner) 안의 영상만 센다 — 10/19 촬영 화면 예시 영상이 2단계에서 재생되자 그 사건이 미리 정해 둔 장면 번호(6번)에 붙어 «주소 다름»으로 실패했다.
   await call('Page.addScriptToEvaluateOnNewDocument', { source: `
     window.__wv = []; const now = () => Math.round(performance.now());
     const log = (type, extra) => window.__wv.push(Object.assign({ type, t: now(), set: document.getElementById('spinner')?.dataset.setId || null }, extra));
-    for (const type of ['playing', 'error', 'ended']) document.addEventListener(type, e => { if (e.target.tagName === 'VIDEO') log(type, { src: e.target.currentSrc }); }, true);
+    for (const type of ['playing', 'error', 'ended']) document.addEventListener(type, e => { if (e.target.tagName === 'VIDEO' && e.target.closest('#spinner')) log(type, { src: e.target.currentSrc }); }, true);
     new MutationObserver(() => { const s = document.getElementById('spinner'); const id = s?.dataset.setId || null; if (id !== window.__lastSet) { window.__lastSet = id; if (id) log('scene', { video: !!s.querySelector('video') }); } })
       .observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-set-id'] });   // 이 시점엔 documentElement가 아직 없을 수 있다
     window.print = () => { throw Error('확인 중 인쇄 차단'); };` });
