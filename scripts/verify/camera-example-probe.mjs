@@ -3,7 +3,7 @@
      node scripts/verify/camera-example-probe.mjs [주소] [결과 폴더] [--mode solo|group] [--sizes 2560x1600,1366x768,390x844@3]
 
    2단계로 가는 단추를 «진짜 클릭»(CDP 입력 사건 — 사람의 클릭처럼 사용자 활성화가 생긴다)으로 눌러, 소리 있는 자동 재생이 실제와 같은
-   조건에서 허용되는지 본다. 카메라·인쇄·https는 막는다. 크기마다 처음부터 다시 돌아 영상 0초부터 잰다.
+   조건에서 허용되는지 본다. 카메라·인쇄·AI 서버는 막는다(로컬 http 주소면 https 전부, 라이브 https 주소면 AI 서버만 — 10/19 라이브 확인). 크기마다 처음부터 다시 돌아 영상 0초부터 잰다.
    판정(하나라도 어긋나면 종료코드 1) — 승인된 영상이 그 모드에 있을 때:
    ① 영상이 실제로 재생된다(playing) · 소리 켬(muted=false) · 좌우를 뒤집지 않는다(transform none)
    ② 무대가 칸을 다 덮는다(cover) — 무대 폭·높이 ≥ 칸, 가운데 정렬(±1px)
@@ -61,7 +61,8 @@ try {
   };
   const capture = async (name) => { const s = await call('Page.captureScreenshot', { format: 'png' }); await fs.writeFile(path.join(out, `${name}.png`), Buffer.from(s.data, 'base64')); };
   await call('Network.enable');
-  await call('Network.setBlockedURLs', { urls: ['https://*'] });
+  // 라이브(https)에서 https 전부를 막으면 페이지 자체가 안 열린다(10/19) — 그때는 AI 서버(Cloud Functions)만 막는다.
+  await call('Network.setBlockedURLs', { urls: url.startsWith('https://') ? ['https://*.cloudfunctions.net/*'] : ['https://*'] });
   await call('Page.enable');
   await call('Page.addScriptToEvaluateOnNewDocument', { source: "if(navigator.mediaDevices){navigator.mediaDevices.getUserMedia=async()=>{throw Error('확인 중 카메라 차단');};}window.print=()=>{throw Error('확인 중 인쇄 차단');};" });
   // https를 막아 생기는 «AI 서버 연결» 알림은 이 확인과 상관없고 캡처를 가린다 — 이 확인에서만 숨긴다(알림 자리는 status-toast-probe.mjs가 따로 본다).
