@@ -610,11 +610,11 @@ main.app {
      360×640 · 390×664 · 430×740(실제 브라우저 높이)과 780~932에서 단추 줄이 첫 화면 안(mobile-layout-probe «빨간 단추가 첫 화면»).
      10/20 저녁 Bumm님(캡처 02~05) «제목과 안내 1 · 2 · 3 사이를 조금 띄우고, 영상 칸은 390×664 · 360은 더 길게, 430은 그대로, 390×844는 더 짧게»:
      영상(16:9)과 같은 비율을 목표로 칸 높이 = 폭 × 9/16(430×740 · 780~932), 그만큼 높이가 없으면(640 · 664) 남는 높이까지.
-     제목 아래 8 → 14px, 그 대신 안내 사이 8 → 6px · 회색 칸 위아래 12 → 10px · 단추 줄 위아래 10/12 → 8/10px · 안내 글 줄 높이를 조금 줄여
-     나머지가 쓰는 높이 388 → 375px(그만큼 칸이 길어진다 — 664에서 153 → 166px, 640에서 123 → 136px). */
+     제목 아래 8 → 14px, 그 대신 안내 사이 8 → 6px · 회색 칸 위아래 12 → 10px · 단추 줄 위 10 → 8px · 안내 글 줄 높이를 조금 줄여
+     나머지가 쓰는 높이 388 → 377px(그만큼 칸이 길어진다 — 664에서 153 → 164px, 640에서 123 → 134px). */
   #cameraView:has(.camera-instructions[data-review="false"]) { display: flex; flex-direction: column; min-height: calc(100svh - var(--phone-header-h)); }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-surface { flex: none; padding-bottom: 8px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-large { height: clamp(120px, min(calc((100vw - 44px) * 9 / 16), calc(100svh - var(--phone-header-h) - 375px)), 300px); }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-large { height: clamp(120px, min(calc((100vw - 44px) * 9 / 16), calc(100svh - var(--phone-header-h) - 377px)), 300px); }
   #cameraView:has(.camera-instructions[data-review="false"]) #cameraWorkspace { flex: 1 0 auto; padding-top: 0; }
   #cameraView:has(.camera-instructions[data-review="false"]) .page-heading { margin: auto 0 14px; padding-top: 10px; }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-instructions { margin-bottom: auto; padding-bottom: 10px; }
@@ -624,7 +624,7 @@ main.app {
   #cameraView:has(.camera-instructions[data-review="false"]) .photo-review { margin-bottom: 0; }
   /* 흰 단추 줄: 구분선 없이, 바탕은 화면 폭 끝까지(그림자를 옆으로만 넓힘 — 자리 계산은 그대로) */
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions {
-    margin-top: 0; padding: 8px 0 max(10px, env(safe-area-inset-bottom)); border-top: 0;
+    margin-top: 0; padding: 8px 0 max(12px, env(safe-area-inset-bottom)); border-top: 0;   /* 아래 12px은 mobile-layout-probe «맨 아래 단추가 끝에 붙음» 기준 */
     background: #fff; box-shadow: 0 0 0 100vmax #fff; clip-path: inset(0 -100vmax);
   }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions > button { min-height: 48px; height: 48px; }
