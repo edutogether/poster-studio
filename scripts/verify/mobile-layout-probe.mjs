@@ -1,6 +1,8 @@
 /* 휴대폰 화면 배치 점검(2026-10-17 Bumm님: «요즘 애들은 다 핸드폰으로 본다. 모바일판 배열이 엉망인 것 손봐야 한다»).
 
-     node scripts/verify/mobile-layout-probe.mjs <dist 폴더> <결과 폴더> [--sizes 360x780,390x844,430x932] [--scale 3] [--desktop] [--real]
+     node scripts/verify/mobile-layout-probe.mjs <dist 폴더> <결과 폴더> [--sizes 360x640,390x664,430x740,360x780,390x844,430x932] [--scale 3] [--desktop] [--real]
+   기본 크기의 앞 셋은 실제 브라우저 높이(주소창 · 아래 막대를 뺀 높이 — 아이폰 사파리 390×664 등), 뒤 셋은 화면 전체 높이다.
+   10/19까지는 뒤 셋만 재서, 아이폰 사파리에서 2단계 단추가 61px 잘린 것을 못 잡았다(10/20 Bumm님 캡처).
 
    샘플 모드 빌드(dist)를 127.0.0.1의 작은 정적 서버로 열고, 휴대폰 흉내(터치·모바일 화면)로 샘플 모드 흐름을 끝까지 누른다.
    화면: 1단계(혼자·같이) · 2단계(혼자·같이) · 로딩 · 3단계(완성 알림 · 고르기) · 포스터 크게 보기 · 개인정보 안내.
@@ -36,7 +38,7 @@ const desktop = args.includes('--desktop');
 // --real: 실제 모드 빌드(VITE_SAMPLE_MODE=0)를 가짜 카메라(dist/studio/camera-student.webp — 이미 공개된 지어낸 인물)로 찍고,
 // 서버 요청(https)은 페이지 안에서 흉내 낸 응답으로 돌려준다 — 네트워크로는 한 건도 나가지 않는다(https 차단도 그대로).
 const real = args.includes('--real');
-const sizes = opt('--sizes', '360x780,390x844,430x932').split(',').map((s) => { const [w, h] = s.split('x').map(Number); return { w, h }; });
+const sizes = opt('--sizes', '360x640,390x664,430x740,360x780,390x844,430x932').split(',').map((s) => { const [w, h] = s.split('x').map(Number); return { w, h }; });
 await fs.mkdir(out, { recursive: true });
 
 // 정적 서버 — 127.0.0.1에만 묶고, dist 밖으로 나가는 경로는 막는다.

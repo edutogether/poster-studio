@@ -19,6 +19,7 @@ import PosterStudio, { getMeta } from '../src/PosterStudio.js';
 import * as homeRestart from '../src/restartHome.js';
 import * as posterModule from '../src/poster.js';
 import * as saveModule from '../src/savePoster.js';
+import { designNameEn } from '../src/designNames.js';
 import { PHONE_QUERY, slideAt } from '../src/studio/StudioView.js';
 import { captureBoothCode } from '../src/boothCode.js';
 
@@ -977,7 +978,7 @@ describe('휴대폰 흐름', () => {
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
     const slides = document.querySelectorAll<HTMLButtonElement>('.poster-slide');
     expect(slides).toHaveLength(8);
-    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe(`${TEMPLATES[0].label} · 1 / 8`);
+    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe(designNameEn(TEMPLATES[0].label));
     await act(async () => { slides[2].click(); });
     expect(document.querySelectorAll('#gallery .thumb')[2].getAttribute('aria-pressed')).toBe('true');
     expect(document.querySelector<HTMLDialogElement>('.poster-dialog')!.open).toBe(false);
@@ -986,7 +987,7 @@ describe('휴대폰 흐름', () => {
     expect(document.querySelectorAll('.dialog-carousel img')).toHaveLength(8);
   });
 
-  test('3단계 양쪽 화살표(10/19): 다음 · 이전 장을 고르고, 첫 장 · 끝 장에서는 그쪽 화살표를 누를 수 없다', async () => {
+  test('3단계 양쪽 화살표(10/19): 다음 · 이전 장을 고르고, 첫 장에서는 왼쪽을 누를 수 없다. 이름은 영어 · 순번 없음(10/20)', async () => {
     asPhone(true);
     installFetch();
     await act(async () => { renderApp(); });
@@ -997,12 +998,56 @@ describe('휴대폰 흐름', () => {
     const caption = () => document.querySelector('.poster-carousel-caption')!.textContent;
     expect(prev.disabled).toBe(true);
     await act(async () => { next.click(); });
-    expect(caption()).toBe(`${TEMPLATES[1].label} · 2 / 8`);
+    expect(caption()).toBe(designNameEn(TEMPLATES[1].label));
     await act(async () => { prev.click(); });
-    expect(caption()).toBe(`${TEMPLATES[0].label} · 1 / 8`);
+    expect(caption()).toBe(designNameEn(TEMPLATES[0].label));
+    expect(caption()).toBe('Cinema');
     for (let i = 0; i < 7; i++) await act(async () => { next.click(); });
-    expect(caption()).toBe(`${TEMPLATES[7].label} · 8 / 8`);
-    expect(next.disabled).toBe(true);
+    expect(caption()).toBe(designNameEn(TEMPLATES[7].label));
+    expect(caption()).not.toMatch(/\d|\//);
+  });
+
+  test('3단계 마지막 장(10/20): 오른쪽 단추가 «처음 포스터로»(되돌리기)가 되고, 누르면 1번으로 돌아간다', async () => {
+    asPhone(true);
+    installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    const next = document.querySelector<HTMLButtonElement>('.carousel-arrow.next')!;
+    expect(next.getAttribute('aria-label')).toBe('다음 포스터');
+    expect(next.dataset.rewind).toBeUndefined();
+    for (let i = 0; i < 7; i++) await act(async () => { next.click(); });
+    expect(next.disabled).toBe(false);
+    expect(next.getAttribute('aria-label')).toBe('처음 포스터로');
+    expect(next.dataset.rewind).toBe('true');
+    await act(async () => { next.click(); });
+    expect(document.querySelector('.poster-slide[aria-current]')).toBe(document.querySelectorAll('.poster-slide')[0]);
+    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe('Cinema');
+    expect(next.getAttribute('aria-label')).toBe('다음 포스터');
+  });
+
+  test('3단계 «내 휴대폰에 저장»(10/20): 아이폰은 «공유 창에서 ‘이미지 저장’을 누르세요» 한 줄, 안드로이드 · PC는 없음', async () => {
+    asPhone(true);
+    installFetch();
+    const save = vi.spyOn(saveModule, 'savePoster').mockResolvedValue('shared');
+    const platform = vi.spyOn(saveModule, 'savePlatform').mockReturnValue('ios');
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('saveBtn').click(); });
+    expect(document.querySelector('.save-hint')!.textContent).toBe('공유 창에서 ‘이미지 저장’을 누르세요');
+    expect(save.mock.calls[0][2]).toBe('ios');
+    cleanup();
+    platform.mockReturnValue('android');
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('saveBtn').click(); });
+    expect(document.querySelector('.save-hint')).toBeNull();
+    expect(save.mock.calls[1][2]).toBe('android');
   });
 
   test('3단계 «내 휴대폰에 저장»: 고른 포스터를 영화 제목 이름으로 저장한다', async () => {

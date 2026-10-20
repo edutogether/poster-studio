@@ -33,11 +33,16 @@
 }
 @media (max-width: 760px) {
   .generation-wait { padding: 24px 20px; }
-  .generation-film { width: min(280px, 72vw); }
-  .generation-wait h1 { font-size: 24px; letter-spacing: -.8px; }
+  .generation-film { width: min(280px, 72vw); margin-bottom: 4px; }
+  .generation-wait h1 { font-size: 24px; letter-spacing: -.8px; line-height: 1.35; }
   .movie-fact { margin-top: 0; }
-  .movie-fact h2 { font-size: 20px; }
-  .movie-fact p { font-size: 15px; line-height: 1.65; }
+  .movie-fact h2 { font-size: 20px; line-height: 1.4; }
+  .movie-fact p { font-size: 15px; line-height: 1.55; }
+  /* 10/20 Bumm님 «글씨들 사이 세로 여백이 너무 벌어짐 → 로봇 · 제목 · 점 · 빨간 문구 · 회색 설명을 한 덩어리로»: 사이를 줄이고,
+     설명 칸은 모든 장면 중 가장 긴 글의 높이라 짧은 글이 그 가운데에 떠 위아래가 비었다 → 위에 붙인다(칸 높이는 그대로라 로봇은 움직이지 않는다). */
+  .generation-dots { margin: 12px 0; }
+  .movie-fact-bodies { margin-top: 6px; }
+  .movie-fact-titles > *, .movie-fact-bodies > * { align-self: start; }
 }
 @media (prefers-reduced-motion: reduce) {
   .generation-copy-stack > *, .generation-robot-film, .generation-dots i { transition: none; }
