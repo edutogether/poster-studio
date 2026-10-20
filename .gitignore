@@ -1,9 +1,8 @@
 node_modules/
 functions/node_modules/
 uploads/
-# 조직 표준(_shared/CONVENTIONS.md §7). 예외: .env.production은 샘플 모드 스위치 한 줄이라(비밀값 아님) 추적한다 — .claude/rules/app.md
+# 조직 표준(_shared/CONVENTIONS.md §7). 라이브 동작 스위치는 2026-10-20부터 src/studioMode.ts — 예전에 추적하던 .env.production은 지웠다.
 .env*
-!.env.production
 !functions/.env.example
 *.pem
 cert/

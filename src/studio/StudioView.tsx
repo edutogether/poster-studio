@@ -61,7 +61,7 @@ export interface StudioViewProps {
   cameraReadyId: number;
   onShot: Action;
   sampleMode?: boolean;
-  /** 두 단추(VITE_SAMPLE_MODE=both): 카메라를 켜기 전 아래 단추가 «샘플 포스터 보기»가 된다. */
+  /** 두 단추(src/studioMode.ts «both»): 카메라를 켜기 전 아래 단추가 «샘플 포스터 보기»가 된다. */
   sampleChoice?: boolean;
   onSample?: () => void;
   onRetake: Action;

@@ -1,5 +1,5 @@
 /* 샘플 모드 흐름을 끝까지 눌러 보고 «카메라·서버 요청이 하나도 없는지»를 네트워크 기록으로 증명한다(2026-10-09).
-   샘플 모드 = .env.production의 VITE_SAMPLE_MODE=1(Bumm님: 샘플이어도 로딩 화면 40초 뒤 포스터 고르기).
+   샘플 단추가 있는 판(src/studioMode.ts «both» · «sample» — 10/20까지는 .env.production의 VITE_SAMPLE_MODE)으로 샘플 흐름을 연다(로딩 화면 뒤 포스터 고르기).
 
      node scripts/verify/design-sample-flow.mjs [주소] [결과 폴더] [--width 2560 --height 1440 --scale 1] [--record]
 
@@ -61,7 +61,7 @@ try {
   await capture('1-영화준비');
   await evaluate("document.getElementById('prepareNextBtn').click()");
   await delay(400);
-  assert.ok((await evaluate("document.getElementById('shotBtn').textContent")).includes('샘플 포스터 보기'), '샘플 모드가 켜져 있어야 한다(VITE_SAMPLE_MODE=1)');
+  assert.ok((await evaluate("document.getElementById('shotBtn').textContent")).includes('샘플 포스터 보기'), '샘플 단추가 있는 판이어야 한다(src/studioMode.ts «both» · «sample»)');
   assert.equal(await evaluate("!!document.getElementById('startBtn')"), false, '카메라 켜기 단추가 없어야 한다');
   await capture('2-사진촬영-샘플단추');
   const clicked = Date.now();

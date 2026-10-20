@@ -85,7 +85,7 @@ try {
     await call('Page.navigate', { url });
     for (let i = 0; i < 100; i++) { if (await evaluate('!!document.getElementById("shotBtn") && !document.getElementById("splash")')) break; await delay(100); }
     await evaluate("document.getElementById('prepareNextBtn').click()"); await delay(400);
-    assert.ok((await evaluate("document.getElementById('shotBtn').textContent")).includes('샘플 포스터 보기'), '샘플 모드(VITE_SAMPLE_MODE=1) 빌드여야 한다');
+    assert.ok((await evaluate("document.getElementById('shotBtn').textContent")).includes('샘플 포스터 보기'), '샘플 단추가 있는 판(src/studioMode.ts «both» · «sample»)이어야 한다');
     await evaluate("document.getElementById('shotBtn').click()");
     let shot = false;
     for (let i = 0; i < 520; i++) {

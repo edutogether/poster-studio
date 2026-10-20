@@ -42,7 +42,7 @@ const device = opt('--device', null);
 if (device && !UAS[device]) { console.error('--device는 iphone 또는 galaxy'); process.exit(2); }
 // --desktop: 터치·휴대폰 흉내 없이 PC 브라우저로 같은 흐름을 찍는다 — 휴대폰 규칙이 PC 화면을 바꾸지 않았는지 대조할 때
 const desktop = args.includes('--desktop');
-// --real: 실제 모드 빌드(VITE_SAMPLE_MODE=0)를 가짜 카메라(dist/studio/camera-student.webp — 이미 공개된 지어낸 인물)로 찍고,
+// --real: 진짜 촬영 흐름(«both» 판의 원형 단추, 또는 `npx vite build --mode check-real`로 만든 «real» 판)을 가짜 카메라(dist/studio/camera-student.webp — 이미 공개된 지어낸 인물)로 찍고,
 // 서버 요청(https)은 페이지 안에서 흉내 낸 응답으로 돌려준다 — 네트워크로는 한 건도 나가지 않는다(https 차단도 그대로).
 // 휴대폰 흉내에서는 가짜 카메라도 세로(960×1280, 3:4)다 — 휴대폰은 실제로 세로로 찍힌다(10/20 저녁 Bumm님). PC(--desktop)는 가로.
 // 카메라가 켜진 화면(3·2·1 동안)과 찍은 뒤 화면에서 사진 · 영상이 칸에 좌우 · 위아래 띠(레터박스) 없이 차는지, 단추 줄 아래가 비지 않는지도 잰다.

@@ -12,6 +12,7 @@
      F ResizeObserver가 오른쪽(자기가 바꾸는 쪽)을 관찰하면 실패한다
    ──────────────────────────────────────────────────────────────────── */
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { StudioMode } from '../src/studioMode.js';
 import { StrictMode } from 'react';
 import { render, act, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { TEMPLATES } from '../src/templates.js';
@@ -35,7 +36,14 @@ let canvasContexts: any[];
 let cam: ReturnType<typeof installCamera>;
 let objectUrls: ReturnType<typeof installObjectURL>;
 
+/* 스위치(src/studioMode.ts)는 코드 상수라 시험마다 판을 바꾸려면 모듈을 흉내 낸다. 기본은 «real»(진짜 생성만) —
+   예전 시험 환경(VITE_SAMPLE_MODE가 비어 있음)과 같다. 라이브 값 자체는 test/studio-mode.test.ts가 고정한다. */
+let studioMode: StudioMode = 'real';
+const setStudioMode = (mode: StudioMode) => { studioMode = mode; };
+vi.mock('../src/studioMode.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('../src/studioMode.js')>()), get STUDIO_MODE() { return studioMode; } }));
+
 beforeEach(() => {
+  studioMode = 'real';
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});   // jsdom에는 load()가 없다(대기 영상 정리에서 부른다)
@@ -876,11 +884,11 @@ describe('인쇄', () => {
 });
 
 
-/* 샘플 모드(2026-10-09 Bumm님) — 스위치는 .env.production의 VITE_SAMPLE_MODE. 10/20부터 샘플만은 «sample»이다(«1»은 두 단추).
+/* 샘플 모드(2026-10-09 Bumm님) — 스위치는 src/studioMode.ts(10/20부터 — 예전 .env.production의 VITE_SAMPLE_MODE). 샘플만은 «sample».
    화면 고지와 같은 급의 약속이다: 카메라 권한을 묻지 않고, 서버에 아무것도 보내지 않는다. */
 describe('샘플 모드',()=>{
   test('카메라 권한·서버 요청 없이 진짜 생성과 같은 로딩 화면을 16초(장면 2개 — 10/20 저녁 Bumm님) 보인 뒤 8개 틀을 연다',async()=>{
-    vi.stubEnv('VITE_SAMPLE_MODE','sample');
+    setStudioMode('sample');
     const f=installFetch();
     await act(async()=>{renderApp();});
     await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
@@ -907,13 +915,13 @@ describe('샘플 모드',()=>{
     expect(document.body.textContent).not.toContain('OpenAI');
   });
   test('스위치가 꺼져 있으면(0) 촬영 단추와 카메라 켜기를 그대로 둔다',async()=>{
-    vi.stubEnv('VITE_SAMPLE_MODE','0');
+    setStudioMode('real');
     await act(async()=>{renderApp();});
     expect(el('shotBtn').textContent).toBe('3초 뒤 사진 찍기');
     expect(document.getElementById('startBtn')).not.toBeNull();
   });
-  test.each(['sample','1','0'])('«사진은 OpenAI(미국)로 전송돼요»는 어느 판에도 없고 개인정보처리방침 링크만 그 자리에 남는다(10/20 저녁 Bumm님, 휴대폰 · PC) — %s',async(mode)=>{
-    vi.stubEnv('VITE_SAMPLE_MODE',mode);
+  test.each(['sample','both','real'] as const)('«사진은 OpenAI(미국)로 전송돼요»는 어느 판에도 없고 개인정보처리방침 링크만 그 자리에 남는다(10/20 저녁 Bumm님, 휴대폰 · PC) — %s',async(mode)=>{
+    setStudioMode(mode);
     await act(async()=>{renderApp();});
     const link=()=>document.querySelector<HTMLAnchorElement>('a.privacy-link')!;
     expect(link().textContent!.trim()).toBe('개인정보처리방침');
@@ -925,11 +933,11 @@ describe('샘플 모드',()=>{
   });
 });
 
-/* 두 단추(2026-10-20 Bumm님 «지금(베타)부터 두 단추», VITE_SAMPLE_MODE=«1»): 찍기 전에는 «샘플 포스터 보기»로 안 찍고 넘어갈 수 있고,
+/* 두 단추(2026-10-20 Bumm님 «지금(베타)부터 두 단추», 스위치 «both»): 찍기 전에는 «샘플 포스터 보기»로 안 찍고 넘어갈 수 있고,
    카메라를 켜면 촬영, 찍은 뒤에는 «이 사진으로 포스터 만들기»로 진짜 생성. 고지(사진이 OpenAI로 감)는 찍기 전부터 보인다. */
 describe('두 단추',()=>{
   test('카메라를 켜기 전: 아래 단추는 «샘플 포스터 보기» — 누르면 카메라 · 서버 요청 없이 샘플 흐름, 고지는 1단계부터 보인다',async()=>{
-    vi.stubEnv('VITE_SAMPLE_MODE','1');
+    setStudioMode('both');
     const f=installFetch();
     await act(async()=>{renderApp();});
     await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
@@ -947,7 +955,7 @@ describe('두 단추',()=>{
     expect(f.calls.slice(before).filter((u)=>u.includes('/generate'))).toHaveLength(0);
   });
   test('카메라를 켜면 «3초 뒤 사진 찍기», 찍은 뒤 «이 사진으로 포스터 만들기» — 누르면 진짜 생성 요청(보내는 필드 다섯 그대로)',async()=>{
-    vi.stubEnv('VITE_SAMPLE_MODE','1');
+    setStudioMode('both');
     const f=installFetch();
     await act(async()=>{renderApp();});
     await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
@@ -1016,7 +1024,7 @@ describe('휴대폰 흐름', () => {
 
   test('2단계 빨간 원형 단추: 샘플 모드는 카메라 없이 바로 샘플 포스터 로딩을 시작한다', async () => {
     asPhone(true);
-    vi.stubEnv('VITE_SAMPLE_MODE', 'sample');
+    setStudioMode('sample');
     const f = installFetch();
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
@@ -1116,7 +1124,7 @@ describe('휴대폰 흐름', () => {
 
   test('2단계 «샘플 포스터 보기»: 손가락은 떼는 순간(click 없이도) 한 번에 로딩으로 들어간다(10/20 저녁 Bumm님 «두 번 눌러야 들어감»)', async () => {
     asPhone(true);
-    vi.stubEnv('VITE_SAMPLE_MODE', '1');
+    setStudioMode('both');
     installFetch();
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
