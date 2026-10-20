@@ -613,9 +613,11 @@ export const TEMPLATES: Template[] = [
     const light = c.createRadialGradient(W / 2, H * 0.42, H * 0.1, W / 2, H * 0.5, H * 0.78);
     light.addColorStop(0, 'rgba(255,240,220,.09)'); light.addColorStop(1, 'rgba(0,0,0,.42)');
     c.fillStyle = light; c.fillRect(0, 0, W, H);
-    // 카드: 위 52px부터 아래 52px까지. 테두리는 4차와 같은 옆 58 · 위 71px.
+    // 카드: 위 52px부터 아래 52px까지. 테두리는 옆 58 · 위 107px.
+    // 10/20 Bumm님 «위쪽 로고와 사진이 위 가장자리에 너무 바짝 붙어 답답 → 종이는 그대로, 로고와 사진을 조금 아래로, 아래 글 쪽 여유를 그만큼 당겨 씀»:
+    // 위 테두리 71 → 107(로고 위 여백 13 → 31px), 아래 글 띠는 같은 36px만큼 줄인다(사진 크기는 그대로).
     const cardW = 1140, cardX = (W - cardW) / 2, cardTop = 52, cardBottom = H - 52, cardH = cardBottom - cardTop;
-    const side = 58, topB = 71, photoW = cardW - 2 * side;
+    const side = 58, topB = 107, photoW = cardW - 2 * side;
     // 아래 흰 여백: 왼쪽 손글씨 제목 | 오른쪽 인쇄된 글. 줄 간격은 2도 기운 카드에서 줄끼리 테두리 상자가 겹치지 않게 넉넉히(1.5).
     // 글 크기는 다른 디자인의 빌링과 같은 급(4×6 인화에서 읽히게).
     const gut = 44, rightW = 420, leftW = photoW - rightW - gut;
@@ -627,7 +629,7 @@ export const TEMPLATES: Template[] = [
       { text: WHEN, s: { family: SANS, weight: 700 }, size: 22, color: ink, gap: 10, oneLine: true },
     ], rightW);
     const title = fitTitle(c, m.title, { family: MARKER, weight: 700, tracking: -0.03 }, { width: leftW, max: 132, oneLineMin: 80, max2: 84, min: 44, maxLines: 3, lh: 1.3, maxHeight: 360 });
-    const stripH = Math.max(320, Math.max(title.height, printed.height) + 100);
+    const stripH = Math.max(284, Math.max(title.height, printed.height) + 64);
     const photoH = cardH - topB - stripH, capTop = cardTop + topB + photoH;
     c.save(); c.translate(W / 2, cardTop + cardH / 2); c.rotate(-0.026); c.translate(-W / 2, -(cardTop + cardH / 2));
     // 종이: 살짝 누런 흰 종이 + 결 + 위에서 오는 은은한 광택
@@ -656,8 +658,8 @@ export const TEMPLATES: Template[] = [
     c.fillStyle = inLeft; c.fillRect(ph.x, ph.y, 10, ph.h);
     c.restore();
     c.strokeStyle = 'rgba(60,50,40,.35)'; c.lineWidth = 1.5; c.strokeRect(ph.x + 0.75, ph.y + 0.75, ph.w - 1.5, ph.h - 1.5);
-    // 위쪽 흰 테두리 안의 로고(작게, 사진 폭 양끝에 맞춤)
-    const logoH = Math.min(46, topB * 0.62), logoY = cardTop + (topB - logoH) / 2;
+    // 위쪽 흰 테두리 안의 로고(작게, 사진 폭 양끝에 맞춤). 크기는 위 테두리가 71px이던 때 그대로(10/20 — 자리만 내린다).
+    const logoH = Math.min(46, 71 * 0.62), logoY = cardTop + (topB - logoH) / 2;
     if (state.LOGO_FESTIVAL) {
       const lw = logoH * (93 / 58);
       c.drawImage(state.LOGO_FESTIVAL, 120, 0, 145, 90, ph.x, logoY, lw, logoH);

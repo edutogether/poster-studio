@@ -597,17 +597,32 @@ main.app {
   /* 이름표 줄(카메라 미리 보기 · 촬영 구도 예시)은 머리말 아래 «개인정보처리방침»과 겹쳐 휴대폰에서는 뺀다 — 상태는 칸 안의 표시(실시간 미리보기 · 촬영 완료)가 알린다 */
   #cameraView .camera-top { display: none; }
   #cameraView .camera-large { min-height: 0; aspect-ratio: auto; height: clamp(200px, 32svh, 300px); }
-  /* 10/19 Bumm님 «첫 화면에서 맨 아래 “이전 · 샘플 포스터 보기” 단추가 잘림 → 사진 칸 · 안내 간격을 줄여서라도 첫 화면 안에 ·
-     찍은 뒤 화면(«이 사진으로 만들기»)은 지금처럼»: 찍기 전(data-review="false")에만 사진 칸 32 → 26svh, 제목 아래 · 안내 사이 · 안내 아래 ·
-     단추 줄 위 여백을 줄이고, 안내와 같은 칸에 숨어 있는 «찍은 뒤» 안내의 아래 여백 40px를 뺀다. 찍은 뒤 화면은 위의 값 그대로다.
-     360 · 390 · 430 모두 단추 줄이 첫 화면 안(mobile-layout-probe «빨간 단추가 첫 화면»). */
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-large { height: clamp(176px, 26svh, 280px); }
-  #cameraView:has(.camera-instructions[data-review="false"]) .page-heading { margin-bottom: 14px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips { gap: 10px; margin: 0 0 12px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .photo-review { margin-bottom: 12px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions { padding-top: 12px; }
+  /* 찍기 전(data-review="false")에만 — 찍은 뒤 화면(«이 사진으로 만들기»)은 10/19 Bumm님 «지금처럼» 그대로다(위의 값).
+     10/19 Bumm님 «첫 화면에서 맨 아래 “이전 · 샘플 포스터 보기” 단추가 잘림 → 사진 칸 · 안내 간격을 줄여서라도 첫 화면 안에».
+     10/20 Bumm님(아이폰 실제 화면 390×664 — 10/19에 잰 780~932 높이에서는 들어갔지만 실제 사파리 높이에서 61px 잘렸다)
+     «회색 바탕은 1 · 2 · 3 안내까지만, 그 아래는 흰 바탕, 단추는 맨 아래로, 단추 위 회색 가로선은 없애고, 글 사이 세로 간격을 맞춰 텅 빈 곳 없이»:
+     2단계를 머리말 아래 한 화면 높이의 세로 줄로 — 사진 칸 · 회색 안내(남는 높이를 받아 제목 · 안내를 그 가운데에) · 흰 단추 줄(맨 아래).
+     사진 칸은 화면에서 나머지가 쓰고 남은 높이를 받는다(120~300px — 나머지가 쓰는 높이는 아래 calc의 388px, 6가지 크기에서 잼), 단추 56 → 48px,
+     안내 글 18/15 → 17/14px. 안내와 같은 칸에 숨어 있는 «찍은 뒤» 안내의 아래 여백은 뺀다. 칸이 300px에 닿고도 남는 높이는 회색 칸이 받아 제목 · 안내를 가운데에 둔다.
+     360×640 · 390×664 · 430×740(실제 브라우저 높이)과 780~932에서 단추 줄이 첫 화면 안(mobile-layout-probe «빨간 단추가 첫 화면»). */
+  #cameraView:has(.camera-instructions[data-review="false"]) { display: flex; flex-direction: column; min-height: calc(100svh - var(--phone-header-h)); }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-surface { flex: none; padding-bottom: 8px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-large { height: clamp(120px, calc(100svh - var(--phone-header-h) - 388px), 300px); }
+  #cameraView:has(.camera-instructions[data-review="false"]) #cameraWorkspace { flex: 1 0 auto; padding-top: 0; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .page-heading { margin: auto 0 8px; padding-top: 12px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-instructions { margin-bottom: auto; padding-bottom: 12px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips { gap: 8px; margin: 0; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips strong { font-size: 17px; line-height: 1.4; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips p { font-size: 14px; line-height: 1.45; margin-top: 2px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .photo-review { margin-bottom: 0; }
+  /* 흰 단추 줄: 구분선 없이, 바탕은 화면 폭 끝까지(그림자를 옆으로만 넓힘 — 자리 계산은 그대로) */
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions {
+    margin-top: 0; padding: 10px 0 max(12px, env(safe-area-inset-bottom)); border-top: 0;
+    background: #fff; box-shadow: 0 0 0 100vmax #fff; clip-path: inset(0 -100vmax);
+  }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions > button { min-height: 48px; height: 48px; }
   #cameraView .camera-bottom { display: none; }
-  #cameraWorkspace { padding-top: 18px; }
+  #cameraWorkspace { padding-top: 18px; }   /* 찍은 뒤 화면 — 찍기 전은 위(10/20)에서 0 */
   /* ⑥ 엄지 자리 빨간 원형 촬영 단추 — 카메라 칸 아래 가운데에 반쯤 걸친다(Lucide camera) */
   .phone-shot {
     display: grid; place-items: center;
@@ -631,6 +646,13 @@ main.app {
   #cameraWorkspace .camera-film-heading, #cameraWorkspace .camera-film-card { display: none; }
 }
 .phone-stage, .poster-carousel-caption, .dialog-carousel, .label-phone, #saveBtn { display: none; }
+/* 아이폰 · 아이패드에서 «내 휴대폰에 저장»을 누르면 6초 동안 머리말 아래에 한 줄(10/20) — 공유 창이 아래에서 올라와도 가리지 않는 자리 */
+.save-hint {
+  position: fixed; left: 50%; top: calc(var(--phone-header-h, 72px) + 10px); z-index: 60; transform: translateX(-50%);
+  width: max-content; max-width: calc(100vw - 32px); margin: 0; padding: 9px 16px;
+  border-radius: 999px; background: #1c1c1c; color: #fff; font-size: 15px; font-weight: 600; line-height: 1.4; text-align: center;
+  box-shadow: 0 8px 24px #0003;
+}
 @media (max-width: 760px) {
   /* ⑧~⑬ 3단계: 머리말 아래를 한 화면으로 — 위 줄(Poster Studio · 다음 주인공 · 크게 보기) · 큰 포스터 넘김 · 이름과 순번 · 썸네일 한 줄 · 단추 줄.
      포스터 크기는 남은 높이(컨테이너 높이)에서 정한다 — 4×6 비율을 지키고 폭의 78%를 넘지 않는다. 폭 360~430 · 높이 740~932에서 스크롤이 없다. */
@@ -661,18 +683,21 @@ main.app {
   .poster-slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .poster-slide:focus-visible { outline: 3px solid #d82d23; outline-offset: 3px; }
   .poster-carousel[data-hint] .poster-slide { animation: carousel-hint 1.2s ease-in-out 1; }
-  .poster-carousel-caption { display: block; margin: 8px 0 0; text-align: center; font-size: 14px; font-weight: 600; line-height: 20px; color: #444; }
+  /* 10/20 Bumm님 «이름은 영어로, · 1 / 8은 없앰, 이름이 아래(단추 쪽)에 딱 붙어 있으니 위아래 여백을 적당히» */
+  .poster-carousel-caption { display: block; margin: 8px 0 12px; text-align: center; font-size: 14px; font-weight: 600; line-height: 20px; letter-spacing: .02em; color: #444; }
   /* 10/19 Bumm님 «양쪽에 화살표를 두어 넘기며 보게»: 포스터 줄 좌우 가장자리에 흰 원 화살표(밀어 넘기기도 그대로). 끝 장에서는 옅게 · 누를 수 없게. */
   .carousel-arrow {
     position: absolute; top: 50%; z-index: 2; display: grid; place-items: center;
     width: 44px; height: 44px; margin-top: -22px; padding: 0;
-    border: 0; border-radius: 50%; background: #ffffffeb; color: #1c1c1c;
-    box-shadow: 0 4px 14px #00000038; cursor: pointer;
+    border: 0; border-radius: 50%; background: #ffffffa6; color: #1c1c1c;   /* 10/20 Bumm님 «조금 더 연하게(포스터를 덜 가리게)»: 흰 92 → 65%, 그림자도 옅게 */
+    box-shadow: 0 3px 10px #00000024; cursor: pointer;
   }
   .carousel-arrow svg { width: 22px; height: 22px; }
   .carousel-arrow.prev { left: 6px; }
   .carousel-arrow.next { right: 6px; }
   .carousel-arrow:disabled { opacity: .35; cursor: default; }
+  /* 초점 테두리는 키보드로 옮길 때만(:focus-visible) — 손가락 · 마우스로 누른 뒤에는 생기지 않는다(10/20 확인: phone-step3-probe). */
+  .carousel-arrow:focus { outline: none; }
   .carousel-arrow:focus-visible { outline: 3px solid #d82d23; outline-offset: 2px; }
 
   /* 제목·설명은 화면에서 빼고(완성 알림이 대신 알린다) 읽기 도구에는 남긴다 — 단계 이동 때 초점이 가는 자리다 */

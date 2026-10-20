@@ -10,7 +10,8 @@ import BoothCodeDialog from "./BoothCodeDialog.js";
 import type { GenerateFailure } from "../generateFailure.js";
 import type { BoothCodeCheck } from "../boothCode.js";
 import { approvedCameraVideo } from "./cameraVideo.js";
-import { savePoster } from "../savePoster.js";
+import { savePlatform, savePoster } from "../savePoster.js";
+import { designNameEn } from "../designNames.js";
 
 const choices = [
   ["sf", "SF", "reference-sf.jpg"],
@@ -273,9 +274,20 @@ export default function StudioView(p: StudioViewProps) {
     dialog.current?.showModal();
     if (isPhone()) requestAnimationFrame(() => showSelected("auto"));
   };
+  // 10/20 Bumm님: 아이폰은 공유 창으로 사진첩에 넣는다(웹에서 사진 앱으로 가는 유일한 길) — 누를 때 무엇을 눌러야 하는지 한 줄로 알린다.
+  const [saveHint, setSaveHint] = useState(false);
+  const saveHintTimer = useRef(0);
+  useEffect(() => () => window.clearTimeout(saveHintTimer.current), []);
   const onSave = () => {
     const poster = p.posters[p.selected];
-    if (poster) void savePoster(poster.canvas, title);
+    if (!poster) return;
+    const platform = savePlatform();
+    if (platform === "ios") {
+      setSaveHint(true);
+      window.clearTimeout(saveHintTimer.current);
+      saveHintTimer.current = window.setTimeout(() => setSaveHint(false), 6000);
+    }
+    void savePoster(poster.canvas, title, platform);
   };
   const selectedFilm = choices.find((c) => c[0] === genre) ?? choices[0];
   const genreLabel = selectedFilm[1];
@@ -677,11 +689,19 @@ export default function StudioView(p: StudioViewProps) {
             <button type="button" className="carousel-arrow prev" aria-label="이전 포스터" disabled={p.selected <= 0} onClick={() => p.select(p.selected - 1)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
             </button>
-            <button type="button" className="carousel-arrow next" aria-label="다음 포스터" disabled={p.selected >= p.posters.length - 1} onClick={() => p.select(p.selected + 1)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
+            {/* 10/20 Bumm님: 마지막 장에서는 오른쪽 단추가 «되돌리기»(Lucide undo-2) — 누르면 줄이 맨 앞까지 빠르게 넘어간다(showSelected의 부드러운 이동) */}
+            {(() => {
+              const atEnd = p.posters.length > 1 && p.selected >= p.posters.length - 1;
+              return <button type="button" className="carousel-arrow next" data-rewind={atEnd || undefined} aria-label={atEnd ? "처음 포스터로" : "다음 포스터"}
+                disabled={p.posters.length < 2} onClick={() => p.select(atEnd ? 0 : p.selected + 1)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  {atEnd ? <><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></> : <path d="m9 18 6-6-6-6"/>}
+                </svg>
+              </button>;
+            })()}
           </div>
-          {p.posters[p.selected] && <p className="poster-carousel-caption">{p.posters[p.selected].label} · {p.selected + 1} / {p.posters.length}</p>}
+          {/* 10/20 Bumm님 «이름은 영어로, · 1 / 8은 없앰» — PC 썸네일 이름은 한글 그대로 */}
+          {p.posters[p.selected] && <p className="poster-carousel-caption">{designNameEn(p.posters[p.selected].label)}</p>}
         </div>
         <div className="workspace" id="resultWorkspace">
           <div className="page-heading">
@@ -729,6 +749,7 @@ export default function StudioView(p: StudioViewProps) {
         </div>
       </section>
       {p.spinning && <GenerationWait spinTextRef={p.spinTextRef}/>}
+      {saveHint && step === 3 && <p className="save-hint" role="status">공유 창에서 ‘이미지 저장’을 누르세요</p>}
       {completionVisible && step === 3 && !p.generating && <div className="completion-notice" role="status">
         <span className="completion-notice-mark" aria-hidden="true">✓</span>
         <strong>완성 !</strong>
