@@ -607,20 +607,24 @@ main.app {
      2단계를 머리말 아래 한 화면 높이의 세로 줄로 — 사진 칸 · 회색 안내(남는 높이를 받아 제목 · 안내를 그 가운데에) · 흰 단추 줄(맨 아래).
      사진 칸은 화면에서 나머지가 쓰고 남은 높이를 받는다(120~300px — 나머지가 쓰는 높이는 아래 calc의 388px, 6가지 크기에서 잼), 단추 56 → 48px,
      안내 글 18/15 → 17/14px. 안내와 같은 칸에 숨어 있는 «찍은 뒤» 안내의 아래 여백은 뺀다. 칸이 300px에 닿고도 남는 높이는 회색 칸이 받아 제목 · 안내를 가운데에 둔다.
-     360×640 · 390×664 · 430×740(실제 브라우저 높이)과 780~932에서 단추 줄이 첫 화면 안(mobile-layout-probe «빨간 단추가 첫 화면»). */
+     360×640 · 390×664 · 430×740(실제 브라우저 높이)과 780~932에서 단추 줄이 첫 화면 안(mobile-layout-probe «빨간 단추가 첫 화면»).
+     10/20 저녁 Bumm님(캡처 02~05) «제목과 안내 1 · 2 · 3 사이를 조금 띄우고, 영상 칸은 390×664 · 360은 더 길게, 430은 그대로, 390×844는 더 짧게»:
+     영상(16:9)과 같은 비율을 목표로 칸 높이 = 폭 × 9/16(430×740 · 780~932), 그만큼 높이가 없으면(640 · 664) 남는 높이까지.
+     제목 아래 8 → 14px, 그 대신 안내 사이 8 → 6px · 회색 칸 위아래 12 → 10px · 단추 줄 위아래 10/12 → 8/10px · 안내 글 줄 높이를 조금 줄여
+     나머지가 쓰는 높이 388 → 375px(그만큼 칸이 길어진다 — 664에서 153 → 166px, 640에서 123 → 136px). */
   #cameraView:has(.camera-instructions[data-review="false"]) { display: flex; flex-direction: column; min-height: calc(100svh - var(--phone-header-h)); }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-surface { flex: none; padding-bottom: 8px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-large { height: clamp(120px, calc(100svh - var(--phone-header-h) - 388px), 300px); }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-large { height: clamp(120px, min(calc((100vw - 44px) * 9 / 16), calc(100svh - var(--phone-header-h) - 375px)), 300px); }
   #cameraView:has(.camera-instructions[data-review="false"]) #cameraWorkspace { flex: 1 0 auto; padding-top: 0; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .page-heading { margin: auto 0 8px; padding-top: 12px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-instructions { margin-bottom: auto; padding-bottom: 12px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips { gap: 8px; margin: 0; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips strong { font-size: 17px; line-height: 1.4; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips p { font-size: 14px; line-height: 1.45; margin-top: 2px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .page-heading { margin: auto 0 14px; padding-top: 10px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-instructions { margin-bottom: auto; padding-bottom: 10px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips { gap: 6px; margin: 0; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips strong { font-size: 17px; line-height: 1.32; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips p { font-size: 14px; line-height: 1.38; margin-top: 2px; }
   #cameraView:has(.camera-instructions[data-review="false"]) .photo-review { margin-bottom: 0; }
   /* 흰 단추 줄: 구분선 없이, 바탕은 화면 폭 끝까지(그림자를 옆으로만 넓힘 — 자리 계산은 그대로) */
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions {
-    margin-top: 0; padding: 10px 0 max(12px, env(safe-area-inset-bottom)); border-top: 0;
+    margin-top: 0; padding: 8px 0 max(10px, env(safe-area-inset-bottom)); border-top: 0;
     background: #fff; box-shadow: 0 0 0 100vmax #fff; clip-path: inset(0 -100vmax);
   }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions > button { min-height: 48px; height: 48px; }
@@ -642,6 +646,8 @@ main.app {
   /* 두 단추 판(10/20): 휴대폰은 칸 아래 빨간 원형 단추가 카메라를 켜고 3초 뒤 찍는다 — 칸 안 «카메라 켜기»는 뺀다.
      작아진 칸(120~150px, 실제 브라우저 높이)에서 그 단추가 «이렇게, …» 글을 위로 밀어 글 위가 잘렸다(360×640 · 390×664 캡처). */
   #cameraView #startBtn { display: none; }
+  /* 10/20 저녁 Bumm님 «휴대폰 영상 칸 안 “이렇게, 얼굴과 어깨가 보이게” 글은 지운다»(PC는 그대로) */
+  #cameraView .camera-example-label { display: none; }
   .phone-shot .studio-icon { width: 30px; height: 30px; }
   .phone-shot:active:not(:disabled) { transform: scale(.96); }
   .phone-shot:disabled { background: #bdbdbd; box-shadow: none; cursor: default; }
@@ -652,9 +658,9 @@ main.app {
   #cameraWorkspace .camera-film-heading, #cameraWorkspace .camera-film-card { display: none; }
 }
 .phone-stage, .poster-carousel-caption, .dialog-carousel, .label-phone, #saveBtn { display: none; }
-/* 아이폰 · 아이패드에서 «내 휴대폰에 저장»을 누르면 6초 동안 머리말 아래에 한 줄(10/20) — 공유 창이 아래에서 올라와도 가리지 않는 자리 */
+/* 아이폰 · 아이패드에서 «내 휴대폰에 저장»을 누르면 6초 동안 한 줄(10/20) — 10/20 저녁 Bumm님 «화면 상하좌우 가운데에» */
 .save-hint {
-  position: fixed; left: 50%; top: calc(var(--phone-header-h, 72px) + 10px); z-index: 60; transform: translateX(-50%);
+  position: fixed; left: 50%; top: 50%; z-index: 60; transform: translate(-50%, -50%);
   width: max-content; max-width: calc(100vw - 32px); margin: 0; padding: 9px 16px;
   border-radius: 999px; background: #1c1c1c; color: #fff; font-size: 15px; font-weight: 600; line-height: 1.4; text-align: center;
   box-shadow: 0 8px 24px #0003;
@@ -681,8 +687,11 @@ main.app {
   .poster-carousel::-webkit-scrollbar { display: none; }
   .poster-slide {
     flex: 0 0 var(--slide-w); height: calc(var(--slide-w) * 3 / 2); padding: 0;
-    border: 0; border-radius: 6px; overflow: hidden; background: #111;
-    box-shadow: 0 10px 26px #00000033; scroll-snap-align: center; cursor: pointer;
+    /* 10/20 저녁 Bumm님(캡처 14 · 15) «포스터 사이사이 회색이 배경과 달라 튐 · 에디토리얼 네 모서리가 지저분»:
+       그림자 0 10px 26px가 옆으로 번져 포스터 사이가 배경(245)보다 어두웠다(218~228) → 아래로만 지는 그림자.
+       장 바탕 #111이 둥근 모서리 바깥 반투명 화소로 비쳐 밝은 테두리 디자인(에디토리얼 크림 종이)의 네 모서리에 검은 점 → 바탕을 비운다. */
+    border: 0; border-radius: 6px; overflow: hidden; background: transparent;
+    box-shadow: 0 16px 20px -14px #00000052; scroll-snap-align: center; cursor: pointer;
     transition: opacity .2s ease;
   }
   .poster-slide:not([aria-current]) { opacity: .55; }
