@@ -617,11 +617,12 @@ main.app {
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-large { height: clamp(120px, min(calc((100vw - 44px) * 9 / 16), calc(100svh - var(--phone-header-h) - 377px)), 300px); }
   #cameraView:has(.camera-instructions[data-review="false"]) #cameraWorkspace { flex: 1 0 auto; padding-top: 0; }
   #cameraView:has(.camera-instructions[data-review="false"]) .page-heading { margin: auto 0 14px; padding-top: 10px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-instructions { margin-bottom: auto; padding-bottom: 10px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-guide { flex: 0 0 auto; margin-bottom: auto; }   /* 남는 높이를 제목 위 · 안내 아래에 반씩(안내 칸이 늘어나 아래만 커지지 않게) */
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-instructions { padding-bottom: 10px; }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips { gap: 6px; margin: 0; }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips strong { font-size: 17px; line-height: 1.32; }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips p { font-size: 14px; line-height: 1.38; margin-top: 2px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .photo-review { margin-bottom: 0; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .photo-review { display: none; }   /* 숨은 «찍은 뒤» 안내가 안내 1~3보다 키가 커 회색 칸 가운데 맞춤이 위로 쏠렸다(844 — 위 175 · 아래 30px) */
   /* 흰 단추 줄: 구분선 없이, 바탕은 화면 폭 끝까지(그림자를 옆으로만 넓힘 — 자리 계산은 그대로) */
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions {
     margin-top: 0; padding: 8px 0 max(12px, env(safe-area-inset-bottom)); border-top: 0;   /* 아래 12px은 mobile-layout-probe «맨 아래 단추가 끝에 붙음» 기준 */
