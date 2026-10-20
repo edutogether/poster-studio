@@ -175,7 +175,7 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
      - `node scripts/verify/dist-vs-live.mjs dist https://poster-studio.web.app`
    - CI 스모크(홈 200 · 나가면 안 되는 경로 404 · og.jpg · CORS 반사 · 부스 토큰 400):
      `node scripts/ci/run-workflow-step.mjs "부스토큰 스모크테스트 (배포 직후 실제 인증 확인)" "배포 직후 라이브 확인 (두 주소 · 200 + 404 + CORS)"`
-   - 샘플 모드면 대기 영상: `node scripts/verify/waiting-videos-live.mjs <결과 폴더> --url https://poster.edutogether.kr`
+   - 샘플 흐름이 있는 판(`VITE_SAMPLE_MODE` «1» 두 단추 · «sample»)이면 대기 영상: `node scripts/verify/waiting-videos-live.mjs <결과 폴더> --url https://poster.edutogether.kr`
    - 실제 모드면 포스터 출시 기준선: `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`
 9. **문제가 있으면 되돌린다.**
    - 명령: `firebase hosting:clone poster-studio:rollback-<날짜> poster-studio:live --project inky-poster-studio`
