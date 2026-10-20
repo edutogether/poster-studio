@@ -20,6 +20,7 @@ import { SCENE_MS, type SceneEnd } from "./studio/GenerationWait.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
 import { restartAtHome } from "./restartHome.js";
+import { STUDIO_MODE } from "./studioMode.js";
 
 /* 한 장의 사진으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만 허용한다
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
@@ -32,13 +33,10 @@ const MAX_GENERATIONS_PER_PHOTO = 2;
    고쳐지지 않은 채 줄이 계속 멈추지 않게. 인터넷 끊김·부스 코드는 세지 않는다(사진을 바꿔도 낫지 않는다). */
 const MAX_FAILURES_PER_PHOTO = 3;
 
-/* 샘플 모드(2026-10-09 Bumm님 «샘플 포스터를 보더라도 40초(8초짜리 로딩 영상 5개)의 로딩 화면 이후 포스터 고르는 화면으로»).
-   사내 클로즈 베타 동안 라이브에서 촬영·AI 없이 흐름 전체를 보여 준다. 켜고 끄는 스위치는 저장소 루트
-   `.env.production`의 VITE_SAMPLE_MODE 한 줄이다(부스 코드를 켤 무렵 0으로 되돌린다).
-   켜져 있으면 «샘플 포스터 보기»가 촬영을 대신하고, 진짜 생성과 같은 로딩 화면을 장면 5개 동안 보인 뒤
-   포스터 고르기로 간다. 카메라 권한 요청·AI 호출·서버 요청은 하나도 일어나지 않는다(테스트로 고정).
-   ⚠ 스위치를 끈 빌드에도 샘플 원화 파일(약 2.6MB)은 dist/assets에 남는다 — 빌드 도구가 그림을 코드 정리보다
-   먼저 내보내기 때문이다(2026-10-09 두 방식으로 빌드해 확인). 앱은 그 파일을 부르지 않는다. */
+/* 샘플 흐름(2026-10-09 Bumm님 «샘플 포스터를 보더라도 로딩 화면 이후 포스터 고르는 화면으로»).
+   «샘플 포스터 보기»는 촬영 · AI 없이 같은 원화로 흐름 전체를 보여 준다 — 진짜 생성과 같은 로딩 화면을 장면 SAMPLE_WAIT_SCENES개 동안
+   보인 뒤 포스터 고르기로 간다. 카메라 권한 요청·AI 호출·서버 요청은 하나도 일어나지 않는다(테스트로 고정).
+   이 단추를 보일지는 src/studioMode.ts의 스위치가 정한다(«both» 두 단추 · «sample» 샘플만 · «real» 진짜 생성만). */
 // 10/20 저녁 Bumm님 «샘플 흐름의 로딩은 장면 5개 → 2개»(진짜 생성은 그대로 — 끝날 때까지)
 const SAMPLE_WAIT_SCENES = 2;
 
@@ -94,12 +92,9 @@ function drawPlaceholder(pctx: CanvasRenderingContext2D) {
 }
 
 export default function PosterStudio() {
-  // VITE_SAMPLE_MODE(.env.production 한 줄):
-  //   "1" 두 단추 — 2026-10-20 Bumm님 «지금(베타)부터 두 단추»: 찍기 전 «샘플 포스터 보기», 찍은 뒤 진짜 AI 생성(부스 코드는 꺼진 채, 한도 그대로).
-  //       10/9~10/20의 «1»은 샘플만이었다 — 세션은 .env 파일을 고치지 못해(권한 밖) 값은 그대로 두고 뜻을 바꿨다.
-  //   "sample" 샘플만(카메라 권한 · 서버 요청 0) · "0"과 그 밖 실제만(부스 코드를 켤 무렵 11/7쯤 «0»으로).
-  const sampleMode = import.meta.env.VITE_SAMPLE_MODE === "sample";
-  const sampleChoice = import.meta.env.VITE_SAMPLE_MODE === "1";
+  // 스위치(src/studioMode.ts): «both» 두 단추 · «sample» 샘플만 · «real» 진짜 생성만
+  const sampleMode = STUDIO_MODE === "sample";
+  const sampleChoice = STUDIO_MODE === "both";
   const [mode, setMode] = useState("solo");
   /* 초기 문구("카메라를 켜고 사진을 촬영해 주세요.")는 페이지 맨 아래 ※ 영역으로
      옮겼다(2026-09-09 대표 지시). **요소는 남긴다** — 오류·진행 상황이 뜨는 자리다.
