@@ -327,7 +327,8 @@ main.app {
 .camera-example-stage > .camera-example-video { opacity: 0; transition: opacity .18s ease-out; }
 .camera-example-stage > .camera-example-video[data-active="true"] { opacity: 1; }
 .camera-example-stage > .camera-example-still[data-active="false"] { visibility: hidden; transition: visibility 0s .18s; }
-.camera-example-count { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); color: #fff; font-size: clamp(72px, 14cqh, 150px); font-weight: 800; line-height: 1; text-shadow: 0 3px 22px #0009; }
+/* 10/20 Bumm님 «숫자 3 · 2 · 1을 지금보다 크게, 영상 칸의 위아래 · 좌우 정중앙에» — 위 34% → 50%, 14cqh(72~150px) → 24cqh(80~260px) */
+.camera-example-count { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #fff; font-size: clamp(80px, 24cqh, 260px); font-weight: 800; line-height: 1; text-shadow: 0 3px 22px #0009; }
 .camera-example-say { position: absolute; transform: translate(-50%, -100%); width: max-content; max-width: 34%; padding: 8px 14px; border-radius: 16px; background: #fff; color: #1c1c1c; font-size: clamp(14px, 3.4cqh, 22px); font-weight: 700; line-height: 1.35; box-shadow: 0 4px 16px #0003; }
 .camHint.camera-example-caption {
   position: absolute; inset: auto 0 0; padding: 54px 24px 24px; gap: 16px;
@@ -420,7 +421,9 @@ main.app {
 #cameraWorkspace .camera-guide { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .camera-film-heading { flex-shrink: 0; margin-bottom: 22px; }
 #cameraWorkspace .camera-film-heading h2 { margin: 0; color: #222; font-size: clamp(26px, 2.2vw, 32px); font-weight: 800; line-height: 1.35; letter-spacing: -1.1px; }
-.camera-film-card { position: relative; flex: 1; min-height: 252px; display: flex; flex-direction: column; gap: 12px; padding: 0; border-radius: 0; background: transparent; overflow: visible; box-shadow: none; }
+/* 10/20 Bumm님 «티켓 모양 카드를 살짝 아래로 — 단추와 겹치거나 잘리면 안 됨»: 포스터와 사이 12 → 26px. 포스터 칸이 늘고 주는 칸이라
+   낮은 화면에서는 포스터가 그만큼 작아지고 티켓 · 단추 자리는 그대로다(1366×768 · 1920×1080 · 2560×1440 확인). */
+.camera-film-card { position: relative; flex: 1; min-height: 252px; display: flex; flex-direction: column; gap: 26px; padding: 0; border-radius: 0; background: transparent; overflow: visible; box-shadow: none; }
 .camera-film-scene { flex: 1; min-height: 140px; max-height: 520px; height: 0; overflow: visible; display: flex; justify-content: center; margin: 0; }
 .camera-film-poster { position: relative; height: 100%; max-width: 100%; }
 .camera-film-poster > img { display: block; width: auto; height: 100%; max-width: 100%; object-fit: contain; border-radius: 8px; }
