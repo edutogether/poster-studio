@@ -46,6 +46,9 @@ const desktop = args.includes('--desktop');
 // 서버 요청(https)은 페이지 안에서 흉내 낸 응답으로 돌려준다 — 네트워크로는 한 건도 나가지 않는다(https 차단도 그대로).
 // 휴대폰 흉내에서는 가짜 카메라도 세로(960×1280, 3:4)다 — 휴대폰은 실제로 세로로 찍힌다(10/20 저녁 Bumm님). PC(--desktop)는 가로.
 // 카메라가 켜진 화면(3·2·1 동안)과 찍은 뒤 화면에서 사진 · 영상이 칸에 좌우 · 위아래 띠(레터박스) 없이 차는지, 단추 줄 아래가 비지 않는지도 잰다.
+// 10/20 밤(팀장 대조 다섯 가지): 장면은 «숫자 3 · 2 · 1(countdown) · 찍은 뒤(완료 표시가 사라진 뒤) · 켠 화면(다시 찍기 뒤 — live)» 셋이고,
+// 칸이 세로 3:4인지 · 칸 안 표시가 구도 선과 겹치는지 · 원형 단추가 칸에 걸치는지 · «촬영 완료»가 둘 이상인지 · 찍은 뒤 제목이 보이는지 ·
+// 흰 단추 줄 양쪽 여백이 같은지(2px 넘게 다르면) · 단추가 화면 밖인지까지 잰다.
 const real = args.includes('--real');
 const sizes = opt('--sizes', '360x640,390x664,430x740,360x780,390x844,430x932').split(',').map((s) => { const [w, h] = s.split('x').map(Number); return { w, h }; });
 await fs.mkdir(out, { recursive: true });
@@ -166,10 +169,27 @@ try {
       const fit = getComputedStyle(media).objectFit, k = fit === 'cover' ? Math.max(r.width / nw, r.height / nh) : Math.min(r.width / nw, r.height / nh);
       camGap = nw && nh ? { x: Math.max(0, Math.round(r.width - nw * k)), y: Math.max(0, Math.round(r.height - nh * k)), box: Math.round(r.width) + '×' + Math.round(r.height), src: nw + '×' + nh, fit } : null;
     }
+    // 카메라 칸 정리(10/20 밤): 칸 비율 · 칸 안 표시와 구도 선 겹침 · 원형 단추가 칸에 걸침 · «촬영 완료» 개수 · 찍은 뒤 제목 · 단추 줄 양쪽 여백
+    const box = document.querySelector('#cameraView:not([hidden]) .cameraBox');
+    const hit = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+    let camBox = null;
+    if (box && vis(box)) {
+      const br = box.getBoundingClientRect();
+      const guides = [...box.querySelectorAll('.camera-guides i')].filter(vis).map((g) => g.getBoundingClientRect());
+      const marks = [...box.querySelectorAll('.camera-live-indicator, .captured-badge, .camera-ready-notice, button')].filter((m) => vis(m) && !m.closest('.hidden'));
+      const overGuide = marks.filter((m) => guides.some((g) => hit(m.getBoundingClientRect(), g))).map(name);
+      const sb2 = document.getElementById('phoneShotBtn');
+      const shotOver = sb2 && vis(sb2) && !sb2.hidden ? Math.max(0, Math.round(br.bottom - sb2.getBoundingClientRect().top)) : null;
+      const done = [...document.querySelectorAll('#cameraView:not([hidden]) *')].filter((e) => vis(e) && [...e.childNodes].some((n) => n.nodeType === 3 && /촬영 완료/.test(n.textContent))).length;
+      const head = document.querySelector('#cameraView:not([hidden]) .page-heading');
+      const btns = [...document.querySelectorAll('#cameraView:not([hidden]) .camera-actions > button')].filter((b) => !b.hidden && vis(b)).map((b) => b.getBoundingClientRect());
+      const dockL = btns.length ? Math.round(Math.min(...btns.map((b) => b.left))) : null, dockR = btns.length ? Math.round(innerWidth - Math.max(...btns.map((b) => b.right))) : null;
+      camBox = { ratio: +(br.width / br.height).toFixed(3), w: Math.round(br.width), h: Math.round(br.height), overGuide, shotOver, done, heading: !!(head && vis(head) && head.getBoundingClientRect().height > 0), dockL, dockR };
+    }
     // 단추 줄 아래 빈 곳: 문서가 한 화면을 넘지 않을 때, 보이는 단추 줄(.camera-actions) 아래 끝에서 화면 끝까지(px)
     const ca = document.querySelector('#cameraView:not([hidden]) .camera-actions');
     const blankBelow = ca && vis(ca) && document.documentElement.scrollHeight <= innerHeight + 1 ? Math.round(innerHeight - ca.getBoundingClientRect().bottom) : null;
-    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, shotBottom, tipsBottom, dockBottom, camGap, blankBelow, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
+    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, shotBottom, tipsBottom, dockBottom, camGap, blankBelow, camBox, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
   })()`;
   // fit: 휴대폰 3단계는 스크롤 없이 한 화면(팀장 설계 ⑬).
   // shotInView · tips: 휴대폰 2단계 도착 화면에 원형 촬영 단추 · 안내 1~3이 다 보인다(⑤ · ⑥) — 못 찾으면 걸린다(빈 검사가 되지 않게).
@@ -184,6 +204,17 @@ try {
     m.dockCut = tips || dock ? (m.dockBottom === null ? '없음' : Math.max(0, m.dockBottom - m.vh)) : 0;
     m.camBand = cam ? (m.camGap === null ? '없음' : (m.camGap.x > 2 || m.camGap.y > 2 ? `좌우 ${m.camGap.x} · 위아래 ${m.camGap.y}px (칸 ${m.camGap.box} · 그림 ${m.camGap.src} · ${m.camGap.fit})` : 0)) : 0;
     m.blank = cam && m.blankBelow !== null && m.blankBelow > 2 ? m.blankBelow : 0;
+    // 휴대폰 카메라 화면 정리(10/20 밤) — 하나라도 어긋나면 걸린다
+    const cb = m.camBox, tidy = [];
+    if (cam && cb) {
+      if (Math.abs(cb.ratio - 0.75) > 0.01) tidy.push(`칸 비율 ${cb.w}×${cb.h}(3:4 아님)`);
+      if (cb.overGuide.length) tidy.push(`구도 선과 겹침: ${cb.overGuide.join(', ')}`);
+      if (cb.shotOver) tidy.push(`원형 단추가 칸에 ${cb.shotOver}px 걸침`);
+      if (cb.done > (screen.endsWith('after-shot') ? 0 : 1)) tidy.push(`«촬영 완료» ${cb.done}개`);
+      if (screen.endsWith('after-shot') && cb.heading) tidy.push('찍은 뒤 제목이 보임');
+      if (cb.dockL !== null && (Math.abs(cb.dockL - cb.dockR) > 2 || cb.dockR < 8)) tidy.push(`단추 줄 여백 왼쪽 ${cb.dockL} · 오른쪽 ${cb.dockR}`);
+    } else if (cam) tidy.push('카메라 칸을 못 찾음');
+    m.camTidy = tidy.length ? tidy.join(' / ') : 0;
     const v = await call('Page.captureScreenshot', { format: 'png' });
     await fs.writeFile(path.join(out, `${tag}-${screen}-view.png`), Buffer.from(v.data, 'base64'));
     const metrics = await call('Page.getLayoutMetrics');
@@ -191,8 +222,8 @@ try {
     const s = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: metrics.cssLayoutViewport.clientWidth, height: Math.min(h, 12000), scale: 1 } });
     await fs.writeFile(path.join(out, `${tag}-${screen}.png`), Buffer.from(s.data, 'base64'));
     report.push({ size: tag, screen, ...m });
-    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut || m.dockCut || m.camBand || m.blank;
-    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.dockCut ? (typeof m.dockCut === 'number' ? ` · 빨간 단추가 ${m.dockCut}px 잘림` : ' · 빨간 단추를 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${m.camBand ? ` · 카메라 칸 띠 ${m.camBand}` : ''}${m.blank ? ` · 단추 줄 아래 ${m.blank}px 빔` : ''}${bad ? '  ← 확인' : ''}`);
+    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut || m.dockCut || m.camBand || m.blank || m.camTidy;
+    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.dockCut ? (typeof m.dockCut === 'number' ? ` · 빨간 단추가 ${m.dockCut}px 잘림` : ' · 빨간 단추를 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${m.camBand ? ` · 카메라 칸 띠 ${m.camBand}` : ''}${m.blank ? ` · 단추 줄 아래 ${m.blank}px 빔` : ''}${m.camTidy ? ` · ${m.camTidy}` : ''}${m.camBox && cam ? ` · 칸 ${m.camBox.w}×${m.camBox.h}` : ''}${bad ? '  ← 확인' : ''}`);
   };
   const fail = (tag, what) => { blocked = true; console.error(`${tag}: ${what}에서 흐름이 막힘`); };
 
@@ -228,10 +259,20 @@ try {
     if (real) {
       // 실제 모드: 카메라를 켜고 3·2·1 뒤 찍힌다 — 켜진 화면(숫자 동안)을 재고, «이 사진으로 만들기»가 나올 때까지 기다렸다가 그 화면을 재고 누른다
       if (!await waitFor('(() => { const v = document.getElementById("video"); return !!v && !v.classList.contains("hidden") && v.videoWidth > 0; })()', 15000)) { fail(tag, '카메라 켜짐'); continue; }
-      await shot(tag, '2-step2-live', { cam: !desktop, shotInView: !desktop });   // 켜진 화면은 칸이 찍은 뒤와 같은 높이라 안내 · 단추 줄이 아래로 내려간다 — 원형 단추만 첫 화면 안
+      await shot(tag, '2-step2-countdown', { cam: !desktop, shotInView: !desktop, dock: !desktop });   // 숫자 3 · 2 · 1 동안
       if (!await waitFor('!document.getElementById("generateBtn").hidden', 20000)) { fail(tag, '실제 모드 촬영'); continue; }
-      await delay(900);
+      await shot(tag, '2-step2-shot-moment', { cam: !desktop, dock: !desktop });   // 찍은 순간 — «촬영 완료»는 하나만
+      // 찍은 뒤: «촬영 완료» 표시가 사라진 뒤(2.4초)의 모습
+      if (!await waitFor('!document.querySelector(".captured-badge, .camera-capture-notice")', 6000)) { fail(tag, '촬영 완료 표시가 사라지지 않음'); continue; }
+      await delay(300);
       await shot(tag, '2-step2-after-shot', { cam: !desktop, dock: !desktop });
+      // 켠 화면(숫자 없이 기다리는 모습): «다시 찍기» → 카메라가 다시 켜진 뒤 → 다시 찍고 생성으로
+      await evaluate('document.getElementById("retakeBtn").click() || true');
+      if (!await waitFor('(() => { const v = document.getElementById("video"); return !!v && !v.classList.contains("hidden") && v.videoWidth > 0 && document.getElementById("countdown").classList.contains("hidden"); })()', 15000)) { fail(tag, '다시 찍기 뒤 카메라'); continue; }
+      await delay(2000);
+      await shot(tag, '2-step2-live', { cam: !desktop, shotInView: !desktop, dock: !desktop });
+      await evaluate(`document.getElementById('${phoneBtn ? 'phoneShotBtn' : 'shotBtn'}').click() || true`);
+      if (!await waitFor('!document.getElementById("generateBtn").hidden', 20000)) { fail(tag, '다시 찍기'); continue; }
       await evaluate('document.getElementById("generateBtn").click() || true');
     }
     if (!await waitFor('!!document.querySelector(".generation-wait, [class*=generation-wait]")', 10000)) { fail(tag, '로딩 화면'); continue; }
