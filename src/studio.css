@@ -639,6 +639,9 @@ main.app {
   .phone-shot[hidden] { display: none; }
   /* 칸 아래쪽 글줄(«이렇게, …» · 실제 모드의 «카메라 켜기» / «카메라 끄기»)을 원형 단추 위로 올린다 — 실제 모드에서 «카메라 켜기»가 원형 단추와 13~28px 겹쳤다(10/17 실제 모드 검사) */
   #cameraView .camHint.camera-example-caption { padding-bottom: 44px; }
+  /* 두 단추 판(10/20): 휴대폰은 칸 아래 빨간 원형 단추가 카메라를 켜고 3초 뒤 찍는다 — 칸 안 «카메라 켜기»는 뺀다.
+     작아진 칸(120~150px, 실제 브라우저 높이)에서 그 단추가 «이렇게, …» 글을 위로 밀어 글 위가 잘렸다(360×640 · 390×664 캡처). */
+  #cameraView #startBtn { display: none; }
   .phone-shot .studio-icon { width: 30px; height: 30px; }
   .phone-shot:active:not(:disabled) { transform: scale(.96); }
   .phone-shot:disabled { background: #bdbdbd; box-shadow: none; cursor: default; }

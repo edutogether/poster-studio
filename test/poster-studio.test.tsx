@@ -874,11 +874,11 @@ describe('인쇄', () => {
 });
 
 
-/* 샘플 모드(2026-10-09 Bumm님) — 라이브 사내 클로즈 베타. 스위치는 .env.production의 VITE_SAMPLE_MODE.
+/* 샘플 모드(2026-10-09 Bumm님) — 스위치는 .env.production의 VITE_SAMPLE_MODE. 10/20부터 샘플만은 «sample»이다(«1»은 두 단추).
    화면 고지와 같은 급의 약속이다: 카메라 권한을 묻지 않고, 서버에 아무것도 보내지 않는다. */
 describe('샘플 모드',()=>{
   test('카메라 권한·서버 요청 없이 진짜 생성과 같은 로딩 화면을 40초 보인 뒤 8개 틀을 연다',async()=>{
-    vi.stubEnv('VITE_SAMPLE_MODE','1');
+    vi.stubEnv('VITE_SAMPLE_MODE','sample');
     const f=installFetch();
     await act(async()=>{renderApp();});
     await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
@@ -902,12 +902,58 @@ describe('샘플 모드',()=>{
     expect(document.querySelector('.completion-notice strong')!.textContent).toBe('완성 !');
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
     expect(f.calls).toHaveLength(0);   // /health도 /generate도 없다
+    expect(document.querySelector('.privacy-send')).toBeNull();   // 보내지 않는 판에는 «OpenAI로 전송» 고지를 붙이지 않는다
   });
   test('스위치가 꺼져 있으면(0) 촬영 단추와 카메라 켜기를 그대로 둔다',async()=>{
     vi.stubEnv('VITE_SAMPLE_MODE','0');
     await act(async()=>{renderApp();});
     expect(el('shotBtn').textContent).toBe('3초 뒤 사진 찍기');
     expect(document.getElementById('startBtn')).not.toBeNull();
+    expect(document.querySelector('.privacy-send')!.textContent).toContain('OpenAI(미국)로 전송');
+  });
+});
+
+/* 두 단추(2026-10-20 Bumm님 «지금(베타)부터 두 단추», VITE_SAMPLE_MODE=«1»): 찍기 전에는 «샘플 포스터 보기»로 안 찍고 넘어갈 수 있고,
+   카메라를 켜면 촬영, 찍은 뒤에는 «이 사진으로 포스터 만들기»로 진짜 생성. 고지(사진이 OpenAI로 감)는 찍기 전부터 보인다. */
+describe('두 단추',()=>{
+  test('카메라를 켜기 전: 아래 단추는 «샘플 포스터 보기» — 누르면 카메라 · 서버 요청 없이 샘플 흐름, 고지는 1단계부터 보인다',async()=>{
+    vi.stubEnv('VITE_SAMPLE_MODE','1');
+    const f=installFetch();
+    await act(async()=>{renderApp();});
+    expect(document.querySelector('.privacy-send')!.textContent).toContain('OpenAI(미국)로 전송');
+    await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
+    expect(el('shotBtn').textContent).toContain('샘플 포스터 보기');
+    expect(document.getElementById('startBtn')).not.toBeNull();   // 진짜 카메라도 켤 수 있다
+    expect(el('phoneShotBtn').getAttribute('aria-label')).toBe('3초 뒤 사진 찍기');
+    const before=f.calls.length;   // 진짜 생성을 쓸 수 있는 판이라 /health는 미리 본다
+    vi.useFakeTimers();
+    await act(async()=>{el<HTMLButtonElement>('shotBtn').click();});
+    await act(async()=>{await vi.advanceTimersByTimeAsync(40_000);});
+    vi.useRealTimers();
+    await waitFor(()=>expect(document.body.dataset.step).toBe('3'));
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+    expect(f.calls.slice(before).filter((u)=>u.includes('/generate'))).toHaveLength(0);
+  });
+  test('카메라를 켜면 «3초 뒤 사진 찍기», 찍은 뒤 «이 사진으로 포스터 만들기» — 누르면 진짜 생성 요청(보내는 필드 다섯 그대로)',async()=>{
+    vi.stubEnv('VITE_SAMPLE_MODE','1');
+    const f=installFetch();
+    await act(async()=>{renderApp();});
+    await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
+    await act(async()=>{el<HTMLButtonElement>('startBtn').click();});
+    expect(el('shotBtn').textContent).toContain('3초 뒤 사진 찍기');
+    makeVideoReady(el<HTMLVideoElement>('video'));
+    vi.useFakeTimers();
+    await act(async()=>{el<HTMLButtonElement>('shotBtn').click();});
+    await runCountdown();
+    vi.useRealTimers();
+    await act(async()=>{await Promise.resolve();});
+    expect(el('generateBtn').textContent).toContain('이 사진으로 포스터 만들기');
+    el<HTMLInputElement>('studentName').value='김인키';
+    await act(async()=>{el<HTMLButtonElement>('generateBtn').click();});
+    await act(async()=>{await Promise.resolve();});
+    expect(f.bodies.length).toBeGreaterThan(0);
+    expect([...f.bodies[0].keys()].sort()).toEqual(['genre','mode','movieTitle','photo','tagline']);
+    expect(JSON.stringify([...f.bodies[0].entries()].filter(([k])=>k!=='photo'))).not.toContain('김인키');
   });
 });
 
@@ -958,7 +1004,7 @@ describe('휴대폰 흐름', () => {
 
   test('2단계 빨간 원형 단추: 샘플 모드는 카메라 없이 바로 샘플 포스터 로딩을 시작한다', async () => {
     asPhone(true);
-    vi.stubEnv('VITE_SAMPLE_MODE', '1');
+    vi.stubEnv('VITE_SAMPLE_MODE', 'sample');
     const f = installFetch();
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
