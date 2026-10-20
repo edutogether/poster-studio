@@ -106,6 +106,18 @@ test("실제 playing 전에는 정지 그림을 유지하고, 소리를 켠 채 
   expect(video.dataset.active).toBe("true"); expect(still.dataset.active).toBe("false");
 });
 
+test("1단계에서도 정지 그림은 첫 프레임 — 2단계로 들어올 때 그림 주소가 바뀌지 않는다", () => {
+  // 10/20 Bumm님 «개인 촬영 영상이 시작할 때 사진이 잠깐 뜬다»: 1단계(offstage)에 끝 정지 그림을 두면 2단계로 오는 순간 주소가 첫 프레임으로 바뀌고,
+  // 첫 프레임을 다 받기 전까지 브라우저가 옛 그림(끝 정지 그림)을 그린다 — 처음 방문 390에서 약 180ms(camera-entry-frames.mjs).
+  const view = render(<CameraExample {...base} offstage />);
+  const still = view.container.querySelector(".camera-example-still") as HTMLImageElement;
+  expect(still.getAttribute("src")).toBe(fake.still);
+  view.rerender(<CameraExample {...base} />);
+  expect(still.getAttribute("src")).toBe(fake.still);
+  view.rerender(<CameraExample {...base} hidden />);
+  expect(still.getAttribute("src")).toBe(fake.still);
+});
+
 test("소리 있는 재생이 거부되면 소리 없이, 그것도 거부되면 끝 정지 그림으로", async () => {
   const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(new Error("NotAllowedError"));
   const view = render(<CameraExample {...base} />);

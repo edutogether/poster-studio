@@ -25,7 +25,8 @@ function useReducedMotion() {
 // 마지막 프레임(찰칵 뒤 멈춘 장면)에 머문다. 숫자 3·2·1과 대사 말풍선은 영상 시간에 맞춰 앱이 얹는다(_docs/ops/camera-example-videos.md).
 // 2단계가 아니거나(offstage) 카메라를 켜면(hidden) 영상 요소를 내려 재생·소리·다운로드를 정리한다.
 // 영상을 아예 못 틀 때(움직임 줄이기 · 자동 재생 거부 · 4초 정체 · 오류)는 끝 정지 그림(마지막 프레임)을 보인다 — 10/19 영상은
-// 손이 렌즈를 가린 어두운 장면으로 시작해, 첫 프레임을 그대로 두면 칸이 거의 검다. 첫 프레임은 재생 직전의 이음매용으로만 쓴다.
+// 손이 렌즈를 가린 어두운 장면으로 시작해, 첫 프레임을 그대로 두면 칸이 거의 검다. 그 밖(1단계 · 카메라 켬 · 재생 전)에는 늘 첫 프레임이다 —
+// 10/20: 1단계에 끝 정지 그림을 두었더니 2단계로 오는 순간 주소가 바뀌어, 첫 프레임을 받기 전까지 끝 정지 그림이 잠깐 보였다(처음 방문 약 180ms).
 export default function CameraExample({ mode, video, hidden, offstage }: Props) {
   const alt = mode === "group" ? ALT.group : ALT.solo;
   const reduced = useReducedMotion();
@@ -91,7 +92,7 @@ export default function CameraExample({ mode, video, hidden, offstage }: Props) 
       src={mode === "group" ? "/studio/camera-group.webp" : "/studio/camera-student.webp"} alt={alt} hidden={hidden} />;
   }
   return <div className="camera-example-stage" hidden={hidden}>
-    <img className="camera-example-still" data-active={!(enabled && visible)} src={enabled ? video.still : video.endStill} alt={alt} />
+    <img className="camera-example-still" data-active={!(enabled && visible)} src={failed || reduced ? video.endStill : video.still} alt={alt} />
     {enabled && <video ref={player} className="camera-example-video" data-active={visible} poster={video.still}
       playsInline preload="auto" aria-hidden="true" disablePictureInPicture
       onPlaying={() => { setVisible(true); setBuffering(false); }}
