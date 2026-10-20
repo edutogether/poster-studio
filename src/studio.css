@@ -632,11 +632,13 @@ main.app {
   }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions > button { min-height: 48px; height: 48px; }
   /* 10/20 밤 Bumm님(F4 다시, 팀장 대조) «휴대폰 카메라는 세로(3:4) — 잘리지 않고 찍히는 그대로 세로로, 아래가 비지 않게, 단추는 스크롤 없이 한 화면에»:
-     카메라를 켠 뒤(켠 화면 · 숫자 3 · 2 · 1 · 찍은 뒤)는 머리말 아래 한 화면 = 개인정보 줄(34px) · 세로 3:4 칸 · 가운데 줄(78px) · 흰 단추 줄(68px).
-     ① 칸은 3:4 그대로(띠도 잘림도 없음 — 휴대폰 카메라는 960×1280). 높이 = 한 화면 − 머리말 − 180px, 폭이 모자라면 (폭 − 44px) × 4/3까지 — 좁은 칸은 가운데.
-        켠 화면과 찍은 뒤가 같은 크기라 찍는 순간 칸이 그대로 멈춘다. 남는 높이는 가운데 줄 위아래로 나눈다(아래가 비지 않게).
-     ② 가운데 줄: 켠 화면은 원형 촬영 단추(칸에 걸치지 않게 칸 아래), 찍은 뒤는 «표정과 구도가 마음에 드나요 ?» 한 줄 + «다시 찍기».
-        제목(«나답게, …» · «이 사진으로 만들까요?»)과 안내 1 · 2 · 3은 켠 뒤에는 접는다(찍기 전 화면에서 읽었다).
+     카메라를 켠 뒤(켠 화면 · 숫자 3 · 2 · 1 · 찍은 뒤)는 머리말 아래 한 화면 = 개인정보 줄(34px) · 세로 3:4 칸 · (찍은 뒤만) 회색 띠 · 흰 단추 줄(68px).
+     ① 칸은 3:4 그대로(띠도 잘림도 없음 — 휴대폰 카메라는 960×1280). 폭이 모자라면 (폭 − 44px) × 4/3까지 — 좁은 칸은 가운데, 남는 높이는 칸 위(개인정보 줄 아래)로
+        보내 칸 · 회색 띠 · 단추 줄은 아래에 붙인다(여백이 늘 12px로 고르다 — 390×844처럼 폭이 먼저 차는 크기).
+        켠 화면: 높이 = 한 화면 − 머리말 − 114px(개인정보 줄 · 칸 아래 12 · 단추 줄). 촬영 단추는 아래 줄 «3초 뒤 사진 찍기» 하나 — 원형 단추는 켠 뒤 뺀다
+        (10/20 밤 팀장 대조: 찍기 전 · 켠 뒤 · 찍은 뒤 모두 «아래 줄에 주 단추 하나»).
+        찍은 뒤: 높이 = 한 화면 − 머리말 − 215px — 사진 아래 12px 뒤에 회색 띠가 시작하고, 그 안에 12 · 물음 한 줄 · 12 · «다시 찍기» · 12(여백이 고르다).
+     ② 제목(«나답게, …» · «이 사진으로 만들까요?»)과 안내 1 · 2 · 3은 켠 뒤에는 접는다(찍기 전 화면에서 읽었다).
      ③ 칸 안에는 «실시간 미리보기»(오른쪽 위)와 «✓ 촬영 완료»(왼쪽 위, 2.4초 뒤 사라짐) 둘만 — 가운데 큰 알림(«촬영 완료 !» · «카메라 준비 완료»)은
         얼굴을 가려서, «카메라 끄기»는 구도 선과 겹쳐서 휴대폰에서 뺐다(그만두려면 «이전»). 구도 선은 세로 칸에 맞춰 위 18% · 옆 14% · 아래 8%.
      ④ 흰 단추 줄: 빨간 단추 글이 길어 줄을 넘쳐 오른쪽 끝에 붙던 것 — 두 단추가 남는 폭을 나눠 쓰고 글 15px, 양쪽 여백이 같다.
@@ -645,7 +647,9 @@ main.app {
   #cameraView:has(#video:not(.hidden)),
   #cameraView:has(.camera-instructions[data-review="true"]) { display: flex; flex-direction: column; min-height: calc(100svh - var(--phone-header-h)); }
   #cameraView:has(#video:not(.hidden)) .camera-large,
-  #cameraView:has(.camera-instructions[data-review="true"]) .camera-large { flex: none; width: auto; max-width: 100%; aspect-ratio: 3 / 4; height: min(calc((100vw - 44px) * 4 / 3), calc(100svh - var(--phone-header-h) - 180px)); }
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-large { flex: none; width: auto; max-width: 100%; aspect-ratio: 3 / 4; }
+  #cameraView:has(#video:not(.hidden)) .camera-large { height: min(calc((100vw - 44px) * 4 / 3), calc(100svh - var(--phone-header-h) - 114px)); margin-top: auto; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-large { height: min(calc((100vw - 44px) * 4 / 3), calc(100svh - var(--phone-header-h) - 215px)); margin-top: auto; }
   #cameraView:has(#video:not(.hidden)) .camera-guides,
   #cameraView:has(.camera-instructions[data-review="true"]) .camera-guides { inset: 18% 14% 8%; }
   #cameraView:has(#video:not(.hidden)) .cameraBox .camera-ready-notice,
@@ -666,18 +670,18 @@ main.app {
   #cameraView:has(.camera-instructions[data-review="true"]) .camera-actions > .primary-button { flex: 1 1 0; min-width: 0; padding: 0 12px; gap: 6px; white-space: nowrap; }
   #cameraView:has(#video:not(.hidden)) .camera-actions > .primary-button .studio-icon,
   #cameraView:has(.camera-instructions[data-review="true"]) .camera-actions > .primary-button .studio-icon { width: 18px; height: 18px; }
-  /* 켠 화면: 칸 아래 남는 자리 가운데에 원형 단추, «카메라 끄기»가 든 칸 아래 글 띠는 뺀다 */
-  #cameraView:has(#video:not(.hidden)) .camera-surface { flex: 1 0 auto; display: flex; flex-direction: column; align-items: center; padding-bottom: 0; }
-  #cameraView:has(#video:not(.hidden)) .phone-shot { margin: auto; }
+  /* 켠 화면: 원형 단추를 빼고(아래 줄 «3초 뒤 사진 찍기» 하나), «카메라 끄기»가 든 칸 아래 글 띠도 뺀다 */
+  #cameraView:has(#video:not(.hidden)) .camera-surface { flex: 1 0 auto; display: flex; flex-direction: column; align-items: center; padding-bottom: 12px; }
+  #cameraView:has(#video:not(.hidden)) .phone-shot { display: none; }
   #cameraView:has(#video:not(.hidden)) .cameraBox .camHint { display: none; }
   #cameraView:has(#video:not(.hidden)) #cameraWorkspace { flex: none; }
   #cameraView:has(#video:not(.hidden)) .camera-guide { display: none; }
-  /* 찍은 뒤: 칸 아래 남는 자리 가운데에 한 줄 물음 + «다시 찍기» */
-  #cameraView:has(.camera-instructions[data-review="true"]) .camera-surface { flex: none; display: flex; flex-direction: column; align-items: center; padding-bottom: 0; }
-  #cameraView:has(.camera-instructions[data-review="true"]) #cameraWorkspace { flex: 1 0 auto; display: flex; flex-direction: column; }
-  #cameraView:has(.camera-instructions[data-review="true"]) .camera-guide { flex: 0 0 auto; margin: auto 0; padding: 0; }   /* 다른 겹의 아래 여백 15px가 한 화면을 10px 넘겼다 */
+  /* 찍은 뒤: 사진 아래 12px 뒤 회색 띠(#cameraWorkspace 바탕) — 그 안에 12 · 물음 한 줄 · 12 · «다시 찍기» · 12 */
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-surface { flex: 1 0 auto; display: flex; flex-direction: column; align-items: center; padding-bottom: 12px; }
+  #cameraView:has(.camera-instructions[data-review="true"]) #cameraWorkspace { flex: none; display: flex; flex-direction: column; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-guide { flex: 0 0 auto; margin: 0; padding: 12px 0; }   /* 다른 겹의 아래 여백 15px는 쓰지 않는다 */
   #cameraView:has(.camera-instructions[data-review="true"]) .camera-instructions { padding: 0; }
-  #cameraView:has(.camera-instructions[data-review="true"]) .photo-review { align-items: center; gap: 8px; margin: 0; text-align: center; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .photo-review { align-items: center; gap: 12px; margin: 0; text-align: center; }
   #cameraView:has(.camera-instructions[data-review="true"]) .photo-review p { font-size: 15px; line-height: 1.4; white-space: nowrap; }
   #cameraView:has(.camera-instructions[data-review="true"]) .photo-review #retakeBtn { min-height: 44px; padding: 8px 16px; font-size: 15px; }
   /* 찍은 뒤 문구는 휴대폰에서 한 줄 «표정과 구도가 마음에 드나요 ?»(F4) — PC는 두 줄 그대로 */
