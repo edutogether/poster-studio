@@ -1,6 +1,6 @@
 /* 휴대폰 화면 배치 점검(2026-10-17 Bumm님: «요즘 애들은 다 핸드폰으로 본다. 모바일판 배열이 엉망인 것 손봐야 한다»).
 
-     node scripts/verify/mobile-layout-probe.mjs <dist 폴더> <결과 폴더> [--sizes 360x640,390x664,430x740,360x780,390x844,430x932] [--scale 3] [--desktop] [--real]
+     node scripts/verify/mobile-layout-probe.mjs <dist 폴더> <결과 폴더> [--sizes 360x640,390x664,430x740,360x780,390x844,430x932] [--scale 3] [--desktop] [--real] [--device iphone|galaxy]
    기본 크기의 앞 셋은 실제 브라우저 높이(주소창 · 아래 막대를 뺀 높이 — 아이폰 사파리 390×664 등), 뒤 셋은 화면 전체 높이다.
    10/19까지는 뒤 셋만 재서, 아이폰 사파리에서 2단계 단추가 61px 잘린 것을 못 잡았다(10/20 Bumm님 캡처).
 
@@ -33,10 +33,19 @@ if (!distArg || !outArg) { console.error('사용: node scripts/verify/mobile-lay
 const dist = path.resolve(distArg), out = path.resolve(outArg);
 if (!fss.existsSync(path.join(dist, 'index.html'))) { console.error(`dist에 index.html이 없다: ${dist}`); process.exit(2); }
 const scale = Number(opt('--scale', '3'));
+// --device iphone|galaxy: 그 기기의 브라우저 이름표(UA)로 연다 — 저장 방식(아이폰 공유 · 갤럭시 내려받기) · 카카오 탈출처럼 UA로 갈리는 곳까지 같은 갈래로 그린다
+const UAS = {
+  iphone: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
+  galaxy: 'Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36',
+};
+const device = opt('--device', null);
+if (device && !UAS[device]) { console.error('--device는 iphone 또는 galaxy'); process.exit(2); }
 // --desktop: 터치·휴대폰 흉내 없이 PC 브라우저로 같은 흐름을 찍는다 — 휴대폰 규칙이 PC 화면을 바꾸지 않았는지 대조할 때
 const desktop = args.includes('--desktop');
 // --real: 실제 모드 빌드(VITE_SAMPLE_MODE=0)를 가짜 카메라(dist/studio/camera-student.webp — 이미 공개된 지어낸 인물)로 찍고,
 // 서버 요청(https)은 페이지 안에서 흉내 낸 응답으로 돌려준다 — 네트워크로는 한 건도 나가지 않는다(https 차단도 그대로).
+// 휴대폰 흉내에서는 가짜 카메라도 세로(960×1280, 3:4)다 — 휴대폰은 실제로 세로로 찍힌다(10/20 저녁 Bumm님). PC(--desktop)는 가로.
+// 카메라가 켜진 화면(3·2·1 동안)과 찍은 뒤 화면에서 사진 · 영상이 칸에 좌우 · 위아래 띠(레터박스) 없이 차는지, 단추 줄 아래가 비지 않는지도 잰다.
 const real = args.includes('--real');
 const sizes = opt('--sizes', '360x640,390x664,430x740,360x780,390x844,430x932').split(',').map((s) => { const [w, h] = s.split('x').map(Number); return { w, h }; });
 await fs.mkdir(out, { recursive: true });
@@ -58,7 +67,8 @@ const art = path.join(dist, 'studio', 'camera-student.webp');
 const cameraFlags = [];
 if (real) {
   const y4m = path.join(profile, 'cam.y4m');
-  const ff = spawnSync('ffmpeg', ['-v', 'error', '-y', '-loop', '1', '-i', art, '-t', '3', '-r', '15', '-pix_fmt', 'yuv420p', '-vf', 'scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720', y4m]);
+  const [cw, ch] = desktop ? [1280, 720] : [960, 1280];
+  const ff = spawnSync('ffmpeg', ['-v', 'error', '-y', '-loop', '1', '-i', art, '-t', '3', '-r', '15', '-pix_fmt', 'yuv420p', '-vf', `scale=${cw}:${ch}:force_original_aspect_ratio=increase,crop=${cw}:${ch}`, y4m]);
   if (ff.status !== 0) { console.error('가짜 카메라 영상을 못 만들었다: ' + ff.stderr); process.exit(2); }
   cameraFlags.push('--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`);
 }
@@ -91,10 +101,15 @@ try {
       if (/\\/generate/.test(url)) { await new Promise((r) => setTimeout(r, 4000)); return new Response(JSON.stringify({ images: [${JSON.stringify(image)}] }), { status: 200, headers: { 'content-type': 'application/json' } }); }
       return new Response('{"ok":true}', { status: 200, headers: { 'content-type': 'application/json' } });
     }; window.print = () => {}; })();` });
+    // 휴대폰은 세로로 들면 요청한 가로 · 세로를 바꿔 세로 화면을 준다(앱은 1280×960을 요청 → 960×1280). 크롬 가짜 카메라는 요청에 맞춰 잘라 내므로
+    // 휴대폰 흉내에서는 요청의 가로 · 세로를 바꿔 넘긴다 — 바꾸지 않으면 960×960 정사각형이 와서 실제 휴대폰과 다른 화면을 잰다.
+    if (!desktop) await call('Page.addScriptToEvaluateOnNewDocument', { source: `(() => { const md = navigator.mediaDevices; if (!md) return; const gum = md.getUserMedia.bind(md);
+      md.getUserMedia = (c) => { const v = c && c.video; return gum(v && typeof v === 'object' && v.width && v.height ? { ...c, video: { ...v, width: v.height, height: v.width } } : c); }; })();` });
   } else {
     await call('Page.addScriptToEvaluateOnNewDocument', { source: "if(navigator.mediaDevices){navigator.mediaDevices.getUserMedia=async()=>{throw Error('확인 중 카메라 차단');};}window.print=()=>{};" });
   }
   if (!desktop) await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  if (device) await call('Emulation.setUserAgentOverride', { userAgent: UAS[device] });
 
   // 화면 하나를 재고 전체 페이지를 찍는다.
   const MEASURE = `(() => {
@@ -143,18 +158,32 @@ try {
     // 2단계 회색 칸 끝의 빨간 단추(보이는 것) — 10/19 Bumm님 «첫 화면에서 잘림»
     const dk = [...document.querySelectorAll('#cameraView:not([hidden]) .camera-actions .primary-button')].find((b) => !b.hidden && vis(b));
     const dockBottom = dk ? Math.round(dk.getBoundingClientRect().bottom) : null;
-    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, shotBottom, tipsBottom, dockBottom, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
+    // 카메라 칸의 띠: 보이는 #video · #snapshot의 그려진 그림이 칸보다 좁거나(좌우 띠) 낮은(위아래 띠) 만큼(px). 칸이 없으면 null.
+    const media = [...document.querySelectorAll('#cameraView:not([hidden]) #video, #cameraView:not([hidden]) #snapshot')].find((el) => vis(el) && !el.classList.contains('hidden'));
+    let camGap = null;
+    if (media) {
+      const nw = media.videoWidth || media.naturalWidth, nh = media.videoHeight || media.naturalHeight, r = media.getBoundingClientRect();
+      const fit = getComputedStyle(media).objectFit, k = fit === 'cover' ? Math.max(r.width / nw, r.height / nh) : Math.min(r.width / nw, r.height / nh);
+      camGap = nw && nh ? { x: Math.max(0, Math.round(r.width - nw * k)), y: Math.max(0, Math.round(r.height - nh * k)), box: Math.round(r.width) + '×' + Math.round(r.height), src: nw + '×' + nh, fit } : null;
+    }
+    // 단추 줄 아래 빈 곳: 문서가 한 화면을 넘지 않을 때, 보이는 단추 줄(.camera-actions) 아래 끝에서 화면 끝까지(px)
+    const ca = document.querySelector('#cameraView:not([hidden]) .camera-actions');
+    const blankBelow = ca && vis(ca) && document.documentElement.scrollHeight <= innerHeight + 1 ? Math.round(innerHeight - ca.getBoundingClientRect().bottom) : null;
+    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, shotBottom, tipsBottom, dockBottom, camGap, blankBelow, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
   })()`;
   // fit: 휴대폰 3단계는 스크롤 없이 한 화면(팀장 설계 ⑬).
   // shotInView · tips: 휴대폰 2단계 도착 화면에 원형 촬영 단추 · 안내 1~3이 다 보인다(⑤ · ⑥) — 못 찾으면 걸린다(빈 검사가 되지 않게).
-  const shot = async (tag, screen, { arrival = false, fit = false, shotInView = false, tips = false } = {}) => {
+  // cam: 휴대폰 카메라 화면(켜진 화면 · 찍은 뒤) — 칸에 띠가 없고(2px 넘으면 걸림) 단추 줄 아래가 비지 않는다(2px 넘으면). dock: 빨간 단추가 첫 화면 안
+  const shot = async (tag, screen, { arrival = false, fit = false, shotInView = false, tips = false, cam = false, dock = false } = {}) => {
     await delay(400);
     const m = await evaluate(MEASURE);
     m.arrivalScroll = arrival && m.scrollY > 0 ? m.scrollY : 0;
     m.notFit = fit && m.height > m.vh + 1 ? m.height - m.vh : 0;
     m.shotCut = shotInView ? (m.shotBottom === null ? '없음' : Math.max(0, m.shotBottom - m.vh)) : 0;
     m.tipsCut = tips ? (m.tipsBottom === null ? '없음' : Math.max(0, m.tipsBottom - m.vh)) : 0;
-    m.dockCut = tips ? (m.dockBottom === null ? '없음' : Math.max(0, m.dockBottom - m.vh)) : 0;
+    m.dockCut = tips || dock ? (m.dockBottom === null ? '없음' : Math.max(0, m.dockBottom - m.vh)) : 0;
+    m.camBand = cam ? (m.camGap === null ? '없음' : (m.camGap.x > 2 || m.camGap.y > 2 ? `좌우 ${m.camGap.x} · 위아래 ${m.camGap.y}px (칸 ${m.camGap.box} · 그림 ${m.camGap.src} · ${m.camGap.fit})` : 0)) : 0;
+    m.blank = cam && m.blankBelow !== null && m.blankBelow > 2 ? m.blankBelow : 0;
     const v = await call('Page.captureScreenshot', { format: 'png' });
     await fs.writeFile(path.join(out, `${tag}-${screen}-view.png`), Buffer.from(v.data, 'base64'));
     const metrics = await call('Page.getLayoutMetrics');
@@ -162,8 +191,8 @@ try {
     const s = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: metrics.cssLayoutViewport.clientWidth, height: Math.min(h, 12000), scale: 1 } });
     await fs.writeFile(path.join(out, `${tag}-${screen}.png`), Buffer.from(s.data, 'base64'));
     report.push({ size: tag, screen, ...m });
-    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut || m.dockCut;
-    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.dockCut ? (typeof m.dockCut === 'number' ? ` · 빨간 단추가 ${m.dockCut}px 잘림` : ' · 빨간 단추를 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${bad ? '  ← 확인' : ''}`);
+    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut || m.dockCut || m.camBand || m.blank;
+    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.dockCut ? (typeof m.dockCut === 'number' ? ` · 빨간 단추가 ${m.dockCut}px 잘림` : ' · 빨간 단추를 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${m.camBand ? ` · 카메라 칸 띠 ${m.camBand}` : ''}${m.blank ? ` · 단추 줄 아래 ${m.blank}px 빔` : ''}${bad ? '  ← 확인' : ''}`);
   };
   const fail = (tag, what) => { blocked = true; console.error(`${tag}: ${what}에서 흐름이 막힘`); };
 
@@ -197,10 +226,12 @@ try {
     const phoneBtn = !desktop && await evaluate(`(() => { const b = document.getElementById('phoneShotBtn'); return !!b && (${real} || b.getAttribute('aria-label') === '샘플 포스터 보기'); })()`);
     await evaluate(`document.getElementById('${phoneBtn ? 'phoneShotBtn' : 'shotBtn'}').click() || true`);
     if (real) {
-      // 실제 모드: 카메라를 켜고 3·2·1 뒤 찍힌다 — «이 사진으로 만들기»가 나올 때까지 기다렸다가 그 화면을 재고 누른다
+      // 실제 모드: 카메라를 켜고 3·2·1 뒤 찍힌다 — 켜진 화면(숫자 동안)을 재고, «이 사진으로 만들기»가 나올 때까지 기다렸다가 그 화면을 재고 누른다
+      if (!await waitFor('(() => { const v = document.getElementById("video"); return !!v && !v.classList.contains("hidden") && v.videoWidth > 0; })()', 15000)) { fail(tag, '카메라 켜짐'); continue; }
+      await shot(tag, '2-step2-live', { cam: !desktop, shotInView: !desktop });   // 켜진 화면은 칸이 찍은 뒤와 같은 높이라 안내 · 단추 줄이 아래로 내려간다 — 원형 단추만 첫 화면 안
       if (!await waitFor('!document.getElementById("generateBtn").hidden', 20000)) { fail(tag, '실제 모드 촬영'); continue; }
       await delay(900);
-      await shot(tag, '2-step2-after-shot');
+      await shot(tag, '2-step2-after-shot', { cam: !desktop, dock: !desktop });
       await evaluate('document.getElementById("generateBtn").click() || true');
     }
     if (!await waitFor('!!document.querySelector(".generation-wait, [class*=generation-wait]")', 10000)) { fail(tag, '로딩 화면'); continue; }
@@ -223,6 +254,6 @@ try {
 }
 await fs.writeFile(path.join(out, 'report.json'), JSON.stringify(report, null, 1));
 if (blocked || !report.length) process.exit(2);
-const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.shotCut || r.tipsCut || r.dockCut).length;
+const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.shotCut || r.tipsCut || r.dockCut || r.camBand || r.blank).length;
 console.log(issues ? `걸린 화면 ${issues}개 / ${report.length}` : `통과 — ${report.length}개 화면 모두 결함 없음`);
 process.exit(issues ? 1 : 0);

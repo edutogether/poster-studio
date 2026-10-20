@@ -592,6 +592,8 @@ main.app {
 @media (prefers-reduced-motion: reduce) {
   .hero-next { animation: none; }
 }
+/* 첫 페이지 단추 글(10/20 저녁 F3): PC 글을 감싼 칸은 없는 것처럼 — 글과 화살표가 예전처럼 단추의 줄 배치(간격)를 그대로 받는다 */
+#prepareNextBtn .label-pc { display: contents; }
 .phone-shot { display: none; }
 @media (max-width: 760px) {
   /* ⑤ 2단계: 카메라 칸을 화면 높이에 맞춰 줄여 «나답게, 편하게 웃어주세요.»와 안내 1~3이 첫 화면에 들어오게.
@@ -629,6 +631,32 @@ main.app {
     background: #fff; box-shadow: 0 0 0 100vmax #fff; clip-path: inset(0 -100vmax);
   }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions > button { min-height: 48px; height: 48px; }
+  /* 10/20 저녁 Bumm님(F4) «휴대폰은 실제로 세로로 찍힌다 — 카메라 칸에 좌우 레터박스를 만들지 말고 세로로 더 길게 늘려, 아래에 빈 곳이 없게»:
+     ① 실시간 미리보기 · 찍은 사진은 칸을 채워 그린다(cover — 띠 없음. 서버로 가는 사진은 잘리지 않은 전체 그대로다).
+     ② 찍은 뒤 화면도 찍기 전처럼 머리말 아래 한 화면이다 — 사진 칸이 찍기 전보다 길어지고, 숨은 안내 1~3이 회색 칸에 차지하던 빈 자리를 뺀다
+        (안내 1~3과 «찍은 뒤» 안내가 한 칸에 겹쳐 있어 키 큰 쪽 높이만큼 비어 있었다). 칸 높이 = 한 화면에서 나머지(270px)를 뺀 만큼.
+     ③ 카메라가 켜진 화면(숫자 3 · 2 · 1, «다시 찍기» 뒤)도 같은 높이 — 찍는 순간 칸이 그대로 멈춘다. 그동안 안내 · 단추 줄은 칸 아래로 내려간다.
+     PC는 그대로다(실시간 미리보기 · 찍은 사진 모두 contain). */
+  #cameraView #video, #cameraView #snapshot { object-fit: cover; }
+  #cameraView:has(#video:not(.hidden)) .camera-large,
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-large { height: max(220px, calc(100svh - var(--phone-header-h) - 270px)); }
+  #cameraView:has(.camera-instructions[data-review="true"]) { display: flex; flex-direction: column; min-height: calc(100svh - var(--phone-header-h)); }
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-surface { flex: none; padding-bottom: 8px; }
+  #cameraView:has(.camera-instructions[data-review="true"]) #cameraWorkspace { flex: 1 0 auto; padding-top: 0; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .page-heading { margin: auto 0 10px; padding-top: 10px; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-guide { flex: 0 0 auto; margin-bottom: auto; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-instructions { padding-bottom: 10px; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-tips { display: none; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .photo-review { gap: 10px; margin: 0; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .photo-review p { font-size: 16px; line-height: 1.5; white-space: nowrap; }
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-actions {
+    margin-top: 0; padding: 8px 0 max(12px, env(safe-area-inset-bottom)); border-top: 0;
+    background: #fff; box-shadow: 0 0 0 100vmax #fff; clip-path: inset(0 -100vmax);
+  }
+  #cameraView:has(.camera-instructions[data-review="true"]) .camera-actions > button { min-height: 48px; height: 48px; }
+  /* 찍은 뒤 문구는 휴대폰에서 한 줄 «표정과 구도가 마음에 드나요 ?»(F4) — PC는 두 줄 그대로 */
+  .photo-review .label-pc { display: none; }
+  .photo-review .label-phone { display: inline; }
   #cameraView .camera-bottom { display: none; }
   #cameraWorkspace { padding-top: 18px; }   /* 찍은 뒤 화면 — 찍기 전은 위(10/20)에서 0 */
   /* ⑥ 엄지 자리 빨간 원형 촬영 단추 — 카메라 칸 아래 가운데에 반쯤 걸친다(Lucide camera) */
@@ -649,6 +677,10 @@ main.app {
   #cameraView #startBtn { display: none; }
   /* 10/20 저녁 Bumm님 «휴대폰 영상 칸 안 “이렇게, 얼굴과 어깨가 보이게” 글은 지운다»(PC는 그대로) */
   #cameraView .camera-example-label { display: none; }
+  /* 10/20 저녁 Bumm님(F3) 첫 페이지 단추: 휴대폰은 앞에 Lucide clapperboard + «주인공이 될 순간 보러 가기»(PC는 «만들러 가기 →» 그대로) */
+  #prepareNextBtn .label-pc { display: none; }
+  #prepareNextBtn .label-phone { display: inline-flex; align-items: center; gap: 8px; }
+  #prepareNextBtn .btn-icon { width: 20px; height: 20px; flex: 0 0 auto; }
   .phone-shot .studio-icon { width: 30px; height: 30px; }
   .phone-shot:active:not(:disabled) { transform: scale(.96); }
   .phone-shot:disabled { background: #bdbdbd; box-shadow: none; cursor: default; }

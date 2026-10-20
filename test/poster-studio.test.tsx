@@ -20,7 +20,7 @@ import * as homeRestart from '../src/restartHome.js';
 import * as posterModule from '../src/poster.js';
 import * as saveModule from '../src/savePoster.js';
 import { designNameEn } from '../src/designNames.js';
-import { PHONE_QUERY, slideAt } from '../src/studio/StudioView.js';
+import { PHONE_QUERY, slideAt, useTap } from '../src/studio/StudioView.js';
 import { captureBoothCode } from '../src/boothCode.js';
 
 /** 보관한 부스 코드와 메모리 값을 함께 지운다(#booth= 로 여는 것과 같다 — 저장소가 막힌 브라우저용 메모리 값이 다음 테스트로 새지 않게). */
@@ -600,12 +600,14 @@ describe('카메라', () => {
     await act(async () => { el<HTMLButtonElement>('shotBtn').click(); });
     await runCountdown();
     expect(document.querySelector('.camera-capture-notice')).not.toBeNull();
+    expect(document.querySelector('.captured-badge')).not.toBeNull();
     if (reason === '시간 경과') {
       await act(async () => { await vi.advanceTimersByTimeAsync(2400); });
     } else {
       await act(async () => { document.querySelector<HTMLButtonElement>('#cameraWorkspace .back-button')!.click(); });
     }
     expect(document.querySelector('.camera-capture-notice')).toBeNull();
+    expect(document.querySelector('.captured-badge')).toBeNull();   // 칸 귀퉁이 «✓ 촬영 완료»도 함께 사라진다(10/20 저녁 Bumm님, PC도)
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     expect(document.querySelector('.camera-capture-notice')).toBeNull();
   });
@@ -877,7 +879,7 @@ describe('인쇄', () => {
 /* 샘플 모드(2026-10-09 Bumm님) — 스위치는 .env.production의 VITE_SAMPLE_MODE. 10/20부터 샘플만은 «sample»이다(«1»은 두 단추).
    화면 고지와 같은 급의 약속이다: 카메라 권한을 묻지 않고, 서버에 아무것도 보내지 않는다. */
 describe('샘플 모드',()=>{
-  test('카메라 권한·서버 요청 없이 진짜 생성과 같은 로딩 화면을 40초 보인 뒤 8개 틀을 연다',async()=>{
+  test('카메라 권한·서버 요청 없이 진짜 생성과 같은 로딩 화면을 16초(장면 2개 — 10/20 저녁 Bumm님) 보인 뒤 8개 틀을 연다',async()=>{
     vi.stubEnv('VITE_SAMPLE_MODE','sample');
     const f=installFetch();
     await act(async()=>{renderApp();});
@@ -890,9 +892,9 @@ describe('샘플 모드',()=>{
     expect(spinner()!.open).toBe(true);
     await act(async()=>{await vi.advanceTimersByTimeAsync(8_000);});
     expect(spinner()!.dataset.scene).toBe('1');   // 진짜 생성과 같은 화면 — 8초마다 장면이 넘어간다
-    await act(async()=>{await vi.advanceTimersByTimeAsync(31_000);});
-    expect(spinner()!.open).toBe(true);   // 39초: 아직 닫히지 않는다(조판은 이미 끝났어도 40초를 채운다)
-    expect(document.querySelector('.generation-elapsed')!.textContent).toBe('기다린 시간 · 39초');
+    await act(async()=>{await vi.advanceTimersByTimeAsync(7_000);});
+    expect(spinner()!.open).toBe(true);   // 15초: 아직 닫히지 않는다(조판은 이미 끝났어도 16초를 채운다)
+    expect(document.querySelector('.generation-elapsed')!.textContent).toBe('기다린 시간 · 15초');
     expect(document.body.dataset.step).toBe('2');
     await act(async()=>{await vi.advanceTimersByTimeAsync(1_000);});
     vi.useRealTimers();
@@ -902,14 +904,24 @@ describe('샘플 모드',()=>{
     expect(document.querySelector('.completion-notice strong')!.textContent).toBe('완성 !');
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
     expect(f.calls).toHaveLength(0);   // /health도 /generate도 없다
-    expect(document.querySelector('.privacy-send')).toBeNull();   // 보내지 않는 판에는 «OpenAI로 전송» 고지를 붙이지 않는다
+    expect(document.body.textContent).not.toContain('OpenAI');
   });
   test('스위치가 꺼져 있으면(0) 촬영 단추와 카메라 켜기를 그대로 둔다',async()=>{
     vi.stubEnv('VITE_SAMPLE_MODE','0');
     await act(async()=>{renderApp();});
     expect(el('shotBtn').textContent).toBe('3초 뒤 사진 찍기');
     expect(document.getElementById('startBtn')).not.toBeNull();
-    expect(document.querySelector('.privacy-send')!.textContent).toContain('OpenAI(미국)로 전송');
+  });
+  test.each(['sample','1','0'])('«사진은 OpenAI(미국)로 전송돼요»는 어느 판에도 없고 개인정보처리방침 링크만 그 자리에 남는다(10/20 저녁 Bumm님, 휴대폰 · PC) — %s',async(mode)=>{
+    vi.stubEnv('VITE_SAMPLE_MODE',mode);
+    await act(async()=>{renderApp();});
+    const link=()=>document.querySelector<HTMLAnchorElement>('a.privacy-link')!;
+    expect(link().textContent!.trim()).toBe('개인정보처리방침');
+    expect(link().getAttribute('aria-label')).toBe('개인정보처리방침 (새 탭)');
+    expect(document.body.textContent).not.toContain('OpenAI');
+    await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
+    expect(link().textContent!.trim()).toBe('개인정보처리방침');
+    expect(document.body.textContent).not.toContain('OpenAI');
   });
 });
 
@@ -920,7 +932,6 @@ describe('두 단추',()=>{
     vi.stubEnv('VITE_SAMPLE_MODE','1');
     const f=installFetch();
     await act(async()=>{renderApp();});
-    expect(document.querySelector('.privacy-send')!.textContent).toContain('OpenAI(미국)로 전송');
     await act(async()=>{el<HTMLButtonElement>('prepareNextBtn').click();});
     expect(el('shotBtn').textContent).toContain('샘플 포스터 보기');
     expect(document.getElementById('startBtn')).not.toBeNull();   // 진짜 카메라도 켤 수 있다
@@ -928,7 +939,8 @@ describe('두 단추',()=>{
     const before=f.calls.length;   // 진짜 생성을 쓸 수 있는 판이라 /health는 미리 본다
     vi.useFakeTimers();
     await act(async()=>{el<HTMLButtonElement>('shotBtn').click();});
-    await act(async()=>{await vi.advanceTimersByTimeAsync(40_000);});
+    expect(document.querySelector('.camera-example-video')).toBeNull();   // 로딩이 뜨면 뒤의 예시 영상을 내려 소리를 멈춘다(10/20 저녁, PC도)
+    await act(async()=>{await vi.advanceTimersByTimeAsync(16_000);});
     vi.useRealTimers();
     await waitFor(()=>expect(document.body.dataset.step).toBe('3'));
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
@@ -1071,6 +1083,87 @@ describe('휴대폰 흐름', () => {
     expect(document.querySelector('.poster-slide[aria-current]')).toBe(document.querySelectorAll('.poster-slide')[0]);
     expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe('Cinema');
     expect(next.getAttribute('aria-label')).toBe('다음 포스터');
+  });
+
+  test('3단계 마지막 장에서 왼쪽으로 한 번 더 밀면 «처음 포스터로»처럼 1번으로, 오른쪽으로 밀면 넘김 그대로(10/20 저녁 Bumm님)', async () => {
+    asPhone(true);
+    installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    const carousel = document.querySelector<HTMLElement>('.poster-carousel')!;
+    const swipe = (dx: number, dy = 0) => act(async () => {
+      fireEvent.touchStart(carousel, { touches: [{ clientX: 300, clientY: 300 }] });
+      fireEvent.touchEnd(carousel, { changedTouches: [{ clientX: 300 + dx, clientY: 300 + dy }] });
+    });
+    const current = () => [...document.querySelectorAll('.poster-slide')].indexOf(document.querySelector('.poster-slide[aria-current]')!);
+    await swipe(-120);
+    expect(current()).toBe(0);   // 마지막 장이 아니면 밀기는 가로 스크롤(브라우저)이 맡는다 — 여기서 고르지 않는다
+    const next = document.querySelector<HTMLButtonElement>('.carousel-arrow.next')!;
+    for (let i = 0; i < 7; i++) await act(async () => { next.click(); });
+    expect(current()).toBe(7);
+    await swipe(120);
+    expect(current()).toBe(7);   // 오른쪽으로 밀기는 되감지 않는다
+    await swipe(-30);
+    expect(current()).toBe(7);   // 짧게 민 것은 밀기가 아니다
+    await swipe(-120, 150);
+    expect(current()).toBe(7);   // 세로로 더 민 것도 아니다
+    await swipe(-120);
+    expect(current()).toBe(0);
+    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe('Cinema');
+  });
+
+  test('2단계 «샘플 포스터 보기»: 손가락은 떼는 순간(click 없이도) 한 번에 로딩으로 들어간다(10/20 저녁 Bumm님 «두 번 눌러야 들어감»)', async () => {
+    asPhone(true);
+    vi.stubEnv('VITE_SAMPLE_MODE', '1');
+    installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    const shotBtn = el<HTMLButtonElement>('shotBtn');
+    const pointer = (type: string) => { const e = new Event(type, { bubbles: true }); Object.assign(e, { pointerType: 'touch', clientX: 10, clientY: 10 }); shotBtn.dispatchEvent(e); };
+    await act(async () => { pointer('pointerdown'); pointer('pointerup'); });
+    expect((document.getElementById('spinner') as HTMLDialogElement).open).toBe(true);
+  });
+
+  test('누름 처리(useTap): 손가락은 떼는 순간 한 번 · 뒤따르는 click은 거름 · 12px 넘게 밀거나 0.8초 넘게 누르면 아님 · 마우스 · 키보드 click은 그대로', () => {
+    const action = vi.fn();
+    let now = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    function Btn() { const tap = useTap(action); return <button type="button" id="tapBtn" {...tap}>누름</button>; }
+    render(<Btn />);
+    const b = el<HTMLButtonElement>('tapBtn');
+    // timeStamp 0은 리액트가 Date.now()로 바꿔 읽는다 — 실제 브라우저처럼 0이 아닌 값을 준다
+    const pointer = (type: string, init: Record<string, unknown>, at = 100) => {
+      const e = new Event(type, { bubbles: true }); Object.assign(e, { clientX: 10, clientY: 10, ...init }); Object.defineProperty(e, 'timeStamp', { value: at });
+      act(() => { b.dispatchEvent(e); });
+    };
+    pointer('pointerdown', { pointerType: 'touch' }); pointer('pointerup', { pointerType: 'touch' }, 220);
+    expect(action).toHaveBeenCalledTimes(1);
+    now += 50; act(() => { b.click(); });   // 손가락을 뗀 뒤 브라우저가 보내는 click
+    expect(action).toHaveBeenCalledTimes(1);
+    now += 2_000;
+    pointer('pointerdown', { pointerType: 'touch' }); pointer('pointerup', { pointerType: 'touch', clientY: 40 }, 220);
+    expect(action).toHaveBeenCalledTimes(1);   // 밀기(스크롤)
+    pointer('pointerdown', { pointerType: 'touch' }); pointer('pointerup', { pointerType: 'touch' }, 5_100);
+    expect(action).toHaveBeenCalledTimes(1);   // 오래 누름
+    pointer('pointerdown', { pointerType: 'mouse' }); pointer('pointerup', { pointerType: 'mouse' }, 220);
+    expect(action).toHaveBeenCalledTimes(1);   // 마우스는 떼는 순간이 아니라 click으로
+    act(() => { b.click(); });
+    expect(action).toHaveBeenCalledTimes(2);
+    b.disabled = true;
+    pointer('pointerdown', { pointerType: 'touch' }); pointer('pointerup', { pointerType: 'touch' }, 220);
+    expect(action).toHaveBeenCalledTimes(2);   // 막힌 단추
+  });
+
+  test('첫 페이지 단추(10/20 저녁 Bumm님): 휴대폰 글은 아이콘 + «주인공이 될 순간 보러 가기», PC 글은 «만들러 가기 →» 그대로 · 찍은 뒤 휴대폰 문구는 한 줄', async () => {
+    await act(async () => { renderApp(); });
+    const btn = el('prepareNextBtn');
+    expect(btn.querySelector('.label-phone')!.textContent).toBe('주인공이 될 순간 보러 가기');
+    expect(btn.querySelector('.label-phone svg')).not.toBeNull();
+    expect(btn.querySelector('.label-pc')!.textContent).toBe('주인공이 될 순간 만들러 가기 →');
+    expect(document.querySelector('.photo-review .label-phone')!.textContent).toBe('표정과 구도가 마음에 드나요 ?');
+    expect(document.querySelector('.photo-review .label-pc')!.textContent).toBe('표정과 구도가 마음에 드나요?다시 찍어도 괜찮아요.');
   });
 
   test('3단계 «내 휴대폰에 저장»(10/20): 아이폰은 «공유 창에서 ‘이미지 저장’을 누르세요» 한 줄, 안드로이드 · PC는 없음', async () => {

@@ -43,6 +43,8 @@
   .generation-dots { margin: 12px 0; }
   .movie-fact-bodies { margin-top: 6px; }
   .movie-fact-titles > *, .movie-fact-bodies > * { align-self: start; }
+  /* 10/20 저녁 Bumm님이 고른 끊는 자리(waitingSets.ts 설명의 \n) — 세 폭 모두 같은 자리에서 끊는다. PC는 그대로 한 덩어리. */
+  .movie-fact-bodies > p { white-space: pre-line; }
 }
 @media (prefers-reduced-motion: reduce) {
   .generation-copy-stack > *, .generation-robot-film, .generation-dots i { transition: none; }
