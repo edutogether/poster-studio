@@ -15,7 +15,10 @@ import { createRoot } from 'react-dom/client';
 import PosterStudio from './PosterStudio.js';
 import { captureBoothCode } from './boothCode.js';
 import { finishHomeRestart } from './restartHome.js';
+import { escapeKakaoInApp } from './kakaoEscape.js';
 
+// 카카오톡 안 브라우저면 바깥 브라우저로 한 번 넘긴다(2026-10-20). 앱은 그대로 그린다 — 못 넘기면 여기서 계속 쓴다.
+escapeKakaoInApp();
 finishHomeRestart();
 captureBoothCode();
 const container = document.querySelector('main.app');
