@@ -7,7 +7,8 @@
    헤드리스 크롬은 kakaotalk:// 를 열 앱이 없으니 화면은 그대로 남고, 그래서 «실패하면 안내»까지 같은 실행에서 본다.
    판정(하나라도 어긋나면 종료코드 1):
    - 카카오톡: 첫 열기에 이동 요청이 정확히 하나, 주소 = kakaotalk://web/openExternal?url=<encodeURIComponent(연 주소)>,
-     0.3초에 «브라우저로 여는 중…», 2.3초에 «다른 브라우저로 열기» 안내. 두 번째 열기는 이동 요청 0 · 안내가 바로 보임.
+     줄이 처음 보인 때(앱이 실행된 때)부터 0.1초에 «브라우저로 여는 중…», 2.3초에 «다른 브라우저로 열기» 안내. 두 번째 열기는 이동 요청 0 · 안내가 바로 보임.
+     시각은 페이지를 연 때가 아니라 줄이 처음 보인 때부터 잰다 — 라이브 첫 방문은 앱 파일을 받는 데 시간이 걸려 고정 시각으로 재면 어긋났다(10/20).
    - 안내 줄은 글자만 있으면 안 되고 화면 맨 위에 실제로 보여야 한다(가운데 점이 줄 안 — 10/20 스플래시에 가려진 채 글자 검사만 통과했다).
    - 사파리: 이동 요청 0 · 안내 줄 없음.
    캡처(원본 해상도 PNG)는 <결과 폴더>/<기기>-<열기>-<초>.png, 기록은 report.json. 카메라 · 인쇄 · AI 서버는 막는다(생성 0). */
@@ -67,11 +68,16 @@ try {
     await call('Storage.clearDataForOrigin', { origin: new URL(url).origin, storageTypes: 'all' }).catch(() => {});
     for (const visit of ['첫열기', '새로고침']) {
       navigations = [];
-      const t0 = Date.now();
       await call('Page.navigate', { url });
-      await delay(Math.max(0, 300 - (Date.now() - t0)));
+      // 앱이 실행되어 줄이 생길 때까지(카카오톡이 아니면 앱이 다 뜰 때까지) 기다린 뒤 그때부터 잰다
+      let t0 = Date.now();
+      for (let i = 0; i < 160; i++) {
+        if (await evaluate("!!document.querySelector('.kakao-escape') || !!document.getElementById('prepareNextBtn')").catch(() => false)) { t0 = Date.now(); break; }
+        await delay(50);
+      }
+      await delay(Math.max(0, 100 - (Date.now() - t0)));
       const at03 = await bannerText();
-      await capture(`${d.name}-${visit}-0.3초`);
+      await capture(`${d.name}-${visit}-0.1초`);
       await delay(Math.max(0, 2300 - (Date.now() - t0)));
       const at23 = await bannerText();
       await capture(`${d.name}-${visit}-2.3초`);
@@ -80,16 +86,16 @@ try {
       if (d.kakao && visit === '첫열기') {
         if (kakaoNavs.length !== 1) problems.push(`이동 요청 ${kakaoNavs.length}개(1개여야 함)`);
         else if (kakaoNavs[0] !== expected) problems.push(`이동 주소 다름: ${kakaoNavs[0]}`);
-        if (at03 !== '브라우저로 여는 중…') problems.push(`0.3초 줄: ${at03}`);
+        if (at03 !== '브라우저로 여는 중…') problems.push(`0.1초 줄: ${at03}`);
         if (!at23 || !at23.includes('다른 브라우저로 열기')) problems.push(`2.3초 줄: ${at23}`);
       } else if (d.kakao) {
         if (kakaoNavs.length) problems.push(`다시 넘김 ${kakaoNavs.length}번(0이어야 함)`);
-        if (!at03 || !at03.includes('다른 브라우저로 열기')) problems.push(`0.3초 줄: ${at03}`);
+        if (!at03 || !at03.includes('다른 브라우저로 열기')) problems.push(`0.1초 줄: ${at03}`);
       } else {
         if (kakaoNavs.length) problems.push(`카카오톡이 아닌데 넘김 ${kakaoNavs.length}번`);
         if (at03 !== null || at23 !== null) problems.push('카카오톡이 아닌데 안내 줄이 있음');
       }
-      console.log(`${d.name} ${visit}: 이동 요청 ${kakaoNavs.length ? kakaoNavs.join(' ') : '없음'} · 0.3초 «${at03 ?? '줄 없음'}» · 2.3초 «${at23 ?? '줄 없음'}»${problems.length ? '  ← ' + problems.join(' / ') : ''}`);
+      console.log(`${d.name} ${visit}: 이동 요청 ${kakaoNavs.length ? kakaoNavs.join(' ') : '없음'} · 0.1초 «${at03 ?? '줄 없음'}» · 2.3초 «${at23 ?? '줄 없음'}»${problems.length ? '  ← ' + problems.join(' / ') : ''}`);
       report.push({ device: d.name, visit, userAgent: d.ua, size: `${d.w}x${d.h}@${d.dpr}`, navigations: kakaoNavs, expected: d.kakao && visit === '첫열기' ? expected : null, at03, at23, problems });
       if (problems.length) fails.push(`${d.name} ${visit}: ${problems.join(' / ')}`);
     }
