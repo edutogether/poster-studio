@@ -16,7 +16,7 @@ import { buildPosters } from "./poster.js";
 import { boothCodeHeaders, saveBoothCode, verifyBoothCode } from "./boothCode.js";
 import { classifyGenerateFailure, type GenerateFailure } from "./generateFailure.js";
 import StudioView from "./studio/StudioView.js";
-import { SCENE_MS } from "./studio/GenerationWait.js";
+import { SCENE_MS, type SceneEnd } from "./studio/GenerationWait.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
 import { restartAtHome } from "./restartHome.js";
@@ -39,7 +39,8 @@ const MAX_FAILURES_PER_PHOTO = 3;
    포스터 고르기로 간다. 카메라 권한 요청·AI 호출·서버 요청은 하나도 일어나지 않는다(테스트로 고정).
    ⚠ 스위치를 끈 빌드에도 샘플 원화 파일(약 2.6MB)은 dist/assets에 남는다 — 빌드 도구가 그림을 코드 정리보다
    먼저 내보내기 때문이다(2026-10-09 두 방식으로 빌드해 확인). 앱은 그 파일을 부르지 않는다. */
-const SAMPLE_WAIT_SCENES = 5;
+// 10/20 저녁 Bumm님 «샘플 흐름의 로딩은 장면 5개 → 2개»(진짜 생성은 그대로 — 끝날 때까지)
+const SAMPLE_WAIT_SCENES = 2;
 
 /* 포스터 고르기 화면만 바로 여는 로컬 미리보기(2026-10-14 Bumm님: «샘플 흐름을 처음부터 거치지 않고 그 화면이 곧장 열리게»).
    개발 서버(npm run dev)에서 주소 끝에 ?preview=posters를 붙이면 샘플 원화로 8개 디자인을 채운 3단계가 곧장 열린다.
@@ -116,6 +117,7 @@ export default function PosterStudio() {
   const [snapshotURL, setSnapshotURL] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
+  const sceneEndRef = useRef<SceneEnd | null>(null);
   const [failure, setFailure] = useState<GenerateFailure | null>(null);
   const [online, setOnline] = useState(true);
   const [boothOpen, setBoothOpen] = useState(false);
@@ -448,6 +450,7 @@ export default function PosterStudio() {
           }
         }
         if (built) {
+          await sceneEndRef.current?.();   // 재생 중인 대기 영상은 끝까지 보여 주고 넘어간다(10/20)
           applyPosters(built);
           genCountRef.current += 1;   // 성공만 센다
           failCountRef.current = 0;
@@ -528,6 +531,7 @@ export default function PosterStudio() {
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
       const built = await buildPosters([sampleArt], meta);
       await waited;
+      await sceneEndRef.current?.();   // 진짜 생성과 같이 재생 중인 대기 영상은 끝까지(10/20)
       applyPosters(built);
       setCompletionId(value => value + 1);
     } catch {
@@ -636,6 +640,7 @@ export default function PosterStudio() {
       canvasRef={canvasRef}
       videoRef={videoRef}
       spinTextRef={spinTextRef}
+      sceneEndRef={sceneEndRef}
       onStart={onStart}
       cameraReadyId={cameraReadyId}
       onStop={() => { stopCamera(); setPhase("idle"); setStatus(""); }}

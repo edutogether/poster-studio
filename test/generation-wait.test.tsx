@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createRef } from "react";
+import type { SceneEnd } from "../src/studio/GenerationWait.js";
 import { act, cleanup, render } from "@testing-library/react";
 import GenerationWait, { createWaitSequence } from "../src/studio/GenerationWait.js";
 import { waitingSets } from "../src/studio/waitingSets.js";
@@ -21,8 +22,43 @@ describe("포스터 생성 대기", () => {
     const approved=JSON.parse(fs.readFileSync('_docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/assets/sets.json','utf8'));
     for(const scene of waitingSets){
       const saved=approved.find((s:{id:number})=>s.id===scene.id);
-      expect(scene.title).toBe(saved.title); expect(scene.fact).toEqual(saved.fact);
+      // 설명의 \n은 휴대폰에서 줄을 바꾸는 자리일 뿐 문구는 확정본 그대로다(10/20)
+      expect(scene.title).toBe(saved.title); expect({ ...scene.fact, body: scene.fact.body.replace(/\n/g, " ") }).toEqual(saved.fact);
     }
+  });
+  test("휴대폰 줄 바꿈은 10/20 Bumm님이 고른 자리 한 곳뿐이다(1 · 3 · 6번은 한 줄)",()=>{
+    const after: Record<number, string> = { 2: "그려", 4: "장편", 5: "작업을", 7: "선율을", 8: "언어의", 9: "포효에는", 10: "배우고", 11: "관찰하며", 12: "그린" };
+    for (const { id, fact: { body } } of waitingSets) {
+      const lines = body.split("\n");
+      if (after[id]) { expect(lines, `${id}번`).toHaveLength(2); expect(lines[0].endsWith(after[id]), `${id}번`).toBe(true); }
+      else expect(lines, `${id}번`).toHaveLength(1);
+    }
+  });
+  test("생성이 끝났을 때 재생 중인 대기 영상은 끝까지 기다리고, 재생 중이 아니면 바로 넘어간다(10/20, PC도)",async()=>{
+    const sceneEndRef: { current: SceneEnd | null } = { current: null };
+    render(<GenerationWait spinTextRef={createRef()} sceneEndRef={sceneEndRef}/>);
+    let done = false;
+    await act(async()=>{ await sceneEndRef.current!().then(()=>{ done = true; }); });
+    expect(done).toBe(true);   // 정지 그림(영상이 아직 안 나옴)이면 기다리지 않는다
+    const v = document.querySelector<HTMLVideoElement>(".generation-robot-video")!;
+    act(()=>{ v.dispatchEvent(new Event("playing")); });
+    expect(v.dataset.active).toBe("true");
+    await act(async()=>{ await vi.advanceTimersByTimeAsync(6_500); });   // 장면 경계(8초) 1.5초 전
+    Object.defineProperty(v, "paused", { configurable: true, get: () => false });
+    Object.defineProperty(v, "duration", { configurable: true, get: () => 8 });
+    Object.defineProperty(v, "currentTime", { configurable: true, get: () => 5 });   // 늦게 시작해 3초 남았다
+    const scene = headline();
+    done = false;
+    const wait = sceneEndRef.current!().then(()=>{ done = true; });
+    await act(async()=>{ await vi.advanceTimersByTimeAsync(2_000); });
+    expect(done).toBe(false);
+    expect(headline()).toBe(scene);   // 기다리는 동안 장면 경계를 지나도 넘기지 않는다(영상이 잘리지 않게)
+    await act(async()=>{ v.dispatchEvent(new Event("ended")); await wait; });
+    expect(done).toBe(true);
+    done = false;
+    const capped = sceneEndRef.current!().then(()=>{ done = true; });
+    await act(async()=>{ await vi.advanceTimersByTimeAsync(3_300); await capped; });   // «ended»가 안 와도 남은 시간 + 0.3초면 넘어간다
+    expect(done).toBe(true);
   });
   test("같은 난수에서도 세션에 저장한 첫 세트를 다시 선택하지 않는다",()=>{
     vi.spyOn(crypto,'getRandomValues').mockImplementation(array => { (array as Uint32Array).fill(0); return array; });

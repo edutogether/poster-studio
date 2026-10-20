@@ -1,10 +1,12 @@
 /* 대기 영상 12편이 실제 앱 화면에서 도는지 확인한다(2026-10-12 Bumm님 «12편 앱 장착», 팀장 전달).
 
-     node scripts/verify/waiting-videos-live.mjs [결과 폴더] [--runs 8] [--url <주소>]
+     node scripts/verify/waiting-videos-live.mjs [결과 폴더] [--runs 50] [--url <주소>]
 
    빌드본(dist/)을 이 도구 안의 작은 서버(127.0.0.1, 영상 Range 요청 지원)로 열고(--url을 주면 그 주소 — 배포 직후 라이브 확인,
    2026-10-15), 헤드리스 크롬으로 샘플 흐름
-   («샘플 포스터 보기» → 로딩 40초)을 12편이 다 나올 때까지 되풀이한다(장면 순서는 앱이 섞는다).
+   («샘플 포스터 보기» → 로딩)을 12편이 다 나올 때까지 되풀이한다(장면 순서는 앱이 섞는다).
+   10/20 밤부터 샘플 로딩은 장면 2개(16초)라 한 바퀴에 2편씩 본다 — 12편이 다 나오기까지 평균 19바퀴 안팎이라 상한을 8 → 50으로 올렸다
+   (8바퀴에서 10편만 나와 실패한 것을 보고 고침. 50바퀴에도 한 편이 안 나올 확률은 0.2% 안팎).
    판정: ① 12편 모두 로딩 화면에 나왔고, 나온 편마다 영상이 실제로 재생됐다(playing) — 정지 그림으로 되돌아간 편 0
          ② 재생 주소가 목록(src/studio/waiting-videos.json)과 같다
          ③ 이음매: 브라우저가 디코딩한 영상 첫 프레임과 정지 그림의 평균 화소 차이 < 4(편마다) — 정지 그림은 ffmpeg로 디코딩한
@@ -20,7 +22,7 @@ import { spawn } from 'node:child_process';
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
 const out = path.resolve(args.find((a, i) => !a.startsWith('--') && !['--runs', '--url'].includes(args[i - 1])) || '.cache/waiting-videos-live');
-const RUNS = Number(opt('--runs', 8));
+const RUNS = Number(opt('--runs', 50));
 const DIST = path.resolve('dist');
 const manifest = JSON.parse(fss.readFileSync('src/studio/waiting-videos.json', 'utf8'));
 assert.equal(manifest.length, 12, '목록 12편');

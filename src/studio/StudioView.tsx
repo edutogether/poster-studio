@@ -3,7 +3,7 @@ import type { RefObject } from "react";
 import type { Poster } from "../state.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "../defaults.js";
 import MemberField from "./MemberField.js";
-import GenerationWait from "./GenerationWait.js";
+import GenerationWait, { type SceneEnd } from "./GenerationWait.js";
 import CameraExample from "./CameraExample.js";
 import GenerateFailureDialog from "./GenerateFailureDialog.js";
 import BoothCodeDialog from "./BoothCodeDialog.js";
@@ -55,6 +55,7 @@ export interface StudioViewProps {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   videoRef: RefObject<HTMLVideoElement | null>;
   spinTextRef: RefObject<HTMLParagraphElement | null>;
+  sceneEndRef?: { current: SceneEnd | null };
   onStart: Action;
   onStop: Action;
   cameraReadyId: number;
@@ -97,6 +98,29 @@ function StudioIcon({name}: {name: 'camera' | 'arrow' | 'reset' | 'expand' | 'pr
     download: <><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></>
   };
   return <svg className="studio-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
+
+/** 아이폰 사파리는 누르는 순간 화면 어딘가가 바뀌면(예: 예시 영상 위에 숫자 3·2·1이 뜨고 지는 때) 첫 누름을 «마우스 올림»으로만 쓰고
+ *  click을 보내지 않는다(WebKit의 내용 변화 감시 — 10/20 저녁 Bumm님 «영상이 재생되는 동안 두 번 눌러야 들어감», 실기기 확인 필요).
+ *  그래서 손가락은 떼는 순간(pointerup)에 바로 처리하고 뒤따라오는 click은 한 번 거른다. 밀거나(12px 넘게) 오래 누른(0.8초) 것은 누름이 아니다.
+ *  마우스 · 키보드 · 화면 읽기 프로그램은 click 그대로다. */
+export function useTap(action: () => void) {
+  const latest = useRef(action);
+  latest.current = action;
+  const start = useRef<{ x: number; y: number; t: number } | null>(null);
+  const handledAt = useRef(-Infinity);
+  return useMemo(() => ({
+    onPointerDown: (event: React.PointerEvent) => { start.current = event.pointerType === "touch" ? { x: event.clientX, y: event.clientY, t: event.timeStamp } : null; },
+    onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
+      const s = start.current;
+      start.current = null;
+      if (event.pointerType !== "touch" || !s || event.currentTarget.disabled) return;
+      if (Math.hypot(event.clientX - s.x, event.clientY - s.y) > 12 || event.timeStamp - s.t > 800) return;
+      handledAt.current = performance.now();
+      latest.current();
+    },
+    onClick: () => { if (performance.now() - handledAt.current < 800) return; latest.current(); },
+  }), []);
 }
 
 function PeopleIcon({ group }: { group: boolean }) {
@@ -281,6 +305,19 @@ export default function StudioView(p: StudioViewProps) {
   const [saveHint, setSaveHint] = useState(false);
   const saveHintTimer = useRef(0);
   useEffect(() => () => window.clearTimeout(saveHintTimer.current), []);
+  // 2단계 촬영 단추들 — 손가락은 떼는 순간(pointerup)에 처리한다(useTap). 단추가 하는 일은 누르는 그때의 상태로 고른다.
+  const shotTap = useTap(() => (p.sampleChoice && p.phase === "idle" && !p.capturing ? p.onSample?.() : p.onShot()));
+  const phoneShotTap = useTap(() => p.onShot());
+  // 3단계 마지막 장에서 왼쪽으로 한 번 더 밀면 «처음 포스터로»와 같이 맨 앞으로(10/20 저녁 Bumm님). 오른쪽으로 미는 것은 보통 넘김.
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const onCarouselTouchStart = (event: React.TouchEvent) => { const t = event.touches[0]; swipeStart.current = t ? { x: t.clientX, y: t.clientY } : null; };
+  const onCarouselTouchEnd = (event: React.TouchEvent) => {
+    const s = swipeStart.current, t = event.changedTouches[0];
+    swipeStart.current = null;
+    if (!s || !t) return;
+    const dx = t.clientX - s.x, dy = t.clientY - s.y;
+    if (p.posters.length > 1 && p.selected >= p.posters.length - 1 && dx < -50 && Math.abs(dx) > Math.abs(dy) * 1.5) p.select(0);
+  };
   const onSave = () => {
     const poster = p.posters[p.selected];
     if (!poster) return;
@@ -356,16 +393,15 @@ export default function StudioView(p: StudioViewProps) {
                 InKY <strong>Film Festival</strong>
               </span>
             </button>
-            {/* 10/20 Bumm님 «개인정보 고지(사진이 OpenAI로 감)가 찍기 전에 보이게»: 사진을 보낼 수 있는 판(두 단추 · 실제)에서는
-                1 · 2단계 맨 위 개인정보 줄 앞에 한 마디를 붙인다 — 자리를 새로 쓰지 않아 휴대폰 한 화면 배열이 그대로다. 샘플만인 판은 보내지 않으니 붙이지 않는다. */}
+            {/* 10/20 저녁 Bumm님: «사진은 OpenAI(미국)로 전송돼요» 줄은 휴대폰 · PC 모두 뺀다 — 개인정보처리방침 링크만 예전 자리 그대로. */}
             <a
               className="privacy-link"
               href="privacy.html"
               target="_blank"
               rel="noopener"
-              aria-label={p.sampleMode ? "개인정보처리방침 (새 탭)" : "사진은 OpenAI(미국)로 전송돼요 · 개인정보처리방침 (새 탭)"}
+              aria-label="개인정보처리방침 (새 탭)"
             >
-              {!p.sampleMode && <span className="privacy-send">사진은 OpenAI(미국)로 전송돼요 · </span>}개인정보처리방침
+              개인정보처리방침
             </a>
           </div>
         </div>
@@ -585,7 +621,9 @@ export default function StudioView(p: StudioViewProps) {
                 className="primary-button"
                 onClick={() => go(2)}
               >
-                주인공이 될 순간 만들러 가기 <span aria-hidden="true">→</span>
+                {/* 10/20 저녁 Bumm님: 휴대폰은 «주인공이 될 순간 보러 가기» + 앞에 Lucide clapperboard. PC는 그대로. */}
+                <span className="label-pc">주인공이 될 순간 만들러 가기 <span aria-hidden="true">→</span></span>
+                <span className="label-phone"><svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>주인공이 될 순간 보러 가기</span>
               </button>
             </div>
           </form>
@@ -596,7 +634,8 @@ export default function StudioView(p: StudioViewProps) {
         <div className="camera-surface">
           <div className="camera-top"><span>카메라 미리 보기</span><span>{p.phase === "shot" ? "촬영 완료" : p.phase === "live" ? "카메라 연결됨" : "촬영 구도 예시"}</span></div>
           <div className={`camera-large cameraBox${exampleVideo ? " has-example-video" : ""}`}>
-            <CameraExample mode={p.mode} video={exampleVideo} hidden={p.phase !== "idle"} offstage={step !== 2} />
+            {/* 로딩 화면이 뜨면(2단계를 떠난 것과 같다) 예시 영상을 내려 소리도 멈춘다 — 10/20 저녁 Bumm님 «로딩 뒤에서 소리가 들림», PC도 */}
+            <CameraExample mode={p.mode} video={exampleVideo} hidden={p.phase !== "idle"} offstage={step !== 2 || p.spinning} />
             <video id="video" ref={p.videoRef} autoPlay playsInline muted className={p.phase === "live" ? "" : "hidden"}/>
             <img id="snapshot" src={p.snapshotURL ?? undefined} className={p.phase === "shot" ? "" : "hidden"} alt="촬영 사진"/>
             <div id="camHint" className={p.phase === "idle" ? "camHint camera-example-caption" : "camHint hidden"}>
@@ -612,14 +651,14 @@ export default function StudioView(p: StudioViewProps) {
             {cameraReadyVisible && step === 2 && p.phase === "live" && !p.capturing && <div className="camera-ready-notice" role="status">카메라 준비 완료</div>}
             {captureNoticeVisible && step === 2 && p.phase === "shot" && !p.generating && <div className="camera-ready-notice camera-capture-notice" role="status"><strong>촬영 완료 !</strong><span>사진을 확인하고 ‘이 사진으로 포스터 만들기’를 눌러주세요.</span></div>}
             <div className="camera-guides" aria-hidden="true"><i/><i/><i/><i/></div>
-            {p.phase === "shot" && <span className="captured-badge">✓ 촬영 완료</span>}
+            {p.phase === "shot" && captureNoticeVisible && <span className="captured-badge">✓ 촬영 완료</span>}   {/* 10/20 저녁 Bumm님 «잠깐 떴다가 사라지게» — 가운데 알림과 함께(2.4초), PC도 */}
             <div id="countdown" className={p.countdown === null ? "countdown hidden" : "countdown"} aria-live="assertive">{p.countdown}</div>
           </div>
           {/* ⑥ 휴대폰: 엄지 자리 빨간 원형 촬영 단추(PC에서는 숨김) — 아래 «3초 뒤 사진 찍기»와 같은 일을 한다. 휴대폰 2단계에는
               이 단추 하나만 남는다(10/18 Bumm님 «사진과 카메라 단추만 남기고»). 샘플 모드는 찍을 카메라가 없어 바로 샘플 포스터로 간다. */}
           <button type="button" id="phoneShotBtn" className="phone-shot" hidden={p.phase === "shot"} disabled={locked}
             aria-label={p.sampleMode ? "샘플 포스터 보기" : "3초 뒤 사진 찍기"}
-            onClick={p.onShot}>
+            {...phoneShotTap}>
             <StudioIcon name="camera"/>
           </button>
           <p className="camera-bottom">{p.mode === "group" ? "모두의 얼굴이 잘 보이도록, 조금씩 가까이 모여주세요." : "얼굴과 어깨가 화면 안에 들어오도록 맞춰주세요."}</p>
@@ -635,7 +674,7 @@ export default function StudioView(p: StudioViewProps) {
               <li><span>3</span><div><strong>준비되면 촬영</strong><p>버튼을 누르고 3초만 포즈를 유지해 주세요.</p></div></li>
             </ul>
 
-            <div className="photo-review" aria-hidden={p.phase !== "shot"}><p>표정과 구도가 마음에 드나요?<br/>다시 찍어도 괜찮아요.</p><button id="retakeBtn" type="button" className="quiet-button" disabled={locked || p.phase !== "shot"} onClick={p.onRetake}><StudioIcon name="reset"/>다시 찍기</button></div>
+            <div className="photo-review" aria-hidden={p.phase !== "shot"}><p><span className="label-pc">표정과 구도가 마음에 드나요?<br/>다시 찍어도 괜찮아요.</span><span className="label-phone">표정과 구도가 마음에 드나요 ?</span></p><button id="retakeBtn" type="button" className="quiet-button" disabled={locked || p.phase !== "shot"} onClick={p.onRetake}><StudioIcon name="reset"/>다시 찍기</button></div>
             </div>
             <div className="camera-film-heading"><h2>오늘 촬영할 <span className="camera-heading-accent">영화</span></h2></div>
             <div className="camera-film-card">
@@ -646,8 +685,7 @@ export default function StudioView(p: StudioViewProps) {
           <div className="action-dock camera-actions">
             <button type="button" className="back-button" aria-label="이전 단계로" disabled={locked} onClick={() => go(1)}><span aria-hidden="true">←</span> 이전</button>
             {/* 두 단추(10/20): 카메라를 켜기 전에는 «샘플 포스터 보기»(안 찍고 넘어가기), 켠 뒤에는 «3초 뒤 사진 찍기»(PC에는 원형 단추가 없다) */}
-            <button id="shotBtn" type="button" className="primary-button" hidden={p.phase === "shot"} disabled={locked}
-              onClick={p.sampleChoice && p.phase === "idle" && !p.capturing ? p.onSample : p.onShot}>
+            <button id="shotBtn" type="button" className="primary-button" hidden={p.phase === "shot"} disabled={locked} {...shotTap}>
               <StudioIcon name="camera"/>{p.sampleMode || (p.sampleChoice && p.phase === "idle" && !p.capturing) ? '샘플 포스터 보기' : p.capturing ? '촬영 중…' : '3초 뒤 사진 찍기'}
             </button>
             <button id="generateBtn" type="button" className="primary-button" hidden={p.phase !== "shot"} disabled={p.generating} onClick={p.onGenerate}>이 사진으로 포스터 만들기 <StudioIcon name="arrow"/></button>
@@ -685,7 +723,8 @@ export default function StudioView(p: StudioViewProps) {
           {/* ⑧ 휴대폰: 큰 포스터 한 장씩 좌우로 밀어 넘긴다(PC에서는 숨김 — 위 캔버스가 그대로 보인다). 가운데 장을 누르면 크게 보기(⑩). */}
           <div className="phone-stage">
             <div className="poster-carousel" ref={carouselRef} data-hint={hint || undefined} role="group"
-              aria-label="완성 포스터 — 옆으로 밀어 넘기기" onScroll={(event) => onSwipe(event.currentTarget)}>
+              aria-label="완성 포스터 — 옆으로 밀어 넘기기" onScroll={(event) => onSwipe(event.currentTarget)}
+              onTouchStart={onCarouselTouchStart} onTouchEnd={onCarouselTouchEnd}>
               {p.posters.map((poster, i) => (
                 <button type="button" key={poster.label + i} className="poster-slide" aria-current={i === p.selected || undefined}
                   aria-label={i === p.selected ? `${poster.label} 크게 보기` : `${poster.label} 보기`}
@@ -757,7 +796,7 @@ export default function StudioView(p: StudioViewProps) {
           </div>
         </div>
       </section>
-      {p.spinning && <GenerationWait spinTextRef={p.spinTextRef}/>}
+      {p.spinning && <GenerationWait spinTextRef={p.spinTextRef} sceneEndRef={p.sceneEndRef}/>}
       {saveHint && step === 3 && <p className="save-hint" role="status">공유 창에서 ‘이미지 저장’을 누르세요</p>}
       {completionVisible && step === 3 && !p.generating && <div className="completion-notice" role="status">
         <span className="completion-notice-mark" aria-hidden="true">✓</span>

@@ -183,8 +183,7 @@ function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: B
     // 배경 연장: 같은 그림을 칸을 덮는 크기로 크게 흐리고 살짝 가라앉혀 깐 뒤, 선명한 그림을 가장자리를 부드럽게 해서 얹는다.
     const sc = sCover * 1.08, iw = aw * sc, ih = ah * sc;
     c.save();
-    if ('filter' in c) c.filter = 'blur(36px) saturate(1.1)';
-    c.drawImage(art, cover.x + (cover.w - iw) / 2, cover.y + (cover.h - ih) * 0.45, iw, ih);
+    drawBlurred(c, 36, 1.1, (t) => t.drawImage(art, cover.x + (cover.w - iw) / 2, cover.y + (cover.h - ih) * 0.45, iw, ih));
     c.restore();
     c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(cover.x, cover.y, cover.w, cover.h);
     featherDraw(c, art, r, 56);
@@ -193,6 +192,93 @@ function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: B
   }
   c.restore();
   return r;
+}
+/* ───── 흐림(2026-10-20 저녁 Bumm님 «휴대폰에서 아치프레임 바깥 블러가 안 보임») ─────
+   원인: 흐림을 캔버스 필터(ctx.filter = 'blur(…)')로만 그렸는데 아이폰 사파리는 캔버스 필터를 그리지 않는다 — 그래서 아치 바깥 ·
+   배경 연장 · 빛 번짐이 흐림 없이 선명하게 나갔다(PC · 안드로이드 크롬은 그린다). 브라우저가 필터를 실제로 그리는지 한 번 재 보고,
+   못 그리면 같은 것을 화면 밖 캔버스에 그려 1/4로 줄인 뒤 화소를 직접 흐려(상자 흐림 세 번 ≈ 가우스, 투명도를 곱한 채로) 다시 키워 얹는다.
+   필터를 그리는 브라우저는 예전과 똑같은 명령을 그대로 쓴다 — PC 출력은 화소 하나 바뀌지 않는다. */
+let canvasFilterOk: boolean | null = null;
+/** 캔버스 필터가 실제로 그려지는지(속성만 있고 무시하는 브라우저도 있다) — 투명 바탕에 1px 점을 흐려 찍고 옆 화소가 물드는지 본다. */
+function canvasFilterWorks(): boolean {
+  if (canvasFilterOk !== null) return canvasFilterOk;
+  canvasFilterOk = false;
+  try {
+    const t = document.createElement('canvas'); t.width = 9; t.height = 1;
+    const tc = t.getContext('2d', { willReadFrequently: true });
+    if (tc && 'filter' in tc) {
+      tc.filter = 'blur(2px)'; tc.fillStyle = '#000'; tc.fillRect(4, 0, 1, 1);
+      canvasFilterOk = tc.getImageData(2, 0, 1, 1).data[3] > 0;
+    }
+  } catch { /* 잴 수 없으면 직접 흐린다 */ }
+  return canvasFilterOk;
+}
+/** paint가 그리는 것을 px만큼 흐려 c에 얹는다(saturate는 CSS saturate()와 같은 뜻). 화면 밖 캔버스를 못 쓰면 예전처럼 흐림 없이 그린다. */
+function drawBlurred(c: Ctx, px: number, saturate: number, paint: (t: Ctx) => void) {
+  if (canvasFilterWorks()) {
+    c.filter = saturate === 1 ? `blur(${px}px)` : `blur(${px}px) saturate(${saturate})`;
+    paint(c);
+    return;
+  }
+  try {
+    const cw = c.canvas.width, ch = c.canvas.height, k = 4, sw = Math.ceil(cw / k), sh = Math.ceil(ch / k);
+    const big = document.createElement('canvas'); big.width = cw; big.height = ch;
+    const bc = big.getContext('2d');
+    const small = document.createElement('canvas'); small.width = sw; small.height = sh;
+    const sc = small.getContext('2d', { willReadFrequently: true });
+    if (!bc || !sc) throw new Error('no canvas');
+    bc.setTransform(c.getTransform());   // 돌려 놓은 틀(폴라로이드 등)도 같은 자리에
+    paint(bc);
+    sc.imageSmoothingQuality = 'high';
+    sc.drawImage(big, 0, 0, sw, sh);
+    const id = sc.getImageData(0, 0, sw, sh);
+    blurPixels(id, px / k, saturate);
+    sc.putImageData(id, 0, 0);
+    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingQuality = 'high'; c.drawImage(small, 0, 0, cw, ch); c.restore();
+  } catch {
+    paint(c);
+  }
+}
+/** 화소 흐림: 가우스 sigma를 상자 흐림 세 번으로(가장자리는 끝 화소를 늘인다). 투명도를 곱한 채로 흐려 투명한 곳 옆이 검게 물들지 않는다. */
+export function blurPixels(id: ImageData, sigma: number, saturate = 1) {
+  const { width: w, height: h, data: d } = id, n = w * h;
+  const chans = [0, 1, 2, 3].map(() => new Float32Array(n)), tmp = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = d[i * 4 + 3];
+    chans[0][i] = d[i * 4] * a; chans[1][i] = d[i * 4 + 1] * a; chans[2][i] = d[i * 4 + 2] * a; chans[3][i] = a;
+  }
+  // 상자 셋의 너비(Ivan Kutskir의 가우스 근사): 홀수 너비 wl · wl+2를 섞어 분산을 sigma²에 맞춘다
+  const wIdeal = Math.sqrt(4 * sigma * sigma + 1);
+  let wl = Math.floor(wIdeal); if (wl % 2 === 0) wl--;
+  const m = Math.round((12 * sigma * sigma - 3 * wl * wl - 12 * wl - 9) / (-4 * wl - 4));
+  for (let pass = 0; pass < 3; pass++) {
+    const r = ((pass < m ? wl : wl + 2) - 1) / 2;
+    if (r < 1) continue;
+    const inv = 1 / (2 * r + 1);
+    for (const p of chans) {
+      for (let y = 0; y < h; y++) {   // 가로
+        const o = y * w;
+        let acc = p[o] * (r + 1);
+        for (let j = 1; j <= r; j++) acc += p[o + Math.min(j, w - 1)];
+        for (let x = 0; x < w; x++) { tmp[o + x] = acc * inv; acc += p[o + Math.min(x + r + 1, w - 1)] - p[o + Math.max(x - r, 0)]; }
+      }
+      for (let x = 0; x < w; x++) {   // 세로
+        let acc = tmp[x] * (r + 1);
+        for (let j = 1; j <= r; j++) acc += tmp[Math.min(j, h - 1) * w + x];
+        for (let y = 0; y < h; y++) { p[y * w + x] = acc * inv; acc += tmp[Math.min(y + r + 1, h - 1) * w + x] - tmp[Math.max(y - r, 0) * w + x]; }
+      }
+    }
+  }
+  const s = saturate;
+  for (let i = 0; i < n; i++) {
+    const a = chans[3][i];
+    if (a <= 0) { d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = d[i * 4 + 3] = 0; continue; }
+    const r = chans[0][i] / a, g = chans[1][i] / a, b = chans[2][i] / a;
+    d[i * 4] = s === 1 ? r : (0.213 + 0.787 * s) * r + (0.715 - 0.715 * s) * g + (0.072 - 0.072 * s) * b;
+    d[i * 4 + 1] = s === 1 ? g : (0.213 - 0.213 * s) * r + (0.715 + 0.285 * s) * g + (0.072 - 0.072 * s) * b;
+    d[i * 4 + 2] = s === 1 ? b : (0.213 - 0.213 * s) * r + (0.715 - 0.715 * s) * g + (0.072 + 0.928 * s) * b;
+    d[i * 4 + 3] = a;
+  }
 }
 /** 그림을 가장자리 f px만큼 투명하게 녹여 그린다(배경 연장과 이음매가 보이지 않게). 화면 밖 캔버스가 없으면 그냥 그린다. */
 function featherDraw(c: Ctx, art: HTMLImageElement, r: Rect, f: number) {
@@ -251,8 +337,7 @@ function halation(c: Ctx, art: HTMLImageElement, x: number, y: number, w: number
     }
     tc.putImageData(id, 0, 0);
     c.save(); c.globalCompositeOperation = 'screen'; c.globalAlpha = 0.6;
-    if ('filter' in c) c.filter = 'blur(10px)';
-    c.drawImage(t, x - 12, y - 12, w + 24, h + 24); c.restore();
+    drawBlurred(c, 10, 1, (b) => b.drawImage(t, x - 12, y - 12, w + 24, h + 24)); c.restore();
   } catch { /* 그림을 읽을 수 없으면 번짐 없이 */ }
 }
 /** 옛 필름 색(2026-10-18 Bumm님 필름스트립 «옛날 진짜 필름 색(필름 필터)을 씌워 봄»): 칸 안 화소에 직접 —
@@ -501,8 +586,7 @@ export const TEMPLATES: Template[] = [
     // 가장자리가 흐림에 비어 보이지 않게 화면보다 30px씩 크게 깐다.
     const pad = 30;
     c.save(); c.beginPath(); rectPath(c, 0, 0, W, H); archPath(c, cx, spring, r, archBottom); c.clip('evenodd');
-    if ('filter' in c) c.filter = 'blur(16px)';
-    photo(c, art, -pad, -pad, W + 2 * pad, H + 2 * pad, 0.45);
+    drawBlurred(c, 16, 1, (t) => photo(t, art, -pad, -pad, W + 2 * pad, H + 2 * pad, 0.45));
     c.restore();
     // 막: 위·옆은 옅게(그림이 보이게), 글자가 놓이는 아래로 갈수록 짙게(글자 대비).
     const vg = c.createLinearGradient(0, 0, 0, H);

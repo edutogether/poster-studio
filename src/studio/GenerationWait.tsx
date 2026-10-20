@@ -28,12 +28,18 @@ export function createWaitSequence() {
   return sequence;
 }
 
-export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject<HTMLParagraphElement | null> }) {
+/** 생성이 끝났을 때 부르는 «지금 대기 영상이 끝날 때까지 기다리기»(2026-10-20 Bumm님 «재생 중인 대기 영상은 끝까지 틀고 넘어감» — PC도).
+ *  영상이 재생 중이 아니면(정지 그림 · 움직임 줄이기) 바로 끝난다. 기다리는 동안은 8초 장면 넘김을 멈춘다 — 늦게 시작한 영상이
+ *  장면 경계에서 잘리지 않게. 한도는 남은 길이 + 0.3초(«ended»가 오지 않는 경우), 많아야 9초. */
+export type SceneEnd = () => Promise<void>;
+
+export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextRef: RefObject<HTMLParagraphElement | null>; sceneEndRef?: { current: SceneEnd | null } }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [reduced, setReduced] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
   const [scenes] = useState(createWaitSequence);
   const [sceneIndex, setSceneIndex] = useState(0);
+  const holdRef = useRef(false);
   // 로딩 화면은 멈추는 화면이 아니다(2026-10-06 Bumm님 결정 118) — 자동 넘김은 «움직임 줄이기» 설정에서만 멈춘다.
   const still = reduced;
   const scene = scenes[sceneIndex];
@@ -57,9 +63,23 @@ export default function GenerationWait({ spinTextRef }: { spinTextRef: RefObject
 
   useEffect(() => {
     if (still) return;
-    const timer = window.setInterval(() => setSceneIndex(value => (value + 1) % scenes.length), SCENE_MS);
+    const timer = window.setInterval(() => { if (!holdRef.current) setSceneIndex(value => (value + 1) % scenes.length); }, SCENE_MS);
     return () => window.clearInterval(timer);
   }, [still, scenes.length]);
+
+  useEffect(() => {
+    if (!sceneEndRef) return;
+    sceneEndRef.current = () => new Promise<void>((resolve) => {
+      const v = dialog.current?.querySelector<HTMLVideoElement>('video[data-active="true"]');
+      if (still || !v || v.paused || v.ended) { resolve(); return; }
+      holdRef.current = true;
+      const left = Math.max(0, ((Number.isFinite(v.duration) ? v.duration : SCENE_MS / 1000) - v.currentTime) * 1000);
+      const done = () => { v.removeEventListener("ended", done); window.clearTimeout(timer); resolve(); };
+      const timer = window.setTimeout(done, Math.min(left + 300, 9_000));
+      v.addEventListener("ended", done);
+    });
+    return () => { sceneEndRef.current = null; };
+  }, [sceneEndRef, still]);
 
   useEffect(() => {
     const next = new Image();
