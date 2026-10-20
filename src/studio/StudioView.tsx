@@ -60,6 +60,9 @@ export interface StudioViewProps {
   cameraReadyId: number;
   onShot: Action;
   sampleMode?: boolean;
+  /** 두 단추(VITE_SAMPLE_MODE=both): 카메라를 켜기 전 아래 단추가 «샘플 포스터 보기»가 된다. */
+  sampleChoice?: boolean;
+  onSample?: () => void;
   onRetake: Action;
   onGenerate: Action;
   onPrint: Action;
@@ -353,14 +356,16 @@ export default function StudioView(p: StudioViewProps) {
                 InKY <strong>Film Festival</strong>
               </span>
             </button>
+            {/* 10/20 Bumm님 «개인정보 고지(사진이 OpenAI로 감)가 찍기 전에 보이게»: 사진을 보낼 수 있는 판(두 단추 · 실제)에서는
+                1 · 2단계 맨 위 개인정보 줄 앞에 한 마디를 붙인다 — 자리를 새로 쓰지 않아 휴대폰 한 화면 배열이 그대로다. 샘플만인 판은 보내지 않으니 붙이지 않는다. */}
             <a
               className="privacy-link"
               href="privacy.html"
               target="_blank"
               rel="noopener"
-              aria-label="개인정보처리방침 (새 탭)"
+              aria-label={p.sampleMode ? "개인정보처리방침 (새 탭)" : "사진은 OpenAI(미국)로 전송돼요 · 개인정보처리방침 (새 탭)"}
             >
-              개인정보처리방침
+              {!p.sampleMode && <span className="privacy-send">사진은 OpenAI(미국)로 전송돼요 · </span>}개인정보처리방침
             </a>
           </div>
         </div>
@@ -605,7 +610,7 @@ export default function StudioView(p: StudioViewProps) {
               </div>
             </>}
             {cameraReadyVisible && step === 2 && p.phase === "live" && !p.capturing && <div className="camera-ready-notice" role="status">카메라 준비 완료</div>}
-            {captureNoticeVisible && step === 2 && p.phase === "shot" && !p.generating && <div className="camera-ready-notice camera-capture-notice" role="status"><strong>촬영 완료 !</strong><span>사진을 확인하고 ‘이 사진으로 만들기’를 눌러주세요.</span></div>}
+            {captureNoticeVisible && step === 2 && p.phase === "shot" && !p.generating && <div className="camera-ready-notice camera-capture-notice" role="status"><strong>촬영 완료 !</strong><span>사진을 확인하고 ‘이 사진으로 포스터 만들기’를 눌러주세요.</span></div>}
             <div className="camera-guides" aria-hidden="true"><i/><i/><i/><i/></div>
             {p.phase === "shot" && <span className="captured-badge">✓ 촬영 완료</span>}
             <div id="countdown" className={p.countdown === null ? "countdown hidden" : "countdown"} aria-live="assertive">{p.countdown}</div>
@@ -640,8 +645,12 @@ export default function StudioView(p: StudioViewProps) {
           </aside>
           <div className="action-dock camera-actions">
             <button type="button" className="back-button" aria-label="이전 단계로" disabled={locked} onClick={() => go(1)}><span aria-hidden="true">←</span> 이전</button>
-            <button id="shotBtn" type="button" className="primary-button" hidden={p.phase === "shot"} disabled={locked} onClick={p.onShot}><StudioIcon name="camera"/>{p.sampleMode ? '샘플 포스터 보기' : p.capturing ? '촬영 중…' : '3초 뒤 사진 찍기'}</button>
-            <button id="generateBtn" type="button" className="primary-button" hidden={p.phase !== "shot"} disabled={p.generating} onClick={p.onGenerate}>이 사진으로 만들기 <StudioIcon name="arrow"/></button>
+            {/* 두 단추(10/20): 카메라를 켜기 전에는 «샘플 포스터 보기»(안 찍고 넘어가기), 켠 뒤에는 «3초 뒤 사진 찍기»(PC에는 원형 단추가 없다) */}
+            <button id="shotBtn" type="button" className="primary-button" hidden={p.phase === "shot"} disabled={locked}
+              onClick={p.sampleChoice && p.phase === "idle" && !p.capturing ? p.onSample : p.onShot}>
+              <StudioIcon name="camera"/>{p.sampleMode || (p.sampleChoice && p.phase === "idle" && !p.capturing) ? '샘플 포스터 보기' : p.capturing ? '촬영 중…' : '3초 뒤 사진 찍기'}
+            </button>
+            <button id="generateBtn" type="button" className="primary-button" hidden={p.phase !== "shot"} disabled={p.generating} onClick={p.onGenerate}>이 사진으로 포스터 만들기 <StudioIcon name="arrow"/></button>
           </div>
         </div>
       </section>

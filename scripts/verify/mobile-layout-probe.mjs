@@ -192,8 +192,9 @@ try {
     if (!await waitFor('!document.getElementById("cameraView").hidden')) { fail(tag, '2단계(혼자)'); continue; }
     await shot(tag, '2-step2-solo', { arrival: true, shotInView: !desktop, tips: !desktop });
     // 촬영 단추: 휴대폰은 빨간 원형 단추(⑥), PC와 원형 단추가 없는 옛 빌드(대조용 «전»)는 «3초 뒤 사진 찍기» / «샘플 포스터 보기».
-    // 샘플 모드는 그 단추가 곧 샘플 포스터 로딩이다(10/18 — 예전에는 원형 단추가 아래 단추 줄로 내려가기만 했다).
-    const phoneBtn = !desktop && await evaluate(`!!document.getElementById('phoneShotBtn')`);
+    // 샘플만인 판은 원형 단추가 곧 샘플 포스터 로딩이다(10/18). 두 단추 판(10/20)은 원형 단추가 진짜 촬영이라,
+    // 샘플 흐름은 아래 «샘플 포스터 보기»(#shotBtn)로 간다 — 원형 단추를 누르면 카메라를 막은 이 확인에서는 로딩이 오지 않는다.
+    const phoneBtn = !desktop && await evaluate(`(() => { const b = document.getElementById('phoneShotBtn'); return !!b && (${real} || b.getAttribute('aria-label') === '샘플 포스터 보기'); })()`);
     await evaluate(`document.getElementById('${phoneBtn ? 'phoneShotBtn' : 'shotBtn'}').click() || true`);
     if (real) {
       // 실제 모드: 카메라를 켜고 3·2·1 뒤 찍힌다 — «이 사진으로 만들기»가 나올 때까지 기다렸다가 그 화면을 재고 누른다

@@ -93,7 +93,12 @@ function drawPlaceholder(pctx: CanvasRenderingContext2D) {
 }
 
 export default function PosterStudio() {
-  const sampleMode = import.meta.env.VITE_SAMPLE_MODE === "1";
+  // VITE_SAMPLE_MODE(.env.production 한 줄):
+  //   "1" 두 단추 — 2026-10-20 Bumm님 «지금(베타)부터 두 단추»: 찍기 전 «샘플 포스터 보기», 찍은 뒤 진짜 AI 생성(부스 코드는 꺼진 채, 한도 그대로).
+  //       10/9~10/20의 «1»은 샘플만이었다 — 세션은 .env 파일을 고치지 못해(권한 밖) 값은 그대로 두고 뜻을 바꿨다.
+  //   "sample" 샘플만(카메라 권한 · 서버 요청 0) · "0"과 그 밖 실제만(부스 코드를 켤 무렵 11/7쯤 «0»으로).
+  const sampleMode = import.meta.env.VITE_SAMPLE_MODE === "sample";
+  const sampleChoice = import.meta.env.VITE_SAMPLE_MODE === "1";
   const [mode, setMode] = useState("solo");
   /* 초기 문구("카메라를 켜고 사진을 촬영해 주세요.")는 페이지 맨 아래 ※ 영역으로
      옮겼다(2026-09-09 대표 지시). **요소는 남긴다** — 오류·진행 상황이 뜨는 자리다.
@@ -508,7 +513,7 @@ export default function PosterStudio() {
      보인 뒤 결과로 간다. 조판은 로딩 화면 뒤에서 같이 돌린다 — 진짜 생성도 응답을 받은 뒤 로딩 화면이 떠 있는
      동안 조판한다. 원화는 샘플 모드에서 이 단추를 누를 때만 받는다. */
   const onSample = async () => {
-    if (!sampleMode || isGeneratingRef.current) return;
+    if (!(sampleMode || sampleChoice) || isGeneratingRef.current) return;
     stopCamera();
     isGeneratingRef.current = true;
     setGenerating(true);
@@ -635,6 +640,8 @@ export default function PosterStudio() {
       cameraReadyId={cameraReadyId}
       onStop={() => { stopCamera(); setPhase("idle"); setStatus(""); }}
       sampleMode={sampleMode}
+      sampleChoice={sampleChoice}
+      onSample={onSample}
       onShot={sampleMode ? onSample : onShot}
       onRetake={onRetake}
       onGenerate={sampleMode ? onSample : onGenerate}
