@@ -620,7 +620,8 @@ export const TEMPLATES: Template[] = [
     const side = 58, topB = 107, photoW = cardW - 2 * side;
     // 아래 흰 여백: 왼쪽 손글씨 제목 | 오른쪽 인쇄된 글. 줄 간격은 2도 기운 카드에서 줄끼리 테두리 상자가 겹치지 않게 넉넉히(1.5).
     // 글 크기는 다른 디자인의 빌링과 같은 급(4×6 인화에서 읽히게).
-    const gut = 44, rightW = 420, leftW = photoW - rightW - gut;
+    // 10/20 저녁 Bumm님 «이제 완전 좋다 — 제목 글씨만 조금 더 키우자»: 제목 칸을 넓히고(오른쪽 글 420 → 380, 사이 44 → 36) 큰 글자 한도를 올린다.
+    const gut = 36, rightW = 380, leftW = photoW - rightW - gut;
     const printed = column(c, [
       { text: m.tagline, s: { family: SERIF, weight: 600 }, size: 27, color: ink, lh: 1.5 },
       { text: creditMain(m), s: { family: SANS, weight: 700 }, size: 24, color: ink, gap: 22, lh: 1.55 },
@@ -628,7 +629,7 @@ export const TEMPLATES: Template[] = [
       { text: FEST, s: { family: SANS, weight: 600 }, size: 20, color: inkSoft, gap: 22, oneLine: true },
       { text: WHEN, s: { family: SANS, weight: 700 }, size: 22, color: ink, gap: 10, oneLine: true },
     ], rightW);
-    const title = fitTitle(c, m.title, { family: MARKER, weight: 700, tracking: -0.03 }, { width: leftW, max: 132, oneLineMin: 80, max2: 84, min: 44, maxLines: 3, lh: 1.3, maxHeight: 360 });
+    const title = fitTitle(c, m.title, { family: MARKER, weight: 700, tracking: -0.03 }, { width: leftW, max: 150, oneLineMin: 88, max2: 94, min: 48, maxLines: 3, lh: 1.3, maxHeight: 380 });
     const stripH = Math.max(284, Math.max(title.height, printed.height) + 64);
     const photoH = cardH - topB - stripH, capTop = cardTop + topB + photoH;
     c.save(); c.translate(W / 2, cardTop + cardH / 2); c.rotate(-0.026); c.translate(-W / 2, -(cardTop + cardH / 2));
