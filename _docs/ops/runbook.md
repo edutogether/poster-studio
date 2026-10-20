@@ -73,6 +73,11 @@
   물리적 안전장치다(2026-09-01 신설). 정상 사용으로 다 채웠다면 그 자체가
   "예산 목표치 도달"이라는 뜻이다.
 
+### 부스 코드를 켜지 않을 때 진짜 생성을 막는 것 (2026-10-20 Bumm님 «켤지 미정 — 장학사님과 정함»)
+- 부스 코드를 끈 채면 주소를 아는 누구나 «이 사진으로 포스터 만들기»로 진짜 생성을 할 수 있다(라이브는 두 단추). 그때 막는 것은 서버 한도 네 가지뿐이다:
+  **10분 150건(전체) · 10분 50건(공인 IP 하나) · 사진 한 장당 2회 · 하루 4,000건(KST)** — 하루 최대 약 **$160**(4,000건 × $0.04). 이 값들은 `functions/index.js`에 있다.
+  한도에 닿으면 위 세 가지 429 안내가 뜬다. 하루 4,000건에 닿으면 그날은 행사 부스도 못 만든다 — 바로 팀장·Bumm님께 알린다.
+
 ## 4. AI 생성이 실패함 — «포스터를 만들지 못했어요» 창 (2026-10-16부터)
 - 실패하면 빈 그라데이션 포스터로 넘어가지 않고, 실패 종류에 맞는 단추 두 개가 있는 창이 뜬다. 문구는 한 줄로 짧다(2026-10-17 Bumm님). 서버가 준 원인 문구는 화면에 보이지 않고, 노트북 크롬의 개발자 도구 콘솔에 «[포스터 생성 실패]»로 남는다.
 
@@ -165,7 +170,7 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
      그다음 `node scripts/ci/run-workflow-step.mjs "부스토큰 스모크테스트 (배포 직후 실제 인증 확인)"`가 통과해야 hosting으로 간다.
      부스 코드 스위치가 켜졌으면 이 단계는 `BOOTH_CODE_REQUIRED=true`와 `BOOTH_CODE`(값은 비공개 운영 문서)를 환경변수로 넣고 돌린다 —
      «코드 없이 403 booth_code»와 «코드를 실어 400»을 둘 다 본다(2026-10-17). 안 넣으면 403으로 실패하는 것이 맞다.
-   - 🔴 **부스 코드 스위치가 켜진 뒤(11/7쯤부터)에는 functions를 그냥 내지 않는다.** CI는 배포할 때마다 «부스 코드 설정» 단계에서 환경 파일을 새로 만들어 넣는다.
+   - 🔴 **부스 코드 스위치를 켰다면(켤지 미정 — 장학사님과 정함, 10/20) 그 뒤로는 functions를 그냥 내지 않는다.** CI는 배포할 때마다 «부스 코드 설정» 단계에서 환경 파일을 새로 만들어 넣는다.
      그 파일 없이 내면 켜 둔 스위치가 빠질 수 있다. 비공개 운영 문서의 절차로 같은 파일을 먼저 만들거나, 멈추고 팀장에게 보고한다.
    - hosting: `firebase deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive -m "로컬 배포 <커밋>"`
    - `firebase`는 5번의 `tools/deploy/node_modules/.bin/firebase`다.
@@ -175,8 +180,8 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
      - `node scripts/verify/dist-vs-live.mjs dist https://poster-studio.web.app`
    - CI 스모크(홈 200 · 나가면 안 되는 경로 404 · og.jpg · CORS 반사 · 부스 토큰 400):
      `node scripts/ci/run-workflow-step.mjs "부스토큰 스모크테스트 (배포 직후 실제 인증 확인)" "배포 직후 라이브 확인 (두 주소 · 200 + 404 + CORS)"`
-   - 샘플 흐름이 있는 판(`VITE_SAMPLE_MODE` «1» 두 단추 · «sample»)이면 대기 영상: `node scripts/verify/waiting-videos-live.mjs <결과 폴더> --url https://poster.edutogether.kr`
-   - 실제 모드면 포스터 출시 기준선: `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`
+   - 샘플 흐름이 있는 판(`src/studioMode.ts` «both» 두 단추 · «sample»)이면 대기 영상: `node scripts/verify/waiting-videos-live.mjs <결과 폴더> --url https://poster.edutogether.kr`
+   - «real» 판이면 포스터 출시 기준선: `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`
 9. **문제가 있으면 되돌린다.**
    - 명령: `firebase hosting:clone poster-studio:rollback-<날짜> poster-studio:live --project inky-poster-studio`
    - functions도 냈으면 `base` 사본에서 `firebase deploy --only functions --project inky-poster-studio --non-interactive`로 되돌리고,
