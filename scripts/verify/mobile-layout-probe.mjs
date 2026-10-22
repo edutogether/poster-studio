@@ -1,6 +1,6 @@
 /* 휴대폰 화면 배치 점검(2026-10-17 Bumm님: «요즘 애들은 다 핸드폰으로 본다. 모바일판 배열이 엉망인 것 손봐야 한다»).
 
-     node scripts/verify/mobile-layout-probe.mjs <dist 폴더> <결과 폴더> [--sizes 360x640,390x664,430x740,360x780,390x844,430x932] [--scale 3] [--desktop] [--real] [--device iphone|galaxy]
+     node scripts/verify/mobile-layout-probe.mjs <dist 폴더> <결과 폴더> [--sizes 360x640,390x664,430x740,360x780,390x844,430x932] [--scale 3] [--desktop] [--real] [--device iphone|galaxy] [--url <라이브 주소>]
    기본 크기의 앞 셋은 실제 브라우저 높이(주소창 · 아래 막대를 뺀 높이 — 아이폰 사파리 390×664 등), 뒤 셋은 화면 전체 높이다.
    10/19까지는 뒤 셋만 재서, 아이폰 사파리에서 2단계 단추가 61px 잘린 것을 못 잡았다(10/20 Bumm님 캡처).
 
@@ -27,7 +27,7 @@ import { spawn, spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
-const positional = args.filter((a, i) => !a.startsWith('--') && !['--sizes', '--scale'].includes(args[i - 1]));
+const positional = args.filter((a, i) => !a.startsWith('--') && !['--sizes', '--scale', '--device', '--url'].includes(args[i - 1]));
 const [distArg, outArg] = positional;
 if (!distArg || !outArg) { console.error('사용: node scripts/verify/mobile-layout-probe.mjs <dist 폴더> <결과 폴더> [--sizes …] [--scale 3]'); process.exit(2); }
 const dist = path.resolve(distArg), out = path.resolve(outArg);
@@ -40,6 +40,9 @@ const UAS = {
 };
 const device = opt('--device', null);
 if (device && !UAS[device]) { console.error('--device는 iphone 또는 galaxy'); process.exit(2); }
+// --url <주소>: 로컬 빌드 대신 그 주소(라이브)를 연다(10/22 최종 점검). dist는 가짜 카메라 그림 · 흉내 낸 생성 그림을 꺼내는 데만 쓴다.
+//   AI 서버(cloudfunctions)만 막고, 생성(/generate) 요청이 네트워크에 하나라도 잡히면(막혔어도) 종료코드 2 — 라이브에서 과금이 나갈 길을 두지 않는다.
+const liveUrl = opt('--url', null);
 // --desktop: 터치·휴대폰 흉내 없이 PC 브라우저로 같은 흐름을 찍는다 — 휴대폰 규칙이 PC 화면을 바꾸지 않았는지 대조할 때
 const desktop = args.includes('--desktop');
 // --real: 진짜 촬영 흐름(«both» 판의 원형 단추, 또는 `npx vite build --mode check-real`로 만든 «real» 판)을 가짜 카메라(dist/studio/camera-student.webp — 이미 공개된 지어낸 인물)로 찍고,
@@ -63,7 +66,8 @@ const server = http.createServer((req, res) => {
   fss.createReadStream(file).pipe(res);
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const base = `http://127.0.0.1:${server.address().port}/`;
+const base = liveUrl ? liveUrl.replace(/\/?$/, '/') : `http://127.0.0.1:${server.address().port}/`;
+const generateSeen = [];
 
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'mobile-probe-'));
 const art = path.join(dist, 'studio', 'camera-student.webp');
@@ -88,12 +92,16 @@ try {
   if (!target) throw Error('브라우저를 못 띄움');
   socket = new globalThis.WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r, j) => { socket.onopen = r; socket.onerror = j; });
-  socket.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.reject(Error(m.error.message)) : p.resolve(m.result); } };
+  socket.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.method === 'Network.requestWillBeSent' && /\/generate/.test(m.params.request.url)) generateSeen.push(m.params.request.url);
+    if (m.id) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.reject(Error(m.error.message)) : p.resolve(m.result); }
+  };
   const call = (method, params = {}) => new Promise((resolve, reject) => { const id = ++seq; pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method, params })); });
   const evaluate = async (expression) => { const r = await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails).slice(0, 300)); return r.result.value; };
   const waitFor = async (expr, ms = 15000) => { for (let i = 0; i < ms / 100; i++) { if (await evaluate(expr).catch(() => false)) return true; await delay(100); } return false; };
   await call('Network.enable');
-  await call('Network.setBlockedURLs', { urls: ['https://*'] });
+  await call('Network.setBlockedURLs', { urls: liveUrl ? ['*cloudfunctions.net*'] : ['https://*'] });
   await call('Page.enable');
   if (real) {
     // 생성(/generate)은 4초 뒤 그림 한 장(가짜 카메라와 같은 그림)으로, 나머지(/health)는 정상으로 답한다 — 로딩 화면을 찍을 시간을 둔다.
@@ -264,6 +272,11 @@ try {
     // 샘플만인 판은 원형 단추가 곧 샘플 포스터 로딩이다(10/18). 두 단추 판(10/20)은 원형 단추가 진짜 촬영이라,
     // 샘플 흐름은 아래 «샘플 포스터 보기»(#shotBtn)로 간다 — 원형 단추를 누르면 카메라를 막은 이 확인에서는 로딩이 오지 않는다.
     const phoneBtn = !desktop && await evaluate(`(() => { const b = document.getElementById('phoneShotBtn'); return !!b && (${real} || b.getAttribute('aria-label') === '샘플 포스터 보기'); })()`);
+    // PC 실제 흐름(두 단추 판): 카메라를 켜기 전 아래 단추는 «샘플 포스터 보기»다 — 칸 안 «카메라 켜기»를 먼저 누르고, 켜진 뒤 «3초 뒤 사진 찍기»(10/22)
+    if (real && !phoneBtn && await evaluate("!!document.getElementById('startBtn')")) {
+      await evaluate("document.getElementById('startBtn').click() || true");
+      if (!await waitFor('(() => { const v = document.getElementById("video"); return !!v && !v.classList.contains("hidden") && v.videoWidth > 0; })()', 15000)) { fail(tag, 'PC 카메라 켜기'); continue; }
+    }
     await evaluate(`document.getElementById('${phoneBtn ? 'phoneShotBtn' : 'shotBtn'}').click() || true`);
     if (real) {
       // 실제 모드: 카메라를 켜고 3·2·1 뒤 찍힌다 — 켜진 화면(숫자 동안)을 재고, «이 사진으로 만들기»가 나올 때까지 기다렸다가 그 화면을 재고 누른다
@@ -303,6 +316,7 @@ try {
   await delay(500); await fs.rm(profile, { recursive: true, force: true }).catch(() => {});
 }
 await fs.writeFile(path.join(out, 'report.json'), JSON.stringify(report, null, 1));
+if (generateSeen.length) { console.error(`❌ 생성 요청이 네트워크에 ${generateSeen.length}건 잡혔다(막혔더라도 실패): ${generateSeen[0]}`); process.exit(2); }
 if (blocked || !report.length) process.exit(2);
 const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.shotCut || r.tipsCut || r.dockCut || r.camBand || r.blank || r.camTidy).length;
 console.log(issues ? `걸린 화면 ${issues}개 / ${report.length}` : `통과 — ${report.length}개 화면 모두 결함 없음`);
