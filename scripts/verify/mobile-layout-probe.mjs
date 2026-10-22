@@ -41,7 +41,7 @@ const UAS = {
 const device = opt('--device', null);
 if (device && !UAS[device]) { console.error('--device는 iphone 또는 galaxy'); process.exit(2); }
 // --url <주소>: 로컬 빌드 대신 그 주소(라이브)를 연다(10/22 최종 점검). dist는 가짜 카메라 그림 · 흉내 낸 생성 그림을 꺼내는 데만 쓴다.
-//   AI 서버(cloudfunctions)만 막고, 생성(/generate) 요청이 네트워크에 하나라도 잡히면(막혔어도) 종료코드 2 — 라이브에서 과금이 나갈 길을 두지 않는다.
+//   생성(/generate)만 막고(/health는 무료라 받는다), 생성 요청이 네트워크에 하나라도 잡히면(막혔어도) 종료코드 2 — 라이브에서 과금이 나갈 길을 두지 않는다.
 const liveUrl = opt('--url', null);
 // --desktop: 터치·휴대폰 흉내 없이 PC 브라우저로 같은 흐름을 찍는다 — 휴대폰 규칙이 PC 화면을 바꾸지 않았는지 대조할 때
 const desktop = args.includes('--desktop');
@@ -101,7 +101,7 @@ try {
   const evaluate = async (expression) => { const r = await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw Error(JSON.stringify(r.exceptionDetails).slice(0, 300)); return r.result.value; };
   const waitFor = async (expr, ms = 15000) => { for (let i = 0; i < ms / 100; i++) { if (await evaluate(expr).catch(() => false)) return true; await delay(100); } return false; };
   await call('Network.enable');
-  await call('Network.setBlockedURLs', { urls: liveUrl ? ['*cloudfunctions.net*'] : ['https://*'] });
+  await call('Network.setBlockedURLs', { urls: liveUrl ? ['*cloudfunctions.net*/generate*'] : ['https://*'] });   // 라이브는 생성만 막는다 — /health(무료)는 받아 화면에 «AI 서버 연결» 경고가 뜨지 않게
   await call('Page.enable');
   if (real) {
     // 생성(/generate)은 4초 뒤 그림 한 장(가짜 카메라와 같은 그림)으로, 나머지(/health)는 정상으로 답한다 — 로딩 화면을 찍을 시간을 둔다.
@@ -232,6 +232,8 @@ try {
       else if (screen.includes('shot')) tidy.push('찍은 뒤 물음 · 다시 찍기를 못 찾음');
     } else if (cam) tidy.push('카메라 칸을 못 찾음');
     m.camTidy = tidy.length ? tidy.join(' / ') : 0;
+    // 찍기 전 예시 영상 칸은 16:9 그대로(10/23 Bumm님 «비율을 절대 깨지 않게») — 가로 ÷ 세로 1.778 ± 0.01
+    m.exBox = tips && m.camBox && Math.abs(m.camBox.ratio - 16 / 9) > 0.01 ? `예시 칸 ${m.camBox.w}×${m.camBox.h}(비율 ${m.camBox.ratio}, 16:9 아님)` : 0;
     const v = await call('Page.captureScreenshot', { format: 'png' });
     await fs.writeFile(path.join(out, `${tag}-${screen}-view.png`), Buffer.from(v.data, 'base64'));
     const metrics = await call('Page.getLayoutMetrics');
@@ -239,8 +241,8 @@ try {
     const s = await call('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: metrics.cssLayoutViewport.clientWidth, height: Math.min(h, 12000), scale: 1 } });
     await fs.writeFile(path.join(out, `${tag}-${screen}.png`), Buffer.from(s.data, 'base64'));
     report.push({ size: tag, screen, ...m });
-    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut || m.dockCut || m.camBand || m.blank || m.camTidy;
-    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.dockCut ? (typeof m.dockCut === 'number' ? ` · 빨간 단추가 ${m.dockCut}px 잘림` : ' · 빨간 단추를 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${m.camBand ? ` · 카메라 칸 띠 ${m.camBand}` : ''}${m.blank ? ` · 단추 줄 아래 ${m.blank}px 빔` : ''}${m.camTidy ? ` · ${m.camTidy}` : ''}${m.camBox && cam ? ` · 칸 ${m.camBox.w}×${m.camBox.h}` : ''}${bad ? '  ← 확인' : ''}`);
+    const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut || m.dockCut || m.camBand || m.blank || m.camTidy || m.exBox;
+    console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.dockCut ? (typeof m.dockCut === 'number' ? ` · 빨간 단추가 ${m.dockCut}px 잘림` : ' · 빨간 단추를 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${m.camBand ? ` · 카메라 칸 띠 ${m.camBand}` : ''}${m.blank ? ` · 단추 줄 아래 ${m.blank}px 빔` : ''}${m.camTidy ? ` · ${m.camTidy}` : ''}${m.exBox ? ` · ${m.exBox}` : ''}${m.camBox && cam ? ` · 칸 ${m.camBox.w}×${m.camBox.h}` : ''}${bad ? '  ← 확인' : ''}`);
   };
   const fail = (tag, what) => { blocked = true; console.error(`${tag}: ${what}에서 흐름이 막힘`); };
 
@@ -260,14 +262,14 @@ try {
     await shot(tag, '1-step1-group');
     await evaluate('scrollTo(0, document.scrollingElement.scrollHeight); document.getElementById("prepareNextBtn").click() || true');
     if (!await waitFor('!document.getElementById("cameraView").hidden')) { fail(tag, '2단계(같이)'); continue; }
-    await shot(tag, '2-step2-group', { arrival: true, shotInView: !desktop, tips: !desktop });
+    await shot(tag, '2-step2-group', { arrival: true, shotInView: !desktop, tips: !desktop, fit: !desktop });
     // 1단계로 돌아가기 — 휴대폰 2단계에는 «이전» 단추가 없어(10/18) 위 단계 표시의 «영화 준비»를 누른다(사람도 그렇게 한다)
     await evaluate(`document.querySelector('.stepper li:first-child button').click() || true`);
     await waitFor('!document.getElementById("prepareNextBtn").closest("[hidden]")');
     await evaluate(`document.querySelector('[data-mode="solo"]').click() || true`);
     await evaluate('scrollTo(0, document.scrollingElement.scrollHeight); document.getElementById("prepareNextBtn").click() || true');
     if (!await waitFor('!document.getElementById("cameraView").hidden')) { fail(tag, '2단계(혼자)'); continue; }
-    await shot(tag, '2-step2-solo', { arrival: true, shotInView: !desktop, tips: !desktop });
+    await shot(tag, '2-step2-solo', { arrival: true, shotInView: !desktop, tips: !desktop, fit: !desktop });
     // 촬영 단추: 휴대폰은 빨간 원형 단추(⑥), PC와 원형 단추가 없는 옛 빌드(대조용 «전»)는 «3초 뒤 사진 찍기» / «샘플 포스터 보기».
     // 샘플만인 판은 원형 단추가 곧 샘플 포스터 로딩이다(10/18). 두 단추 판(10/20)은 원형 단추가 진짜 촬영이라,
     // 샘플 흐름은 아래 «샘플 포스터 보기»(#shotBtn)로 간다 — 원형 단추를 누르면 카메라를 막은 이 확인에서는 로딩이 오지 않는다.
@@ -318,6 +320,6 @@ try {
 await fs.writeFile(path.join(out, 'report.json'), JSON.stringify(report, null, 1));
 if (generateSeen.length) { console.error(`❌ 생성 요청이 네트워크에 ${generateSeen.length}건 잡혔다(막혔더라도 실패): ${generateSeen[0]}`); process.exit(2); }
 if (blocked || !report.length) process.exit(2);
-const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.shotCut || r.tipsCut || r.dockCut || r.camBand || r.blank || r.camTidy).length;
+const issues = report.filter((r) => r.overflowX > 0 || r.offscreen.length || r.overlaps.length || r.small.length || r.endTight !== null || r.clipped.length || r.arrivalScroll || r.notFit || r.shotCut || r.tipsCut || r.dockCut || r.camBand || r.blank || r.camTidy || r.exBox).length;
 console.log(issues ? `걸린 화면 ${issues}개 / ${report.length}` : `통과 — ${report.length}개 화면 모두 결함 없음`);
 process.exit(issues ? 1 : 0);

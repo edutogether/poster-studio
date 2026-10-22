@@ -616,7 +616,9 @@ main.app {
      나머지가 쓰는 높이 388 → 377px(그만큼 칸이 길어진다 — 664에서 153 → 164px, 640에서 123 → 134px). */
   #cameraView:has(.camera-instructions[data-review="false"]) { display: flex; flex-direction: column; min-height: calc(100svh - var(--phone-header-h)); }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-surface { flex: none; padding-bottom: 8px; }
-  #cameraView:has(.camera-instructions[data-review="false"]) .camera-large { height: clamp(120px, min(calc((100vw - 44px) * 9 / 16), calc(100svh - var(--phone-header-h) - 377px)), 300px); }
+  /* 10/23 Bumm님 «개인 · 단체 사진 설명 영상은 16:9 비율을 절대 깨지 않게» — 칸은 언제나 폭 × 9/16(영상과 같은 비율, 잘림 · 늘어남 없음).
+     예전(10/20)에는 높이가 모자란 화면(640 · 664)에서 칸이 낮아져 2.36 · 2.11 비율로 영상이 잘렸다. 대신 짧은 화면은 아래 글씨를 줄여 맞춘다(아래 max-height 덩어리). */
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-large { height: auto; aspect-ratio: 16 / 9; max-width: 534px; margin-inline: auto; }
   #cameraView:has(.camera-instructions[data-review="false"]) #cameraWorkspace { flex: 1 0 auto; padding-top: 0; }
   #cameraView:has(.camera-instructions[data-review="false"]) .page-heading { margin: auto 0 14px; padding-top: 10px; }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-guide { flex: 0 0 auto; margin-bottom: auto; }   /* 남는 높이를 제목 위 · 안내 아래에 반씩(안내 칸이 늘어나 아래만 커지지 않게) */
@@ -719,6 +721,18 @@ main.app {
      찍은 뒤 포스터 페이지로 넘어가는 빨간 단추» — 영화 카드를 빼면 단추 줄이 안내 바로 아래(회색 칸 끝)로 올라온다.
      찍은 뒤 그 자리로 저절로 내려가는 움직임은 없앴다(StudioView — «찍은 뒤 내려간 화면»을 따로 두지 않음). */
   #cameraWorkspace .camera-film-heading, #cameraWorkspace .camera-film-card { display: none; }
+}
+/* 짧은 휴대폰 화면(실제 브라우저 높이 640 · 664 등): 예시 영상 칸을 16:9로 지킨 만큼 찍기 전 아래 글씨를 조금 줄여 한 화면에(10/23 Bumm님 — 단추는 화면 안, 스크롤 없음).
+   제목 26 → 22px · 안내 17/14 → 15/13px · 사이 여백을 조금씩. 키 큰 화면(740 이상)은 10/20 그대로다. */
+@media (max-width: 760px) and (max-height: 720px) {
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-surface { padding-bottom: 4px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .page-heading { margin: auto 0 10px; padding-top: 4px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .page-heading h1 { font-size: 22px; line-height: 1.3; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-instructions { padding-bottom: 6px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips { gap: 4px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips strong { font-size: 15px; line-height: 1.3; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips p { font-size: 13px; line-height: 1.35; margin-top: 1px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions { padding-top: 6px; }
 }
 .phone-stage, .poster-carousel-caption, .dialog-carousel, .label-phone, #saveBtn { display: none; }
 /* 아이폰 · 아이패드에서 «내 휴대폰에 저장»을 누르면 6초 동안 한 줄(10/20) — 10/20 저녁 Bumm님 «화면 상하좌우 가운데에» */
