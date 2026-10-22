@@ -1,0 +1,39 @@
+:root { --ink: #1c1c1c; --line: #d9d9de; --soft: #f4f4f6; --accent: #4f46e5; --accent-bg: #eef2ff; --warn: #b45309; --warn-bg: #fffbeb; --bad: #be123c; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; font: 14px/1.45 "Pretendard", "Malgun Gothic", system-ui, sans-serif; color: var(--ink); background: #e9e9ee; }
+button, select { font: inherit; }
+.bar, .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 14px; background: #fff; border-bottom: 1px solid var(--line); }
+.brand { margin-right: 8px; font-size: 15px; }
+.field { display: inline-flex; align-items: center; gap: 6px; }
+select { height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+button { height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.group { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; }
+.zlabel { min-width: 44px; text-align: center; color: #555; }
+.sel { min-width: 260px; padding: 6px 10px; border-radius: 8px; background: var(--soft); color: #444; font-size: 13px; }
+.spacer { flex: 1; }
+.status { margin: 0; padding: 6px 14px; background: var(--accent-bg); color: #3730a3; font-size: 13px; }
+.status.bad { background: #fff1f2; color: var(--bad); }
+.wrap { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
+.sizer { position: relative; margin: 0 auto; }
+.stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-shadow: 0 6px 28px #0003; background: #fff; }
+.stage iframe { display: block; border: 0; background: #fff; }
+.list { position: fixed; right: 16px; top: 150px; bottom: 16px; width: 420px; overflow: auto; padding: 14px 16px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px #0002; }
+.list h2 { margin: 0 0 6px; font-size: 16px; }
+.list .hint { margin: 0 0 10px; color: #666; font-size: 12px; }
+.list ol { margin: 0 0 12px; padding-left: 20px; }
+.list li { position: relative; padding: 6px 28px 6px 0; border-bottom: 1px solid #eee; }
+.list .where { color: #666; font-size: 12px; }
+.list .what { font-size: 13px; }
+.list li button { position: absolute; right: 0; top: 6px; width: 24px; height: 24px; padding: 0; border-radius: 6px; font-size: 12px; }
+@media (prefers-color-scheme: dark) {
+  :root { --ink: #ececf1; --line: #3a3a44; --soft: #24242b; --accent-bg: #1e1b4b; }
+  body { background: #121216; }
+  .bar, .tools, .list, select, button { background: #1b1b21; color: var(--ink); }
+  .status { color: #c7d2fe; }
+  .sel { color: #ccc; }
+}
+button:disabled, select:disabled { opacity: .5; cursor: wait; }

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Poster Studio 화면 편집판</title>
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+  <header class="bar">
+    <strong class="brand">Poster Studio 화면 편집판</strong>
+    <label class="field">갈래 <select id="cls"></select></label>
+    <label class="field">화면 <select id="screen"></select></label>
+    <button type="button" id="reload" title="이 화면을 처음부터 다시 엽니다">다시 열기</button>
+    <span class="group" aria-label="보기 크기">
+      <button type="button" id="zFit">맞춤</button><button type="button" id="z100" title="원본 해상도(1:1)">100%</button><button type="button" id="zOut" aria-label="작게">−</button><button type="button" id="zIn" aria-label="크게">+</button><span id="zLabel" class="zlabel"></span>
+    </span>
+    <span class="group" aria-label="모드">
+      <button type="button" id="modeEdit" class="on" title="요소를 눌러 고르고 고칩니다">편집</button><button type="button" id="modeApp" title="앱을 그대로 눌러 봅니다(넘기기 · 크게 보기 등)">앱 조작</button>
+    </span>
+  </header>
+  <div class="tools">
+    <span class="sel" id="selName">고른 요소 없음</span>
+    <button type="button" id="tParent" title="고른 요소를 감싼 상자를 고릅니다">↑ 감싼 상자</button>
+    <button type="button" id="tFontDown">글자 −</button><button type="button" id="tFontUp">글자 +</button>
+    <button type="button" id="tText">글자 고치기</button>
+    <button type="button" id="tHide" title="Del">숨기기</button>
+    <button type="button" id="tUndo" title="Ctrl+Z">되돌리기</button>
+    <span class="spacer"></span>
+    <button type="button" id="tList">바꾼 목록 (<span id="nOps">0</span>)</button>
+    <button type="button" id="tExport" class="primary">내보내기</button>
+  </div>
+  <p class="status" id="status" role="status"></p>
+  <main class="wrap" id="wrap">
+    <div class="sizer" id="sizer"><div class="stage" id="stage"><iframe id="app" title="앱 화면"></iframe></div></div>
+  </main>
+  <aside class="list" id="list" hidden>
+    <h2>바꾼 목록</h2>
+    <p class="hint">갈래 · 화면 · 요소 · 무엇을 · 전 → 후. «내보내기»로 받은 파일을 세션에 주시면 비율 단위로 코드에 옮깁니다.</p>
+    <ol id="ops"></ol>
+    <button type="button" id="tClear">모두 지우기</button>
+  </aside>
+  <script src="editor.js"></script>
+</body>
+</html>
