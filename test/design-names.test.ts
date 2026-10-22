@@ -9,5 +9,7 @@ test("디자인 8종 모두 영어 이름이 있고, 목록에 없는 이름은 
   for (const label of labels) expect(DESIGN_NAMES_EN[label], label).toMatch(/^[A-Z][A-Za-z ]+$/);
   expect(Object.keys(DESIGN_NAMES_EN).sort()).toEqual([...labels].sort());
   expect(designNameEn("시네마")).toBe("Cinema");
+  // 10/23 Bumm님이 준 글자 그대로(대소문자 · 띄어쓰기)
+  expect(labels.map((l) => DESIGN_NAMES_EN[l])).toEqual(["Cinema", "Editorial", "Color Block", "Arch Frame", "Film Strip", "Polaroid", "Typography", "Triptych"]);
   expect(designNameEn("없는 이름")).toBe("없는 이름");
 });
