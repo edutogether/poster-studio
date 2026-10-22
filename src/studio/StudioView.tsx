@@ -782,7 +782,7 @@ export default function StudioView(p: StudioViewProps) {
                     </span>
                   </span>
                   <span className="style-caption">
-                    <span className="style-name label">{poster.label}</span>
+                    <span className="style-name label">{designNameEn(poster.label)}</span>
                   </span>
                 </button>
               ))}

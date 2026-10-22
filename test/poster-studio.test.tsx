@@ -1174,6 +1174,17 @@ describe('휴대폰 흐름', () => {
     expect(document.querySelector('.photo-review .label-pc')!.textContent).toBe('표정과 구도가 마음에 드나요?다시 찍어도 괜찮아요.');
   });
 
+  test('PC 3단계 썸네일 이름은 영어(10/23 Bumm님) — 읽기 도구용 이름은 한글 그대로', async () => {
+    installFetch();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    const names = [...document.querySelectorAll('#gallery .style-name')].map((n) => n.textContent);
+    expect(names).toEqual(['Cinema', 'Editorial', 'Color Block', 'Arch Frame', 'Film Strip', 'Polaroid', 'Typography', 'Triptych']);
+    expect(document.querySelectorAll('#gallery .thumb')[0].getAttribute('aria-label')).toBe(`${TEMPLATES[0].label} 버전 고르기`);
+  });
+
   test('3단계 «내 휴대폰에 저장»(10/20): 아이폰은 «공유 창에서 ‘이미지 저장’을 누르세요» 한 줄, 안드로이드 · PC는 없음', async () => {
     asPhone(true);
     installFetch();
