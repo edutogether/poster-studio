@@ -1,6 +1,6 @@
 /* 설명서(_docs/manual/)에 넣을 화면 캡처를 만든다(2026-10-16). 실제 모드 개발 서버 + 가짜 카메라(공개 예시 그림)로 찍는다.
 
-     node scripts/docs/manual-captures.mjs [개발 서버=http://localhost:5602/] [샘플 모드 빌드 서버=http://localhost:5500/] [--phone]
+     node scripts/docs/manual-captures.mjs [개발 서버=http://localhost:5602/] [샘플 모드 빌드 서버=http://localhost:5500/] [--phone] [--only 이름,…]
 
    빌드 서버는 서버가 허용하는 주소(http://localhost:5500 또는 8080)로 연다 — 두 단추 판은 열 때 /health를 부르므로 다른 주소면 «AI 서버 연결» 경고가 그림에 찍힌다.
 
@@ -18,7 +18,9 @@ import os from 'node:os';
 
 const cli = process.argv.slice(2);
 const phoneOnly = cli.includes('--phone');
-const [dev = 'http://localhost:5602/', sample = 'http://localhost:5500/'] = cli.filter((a) => !a.startsWith('--'));
+// --only 06-step3-posters,… : 흐름은 그대로 지나가되 적은 그림만 새로 쓴다(2026-10-23 — PC 썸네일 이름만 영어로 바뀌어 06만 다시)
+const only = cli.includes('--only') ? cli[cli.indexOf('--only') + 1].split(',') : null;
+const [dev = 'http://localhost:5602/', sample = 'http://localhost:5500/'] = cli.filter((a, i) => !a.startsWith('--') && cli[i - 1] !== '--only');
 const outDir = path.resolve('_docs/manual/img');
 await fs.mkdir(outDir, { recursive: true });
 const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'manual-cap-'));
@@ -49,6 +51,7 @@ try {
   };
   const shot = async (name, check, width = 1600) => {
     if (check) assert.ok(await evaluate(check), `${name}: 화면 조건이 맞지 않는다(${check})`);
+    if (only && !only.includes(name)) return;
     const s = await call('Page.captureScreenshot', { format: 'png' });
     const png = path.join(tmp, `${name}.png`); await fs.writeFile(png, Buffer.from(s.data, 'base64'));
     const jpg = path.join(outDir, `${name}.jpg`);
@@ -109,11 +112,13 @@ try {
   await delay(1600);   // 처음 한 번 살짝 움찔하는 움직임이 끝난 뒤
   await shot('12-phone-posters', "!!document.querySelector('.poster-slide[aria-current]') && !document.getElementById('saveBtn').hidden", 780);
   // 설명서에는 넷을 한 줄로 묶어 한 그림으로 넣는다(세로 그림 넷이면 쪽이 넷으로 늘어난다)
-  const phones = ['09-phone-first', '10-phone-story', '11-phone-camera', '12-phone-posters'].map((n) => path.join(outDir, `${n}.jpg`));
-  const flow = path.join(outDir, '13-phone-flow.jpg');
-  const joined = spawnSync('ffmpeg', ['-v', 'error', '-y', ...phones.flatMap((p) => ['-i', p]), '-filter_complex',
-    '[0]pad=iw+24:ih:0:0:white[a];[1]pad=iw+24:ih:0:0:white[b];[2]pad=iw+24:ih:0:0:white[c];[a][b][c][3]hstack=4,scale=1600:-2:flags=lanczos', '-q:v', '3', flow]);
-  assert.equal(joined.status, 0, '휴대폰 네 장 묶기 실패: ' + joined.stderr);
-  made.push(path.relative(process.cwd(), flow));
+  if (!only || only.includes('13-phone-flow')) {
+    const phones = ['09-phone-first', '10-phone-story', '11-phone-camera', '12-phone-posters'].map((n) => path.join(outDir, `${n}.jpg`));
+    const flow = path.join(outDir, '13-phone-flow.jpg');
+    const joined = spawnSync('ffmpeg', ['-v', 'error', '-y', ...phones.flatMap((p) => ['-i', p]), '-filter_complex',
+      '[0]pad=iw+24:ih:0:0:white[a];[1]pad=iw+24:ih:0:0:white[b];[2]pad=iw+24:ih:0:0:white[c];[a][b][c][3]hstack=4,scale=1600:-2:flags=lanczos', '-q:v', '3', flow]);
+    assert.equal(joined.status, 0, '휴대폰 네 장 묶기 실패: ' + joined.stderr);
+    made.push(path.relative(process.cwd(), flow));
+  }
   console.log(made.sort().join('\n'));
 } finally { try { socket?.close(); } catch {} chrome.kill(); await fs.rm(tmp, { recursive: true, force: true }).catch(() => {}); }

@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-10-23 | [ratio-canvas](2026-10-23-ratio-canvas/intent.md) | 2 | draft | 갈래(PC 2560×1440 · 태블릿 1024×1366/1366×1024 · 휴대폰 390×844)마다 기준 화면 하나를 통째로 줄이고 키운다 — 설계안만, PC 글자 크기 결정 대기 |
 | 2026-10-16 | [camera-example-video](2026-10-16-camera-example-video/intent.md) | 2 | in-progress | 촬영 화면 «자리 잡는 영상» 2편을 앱에 연결하는 자리 — 승인 전에는 화면 변화 0, 숫자·말풍선은 앱이 얹음 |
 | 2026-10-15 | [local-deploy-github-suspended](2026-10-15-local-deploy-github-suspended/intent.md) | 2 | done | GitHub 정지 중 master를 이 컴퓨터에서 Firebase로 직접 배포 — LF 사본·CI와 같은 검사·되돌림 채널 |
 | 2026-10-14 | [ai-retry-instead-of-fallback](2026-10-14-ai-retry-instead-of-fallback/intent.md) | 2 | in-progress | AI가 실패하면 «AI 없이 계속하기»(빈 그라데이션) 대신 «다시 만들기» — 결정 1~5 ⭐안 확정(Bumm 10/17), 출시 후보에 반영, 배포 뒤 done |
