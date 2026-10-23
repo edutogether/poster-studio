@@ -177,6 +177,11 @@ function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: B
   const ox = Math.max(sxLo, cxLo) <= Math.min(sxHi, cxHi) ? pick(Math.max(sxLo, cxLo), Math.min(sxHi, cxHi), wantX) : pick(sxLo, sxHi, wantX);
   const oy = Math.max(syLo, cyLo) <= Math.min(syHi, cyHi) ? pick(Math.max(syLo, cyLo), Math.min(syHi, cyHi), wantY) : pick(syLo, syHi, wantY);
   const r = { x: ox, y: oy, w: aw * s, h: ah * s };
+  drawPlaced(c, art, r, cover);
+  return r;
+}
+/** 자리 r에 그린 그림으로 칸 cover를 채운다 — 다 덮으면 그대로, 못 덮으면 같은 자리 배경 연장 위에 가장자리를 녹여 얹는다. */
+function drawPlaced(c: Ctx, art: HTMLImageElement, r: Rect, cover: Rect) {
   const covers = r.x <= cover.x + 0.5 && r.y <= cover.y + 0.5 && r.x + r.w >= cover.x + cover.w - 0.5 && r.y + r.h >= cover.y + cover.h - 0.5;
   c.save(); c.beginPath(); rectPath(c, cover.x, cover.y, cover.w, cover.h); c.clip();
   if (!covers) {
@@ -193,7 +198,30 @@ function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: B
     c.drawImage(art, r.x, r.y, r.w, r.h);
   }
   c.restore();
-  return r;
+}
+/* ───── 아치 창 배치(2026-10-23 Bumm님 «아치 모양으로 안에는 잘 보이고 밖에는 흐리게 하기로 한 거 아니야 ?») ─────
+   아치 창 안은 곡선 꼭대기까지 선명한 그림으로 꽉 채운다(덮어 채우기) — 주인공 상자를 네모 안전 영역에 지키던 placeArt는 그림을 줄여
+   창 위 약 184px가 흐린 연장으로 비었다. 대신 «얼굴 띠»(생성 지시문의 주인공 자리 — 혼자: 가로 30~70%, 단체: 8~92%, 세로 둘 다 8~35%)가
+   아치 곡선 안(가장자리 24px 안쪽)에 들어오는 자리 · 크기 가운데 창을 가장 많이 덮는 것을 고른다. 덮을 수 있으면 그림 위를 창 꼭대기에 맞춘다
+   (얼굴이 가장 낮게 — 곡선이 넓은 쪽으로). 단체에서 양끝 얼굴이 곡선에 걸리면 걸리지 않는 가장 큰 채우기로 물러선다(위가 조금 빈다). */
+export function archPlacement(aw: number, ah: number, win: Rect, cx: number, spring: number, r: number, mode: string): Rect {
+  const fx = mode === 'group' ? 0.42 : 0.2, fy0 = 0.08, fy1 = 0.35, m = 25;   // fx = 얼굴 띠 반폭(그림 폭 대비, 가운데 기준). m은 24px + 계산 여유 1px
+  const sCover = Math.max(win.w / aw, win.h / ah), winB = win.y + win.h;
+  let best: { r: Rect; score: number } | null = null;
+  for (let k = 1; k >= 0.2 - 1e-9; k -= 0.01) {   // 가로 그림의 단체는 덮을 크기의 절반 남짓까지 줄여야 양끝 얼굴이 곡선 안에 든다
+    const s = sCover * k, W = aw * s, H = ah * s, half = fx * W, ox = cx - W / 2;
+    if (half > r - m) continue;
+    const yReq = Math.max(win.y + m, spring - Math.sqrt((r - m) ** 2 - half ** 2));   // 얼굴 띠 위 모서리가 곡선 안에 드는 가장 높은 자리
+    const oyMin = yReq - fy0 * H, oyMax = winB - m - fy1 * H;                        // 얼굴 띠 아래도 창 안
+    if (oyMin > oyMax) continue;
+    const oy = oyMin <= win.y ? Math.min(win.y, oyMax) : oyMin;
+    const covW = Math.max(0, Math.min(ox + W, win.x + win.w) - Math.max(ox, win.x)) / win.w;
+    const covH = Math.max(0, Math.min(oy + H, winB) - Math.max(oy, win.y)) / win.h;
+    const score = covW * covH;
+    if (!best || score > best.score + 1e-6) best = { r: { x: ox, y: oy, w: W, h: H }, score };
+    if (score >= 0.999) break;
+  }
+  return best ? best.r : { x: cx - (aw * sCover) / 2, y: win.y, w: aw * sCover, h: ah * sCover };
 }
 /** 그림을 r에 그리고, cover에서 r이 못 덮는 쪽(위 · 아래 · 옆 · 모서리)은 그림 가장자리의 얇은 띠(2%)를 늘여 채운다. 얼굴이 두 번 나오지 않는 배경 연장. */
 function extendEdges(t: Ctx, art: HTMLImageElement, r: Rect, cover: Rect) {
@@ -607,11 +635,11 @@ export const TEMPLATES: Template[] = [
     const tag = fitSmall(c, m.tagline, { family: SERIF, weight: 500, tracking: 0.14 }, 26, 960);
     const tagTop = titleTop - 30 - tag.height;
     const archBottom = tagTop - 56, r = 440, cx = W / 2, spring = 176 + r;
-    // 창 안: 주인공을 지키며 선명한 그림.
+    // 창 안: 곡선 꼭대기까지 선명한 그림으로 꽉(얼굴이 곡선에 안 걸리는 자리 · 크기 — archPlacement).
     const win: Rect = { x: cx - r, y: spring - r, w: 2 * r, h: archBottom - (spring - r) };
-    const safe: Rect = { x: cx - 0.8 * r, y: spring - 0.62 * r, w: 1.6 * r, h: archBottom - 18 - (spring - 0.62 * r) };
+    const placed = archPlacement(art.width, art.height, win, cx, spring, r, m.mode);
     c.save(); c.beginPath(); archPath(c, cx, spring, r, archBottom); c.clip();
-    const placed = placeArt(c, art, win, safe, subjectBox(m));
+    drawPlaced(c, art, placed, win);
     c.restore();
     // 바깥: 창 안 그림이 아치 밖으로 흐리게 이어지게 — 2026-10-18 Bumm님 «바깥 흐림과 색이 너무 세서 바깥이 거의 안 보임»: 흐림 28 → 16px, 막을 옅게.
     // 2026-10-23 Bumm님 «흐린 얼굴이 하나 더»: 예전에는 같은 그림을 화면을 덮는 크기로 키워 깔아, 창 안 얼굴과 크기 · 자리가 다른 흐린 얼굴(머리)이
