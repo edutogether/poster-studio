@@ -180,10 +180,12 @@ function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: B
   const covers = r.x <= cover.x + 0.5 && r.y <= cover.y + 0.5 && r.x + r.w >= cover.x + cover.w - 0.5 && r.y + r.h >= cover.y + cover.h - 0.5;
   c.save(); c.beginPath(); rectPath(c, cover.x, cover.y, cover.w, cover.h); c.clip();
   if (!covers) {
-    // 배경 연장: 같은 그림을 칸을 덮는 크기로 크게 흐리고 살짝 가라앉혀 깐 뒤, 선명한 그림을 가장자리를 부드럽게 해서 얹는다.
-    const sc = sCover * 1.08, iw = aw * sc, ih = ah * sc;
+    // 배경 연장: 선명한 그림과 같은 자리 · 크기로 깔고, 칸에서 모자란 쪽은 그림의 가장자리 띠를 늘여 채운 뒤 크게 흐리고 살짝 가라앉혀,
+    // 그 위에 선명한 그림을 가장자리를 부드럽게 해서 얹는다. 2026-10-23 Bumm님 «포스터 사진 위쪽에 크게 흐린 얼굴이 하나 더 보인다»:
+    // 예전에는 같은 그림을 칸을 덮는 크기로 키워 깔아, 그 안의 얼굴이 선명한 얼굴보다 크게 · 다른 자리에 흐리게 비쳤다.
+    // 가장자리 띠는 생성 지시문이 비워 두는 머리 위 여백 · 옆 · 아래라 얼굴이 들어가지 않는다.
     c.save();
-    drawBlurred(c, 36, 1.1, (t) => t.drawImage(art, cover.x + (cover.w - iw) / 2, cover.y + (cover.h - ih) * 0.45, iw, ih));
+    drawBlurred(c, 36, 1.1, (t) => extendEdges(t, art, r, cover));
     c.restore();
     c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(cover.x, cover.y, cover.w, cover.h);
     featherDraw(c, art, r, 56);
@@ -192,6 +194,32 @@ function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: B
   }
   c.restore();
   return r;
+}
+/** 그림을 r에 그리고, cover에서 r이 못 덮는 쪽(위 · 아래 · 옆 · 모서리)은 그림 가장자리의 얇은 띠(2%)를 늘여 채운다. 얼굴이 두 번 나오지 않는 배경 연장. */
+function extendEdges(t: Ctx, art: HTMLImageElement, r: Rect, cover: Rect) {
+  const aw = art.width, ah = art.height, kx = Math.max(2, aw * 0.02), ky = Math.max(2, ah * 0.02);
+  const cx1 = cover.x + cover.w, cy1 = cover.y + cover.h, rx1 = r.x + r.w, ry1 = r.y + r.h;
+  const left = r.x - cover.x, right = cx1 - rx1, top = r.y - cover.y, bottom = cy1 - ry1;
+  // 띠는 늘이는 방향과 직각으로 몇 칸(위 · 아래 24칸, 옆 32칸, 모서리 1칸)으로 평균 내어 늘인다 — 화소 그대로 늘이면 띠의 무늬가
+  // 길게 끌려 줄무늬가 된다(가로 그림을 아치에 작게 앉힐 때 아치 바깥에 세로 줄이 보였다). 이음매가 벌어지지 않게 그림 쪽으로 1px 겹친다.
+  const strip = (sx: number, sy: number, sw: number, sh: number, nx: number, ny: number, dx: number, dy: number, dw: number, dh: number) => {
+    if (dw <= 0.5 || dh <= 0.5) return;
+    const s = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+    const sc = s?.getContext?.('2d');
+    if (!s || !sc) { t.drawImage(art, sx, sy, sw, sh, dx, dy, dw, dh); return; }
+    s.width = nx; s.height = ny; sc.imageSmoothingQuality = 'high';
+    sc.drawImage(art, sx, sy, sw, sh, 0, 0, nx, ny);
+    t.save(); t.imageSmoothingEnabled = true; t.imageSmoothingQuality = 'high'; t.drawImage(s, dx, dy, dw, dh); t.restore();
+  };
+  t.drawImage(art, r.x, r.y, r.w, r.h);
+  if (top > 0) strip(0, 0, aw, ky, 24, 1, r.x, cover.y, r.w, top + 1);
+  if (bottom > 0) strip(0, ah - ky, aw, ky, 24, 1, r.x, ry1 - 1, r.w, bottom + 1);
+  if (left > 0) strip(0, 0, kx, ah, 1, 32, cover.x, r.y, left + 1, r.h);
+  if (right > 0) strip(aw - kx, 0, kx, ah, 1, 32, rx1 - 1, r.y, right + 1, r.h);
+  if (top > 0 && left > 0) strip(0, 0, kx, ky, 1, 1, cover.x, cover.y, left + 1, top + 1);
+  if (top > 0 && right > 0) strip(aw - kx, 0, kx, ky, 1, 1, rx1 - 1, cover.y, right + 1, top + 1);
+  if (bottom > 0 && left > 0) strip(0, ah - ky, kx, ky, 1, 1, cover.x, ry1 - 1, left + 1, bottom + 1);
+  if (bottom > 0 && right > 0) strip(aw - kx, ah - ky, kx, ky, 1, 1, rx1 - 1, ry1 - 1, right + 1, bottom + 1);
 }
 /* ───── 흐림(2026-10-20 저녁 Bumm님 «휴대폰에서 아치프레임 바깥 블러가 안 보임») ─────
    원인: 흐림을 캔버스 필터(ctx.filter = 'blur(…)')로만 그렸는데 아이폰 사파리는 캔버스 필터를 그리지 않는다 — 그래서 아치 바깥 ·
@@ -322,14 +350,17 @@ function grain(c: Ctx, x: number, y: number, w: number, h: number, alpha: number
 }
 /** 필름 빛 번짐(헐레이션): 그림의 밝은 곳만 골라 붉은 주황으로 물들여 흐리게 겹친다(Vision3·Cinestill 필름의 붉은 테).
  *  작은 캔버스(가로 120px)에 그려 늘이므로 그 자체로 부드럽게 퍼진다. 그림을 읽을 수 없는 환경이면 건너뛴다. */
-function halation(c: Ctx, art: HTMLImageElement, x: number, y: number, w: number, h: number, ay: number) {
+function halation(c: Ctx, art: HTMLImageElement, x: number, y: number, w: number, h: number, ay: number, at?: Rect) {
   if (typeof document === 'undefined') return;
   try {
     const sw = 120, sh = Math.max(1, Math.round(120 * h / w));
     const t = document.createElement('canvas'); t.width = sw; t.height = sh;
     const tc = t.getContext?.('2d'); if (!tc || typeof tc.getImageData !== 'function') return;
-    const s = Math.max(sw / art.width, sh / art.height), iw = art.width * s, ih = art.height * s;
-    tc.drawImage(art, (sw - iw) / 2, (sh - ih) * ay, iw, ih);
+    // at = 칸 안에 실제로 그린 그림의 자리(placeArt). 빛 번짐도 그 자리에서 뽑는다 — 칸을 덮게 키운 그림에서 뽑으면 밝은 곳이 어긋난 자리에 번진다(10/23)
+    if (at) { const k = sw / w; tc.drawImage(art, (at.x - x) * k, (at.y - y) * k, at.w * k, at.h * k); } else {
+      const s = Math.max(sw / art.width, sh / art.height), iw = art.width * s, ih = art.height * s;
+      tc.drawImage(art, (sw - iw) / 2, (sh - ih) * ay, iw, ih);
+    }
     const id = tc.getImageData(0, 0, sw, sh), d = id.data;
     for (let i = 0; i < d.length; i += 4) {
       const l = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255, k = Math.max(0, (l - 0.7) / 0.3);
@@ -580,13 +611,16 @@ export const TEMPLATES: Template[] = [
     const win: Rect = { x: cx - r, y: spring - r, w: 2 * r, h: archBottom - (spring - r) };
     const safe: Rect = { x: cx - 0.8 * r, y: spring - 0.62 * r, w: 1.6 * r, h: archBottom - 18 - (spring - 0.62 * r) };
     c.save(); c.beginPath(); archPath(c, cx, spring, r, archBottom); c.clip();
-    placeArt(c, art, win, safe, subjectBox(m));
+    const placed = placeArt(c, art, win, safe, subjectBox(m));
     c.restore();
-    // 바깥: 같은 그림을 화면 크기로 흐려 깐다 — 2026-10-18 Bumm님 «바깥 흐림과 색이 너무 세서 바깥이 거의 안 보임»: 흐림 28 → 16px, 막을 옅게.
+    // 바깥: 창 안 그림이 아치 밖으로 흐리게 이어지게 — 2026-10-18 Bumm님 «바깥 흐림과 색이 너무 세서 바깥이 거의 안 보임»: 흐림 28 → 16px, 막을 옅게.
+    // 2026-10-23 Bumm님 «흐린 얼굴이 하나 더»: 예전에는 같은 그림을 화면을 덮는 크기로 키워 깔아, 창 안 얼굴과 크기 · 자리가 다른 흐린 얼굴(머리)이
+    // 아치 위 · 옆으로 비쳤다. 이제 창 안과 같은 자리 · 크기로 깐다 — 그림 가까이는 같은 그림을 16px로, 그 바깥은 가장자리 띠를 늘여 36px로.
     // 가장자리가 흐림에 비어 보이지 않게 화면보다 30px씩 크게 깐다.
     const pad = 30;
     c.save(); c.beginPath(); rectPath(c, 0, 0, W, H); archPath(c, cx, spring, r, archBottom); c.clip('evenodd');
-    drawBlurred(c, 16, 1, (t) => photo(t, art, -pad, -pad, W + 2 * pad, H + 2 * pad, 0.45));
+    drawBlurred(c, 36, 1, (t) => extendEdges(t, art, placed, { x: -pad, y: -pad, w: W + 2 * pad, h: H + 2 * pad }));
+    drawBlurred(c, 16, 1, (t) => featherDraw(t, art, placed, 56));
     c.restore();
     // 막: 위·옆은 옅게(그림이 보이게), 글자가 놓이는 아래로 갈수록 짙게(글자 대비).
     const vg = c.createLinearGradient(0, 0, 0, H);
@@ -632,8 +666,8 @@ export const TEMPLATES: Template[] = [
     // 사진은 늘리지 않고 칸을 덮게(좌우를 자른다), 주인공 상자는 글 덩어리 위쪽 안전 영역에 지킨다.
     const safe: Rect = { x: imgX + 16, y: frameTop + 24, w: imgW - 32, h: tagTop - 40 - (frameTop + 24) };
     c.save(); roundRect(c, imgX, frameTop, imgW, frame.h, 10); c.clip();
-    placeArt(c, art, frame, safe, subjectBox(m));
-    halation(c, art, imgX, frameTop, imgW, frame.h, 0.45);
+    const placed = placeArt(c, art, frame, safe, subjectBox(m));
+    halation(c, art, imgX, frameTop, imgW, frame.h, 0.45, placed);
     const fade = c.createLinearGradient(0, tagTop - 260, 0, frameBottom);
     fade.addColorStop(0, 'rgba(10,7,4,0)'); fade.addColorStop(0.45, 'rgba(10,7,4,.62)'); fade.addColorStop(1, 'rgba(10,7,4,.9)');
     c.fillStyle = fade; c.fillRect(imgX, tagTop - 260, imgW, frameBottom - tagTop + 260);
