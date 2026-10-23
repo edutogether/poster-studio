@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { RefObject } from "react";
+import type { CSSProperties, RefObject } from "react";
 import type { Poster } from "../state.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "../defaults.js";
 import MemberField from "./MemberField.js";
@@ -157,6 +157,9 @@ export default function StudioView(p: StudioViewProps) {
   const [step, setStep] = useState(1);
   const [completionVisible, setCompletionVisible] = useState(false);
   const [cameraReadyVisible, setCameraReadyVisible] = useState(false);
+  // 카메라 · 찍은 사진의 가로 ÷ 세로 — 사진 틀을 이 비율로 맞춘다(PC · 태블릿, studio.css «사진 틀»)
+  const [camAspect, setCamAspect] = useState<number | null>(null);
+  const readAspect = (w: number, h: number) => { if (w > 0 && h > 0) setCamAspect(w / h); };
   const [captureNoticeVisible, setCaptureNoticeVisible] = useState(false);
   const [genre, setGenre] = useState("sf");
   const [preview, setPreview] = useState({
@@ -636,11 +639,19 @@ export default function StudioView(p: StudioViewProps) {
       <section id="cameraView" className="camera-layout" hidden={step !== 2} aria-label="사진 촬영">
         <div className="camera-surface">
           <div className="camera-top"><span>카메라 미리 보기</span><span>{p.phase === "shot" ? "촬영 완료" : p.phase === "live" ? "카메라 연결됨" : "촬영 구도 예시"}</span></div>
-          <div className={`camera-large cameraBox${exampleVideo ? " has-example-video" : ""}`}>
+          {/* 카메라 · 찍은 사진은 칸 안의 «사진 틀»(camera-frame)에 담는다 — PC · 태블릿은 켠 뒤 · 찍은 뒤 틀을 사진 비율에 맞춰 칸 가운데에 둔다
+              (data-fit · --cam-ar, studio.css «사진 틀»). 칸 비율과 사진 비율이 달라 위아래 · 양옆에 검은 띠가 남던 것(10/23 팀장, 태블릿 세로 · PC 1024×768). */}
+          <div className={`camera-large cameraBox${exampleVideo ? " has-example-video" : ""}`}
+            data-fit={(p.phase === "live" || p.phase === "shot") && camAspect ? "" : undefined}
+            style={camAspect ? { "--cam-ar": camAspect } as CSSProperties : undefined}>
             {/* 로딩 화면이 뜨면(2단계를 떠난 것과 같다) 예시 영상을 내려 소리도 멈춘다 — 10/20 저녁 Bumm님 «로딩 뒤에서 소리가 들림», PC도 */}
             <CameraExample mode={p.mode} video={exampleVideo} hidden={p.phase !== "idle"} offstage={step !== 2 || p.spinning} />
-            <video id="video" ref={p.videoRef} autoPlay playsInline muted className={p.phase === "live" ? "" : "hidden"}/>
-            <img id="snapshot" src={p.snapshotURL ?? undefined} className={p.phase === "shot" ? "" : "hidden"} alt="촬영 사진"/>
+            <div className="camera-frame">
+            <video id="video" ref={p.videoRef} autoPlay playsInline muted className={p.phase === "live" ? "" : "hidden"}
+              onLoadedMetadata={(e) => readAspect(e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
+              onResize={(e) => readAspect(e.currentTarget.videoWidth, e.currentTarget.videoHeight)}/>
+            <img id="snapshot" src={p.snapshotURL ?? undefined} className={p.phase === "shot" ? "" : "hidden"} alt="촬영 사진"
+              onLoad={(e) => readAspect(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}/>
             <div id="camHint" className={p.phase === "idle" ? "camHint camera-example-caption" : "camHint hidden"}>
               <span className="camera-example-label">{p.mode === "group" ? "이렇게, 모두의 얼굴이 보이게" : "이렇게, 얼굴과 어깨가 보이게"}</span>
               {!p.sampleMode && <button type="button" id="startBtn" className="camera-start-button" onClick={p.onStart} disabled={locked}>카메라 켜기 <StudioIcon name="camera"/></button>}
@@ -656,6 +667,7 @@ export default function StudioView(p: StudioViewProps) {
             <div className="camera-guides" aria-hidden="true"><i/><i/><i/><i/></div>
             {p.phase === "shot" && captureNoticeVisible && <span className="captured-badge">✓ 촬영 완료</span>}   {/* 10/20 저녁 Bumm님 «잠깐 떴다가 사라지게» — 가운데 알림과 함께(2.4초), PC도 */}
             <div id="countdown" className={p.countdown === null ? "countdown hidden" : "countdown"} aria-live="assertive">{p.countdown}</div>
+            </div>
           </div>
           {/* ⑥ 휴대폰: 엄지 자리 빨간 원형 촬영 단추(PC에서는 숨김) — 아래 «3초 뒤 사진 찍기»와 같은 일을 한다. 휴대폰 2단계에는
               이 단추 하나만 남는다(10/18 Bumm님 «사진과 카메라 단추만 남기고»). 샘플 모드는 찍을 카메라가 없어 바로 샘플 포스터로 간다. */}
@@ -668,7 +680,7 @@ export default function StudioView(p: StudioViewProps) {
 
         </div>
         <div className="workspace" id="cameraWorkspace">
-          <div className="page-heading"><h1>{p.phase === "shot" ? "이 사진으로 만들까요?" : <><span className="camera-heading-accent">{p.mode === "group" ? "우리답게," : "나답게,"}</span> 편하게 웃어주세요.</>}</h1></div>
+          <div className="page-heading"><h1>{p.phase === "shot" ? "이 사진으로 만들까요 ?" : <><span className="camera-heading-accent">{p.mode === "group" ? "우리답게," : "나답게,"}</span> 편하게 웃어주세요.</>}</h1></div>
           <aside className="camera-guide">
             <div className="camera-instructions" data-review={p.phase === "shot"}>
             <ul className="camera-tips" aria-hidden={p.phase === "shot"}>
@@ -677,7 +689,7 @@ export default function StudioView(p: StudioViewProps) {
               <li><span>3</span><div><strong>준비되면 촬영</strong><p>버튼을 누르고 3초만 포즈를 유지해 주세요.</p></div></li>
             </ul>
 
-            <div className="photo-review" aria-hidden={p.phase !== "shot"}><p><span className="label-pc">표정과 구도가 마음에 드나요?<br/>다시 찍어도 괜찮아요.</span><span className="label-phone">표정과 구도가 마음에 드나요 ?</span></p><button id="retakeBtn" type="button" className="quiet-button" disabled={locked || p.phase !== "shot"} onClick={p.onRetake}><StudioIcon name="reset"/>다시 찍기</button></div>
+            <div className="photo-review" aria-hidden={p.phase !== "shot"}><p><span className="label-pc">표정과 구도가 마음에 드나요 ?<br/>다시 찍어도 괜찮아요.</span><span className="label-phone">표정과 구도가 마음에 드나요 ?</span></p><button id="retakeBtn" type="button" className="quiet-button" disabled={locked || p.phase !== "shot"} onClick={p.onRetake}><StudioIcon name="reset"/>다시 찍기</button></div>
             </div>
             <div className="camera-film-heading"><h2>오늘 촬영할 <span className="camera-heading-accent">영화</span></h2></div>
             <div className="camera-film-card">
