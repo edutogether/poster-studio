@@ -6,7 +6,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import deviceMedia, { convertUnits, prefixSelector, readPcCanvas, splitQuery } from "../scripts/build/device-media.mjs";
 
 // 비율 기준 전환(2026-10-23) — 빌드 변환(scripts/build/device-media.mjs)과 기기 판정(public/device-canvas.js)
-describe("빌드 변환: 폭 · 높이 미디어 쿼리 → 기기 갈래", () => {
+describe("빌드 변환: 폭 · 높이 미디어 쿼리 → 기기 갈래(PC 캔버스일 때만)", () => {
   test("기준 크기(PC 2560×1440 · 태블릿 1366×1024 / 1024×1366 · 휴대폰 390×844)로 미리 평가한다", () => {
     expect(splitQuery("(max-width: 760px)")).toEqual({ devices: ["phone"], rest: "" });
     expect(splitQuery("(min-width: 761px) and (max-width: 1099px)")).toEqual({ devices: ["tablet-p"], rest: "" });
@@ -23,24 +23,23 @@ describe("빌드 변환: 폭 · 높이 미디어 쿼리 → 기기 갈래", () =
     expect(convertUnits("calc(100svh - 120px)")).toBe("calc(calc(100 * var(--vh, 1svh)) - 120px)");
     expect(convertUnits("50vw")).toBe("calc(50 * var(--vw, 1vw))");
   });
-  const CSS = "@media (max-width: 760px) { .a { color: red } } @media (min-width: 1100px) and (max-height: 820px) { .b { color: blue } } @media print { .c { display: none } } .d { width: 10vw }";
-  test("PC 캔버스 켜짐: src/ CSS만 바꾸고, 맞는 갈래가 없으면 지우고, 다른 조건은 남긴다", async () => {
+  const CSS = "@media (max-width: 760px) { .a { color: red } } @media (min-width: 1100px) and (min-height: 700px) { .b { color: blue } } @media (max-height: 720px) { .e { margin: 0 } } @media print { .c { display: none } } .d { width: 10vw }";
+  const NOT_PC = ':where([data-device="phone"],[data-device="tablet-p"],[data-device="tablet-l"])';
+  test("PC 캔버스 켜짐: PC 몫만 2560×1440으로 미리 평가하고, 휴대폰 · 태블릿 몫은 원래 조건 그대로(실제 높이로 고르게)", async () => {
     const out = (await postcss([deviceMedia({ pcCanvas: true })]).process(CSS, { from: resolve("src/x.css") })).css;
-    expect(out).toContain(':where([data-device="phone"]) .a');
-    expect(out).not.toContain(".b");
-    expect(out).toContain("@media print");
+    expect(out).toContain(`@media (max-width: 760px) { ${NOT_PC} .a`);
+    expect(out).not.toContain('[data-device="pc"]) .a');                     // 2560에서 안 맞는 PC 몫은 지운다
+    expect(out).toContain(`@media (min-width: 1100px) and (min-height: 700px) { ${NOT_PC} .b`);
+    expect(out).toMatch(/\}\s*:where\(\[data-device="pc"\]\) \.b \{ color: blue \}/);   // 2560에서 맞는 PC 몫은 조건 없이
+    expect(out).toContain(`@media (max-height: 720px) { ${NOT_PC} .e`);       // 낮은 폰의 «한 화면» 규칙이 살아 있다(10/23 — 기준 높이로 미리 정하면 사라졌다)
+    expect(out).toContain("@media print { .c");
     expect(out).toContain("calc(10 * var(--vw, 1vw))");
-    expect(out).not.toContain("max-width");
     const html = (await postcss([deviceMedia({ pcCanvas: true })]).process(CSS, { from: resolve("privacy.html?html-proxy&index=0.css") })).css;
     expect(html).toBe(CSS);
   });
-  test("PC 캔버스 꺼짐: PC 몫은 원래 미디어 쿼리 그대로(PC 선택자만 붙인 사본), 휴대폰 · 태블릿 몫만 기준 크기로", async () => {
+  test("PC 캔버스 꺼짐: 아무것도 바꾸지 않는다(PC는 라이브 배치 · 휴대폰 · 태블릿은 viewport 폭이 이미 기준 폭)", async () => {
     const out = (await postcss([deviceMedia({ pcCanvas: false })]).process(CSS, { from: resolve("src/x.css") })).css;
-    expect(out).toMatch(/@media \(max-width: 760px\) \{ :where\(\[data-device="pc"\]\) \.a \{ color: red \} \}\s*:where\(\[data-device="phone"\]\) \.a/);
-    expect(out).toContain('@media (min-width: 1100px) and (max-height: 820px) { :where([data-device="pc"]) .b');
-    expect(out.match(/\.b /g)).toHaveLength(1);   // 기준 크기에서 맞는 휴대폰 · 태블릿이 없으니 PC 사본만
-    expect(out).toContain("@media print { .c");
-    expect(out).toContain(".d { width: calc(10 * var(--vw, 1vw)) }");   // PC는 변수가 없어 원래 1vw
+    expect(out).toBe(CSS);
   });
   test("스위치는 public/device-canvas.js 한 줄이 원본 — 줄이 없으면 빌드를 멈춘다", () => {
     expect(typeof readPcCanvas()).toBe("boolean");
