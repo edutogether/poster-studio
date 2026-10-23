@@ -30,6 +30,22 @@ const DEFAULT = 'pc:1024x768,pc:1280x800,pc:1366x768,pc:1440x900,pc:1536x864,pc:
   + 'pc:1280x587,pc:1366x635,pc:1536x731,pc:1440x767,pc:1920x947,pc:2560x1307,'
   + 'tablet:768x1024,tablet:1024x768,tablet:820x1180,tablet:1180x820,tablet:1024x1366,tablet:1366x1024,phone:360x640,phone:390x664,phone:430x740';
 const VIEW = args.includes('--view');   // 결함이 없어도 화면마다 보이는 그대로(창 크기) 한 장씩 남긴다 — 사람이 눈으로 볼 것
+// 화면마다 보이는 요소 전부의 자리 · 크기 · 글자를 «snap-갈래-크기-화면.json»으로 남긴다 — 비율 기준 전환 전 · 뒤를 layout-compare.mjs로 대조(10/23).
+// 화소가 아니라 배치를 대조하는 까닭: 카메라 · 대기 영상 · 애니메이션은 찍을 때마다 화소가 다르다.
+const SNAPSHOT = args.includes('--snapshot');
+const LAYOUT = `(() => {
+  const out = [], vis = (el) => el.checkVisibility ? el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : el.getClientRects().length > 0;
+  const key = (el) => { const p = []; for (let e = el; e && e.nodeType === 1 && e !== document.documentElement; e = e.parentElement) {
+    const sib = e.parentElement ? [...e.parentElement.children].filter((x) => x.tagName === e.tagName) : [e];
+    p.unshift(e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (sib.length > 1 ? ':' + sib.indexOf(e) : '')); } return p.join('>'); };
+  for (const el of document.body.querySelectorAll('*')) {
+    if (/^(SCRIPT|STYLE|LINK|META|NOSCRIPT|TEMPLATE|SOURCE|TRACK)$/.test(el.tagName) || !vis(el)) continue;
+    const r = el.getBoundingClientRect(); if (r.width < 0.5 && r.height < 0.5) continue;
+    const s = getComputedStyle(el);
+    out.push([key(el), Math.round(r.left * 2) / 2, Math.round(r.top * 2) / 2, Math.round(r.width * 2) / 2, Math.round(r.height * 2) / 2, s.fontSize, s.lineHeight, s.color, s.backgroundColor]);
+  }
+  return { w: innerWidth, h: innerHeight, sx: scrollX, sy: scrollY, docH: document.documentElement.scrollHeight, els: out };
+})()`;
 const guess = (w) => (w <= 760 ? 'phone' : 'pc');   // 갈래를 안 적으면 폭으로 짐작한다
 const sizes = opt('--sizes', DEFAULT).split(',').map((s) => { const [k, wh] = s.includes(':') ? s.split(':') : [null, s]; const [w, h] = wh.split('x').map(Number); return { w, h, kind: k || guess(w) }; });
 const UA = {
@@ -242,6 +258,7 @@ try {
             const s = await call('Page.captureScreenshot', { format: 'png' });
             await fs.writeFile(path.join(out, `${g}-${tag}-${screen}-view.png`), Buffer.from(s.result.data, 'base64'));
           }
+          if (SNAPSHOT) await fs.writeFile(path.join(out, `snap-${g}-${tag}-${screen}.json`), JSON.stringify(await evaluate(LAYOUT), null, 0));
           console.log(`${tag} ${screen}: ${bad ? `가로 ${m.hscroll} · 화면 밖 ${m.off.length} · 잘림 ${m.clipped.length} · 겹침 ${m.overlaps.length} · 아래 잘림 ${m.cutY.length}` : '깨끗'}`);
         };
         try {

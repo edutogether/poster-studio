@@ -830,3 +830,10 @@ main.app {
   .poster-carousel[data-hint] .poster-slide { animation: none; }
   .poster-slide { transition: none; }
 }
+
+/* ───── 비율 기준 전환(2026-10-23, _docs/intents/2026-10-23-ratio-canvas) — PC 캔버스 ─────
+   public/device-canvas.js가 기준 크기(2560×1440)가 아닌 PC 창에서 <html>에 zoom과 .ps-canvas를 건다. 캔버스는 2560×1440 한 장 —
+   창 가운데에 두고(2560보다 넓은 창은 양옆이 빈다), 고정 위치 요소(스플래시 · 단추 줄)가 창이 아니라 캔버스를 기준으로 서게 한다(contain: layout).
+   기준 크기 창에서는 아무것도 붙지 않는다 — 지금 화면과 화소 하나 다르지 않게. */
+html.ps-canvas { width: 2560px; margin: 0 auto; }
+html.ps-canvas body { width: 2560px; min-height: 1440px; contain: layout; }

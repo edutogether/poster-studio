@@ -12,6 +12,7 @@ import type { BoothCodeCheck } from "../boothCode.js";
 import { approvedCameraVideo } from "./cameraVideo.js";
 import { savePlatform, savePoster } from "../savePoster.js";
 import { designName } from "../designNames.js";
+import { deviceKind } from "../deviceCanvas.js";
 
 const choices = [
   ["sf", "SF", "reference-sf.jpg"],
@@ -26,7 +27,8 @@ const choices = [
 type Action = () => void | Promise<void>;
 /** 휴대폰 흐름(2026-10-17)을 켜는 기준 — studio.css의 @media (max-width: 760px)와 같은 값이다. */
 export const PHONE_QUERY = "(max-width: 760px)";
-const isPhone = () => window.matchMedia?.(PHONE_QUERY)?.matches ?? false;
+// 휴대폰 판정은 기기 갈래(data-device — 비율 기준 전환 10/23)로. 갈래가 없으면(시험 · 옛 판) 예전처럼 창 폭으로
+const isPhone = () => { const d = deviceKind(); return d ? d === "phone" : window.matchMedia?.(PHONE_QUERY)?.matches ?? false; };
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 export interface StudioViewProps {
   mode: string;
