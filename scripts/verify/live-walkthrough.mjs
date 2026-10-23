@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /* 라이브 한 바퀴 캡처(2026-10-23 팀장 «결정판에 지금 라이브 그대로») — 휴대폰 390×844(3배) · PC 2560×1440으로 처음부터 저장까지 찍는다.
 
-     node scripts/verify/live-walkthrough.mjs <주소> <결과 폴더> [--device phone|pc]
+     node scripts/verify/live-walkthrough.mjs <주소> <결과 폴더> [--device phone|pc] [--art 그림 파일]
 
    파일 이름은 «순서-화면-기기.png»(원본 해상도). 진짜 촬영 흐름을 가짜 카메라(라이브의 /studio/camera-student.webp — 이미 공개된 지어낸 인물)로 지나고,
    생성(/generate)은 페이지 안에서 같은 그림 한 장으로 답한다 — 네트워크로는 나가지 않는다(막아 두고, 생성 요청이 하나라도 잡히면 종료코드 2).
+   --art: 생성 답으로 쓸 그림(기본은 카메라 그림 — 가로 3:2라 실제 AI 그림(세로 2:3)과 비율이 다르다. 포스터 배치를 볼 때는 세로 2:3 그림을 준다, 10/23).
    /health는 무료라 그대로 받는다(화면에 «AI 서버 연결» 경고가 뜨지 않게). 아이폰 «내 휴대폰에 저장»은 공유 창이 열렸다 닫힌 것으로 흉내 낸다. */
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs/promises';
@@ -13,7 +14,9 @@ import path from 'node:path';
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
-const [url, outArg] = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--device');
+const [url, outArg] = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--device' && args[i - 1] !== '--art');
+const artFile = opt('--art', null);
+const artData = artFile ? `data:image/${/.png$/i.test(artFile) ? 'png' : 'jpeg'};base64,${(await fs.readFile(artFile)).toString('base64')}` : null;
 if (!url || !outArg) { console.error('사용법: node scripts/verify/live-walkthrough.mjs <주소> <결과 폴더> [--device phone|pc]'); process.exit(2); }
 const device = opt('--device', 'phone');
 const phone = device === 'phone';
@@ -79,8 +82,8 @@ try {
       const u = String((input && input.url) || input);
       if (!/\\/generate/.test(u)) return net(input, init);
       await new Promise((r) => setTimeout(r, 4000));
-      const b = await (await net('/studio/camera-student.webp')).blob();
-      const data = await new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
+      const given = ${JSON.stringify(artData)};
+      const data = given || await (async () => { const b = await (await net('/studio/camera-student.webp')).blob(); return new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); })();
       return new Response(JSON.stringify({ images: [data] }), { status: 200, headers: { 'content-type': 'application/json' } });
     };
     window.print = () => {};
