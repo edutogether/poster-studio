@@ -19,7 +19,7 @@
   let ops = [];
   try { ops = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { ops = []; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(ops)); } catch { /* 저장 못 해도 화면 편집은 된다 */ } renderList(); };
-  const status = (t, bad) => { statusEl.textContent = t; statusEl.classList.toggle('bad', !!bad); };
+  const status = (t, bad) => { statusEl.textContent = t; statusEl.title = t; statusEl.classList.toggle('bad', !!bad); };
   const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // ───── 갈래 · 화면 고르기 ─────
@@ -217,7 +217,8 @@
   function setSel(list) {
     if (editingText) finishText();
     sels = norm(list);
-    $('selName').textContent = !sels.length ? '고른 요소 없음' : sels.length === 1 ? describe(sels[0]) : `${sels.length}개 고름 — 끌어 함께 옮기기 · Del 숨기기 · 글자 −/+ · 모서리 비율 크기`;
+    const t = !sels.length ? '고른 요소 없음' : sels.length === 1 ? describe(sels[0]) : `${sels.length}개 고름 — 끌어 함께 옮기기 · Del 숨기기 · 글자 −/+ · 모서리 비율 크기`;
+    $('selName').textContent = t; $('selName').title = t;
   }
   function select(el) { setSel(el ? [el] : []); }
   const one = () => (sels.length === 1 ? sels[0] : null);
@@ -263,8 +264,12 @@
     const add = e.shiftKey || e.ctrlKey || e.metaKey;
     const bare = t === doc().body || t === doc().documentElement;
     const hit = bare ? null : sels.find((s) => s === t || s.contains(t));
-    if (hit && !add) {   // 고른 것을 잡으면: 고른 것 모두 함께 옮기기
-      drag = { kind: 'move', x: e.clientX, y: e.clientY, click: hit, moved: false, items: sels.map((el) => ({ el, tr: translateOf(el), before: el.style.translate })) };
+    // 묶음 테두리 안이면(고른 것 사이 빈틈 · 그 위의 다른 요소라도) 함께 옮기기 — 상자 그리기는 묶음 밖에서 시작할 때만(10/23 팀장 확인:
+    // 묶음 안쪽 글자 위를 잡아 끌었더니 상자 그리기가 되어 선택이 풀렸다)
+    const u = sels.length ? union(sels.map((s) => s.getBoundingClientRect())) : null;
+    const inside = u && e.clientX >= u.left && e.clientX <= u.right && e.clientY >= u.top && e.clientY <= u.bottom;
+    if ((hit || inside) && !add) {   // 고른 것 · 묶음 안을 잡으면: 고른 것 모두 함께 옮기기
+      drag = { kind: 'move', x: e.clientX, y: e.clientY, hit, click: hit || (bare ? null : t), moved: false, items: sels.map((el) => ({ el, tr: translateOf(el), before: el.style.translate })) };
       return;
     }
     drag = { kind: 'marq', x: e.clientX, y: e.clientY, t: bare ? null : t, add, moved: false };   // 그 밖: 끌면 고르기 상자, 그냥 누르면 고르기
@@ -314,7 +319,7 @@
     const d = drag; drag = null;
     if (d.kind === 'move') {
       if (d.moved) { const b = batchId(d.items.length); for (const it of d.items) recordOn(it.el, 'move', { translate: [it.before, it.el.style.translate] }, { batch: b }); }
-      else if (sels.length > 1) select(d.click);   // 여럿 고른 채로 누르기만 하면 그것 하나만
+      else if (d.hit ? sels.length > 1 : d.click) select(d.click);   // 누르기만 하면: 고른 것 가운데 그것 하나만 · 묶음 안 다른 요소면 그것을 고른다
     } else if (d.kind === 'marq') {
       marq.hidden = true;
       if (!d.moved) {   // 그냥 누름: 고르기(Shift · Ctrl이면 더하기 · 빼기)

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* 화면 편집판 점검(2026-10-23) — 편집판을 창 없는 크롬으로 열어 4갈래 × 10화면을 모두 열어 보고, 편집 동작을 실제 마우스로 해 본다.
 
-     node scripts/editor/check.mjs [편집판 주소] [결과 폴더] [갈래...]     기본 주소 http://127.0.0.1:5390/__editor/ (편집판 서버가 떠 있어야 한다), 갈래를 적으면 그 갈래만(pc · tablet-l · tablet-p · phone)
+     node scripts/editor/check.mjs [편집판 주소] [결과 폴더] [갈래...] [--window=800x900]     기본 주소 http://127.0.0.1:5390/__editor/ (편집판 서버가 떠 있어야 한다), 갈래를 적으면 그 갈래만(pc · tablet-l · tablet-p · phone)
 
    본다: ① 화면마다 «가지 못했습니다» 없이 도착하는가 ② 앱 창 크기가 그 갈래의 기준 크기와 같은가(스크롤 막대가 폭을 먹지 않는가)
    ③ 편집판 밖(127.0.0.1 말고)으로 나간 요청이 0건인가 — AI 생성 · 서버 호출이 없어야 한다
@@ -12,7 +12,9 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-const [urlArg, outArg] = process.argv.slice(2);
+const argv = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const winOpt = (process.argv.find((a) => a.startsWith('--window=')) || '--window=1700x1100').slice(9).split('x').map(Number);   // 편집판 창 크기(--window=800x900)
+const [urlArg, outArg] = argv;
 const url = urlArg || 'http://127.0.0.1:5390/__editor/';
 const origin = new URL(url).origin;
 const out = path.resolve(outArg || path.join(os.tmpdir(), 'ps-editor-check'));
@@ -22,7 +24,7 @@ const CLASSES = { pc: [2560, 1440], 'tablet-l': [1366, 1024], 'tablet-p': [1024,
 const SCREENS = ['splash', 'first', 'step1', 'pre-solo', 'pre-group', 'live', 'shot', 'loading', 'result', 'save'];
 
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'ps-editor-check-'));
-const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--mute-audio', '--window-size=1700,1100',
+const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--mute-audio', `--window-size=${winOpt[0]},${winOpt[1]}`,
   '--autoplay-policy=no-user-gesture-required', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
 const fails = [];
 const fail = (what) => { fails.push(what); console.log('❌ ' + what); };
@@ -54,7 +56,7 @@ try {
 
   // ① ② 4갈래 × 10화면 — 사람처럼 고르기 칸을 바꾼다(갈래를 바꿀 때는 먼저 가벼운 시작 화면으로 옮겨 긴 흐름을 두 번 타지 않는다)
   const pick = async (id, value) => { await evaluate(`(() => { const el = document.getElementById('${id}'); el.value = ${JSON.stringify(value)}; el.onchange(); return true; })()`); await idle(); };
-  const only = process.argv.slice(4);   // 셋째 인자부터: 이 갈래만(예: phone). none이면 40화면을 건너뛰고 편집 동작만
+  const only = argv.slice(2);   // 셋째 인자부터: 이 갈래만(예: phone). none이면 40화면을 건너뛰고 편집 동작만
   for (const [cls, [w, h]] of Object.entries(CLASSES)) {
     if (only.length && !only.includes(cls)) continue;
     await pick('screen', 'splash'); await pick('cls', cls);
@@ -124,25 +126,34 @@ try {
   const selCount = async () => { const t = await evaluate("document.getElementById('selName').textContent"); const m = t.match(/^(\d+)개 고름/); return m ? +m[1] : t === '고른 요소 없음' ? 0 : 1; };
   for (const [cls, list, extra] of [['pc', '.genre-option', 4], ['phone', '.stepper > li', 2]]) {
     await pick('screen', 'first'); await pick('cls', cls);
-    const tag = `여러 개 · ${cls}`, base = await nOps();   // 앞 시험의 기록이 남아 있어 그 수를 기준으로 센다
+    const tag = `여러 개 · ${cls} · 창 ${winOpt[0]}`, base = await nOps();   // 앞 시험의 기록이 남아 있어 그 수를 기준으로 센다
+    // 고르기 · 옮기기 · 숨기기 · 되돌리기로 도구 줄이 접혀 앱 화면이 밀리면 안 된다(10/23 팀장: 창 800에서 안내 글이 길어져 35px 밀림)
+    const where = () => evaluate("(() => ({ top: document.getElementById('app').getBoundingClientRect().top, tools: document.querySelector('.tools').offsetHeight }))()");
+    const w0 = await where();
+    const steady = async (step) => { const w = await where(); if (Math.abs(w.top - w0.top) > 0.5 || w.tools !== w0.tools) fail(`${tag}: ${step} 뒤 앱 화면이 밀림 — 위 ${w0.top} → ${w.top} · 도구 줄 ${w0.tools} → ${w.tools}`); };
     // 고를 것: 목록의 앞 N개(N = extra). 그다음 것은 «고르지 않은 것»으로 제자리인지 본다
     const box = await inApp(`const els = [...d.querySelectorAll(${JSON.stringify(list)})].slice(0, ${extra + 1}); if (els.length < ${extra + 1}) return null;
       const rs = els.map((e) => e.getBoundingClientRect()); const pick = rs.slice(0, ${extra});
       return { x0: Math.min(...pick.map((r) => r.left)) - 6, y0: Math.min(...pick.map((r) => r.top)) - 6, x1: Math.max(...pick.map((r) => r.right)) + 6, y1: Math.max(...pick.map((r) => r.bottom)) + 6,
-        rest: rs[${extra}].toJSON(), first: rs[0].toJSON() };`);
+        rest: rs[${extra}].toJSON(), first: rs[0].toJSON(), second: rs[1].toJSON() };`);
     if (!box) { fail(`${tag}: ${list}를 ${extra + 1}개 못 찾음`); continue; }
     const pg = await toPage(box);
     await drag({ x: pg.x0, y: pg.y0 }, { x: pg.x1, y: pg.y1 });
     const n = await selCount();
     if (n !== extra) fail(`${tag}: 상자로 고른 수 ${n}(기대 ${extra})`);
+    await steady('상자로 고르기');
     await shot(`multi-${cls}-1-상자로고름.png`);
-    // 함께 옮기기: 고른 첫 것을 잡고 끈다
-    const grab = { x: pg.x0 + 6 * pg.z + (box.first.width / 2) * pg.z, y: pg.y0 + 6 * pg.z + (box.first.height / 2) * pg.z };
+    // 함께 옮기기: 묶음 안 빈틈(고른 것 사이)을 잡고 끈다 — 묶음 안은 고른 요소 위가 아니어도 함께 옮기기여야 한다(10/23 팀장 확인)
+    const gapX = (box.first.right + box.second.left) / 2, hasGap = box.second.left - box.first.right >= 4;
+    const grabApp = hasGap ? { x0: gapX, y0: box.first.top + box.first.height / 2, x1: 0, y1: 0 } : { x0: box.first.left + box.first.width / 2, y0: box.first.top + box.first.height / 2, x1: 0, y1: 0 };
+    const gp0 = await toPage(grabApp), grab = { x: gp0.x0, y: gp0.y0 };
+    if (!hasGap) console.log(`${tag}: 고른 것 사이에 빈틈이 없어 첫 것을 잡고 옮긴다`);
     await drag(grab, { x: grab.x + 40 * pg.z, y: grab.y + 20 * pg.z });   // 화면 안에서 옮긴다
     const moved = await inApp(`const els = [...d.querySelectorAll(${JSON.stringify(list)})]; return { tr: els.slice(0, ${extra}).map((e) => e.style.translate), rest: els[${extra}].getBoundingClientRect().toJSON(), restTr: els[${extra}].style.translate };`);
     if (!moved.tr.every((t) => t && t === moved.tr[0])) fail(`${tag}: 함께 옮겨지지 않음 ${JSON.stringify(moved.tr)}`);
     if (Math.abs(moved.rest.left - box.rest.left) > 0.5 || Math.abs(moved.rest.top - box.rest.top) > 0.5 || moved.restTr) fail(`${tag}: 고르지 않은 것이 밀림 ${JSON.stringify(box.rest)} → ${JSON.stringify(moved.rest)}`);
     if (await nOps() !== base + extra) fail(`${tag}: 옮김 기록 ${await nOps() - base}건(기대 ${extra})`);
+    await steady('함께 옮기기');
     await shot(`multi-${cls}-2-함께옮김.png`);
     // Shift+누르기: 다음 것을 더했다 빼기
     const restP = await toPage({ x0: box.rest.left + box.rest.width / 2, y0: box.rest.top + box.rest.height / 2, x1: 0, y1: 0 });
@@ -150,15 +161,18 @@ try {
     if (await selCount() !== extra + 1) fail(`${tag}: Shift+누르기 더하기 → ${await selCount()}`);
     await click({ x: restP.x0, y: restP.y0 }, 8);
     if (await selCount() !== extra) fail(`${tag}: Shift+누르기 빼기 → ${await selCount()}`);
+    await steady('Shift+누르기');
     // Del: 한꺼번에 숨기기
     await key('Delete', 'Delete', 46);
     const hidden = await inApp(`return [...d.querySelectorAll(${JSON.stringify(list)})].slice(0, ${extra}).map((e) => e.style.display);`);
     if (!hidden.every((x) => x === 'none') || await nOps() !== base + extra * 2) fail(`${tag}: 숨기기 ${JSON.stringify(hidden)} · 기록 ${await nOps()}`);
+    await steady('숨기기');
     await shot(`multi-${cls}-3-숨김.png`);
     // Ctrl+Z 한 번: 숨긴 것 모두 다시 보임
     await key('z', 'KeyZ', 90, 2);
     const back = await inApp(`return [...d.querySelectorAll(${JSON.stringify(list)})].slice(0, ${extra}).map((e) => e.style.display);`);
     if (back.some((x) => x === 'none') || await nOps() !== base + extra) fail(`${tag}: 되돌리기 한 번에 다시 보이지 않음 ${JSON.stringify(back)} · 기록 ${await nOps()}`);
+    await steady('되돌리기');
     await shot(`multi-${cls}-4-되돌림.png`);
     // 묶음 모서리 비율 크기: 다시 고른 뒤 왼쪽 아래 손잡이(오른쪽은 화면 끝에 닿을 수 있다) — 반대쪽(오른쪽 위)이 제자리여야 한다
     await drag({ x: pg.x0 + 40 * pg.z, y: pg.y0 + 20 * pg.z }, { x: pg.x1 + 40 * pg.z, y: pg.y1 + 20 * pg.z });
