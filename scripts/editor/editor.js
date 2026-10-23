@@ -15,11 +15,11 @@
   const KEY = 'ps-editor-ops-v1';
   const $ = (id) => document.getElementById(id);
   const app = $('app'), stage = $('stage'), sizer = $('sizer'), wrap = $('wrap'), statusEl = $('status');
-  let cls = 'pc', screen = 'first', zoom = 0.5, mode = 'edit', sel = null, busy = false, editingText = null, textBefore = null;
+  let cls = 'pc', screen = 'first', zoom = 0.5, mode = 'edit', sels = [], busy = false, editingText = null, textBefore = null;
   let ops = [];
   try { ops = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { ops = []; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(ops)); } catch { /* 저장 못 해도 화면 편집은 된다 */ } renderList(); };
-  const status = (t, bad) => { statusEl.textContent = t; statusEl.classList.toggle('bad', !!bad); };
+  const status = (t, bad) => { statusEl.textContent = t; statusEl.title = t; statusEl.classList.toggle('bad', !!bad); };
   const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // ───── 갈래 · 화면 고르기 ─────
@@ -116,7 +116,7 @@
       const note = (await drive()) || '';
       installOverlay();
       const missing = applyOps();
-      status(`${c.label} ${c.w}×${c.h} · ${SCREENS.find((s) => s[0] === screen)[1]} — 요소를 눌러 고르고, 끌어서 옮기고, 모서리로 크기를 바꿉니다. Del 숨기기 · Ctrl+Z 되돌리기 · 방향키 1px(Shift 10px).${missing ? ` ⚠ 앞서 바꾼 것 ${missing}개는 이 화면에서 요소를 못 찾았습니다.` : ''}${note}`);
+      status(`${c.label} ${c.w}×${c.h} · ${SCREENS.find((s) => s[0] === screen)[1]} — 누르면 고르기(Shift · Ctrl+누르기 더하기) · 고르지 않은 곳에서 끌면 상자로 여러 개 · 고른 것을 끌면 함께 옮기기 · 모서리 크기 · Del 숨기기 · Ctrl+Z 되돌리기 · 방향키 1px(Shift 10px) · Esc 풀기.${missing ? ` ⚠ 앞서 바꾼 것 ${missing}개는 이 화면에서 요소를 못 찾았습니다.` : ''}${note}`);
     } catch (e) {
       status(`이 화면까지 가지 못했습니다: ${e.message}에서 멈춤. «다시 열기»를 눌러 보세요.`, true);
       try { installOverlay(); } catch { /* 앱이 아직 안 떴다 */ }
@@ -143,8 +143,15 @@
     return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : cl}${t ? ` «${t}»` : ''}`;
   }
 
-  // ───── 앱 위 덧그림(고른 테두리 · 모서리 손잡이) ─────
-  let ov, hv, box, tag;
+  // ───── 앱 위 덧그림(고른 테두리 · 모서리 손잡이 · 끌어 그리는 고르기 상자) ─────
+  // 여러 개 고르기(2026-10-23 Bumm님 «마우스로 블록 지정해서 여러 개 한꺼번에 선택해서 끄는 게 안 되잖아. 이러면 옮기다가 다 깨져 버려»):
+  //  · 고르지 않은 곳에서 끌면 고르기 상자 — 상자 안에 다 든 요소 가운데 가장 바깥 것들을 고른다(Shift · Ctrl이면 더한다).
+  //    고르지 않은 요소는 끌어도 옮겨지지 않는다 — 고르려다 큰 상자를 통째로 옮겨 배치가 깨지던 것을 막는다.
+  //  · 누르면 하나 고르기, Shift · Ctrl+누르기는 더하기 · 빼기. 고른 것을 끌면 모두 같이 옮긴다(translate라 흐름은 그대로 — 다른 요소가 밀리지 않는다).
+  //  · 여럿을 고른 묶음의 모서리는 묶음 전체를 같은 비율로 줄이고 키운다(scale + translate — 이것도 흐름은 그대로).
+  //  · 묶음으로 한 일은 기록에 같은 묶음 번호(batch)를 달아 되돌리기 한 번에 함께 되돌린다. 바꾼 목록 · 내보내기에는 요소마다 남는다.
+  let ov, hv, box, tag, marq;
+  const outlines = [];
   function installOverlay() {
     const d = doc();
     if (d.getElementById(OWN + '-ov')) return;
@@ -153,6 +160,8 @@
     st.textContent = `#${OWN}-ov{position:fixed;inset:0;pointer-events:none;z-index:2147483647}
       .${OWN}-hv{position:fixed;outline:calc(2px*var(--ps-k,1)) dashed #0ea5e9;pointer-events:none}
       .${OWN}-box{position:fixed;outline:calc(2px*var(--ps-k,1)) solid #6366f1;pointer-events:none}
+      .${OWN}-one{position:fixed;outline:calc(1.5px*var(--ps-k,1)) solid #818cf8;pointer-events:none}
+      .${OWN}-marq{position:fixed;border:calc(1.5px*var(--ps-k,1)) dashed #4f46e5;background:rgba(99,102,241,.10);pointer-events:none}
       .${OWN}-h{position:absolute;box-sizing:border-box;width:calc(14px*var(--ps-k,1));height:calc(14px*var(--ps-k,1));background:#fff;border:calc(2px*var(--ps-k,1)) solid #6366f1;border-radius:calc(3px*var(--ps-k,1));pointer-events:auto}
       .${OWN}-tag{position:fixed;font:calc(12px*var(--ps-k,1))/1.4 system-ui,sans-serif;background:#4f46e5;color:#fff;padding:calc(2px*var(--ps-k,1)) calc(6px*var(--ps-k,1));border-radius:calc(4px*var(--ps-k,1));white-space:nowrap;pointer-events:none}
       [contenteditable="true"]{outline:calc(2px*var(--ps-k,1)) solid #f59e0b!important}`;
@@ -163,7 +172,9 @@
     box = d.createElement('div'); box.className = OWN + '-box'; box.hidden = true;
     for (const h of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) { const k = d.createElement('div'); k.className = OWN + '-h'; k.dataset.h = h; k.style.cursor = h + '-resize'; box.append(k); }
     tag = d.createElement('div'); tag.className = OWN + '-tag'; tag.hidden = true;
-    ov.append(hv, box, tag);
+    marq = d.createElement('div'); marq.className = OWN + '-marq'; marq.hidden = true;
+    outlines.length = 0;
+    ov.append(hv, box, tag, marq);
     d.body.append(ov);
     for (const t of ['click', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'dblclick', 'contextmenu', 'submit']) d.addEventListener(t, block, true);
     d.addEventListener('pointerdown', onDown, true);
@@ -178,46 +189,90 @@
     e.preventDefault(); e.stopPropagation();
   }
   const place = (el, r) => { el.style.left = r.left + 'px'; el.style.top = r.top + 'px'; el.style.width = r.width + 'px'; el.style.height = r.height + 'px'; };
+  const union = (rs) => { const l = Math.min(...rs.map((r) => r.left)), t = Math.min(...rs.map((r) => r.top)), rr = Math.max(...rs.map((r) => r.right)), b = Math.max(...rs.map((r) => r.bottom)); return { left: l, top: t, right: rr, bottom: b, width: rr - l, height: b - t }; };
+  const between = (x0, y0, x1, y1) => { const l = Math.min(x0, x1), t = Math.min(y0, y1), r = Math.max(x0, x1), b = Math.max(y0, y1); return { left: l, top: t, right: r, bottom: b, width: r - l, height: b - t }; };
   function follow() {
     if (!ov || !ov.isConnected) return;
-    if (sel && sel.isConnected) {
-      const r = sel.getBoundingClientRect(), half = 7 / zoom;
+    const list = sels.filter((e) => e.isConnected);
+    if (list.length) {
+      const rs = list.map((e) => e.getBoundingClientRect()), r = union(rs), half = 7 / zoom;
       box.hidden = false; place(box, r);
       for (const k of box.children) {
         const h = k.dataset.h;
         k.style.left = (h.includes('w') ? -half : h.includes('e') ? r.width - half : r.width / 2 - half) + 'px';
         k.style.top = (h.includes('n') ? -half : h.includes('s') ? r.height - half : r.height / 2 - half) + 'px';
       }
-      tag.hidden = false; tag.textContent = `${describe(sel)} · ${Math.round(r.width)}×${Math.round(r.height)}`;
+      // 여럿이면 하나하나의 테두리도 옅게
+      while (outlines.length < (list.length > 1 ? list.length : 0)) { const o = doc().createElement('div'); o.className = OWN + '-one'; ov.append(o); outlines.push(o); }
+      outlines.forEach((o, i) => { const on = list.length > 1 && i < list.length; o.hidden = !on; if (on) place(o, rs[i]); });
+      tag.hidden = false;
+      tag.textContent = `${list.length === 1 ? describe(list[0]) : `${list.length}개 고름`} · ${Math.round(r.width)}×${Math.round(r.height)}`;
       tag.style.left = Math.max(0, r.left) + 'px'; tag.style.top = Math.max(0, r.top - 24 / zoom) + 'px';
-    } else { box.hidden = true; tag.hidden = true; }
+    } else { box.hidden = true; tag.hidden = true; for (const o of outlines) o.hidden = true; }
     win().requestAnimationFrame(follow);
   }
-  function hover(el) { if (!hv) return; if (!el || el === sel || mode !== 'edit') { hv.hidden = true; return; } hv.hidden = false; place(hv, el.getBoundingClientRect()); }
-  function select(el) { if (editingText) finishText(); sel = el; $('selName').textContent = el ? describe(el) : '고른 요소 없음'; }
+  function hover(el) { if (!hv) return; if (!el || sels.includes(el) || mode !== 'edit') { hv.hidden = true; return; } hv.hidden = false; place(hv, el.getBoundingClientRect()); }
+  // 고른 것 목록: 겹치는 것(다른 고른 것 안에 든 것)은 빼고 바깥 것만 — 안팎을 같이 옮기면 안쪽이 두 번 움직인다
+  const norm = (list) => list.filter((e, i) => e && e.isConnected && list.indexOf(e) === i && !list.some((o) => o !== e && o && o.contains(e)));
+  function setSel(list) {
+    if (editingText) finishText();
+    sels = norm(list);
+    const t = !sels.length ? '고른 요소 없음' : sels.length === 1 ? describe(sels[0]) : `${sels.length}개 고름 — 끌어 함께 옮기기 · Del 숨기기 · 글자 −/+ · 모서리 비율 크기`;
+    $('selName').textContent = t; $('selName').title = t;
+  }
+  function select(el) { setSel(el ? [el] : []); }
+  const one = () => (sels.length === 1 ? sels[0] : null);
+  // 고르기 상자 안에 다 든 요소 가운데 가장 바깥 것들
+  function within(r) {
+    const hits = [...doc().body.querySelectorAll('*')].filter((el) => {
+      if (own(el) || /^(SCRIPT|STYLE|LINK|META|NOSCRIPT|TEMPLATE|BR)$/.test(el.tagName)) return false;
+      if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return false;
+      const b = el.getBoundingClientRect();
+      return b.width >= 4 && b.height >= 4 && b.left >= r.left - 1 && b.top >= r.top - 1 && b.right <= r.right + 1 && b.bottom <= r.bottom + 1;
+    });
+    return hits.filter((el) => !hits.some((o) => o !== el && o.contains(el)));
+  }
+  // 묶음 번호 — 여럿을 한 번에 바꿀 때만 단다(하나면 예전 기록과 똑같다)
+  const batchId = (n) => (n > 1 ? Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : null);
 
-  // ───── 끌기(옮기기) · 손잡이(크기) ─────
+  // ───── 끌기(옮기기 · 고르기 상자) · 손잡이(크기) ─────
   let drag = null;
   const cs = (el) => win().getComputedStyle(el);
   const px = (v) => parseFloat(v) || 0;
   const translateOf = (el) => { const t = cs(el).translate; if (!t || t === 'none') return [0, 0]; const [x, y] = t.split(' '); return [px(x), px(y || '0')]; };
+  const scaleOf = (el) => { const s = cs(el).scale; return !s || s === 'none' ? 1 : px(s.split(' ')[0]) || 1; };
+  function startResize(h, e) {
+    const el = one();
+    if (el) {   // 하나: 폭 · 높이(예전 그대로)
+      const r = el.getBoundingClientRect(), s = cs(el);
+      const extraW = s.boxSizing === 'border-box' ? 0 : px(s.paddingLeft) + px(s.paddingRight) + px(s.borderLeftWidth) + px(s.borderRightWidth);
+      const extraH = s.boxSizing === 'border-box' ? 0 : px(s.paddingTop) + px(s.paddingBottom) + px(s.borderTopWidth) + px(s.borderBottomWidth);
+      drag = { kind: 'size', el, h, x: e.clientX, y: e.clientY, w: r.width, hgt: r.height, r, extraW, extraH, tr: translateOf(el), before: { width: el.style.width, height: el.style.height, translate: el.style.translate }, keep: /^(IMG|VIDEO|CANVAS)$/.test(el.tagName) !== e.shiftKey };
+      return;
+    }
+    // 여럿: 묶음 전체를 같은 비율로 — 잡은 손잡이의 반대쪽을 제자리에 두고, 요소마다 scale을 곱하고 가운데를 그 비율로 옮긴다
+    const items = sels.map((it) => ({ el: it, r: it.getBoundingClientRect(), tr: translateOf(it), sc: scaleOf(it), before: { scale: it.style.scale, translate: it.style.translate } }));
+    drag = { kind: 'scale', h, x: e.clientX, y: e.clientY, g: union(items.map((i) => i.r)), items, moved: false };
+  }
   function onDown(e) {
     if (mode !== 'edit') return;
     const t = e.target;
     if (editingText && editingText.contains(t)) return;
-    if (t.classList?.contains(OWN + '-h') && sel) {   // 크기 바꾸기
-      e.preventDefault(); e.stopPropagation();
-      const r = sel.getBoundingClientRect(), s = cs(sel);
-      const extraW = s.boxSizing === 'border-box' ? 0 : px(s.paddingLeft) + px(s.paddingRight) + px(s.borderLeftWidth) + px(s.borderRightWidth);
-      const extraH = s.boxSizing === 'border-box' ? 0 : px(s.paddingTop) + px(s.paddingBottom) + px(s.borderTopWidth) + px(s.borderBottomWidth);
-      drag = { kind: 'size', h: t.dataset.h, x: e.clientX, y: e.clientY, w: r.width, hgt: r.height, r, extraW, extraH, tr: translateOf(sel), before: { width: sel.style.width, height: sel.style.height, translate: sel.style.translate }, keep: /^(IMG|VIDEO|CANVAS)$/.test(sel.tagName) !== e.shiftKey };
-      return;
-    }
+    if (t.classList?.contains(OWN + '-h') && sels.length) { e.preventDefault(); e.stopPropagation(); startResize(t.dataset.h, e); return; }
     if (own(t)) return;
     e.preventDefault(); e.stopPropagation();
-    if (t === doc().body || t === doc().documentElement) { select(null); return; }
-    if (t !== sel) select(t);
-    drag = { kind: 'move', x: e.clientX, y: e.clientY, tr: translateOf(sel), before: { translate: sel.style.translate }, moved: false };
+    const add = e.shiftKey || e.ctrlKey || e.metaKey;
+    const bare = t === doc().body || t === doc().documentElement;
+    const hit = bare ? null : sels.find((s) => s === t || s.contains(t));
+    // 묶음 테두리 안이면(고른 것 사이 빈틈 · 그 위의 다른 요소라도) 함께 옮기기 — 상자 그리기는 묶음 밖에서 시작할 때만(10/23 팀장 확인:
+    // 묶음 안쪽 글자 위를 잡아 끌었더니 상자 그리기가 되어 선택이 풀렸다)
+    const u = sels.length ? union(sels.map((s) => s.getBoundingClientRect())) : null;
+    const inside = u && e.clientX >= u.left && e.clientX <= u.right && e.clientY >= u.top && e.clientY <= u.bottom;
+    if ((hit || inside) && !add) {   // 고른 것 · 묶음 안을 잡으면: 고른 것 모두 함께 옮기기
+      drag = { kind: 'move', x: e.clientX, y: e.clientY, hit, click: hit || (bare ? null : t), moved: false, items: sels.map((el) => ({ el, tr: translateOf(el), before: el.style.translate })) };
+      return;
+    }
+    drag = { kind: 'marq', x: e.clientX, y: e.clientY, t: bare ? null : t, add, moved: false };   // 그 밖: 끌면 고르기 상자, 그냥 누르면 고르기
   }
   function onMove(e) {
     if (mode !== 'edit') return;
@@ -226,56 +281,104 @@
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     if (drag.kind === 'move') {
       if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
-      drag.moved = true; sel.style.translate = `${Math.round(drag.tr[0] + dx)}px ${Math.round(drag.tr[1] + dy)}px`;
+      drag.moved = true;
+      for (const it of drag.items) it.el.style.translate = `${Math.round(it.tr[0] + dx)}px ${Math.round(it.tr[1] + dy)}px`;
+    } else if (drag.kind === 'marq') {
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
+      drag.moved = true; hover(null); marq.hidden = false; place(marq, between(drag.x, drag.y, e.clientX, e.clientY));
+    } else if (drag.kind === 'scale') {
+      const h = drag.h, g = drag.g;
+      const w = g.width + (h.includes('e') ? dx : h.includes('w') ? -dx : 0), hh = g.height + (h.includes('s') ? dy : h.includes('n') ? -dy : 0);
+      const k = Math.max(0.1, h.length === 2 ? Math.max(w / g.width, hh / g.height) : h === 'e' || h === 'w' ? w / g.width : hh / g.height);
+      const ax = h.includes('w') ? g.right : h.includes('e') ? g.left : g.left + g.width / 2;
+      const ay = h.includes('n') ? g.bottom : h.includes('s') ? g.top : g.top + g.height / 2;
+      drag.moved = true;
+      for (const it of drag.items) {
+        const cx = it.r.left + it.r.width / 2, cy = it.r.top + it.r.height / 2;
+        it.el.style.scale = String(+(it.sc * k).toFixed(4));
+        it.el.style.translate = `${Math.round(it.tr[0] + (ax + (cx - ax) * k) - cx)}px ${Math.round(it.tr[1] + (ay + (cy - ay) * k) - cy)}px`;
+      }
     } else {
-      const h = drag.h;
+      const h = drag.h, el = drag.el;
       let w = drag.w + (h.includes('e') ? dx : h.includes('w') ? -dx : 0);
       let hh = drag.hgt + (h.includes('s') ? dy : h.includes('n') ? -dy : 0);
       if (drag.keep && (h.length === 2)) { const k = Math.max(w / drag.w, hh / drag.hgt); w = drag.w * k; hh = drag.hgt * k; }
       w = Math.max(8, w); hh = Math.max(8, hh);
-      if (h.includes('e') || h.includes('w') || drag.keep) sel.style.width = Math.round(w - drag.extraW) + 'px';
-      if (h.includes('n') || h.includes('s') || drag.keep) sel.style.height = Math.round(hh - drag.extraH) + 'px';
+      if (h.includes('e') || h.includes('w') || drag.keep) el.style.width = Math.round(w - drag.extraW) + 'px';
+      if (h.includes('n') || h.includes('s') || drag.keep) el.style.height = Math.round(hh - drag.extraH) + 'px';
       // 잡은 손잡이의 반대쪽 변을 제자리에 둔다 — 아래 · 가운데 정렬된 상자는 키우면 위 · 양옆으로 자라 모서리가 마우스를 안 따라온다
-      sel.style.translate = `${drag.tr[0]}px ${drag.tr[1]}px`;
-      const now = sel.getBoundingClientRect(), a = drag.r;
+      el.style.translate = `${drag.tr[0]}px ${drag.tr[1]}px`;
+      const now = el.getBoundingClientRect(), a = drag.r;
       const sx = h.includes('w') ? a.right - now.right : a.left - now.left;
       const sy = h.includes('n') ? a.bottom - now.bottom : a.top - now.top;
-      sel.style.translate = `${Math.round(drag.tr[0] + sx)}px ${Math.round(drag.tr[1] + sy)}px`;
+      el.style.translate = `${Math.round(drag.tr[0] + sx)}px ${Math.round(drag.tr[1] + sy)}px`;
     }
   }
-  function onUp() {
+  function onUp(e) {
     if (!drag) return;
     const d = drag; drag = null;
-    if (d.kind === 'move' && d.moved) record('move', { translate: [d.before.translate, sel.style.translate] });
-    if (d.kind === 'size') {
-      const props = {};
-      for (const p of ['width', 'height', 'translate']) if (d.before[p] !== sel.style[p]) props[p] = [d.before[p], sel.style[p]];
-      if (Object.keys(props).length) record('size', props, { w: d.w, h: d.hgt });
+    if (d.kind === 'move') {
+      if (d.moved) { const b = batchId(d.items.length); for (const it of d.items) recordOn(it.el, 'move', { translate: [it.before, it.el.style.translate] }, { batch: b }); }
+      else if (d.hit ? sels.length > 1 : d.click) select(d.click);   // 누르기만 하면: 고른 것 가운데 그것 하나만 · 묶음 안 다른 요소면 그것을 고른다
+    } else if (d.kind === 'marq') {
+      marq.hidden = true;
+      if (!d.moved) {   // 그냥 누름: 고르기(Shift · Ctrl이면 더하기 · 빼기)
+        if (!d.t) { if (!d.add) select(null); return; }
+        setSel(d.add ? (sels.includes(d.t) ? sels.filter((s) => s !== d.t) : [...sels, d.t]) : [d.t]);
+        return;
+      }
+      const inside = within(between(d.x, d.y, e.clientX, e.clientY));
+      setSel(d.add ? [...sels, ...inside] : inside);
+      if (!inside.length) status('상자 안에 다 들어온 요소가 없습니다 — 고를 것을 상자 안에 통째로 넣어 끌어 보세요.');
+    } else if (d.kind === 'scale') {
+      if (!d.moved) return;
+      const b = batchId(d.items.length);
+      for (const it of d.items) recordOn(it.el, 'scale', { scale: [it.before.scale, it.el.style.scale], translate: [it.before.translate, it.el.style.translate] }, { batch: b });
+    } else {
+      const props = {}, el = d.el;
+      for (const p of ['width', 'height', 'translate']) if (d.before[p] !== el.style[p]) props[p] = [d.before[p], el.style[p]];
+      if (Object.keys(props).length) recordOn(el, 'size', props, { w: d.w, h: d.hgt });
     }
   }
   function onKey(e) {
     if (mode !== 'edit') return;
     if (editingText) { if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) { e.preventDefault(); finishText(); } return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
-    if (!sel) return;
+    if (!sels.length) return;
+    if (e.key === 'Escape') { e.preventDefault(); select(null); return; }
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); hide(); return; }
     const step = e.shiftKey ? 10 : 1, dir = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
-    if (dir) { e.preventDefault(); const before = sel.style.translate, [x, y] = translateOf(sel); sel.style.translate = `${x + dir[0]}px ${y + dir[1]}px`; record('move', { translate: [before, sel.style.translate] }); }
+    if (dir) {
+      e.preventDefault();
+      const b = batchId(sels.length);
+      for (const el of sels) { const before = el.style.translate, [x, y] = translateOf(el); el.style.translate = `${x + dir[0]}px ${y + dir[1]}px`; recordOn(el, 'move', { translate: [before, el.style.translate] }, { batch: b }); }
+    }
   }
   document.addEventListener('keydown', (e) => { if (doc() && document.activeElement !== app) onKey.call(null, e); });
 
   // ───── 도구 단추 ─────
-  $('tParent').onclick = () => { if (sel?.parentElement && sel.parentElement !== doc().body) select(sel.parentElement); };
-  const font = (k) => { if (!sel) return; const before = sel.style.fontSize, now = px(cs(sel).fontSize); sel.style.fontSize = Math.max(6, now + k) + 'px'; record('font', { 'font-size': [before, sel.style.fontSize] }, { from: now }); };
+  $('tParent').onclick = () => { const el = one(); if (!el) { status('«↑ 감싼 상자»는 하나만 고른 채로 씁니다.', true); return; } if (el.parentElement && el.parentElement !== doc().body) select(el.parentElement); };
+  const font = (k) => {
+    if (!sels.length) return;
+    const b = batchId(sels.length);
+    for (const el of sels) { const before = el.style.fontSize, now = px(cs(el).fontSize); el.style.fontSize = Math.max(6, now + k) + 'px'; recordOn(el, 'font', { 'font-size': [before, el.style.fontSize] }, { from: now, batch: b }); }
+  };
   $('tFontDown').onclick = () => font(-1);
   $('tFontUp').onclick = () => font(1);
-  function hide() { if (!sel) return; const el = sel, before = el.style.display, r = el.getBoundingClientRect(); el.style.display = 'none'; select(null); recordOn(el, 'hide', { display: [before, 'none'] }, { rect: r }); }
+  function hide() {
+    if (!sels.length) return;
+    // 크기는 숨기기 전에 다 재 둔다 — 하나를 숨기면 흐름이 바뀌어 다른 것의 크기가 달라진다
+    const list = sels.map((el) => ({ el, r: el.getBoundingClientRect(), before: el.style.display })), b = batchId(list.length);
+    select(null);
+    for (const it of list) { it.el.style.display = 'none'; recordOn(it.el, 'hide', { display: [it.before, 'none'] }, { rect: it.r, batch: b }); }
+  }
   $('tHide').onclick = hide;
   $('tText').onclick = () => {
     if (editingText) { finishText(); return; }
-    if (!sel || !sel.textContent.trim()) { status('글자가 든 요소를 먼저 고르세요.', true); return; }
+    const el = one();
+    if (!el || !el.textContent.trim()) { status(sels.length > 1 ? '글자 고치기는 하나만 고른 채로 합니다.' : '글자가 든 요소를 먼저 고르세요.', true); return; }
     // 안의 구조(굵은 글씨 · 줄바꿈 · 단추 이름표)를 지키려고 글자가 아니라 HTML 통째로 전/후를 남긴다
-    editingText = sel; textBefore = { text: sel.innerText, html: sel.innerHTML }; sel.contentEditable = 'true'; sel.focus();
+    editingText = el; textBefore = { text: el.innerText, html: el.innerHTML }; el.contentEditable = 'true'; el.focus();
     $('tText').classList.add('on'); $('tText').textContent = '글자 고치기 끝';
   };
   function finishText() {
@@ -289,19 +392,19 @@
 
   // ───── 기록 ─────
   const here = () => ({ cls, screen });
-  function record(kind, props, extra) { recordOn(sel, kind, props, extra); }
   function recordOn(el, kind, props, extra = {}) {
     const c = CLASSES[cls], r = extra.rect || el.getBoundingClientRect();
-    ops.push({ id: Date.now() + Math.random(), ...here(), size: `${c.w}x${c.h}`, selector: selectorOf(el), desc: describe(el), kind, props, text: extra.text || null, html: extra.html || null, rect: { w: Math.round(r.width), h: Math.round(r.height) }, from: extra.from ?? null, start: extra.w ? { w: Math.round(extra.w), h: Math.round(extra.h) } : null, at: new Date().toISOString() });
+    ops.push({ id: Date.now() + Math.random(), ...here(), size: `${c.w}x${c.h}`, selector: selectorOf(el), desc: describe(el), kind, props, text: extra.text || null, html: extra.html || null, rect: { w: Math.round(r.width), h: Math.round(r.height) }, from: extra.from ?? null, start: extra.w ? { w: Math.round(extra.w), h: Math.round(extra.h) } : null, at: new Date().toISOString(), ...(extra.batch ? { batch: extra.batch } : {}) });
     save();
   }
   function setProps(el, props, which) { for (const [p, v] of Object.entries(props)) el.style.setProperty(p, v[which] || ''); }
   function undo() {
     const i = ops.map((o) => o.cls === cls && o.screen === screen).lastIndexOf(true);
     if (i < 0) { status('이 화면에서 되돌릴 것이 없습니다.'); return; }
-    const o = ops[i], el = doc().querySelector(o.selector);
-    if (el) { setProps(el, o.props, 0); if (o.html) el.innerHTML = o.html[0]; }
-    ops.splice(i, 1); save();
+    const o = ops[i], group = o.batch ? ops.filter((x) => x.batch === o.batch) : [o];
+    for (const g of [...group].reverse()) { const el = doc().querySelector(g.selector); if (el) { setProps(el, g.props, 0); if (g.html) el.innerHTML = g.html[0]; } }
+    ops = ops.filter((x) => !group.includes(x)); save();
+    if (group.length > 1) status(`묶음 ${group.length}개를 한 번에 되돌렸습니다.`);
   }
   function applyOps() {
     let missing = 0;
@@ -318,6 +421,7 @@
     const xy = (s) => { if (!s) return [0, 0]; const [x, y] = s.split(' '); return [px(x), px(y || '0')]; };
     if (o.kind === 'move') { const [a, b] = o.props.translate.map(xy); return { 무엇을: '옮김', 전: `${a[0]}px, ${a[1]}px`, 후: `${b[0]}px, ${b[1]}px`, 비율: `가로 ${pct(b[0] - a[0], c.w)} · 세로 ${pct(b[1] - a[1], c.h)}` }; }
     if (o.kind === 'size') return { 무엇을: '크기', 전: `${o.start?.w}×${o.start?.h}px`, 후: `${o.props.width?.[1] || '그대로'} × ${o.props.height?.[1] || '그대로'}`, 비율: `폭 ${pct(px(o.props.width?.[1] || o.start?.w), c.w)} · 높이 ${pct(px(o.props.height?.[1] || o.start?.h), c.h)}` };
+    if (o.kind === 'scale') { const b = px(o.props.scale[0]) || 1, a = px(o.props.scale[1]) || 1; return { 무엇을: '크기(묶음 비율)', 전: `${Math.round(b * 100)}%`, 후: `${Math.round(a * 100)}%`, 비율: `${Math.round((a / b) * 100)}%로` }; }
     if (o.kind === 'font') return { 무엇을: '글자 크기', 전: `${o.from}px`, 후: o.props['font-size'][1], 비율: `기준 폭의 ${pct(px(o.props['font-size'][1]), c.w)}` };
     if (o.kind === 'text') { const br = (s) => s.replace(/\n/g, ' ↵ '); return { 무엇을: '글자', 전: br(o.text[0]), 후: br(o.text[1]), 비율: '' }; }
     return { 무엇을: '숨김(지우기)', 전: '보임', 후: '안 보임', 비율: '' };
@@ -329,7 +433,7 @@
       const h = human(o), li = document.createElement('li');
       li.innerHTML = `<div class="where"></div><div class="what"></div><button type="button" title="이 줄 지우기">✕</button>`;
       li.querySelector('.where').textContent = `${CLASSES[o.cls].label} · ${SCREENS.find((s) => s[0] === o.screen)[1]} · ${o.desc}`;
-      li.querySelector('.what').textContent = `${h.무엇을}: ${h.전} → ${h.후}${h.비율 ? ` (${h.비율})` : ''}`;
+      li.querySelector('.what').textContent = `${o.batch ? '묶음 · ' : ''}${h.무엇을}: ${h.전} → ${h.후}${h.비율 ? ` (${h.비율})` : ''}`;
       li.querySelector('button').onclick = () => {
         if (o.cls === cls && o.screen === screen) { const el = doc().querySelector(o.selector); if (el) { setProps(el, o.props, 0); if (o.html) el.innerHTML = o.html[0]; } }
         ops = ops.filter((x) => x !== o); save();
@@ -346,7 +450,7 @@
       앱: 'Poster Studio', 빌드: build, 내보낸때: new Date().toISOString(),
       기준: Object.fromEntries(Object.entries(CLASSES).map(([k, c]) => [k, `${c.label} ${c.w}×${c.h}`])),
       바꾼것: ops.map((o) => ({ 갈래: CLASSES[o.cls].label, 갈래키: o.cls, 기준: o.size, 화면: SCREENS.find((s) => s[0] === o.screen)[1], 화면키: o.screen,
-        요소: { 설명: o.desc, 주소: o.selector, 크기: o.rect }, ...human(o), css: Object.fromEntries(Object.entries(o.props).map(([p, v]) => [p, v[1]])), ...(o.html ? { html: { 전: o.html[0], 후: o.html[1] } } : {}), 때: o.at })),
+        요소: { 설명: o.desc, 주소: o.selector, 크기: o.rect }, ...human(o), css: Object.fromEntries(Object.entries(o.props).map(([p, v]) => [p, v[1]])), ...(o.html ? { html: { 전: o.html[0], 후: o.html[1] } } : {}), ...(o.batch ? { 묶음: o.batch } : {}), 때: o.at })),
     };
     const a = document.createElement('a');
     const n = new Date(), p2 = (v) => String(v).padStart(2, '0'), stamp = `${n.getFullYear()}${p2(n.getMonth() + 1)}${p2(n.getDate())}-${p2(n.getHours())}${p2(n.getMinutes())}`;   // 이 컴퓨터 시각(한국 시간)

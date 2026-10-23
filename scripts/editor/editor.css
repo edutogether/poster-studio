@@ -13,9 +13,12 @@ button.on { background: var(--accent-bg); border-color: var(--accent); color: va
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .group { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; }
 .zlabel { min-width: 44px; text-align: center; color: #555; }
-.sel { min-width: 260px; padding: 6px 10px; border-radius: 8px; background: var(--soft); color: #444; font-size: 13px; }
+/* 고른 것 이름 · 상태 줄 · 글이 바뀌는 단추는 폭 · 높이를 고정한다 — 글이 길어져 도구 줄이 두 줄로 접히면 앱 화면이 35px쯤 밀려,
+   고른 직후 같은 자리를 누르면 엉뚱한 곳이 눌렸다(10/23 팀장 확인, 창 폭 800). 넘치는 글은 말줄임, 전체는 마우스를 올리면 보인다. */
+.sel { flex: 0 0 300px; width: 300px; min-width: 0; padding: 6px 10px; border-radius: 8px; background: var(--soft); color: #444; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tText, #tList { width: 9.5em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spacer { flex: 1; }
-.status { margin: 0; padding: 6px 14px; background: var(--accent-bg); color: #3730a3; font-size: 13px; }
+.status { margin: 0; padding: 6px 14px; background: var(--accent-bg); color: #3730a3; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .status.bad { background: #fff1f2; color: var(--bad); }
 .wrap { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
 .sizer { position: relative; margin: 0 auto; }

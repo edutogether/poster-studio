@@ -1,5 +1,11 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-23(금) 저녁 — 라이브 `7db8b82` (포스터 두 번째 얼굴 고침)
+
+- **라이브는 master `7db8b82`**(20:00, hosting만 — 함수는 `86c43b1`). 되돌릴 곳 `rollback-20261023-4`(`076aea7`) · `rollback-20261023-3`(`473482f`), 11/22까지.
+- 화면 편집판(`C:\Users\817be\Documents\ps-editor`)에 여러 개 고르기를 넣었다(편집판 파일만 — 서버는 팀장이 켠 5390 그대로). 편집판 안의 앱은 아직 `076aea7` 빌드다 —
+  Bumm님이 편집판을 다 쓰신 뒤 `node scripts/editor/install.mjs <7db8b82 dist> C:\Users\817be\Documents\ps-editor`로 다시 설치(3단계 포스터 흐린 배경만 다르다).
+
 ## 2026-10-23(금) 오후 — 라이브 `076aea7` (3단계 디자인 이름 한글)
 
 - **라이브는 master `076aea7`**(16:36, hosting만 — 함수는 `86c43b1`). 되돌릴 곳 `rollback-20261023-3`(`473482f`) · `rollback-20261023-2`(`81845ac`), 11/22까지.
