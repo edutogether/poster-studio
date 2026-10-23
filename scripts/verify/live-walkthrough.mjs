@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-/* 라이브 한 바퀴 캡처(2026-10-23 팀장 «결정판에 지금 라이브 그대로») — 휴대폰 390×844(3배) · PC 2560×1440으로 처음부터 저장까지 찍는다.
+/* 라이브 한 바퀴 캡처(2026-10-23 팀장 «결정판에 지금 라이브 그대로») — 휴대폰 390×844(3배) · PC 2560×1440 · 태블릿 가로 1366×1024 · 세로 1024×1366(2배)으로
+   처음부터 저장까지 찍는다.
 
-     node scripts/verify/live-walkthrough.mjs <주소> <결과 폴더> [--device phone|pc] [--art 그림 파일]
+     node scripts/verify/live-walkthrough.mjs <주소> <결과 폴더> [--device phone|pc|tablet-l|tablet-p] [--art 그림 파일]
 
    파일 이름은 «순서-화면-기기.png»(원본 해상도). 진짜 촬영 흐름을 가짜 카메라(라이브의 /studio/camera-student.webp — 이미 공개된 지어낸 인물)로 지나고,
    생성(/generate)은 페이지 안에서 같은 그림 한 장으로 답한다 — 네트워크로는 나가지 않는다(막아 두고, 생성 요청이 하나라도 잡히면 종료코드 2).
    --art: 생성 답으로 쓸 그림(기본은 카메라 그림 — 가로 3:2라 실제 AI 그림(세로 2:3)과 비율이 다르다. 포스터 배치를 볼 때는 세로 2:3 그림을 준다, 10/23).
-   /health는 무료라 그대로 받는다(화면에 «AI 서버 연결» 경고가 뜨지 않게). 아이폰 «내 휴대폰에 저장»은 공유 창이 열렸다 닫힌 것으로 흉내 낸다. */
+   /health는 무료라 그대로 받는다(화면에 «AI 서버 연결» 경고가 뜨지 않게). 아이폰 «내 휴대폰에 저장»은 공유 창이 열렸다 닫힌 것으로 흉내 낸다.
+   태블릿은 아이패드 사파리 그대로(맥 이름표 + 손가락 입력) — 흐름은 PC와 같다(칸 안 «카메라 켜기» · 썸네일 · «출력하기»). 세로는 카메라도 세로. */
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -17,20 +19,31 @@ const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[
 const [url, outArg] = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--device' && args[i - 1] !== '--art');
 const artFile = opt('--art', null);
 const artData = artFile ? `data:image/${/.png$/i.test(artFile) ? 'png' : 'jpeg'};base64,${(await fs.readFile(artFile)).toString('base64')}` : null;
-if (!url || !outArg) { console.error('사용법: node scripts/verify/live-walkthrough.mjs <주소> <결과 폴더> [--device phone|pc]'); process.exit(2); }
+if (!url || !outArg) { console.error('사용법: node scripts/verify/live-walkthrough.mjs <주소> <결과 폴더> [--device phone|pc|tablet-l|tablet-p]'); process.exit(2); }
+const DEVICES = {
+  phone: { tag: '휴대폰', metrics: { width: 390, height: 844, deviceScaleFactor: 3, mobile: true }, portrait: true,
+    ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' },
+  pc: { tag: 'PC2560', metrics: { width: 2560, height: 1440, deviceScaleFactor: 1, mobile: false } },
+  'tablet-l': { tag: '태블릿가로', metrics: { width: 1366, height: 1024, deviceScaleFactor: 2, mobile: true },
+    ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15' },
+  'tablet-p': { tag: '태블릿세로', metrics: { width: 1024, height: 1366, deviceScaleFactor: 2, mobile: true }, portrait: true,
+    ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15' },
+};
 const device = opt('--device', 'phone');
+const dev = DEVICES[device];
+if (!dev) { console.error(`기기는 ${Object.keys(DEVICES).join(' · ')} 중 하나`); process.exit(2); }
 const phone = device === 'phone';
-const tagDev = phone ? '휴대폰' : 'PC';
+const tagDev = dev.tag;
 const out = path.resolve(outArg);
 await fs.mkdir(out, { recursive: true });
 const base = url.replace(/\/?$/, '/');
 const delay = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
 
-// 가짜 카메라: 라이브의 공개 예시 인물 그림 → y4m(휴대폰은 세로 960×1280, PC는 가로 1280×720)
+// 가짜 카메라: 라이브의 공개 예시 인물 그림 → y4m(휴대폰 · 태블릿 세로는 세로 960×1280, PC · 태블릿 가로는 가로 1280×720)
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'walk-'));
 const art = path.join(profile, 'art.webp'), y4m = path.join(profile, 'cam.y4m');
 await fs.writeFile(art, Buffer.from(await (await fetch(base + 'studio/camera-student.webp')).arrayBuffer()));
-const [cw, ch] = phone ? [960, 1280] : [1280, 720];
+const [cw, ch] = dev.portrait ? [960, 1280] : [1280, 720];
 const ff = spawnSync('ffmpeg', ['-v', 'error', '-y', '-loop', '1', '-i', art, '-t', '3', '-r', '15', '-pix_fmt', 'yuv420p', '-vf', `scale=${cw}:${ch}:force_original_aspect_ratio=increase,crop=${cw}:${ch}`, y4m]);
 if (ff.status !== 0) { console.error('가짜 카메라 영상을 못 만들었다: ' + ff.stderr); process.exit(2); }
 
@@ -70,12 +83,12 @@ try {
   await call('Network.enable');
   await call('Network.setBlockedURLs', { urls: ['*cloudfunctions.net*/generate*'] });
   await call('Page.enable');
-  await call('Emulation.setDeviceMetricsOverride', phone ? { width: 390, height: 844, deviceScaleFactor: 3, mobile: true } : { width: 2560, height: 1440, deviceScaleFactor: 1, mobile: false });
-  if (phone) {
+  await call('Emulation.setDeviceMetricsOverride', dev.metrics);
+  if (dev.ua) {
     await call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
-    await call('Emulation.setUserAgentOverride', { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+    await call('Emulation.setUserAgentOverride', { userAgent: dev.ua });
   }
-  // 생성은 페이지 안에서 같은 그림으로 답한다(4초) · 인쇄 창은 열지 않는다 · 휴대폰은 세로 카메라 · 아이폰 공유 창은 열렸다 닫힌 것으로
+  // 생성은 페이지 안에서 같은 그림으로 답한다(4초) · 인쇄 창은 열지 않는다(«인쇄 끝»만 알림) · 휴대폰은 세로 카메라 · 아이폰 공유 창은 열렸다 닫힌 것으로
   await call('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
     const net = window.fetch.bind(window);
     window.fetch = async (input, init) => {
@@ -86,10 +99,11 @@ try {
       const data = given || await (async () => { const b = await (await net('/studio/camera-student.webp')).blob(); return new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); })();
       return new Response(JSON.stringify({ images: [data] }), { status: 200, headers: { 'content-type': 'application/json' } });
     };
-    window.print = () => {};
-    ${phone ? `const md = navigator.mediaDevices; const gum = md.getUserMedia.bind(md);
-    md.getUserMedia = (c) => { const v = c && c.video; return gum(v && typeof v === 'object' && v.width && v.height ? { ...c, video: { ...v, width: v.height, height: v.width } } : c); };
-    navigator.canShare = () => true; navigator.share = async () => {};` : ''}
+    // 인쇄 창은 열지 않되, 실제 브라우저처럼 «인쇄 끝»을 알린다 — 안 알리면 인쇄용 그림이 화면에 남아 스크롤 막대가 생긴다(10/23)
+    window.print = () => { setTimeout(() => window.dispatchEvent(new Event('afterprint')), 0); };
+    ${dev.portrait ? `const md = navigator.mediaDevices; const gum = md.getUserMedia.bind(md);
+    md.getUserMedia = (c) => { const v = c && c.video; return gum(v && typeof v === 'object' && v.width && v.height ? { ...c, video: { ...v, width: v.height, height: v.width } } : c); };` : ''}
+    ${phone ? 'navigator.canShare = () => true; navigator.share = async () => {};' : ''}
   })();` });
 
   await call('Page.navigate', { url: base });

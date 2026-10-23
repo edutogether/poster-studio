@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
+import deviceMedia from './scripts/build/device-media.mjs';
 
 /* ────────────────────────────────────────────────────────────────────
    Vite 설정 — 리액트+TS 전환(2026-09-09)으로 빌드 단계를 처음 도입한다.
@@ -19,6 +20,8 @@ export default defineConfig({
      vite를 8로 올리는 건 '빌드 변경'이라 '언어/프레임워크 변경'과 섞이면 안 되므로
      전환이 끝난 뒤에 따로 판단한다. */
   plugins: [react()],
+  // 비율 기준 전환(2026-10-23): src/ CSS의 폭 · 높이 미디어 쿼리를 기기 갈래 선택자로, 화면 단위를 캔버스 변수로 바꾼다(scripts/build/device-media.mjs)
+  css: { postcss: { plugins: [deviceMedia()] } },
   // public/ = 정적 자산(폰트·로고·배경 이미지·클래식 스크립트). 그대로 dist/로 복사된다.
   publicDir: 'public',
   build: {
