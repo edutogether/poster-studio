@@ -12,8 +12,14 @@
      태블릿 — 이름표(iPad · Android 태블릿 · 터치 되는 «Macintosh» = 아이패드 사파리) 또는 손가락 입력 + 짧은 변 ≥ 600
               (갤럭시 탭 «데스크톱 보기»는 PC 이름표를 보내도 손가락 입력이라 태블릿)
      PC    — 그 밖(마우스가 주 입력이면 터치 노트북도 PC). 판정 재료가 없는 옛 브라우저는 폭 ≤ 760이면 휴대폰.
-   이 파일은 <head>의 viewport 바로 뒤, 스타일시트보다 먼저 읽힌다(CSP script-src 'self' — 인라인 금지). */
+   이 파일은 <head>의 viewport 바로 뒤, 스타일시트보다 먼저 읽힌다(CSP script-src 'self' — 인라인 금지).
+
+   PC 캔버스 스위치 — 아래 PC_CANVAS 한 줄이 유일한 원본이다(빌드 변환 scripts/build/device-media.mjs가 이 줄을 읽는다).
+     true  — PC도 2560×1440 캔버스를 통째로 줄인다(위 설명대로). <html data-pc-canvas>를 붙인다.
+     false — PC는 지금 라이브 배치 그대로(창 크기로 고르는 미디어 쿼리 · 원래 vw · vh). 갈래 이름(data-device="pc")만 붙인다.
+   PC 작은 글자(2560에서 12~15px → 부스 노트북에서 5~8px)를 정하기 전까지는 false다(10/23 — 휴대폰 · 태블릿을 먼저 낸다). */
 (function () {
+  var PC_CANVAS = false;
   var d = document.documentElement, ua = navigator.userAgent || '', tp = navigator.maxTouchPoints || 0;
   var mq = function (q) { return window.matchMedia ? window.matchMedia(q).matches : null; };
   var coarse = mq('(pointer: coarse)');
@@ -35,6 +41,8 @@
       if (meta) meta.setAttribute('content', 'width=' + (land ? 1366 : 1024) + ', viewport-fit=cover');
     } else {
       d.setAttribute('data-device', 'pc');
+      if (!PC_CANVAS) return;
+      d.setAttribute('data-pc-canvas', '');
       var k = Math.min(window.innerWidth / REF_W, window.innerHeight / REF_H, 1);
       d.style.setProperty('--vw', REF_W / 100 + 'px');
       d.style.setProperty('--vh', REF_H / 100 + 'px');

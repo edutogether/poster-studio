@@ -41,7 +41,7 @@ export function useLayoutMatch(
     if (!left || !rightPanel) return;
 
     const applyHeight = () => {
-      rightPanel.style.height = heightToApply(layoutWidth(), left.offsetHeight);   // PC는 zoom이라 창 폭 대신 캔버스 폭(비율 기준 전환 10/23)
+      rightPanel.style.height = heightToApply(layoutWidth(), left.offsetHeight);   // PC 캔버스는 zoom이라 창 폭 대신 캔버스 폭(비율 기준 전환 10/23)
     };
 
     let ro: ResizeObserver | undefined;

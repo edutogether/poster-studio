@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import postcss from "postcss";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import deviceMedia, { convertUnits, prefixSelector, splitQuery } from "../scripts/build/device-media.mjs";
+import deviceMedia, { convertUnits, prefixSelector, readPcCanvas, splitQuery } from "../scripts/build/device-media.mjs";
 
 // 비율 기준 전환(2026-10-23) — 빌드 변환(scripts/build/device-media.mjs)과 기기 판정(public/device-canvas.js)
 describe("빌드 변환: 폭 · 높이 미디어 쿼리 → 기기 갈래", () => {
@@ -23,21 +23,37 @@ describe("빌드 변환: 폭 · 높이 미디어 쿼리 → 기기 갈래", () =
     expect(convertUnits("calc(100svh - 120px)")).toBe("calc(calc(100 * var(--vh, 1svh)) - 120px)");
     expect(convertUnits("50vw")).toBe("calc(50 * var(--vw, 1vw))");
   });
-  test("src/ CSS만 바꾸고, 맞는 갈래가 없으면 지우고, 다른 조건은 남긴다", async () => {
-    const css = "@media (max-width: 760px) { .a { color: red } } @media (min-width: 1100px) and (max-height: 820px) { .b { color: blue } } @media print { .c { display: none } } .d { width: 10vw }";
-    const out = (await postcss([deviceMedia()]).process(css, { from: resolve("src/x.css") })).css;
+  const CSS = "@media (max-width: 760px) { .a { color: red } } @media (min-width: 1100px) and (max-height: 820px) { .b { color: blue } } @media print { .c { display: none } } .d { width: 10vw }";
+  test("PC 캔버스 켜짐: src/ CSS만 바꾸고, 맞는 갈래가 없으면 지우고, 다른 조건은 남긴다", async () => {
+    const out = (await postcss([deviceMedia({ pcCanvas: true })]).process(CSS, { from: resolve("src/x.css") })).css;
     expect(out).toContain(':where([data-device="phone"]) .a');
     expect(out).not.toContain(".b");
     expect(out).toContain("@media print");
     expect(out).toContain("calc(10 * var(--vw, 1vw))");
-    const html = (await postcss([deviceMedia()]).process(css, { from: resolve("privacy.html?html-proxy&index=0.css") })).css;
-    expect(html).toBe(css);
+    expect(out).not.toContain("max-width");
+    const html = (await postcss([deviceMedia({ pcCanvas: true })]).process(CSS, { from: resolve("privacy.html?html-proxy&index=0.css") })).css;
+    expect(html).toBe(CSS);
+  });
+  test("PC 캔버스 꺼짐: PC 몫은 원래 미디어 쿼리 그대로(PC 선택자만 붙인 사본), 휴대폰 · 태블릿 몫만 기준 크기로", async () => {
+    const out = (await postcss([deviceMedia({ pcCanvas: false })]).process(CSS, { from: resolve("src/x.css") })).css;
+    expect(out).toMatch(/@media \(max-width: 760px\) \{ :where\(\[data-device="pc"\]\) \.a \{ color: red \} \}\s*:where\(\[data-device="phone"\]\) \.a/);
+    expect(out).toContain('@media (min-width: 1100px) and (max-height: 820px) { :where([data-device="pc"]) .b');
+    expect(out.match(/\.b /g)).toHaveLength(1);   // 기준 크기에서 맞는 휴대폰 · 태블릿이 없으니 PC 사본만
+    expect(out).toContain("@media print { .c");
+    expect(out).toContain(".d { width: calc(10 * var(--vw, 1vw)) }");   // PC는 변수가 없어 원래 1vw
+  });
+  test("스위치는 public/device-canvas.js 한 줄이 원본 — 줄이 없으면 빌드를 멈춘다", () => {
+    expect(typeof readPcCanvas()).toBe("boolean");
+    expect(readPcCanvas("(function () {\n  var PC_CANVAS = true;\n")).toBe(true);
+    expect(() => readPcCanvas("var PC_CANVAS = 1;")).toThrow(/PC_CANVAS/);
   });
 });
 
 describe("기기 판정(public/device-canvas.js)", () => {
-  const src = readFileSync(resolve("public/device-canvas.js"), "utf8");
-  afterEach(() => { vi.unstubAllGlobals(); document.documentElement.removeAttribute("data-device"); document.documentElement.removeAttribute("style"); document.head.innerHTML = ""; });
+  const file = readFileSync(resolve("public/device-canvas.js"), "utf8");
+  const withCanvas = (on: boolean) => { const s = file.replace(/var PC_CANVAS = (true|false);/, `var PC_CANVAS = ${on};`); if (!s.includes(`var PC_CANVAS = ${on};`)) throw new Error("device-canvas.js에 PC_CANVAS 줄이 없다"); return s; };
+  let src = withCanvas(true);
+  afterEach(() => { vi.unstubAllGlobals(); src = withCanvas(true); const d = document.documentElement; d.removeAttribute("data-device"); d.removeAttribute("data-pc-canvas"); d.removeAttribute("style"); d.className = ""; document.head.innerHTML = ""; });
   function run({ ua, tp = 0, coarse = false, landscape = false, screen = [1920, 1080], win = [1920, 1080] }: { ua: string; tp?: number; coarse?: boolean; landscape?: boolean; screen?: number[]; win?: number[] }) {
     document.head.innerHTML = '<meta name="viewport" content="width=device-width, initial-scale=1">';
     vi.stubGlobal("navigator", { userAgent: ua, maxTouchPoints: tp });
@@ -71,5 +87,17 @@ describe("기기 판정(public/device-canvas.js)", () => {
   });
   test("PC 화면에서는 휴대폰 갈래가 되지 않는다(창이 760보다 좁아도)", () => {
     expect(run({ ua: WINDOWS, win: [700, 900] }).device).toBe("pc");
+  });
+  test("PC 캔버스 꺼짐: 갈래 이름만 붙이고 zoom · 변수 · 캔버스 표시는 없다(지금 라이브 배치) — 휴대폰 · 태블릿은 그대로", () => {
+    src = withCanvas(false);
+    expect(run({ ua: WINDOWS, win: [1280, 720] })).toMatchObject({ device: "pc", zoom: "" });
+    const d = document.documentElement;
+    expect(d.hasAttribute("data-pc-canvas") || d.classList.contains("ps-canvas") || d.style.getPropertyValue("--vw") !== "").toBe(false);
+    expect(run({ ua: IPHONE, tp: 5, coarse: true, screen: [390, 844] })).toMatchObject({ device: "phone", meta: "width=390, viewport-fit=cover" });
+    expect(run({ ua: IPAD_SAFARI, tp: 5, coarse: true, screen: [820, 1180] })).toMatchObject({ device: "tablet-p", meta: "width=1024, viewport-fit=cover" });
+  });
+  test("PC 캔버스 켜짐: <html data-pc-canvas>", () => {
+    run({ ua: WINDOWS, win: [1280, 720] });
+    expect(document.documentElement.hasAttribute("data-pc-canvas")).toBe(true);
   });
 });

@@ -8,7 +8,15 @@
       폭 · 높이 말고 다른 조건(움직임 줄이기 · 인쇄 · 마우스)은 @media로 남긴다. 맞는 갈래가 없으면 규칙을 지운다.
    ② 화면 단위(vw · vh · svh · dvh · lvh · vmax)는 `calc(N * var(--vw, 1vw))` 꼴로 — 휴대폰 · 태블릿은 변수가 없어 그대로(viewport 폭을
       기준 폭으로 맞추므로 화면 단위가 이미 기준 크기다), PC는 public/device-canvas.js가 캔버스 단위(25.6px · 14.4px)를 넣는다(zoom이라 화면 단위가 틀린다).
-   data-device는 public/device-canvas.js가 <head> 맨 앞에서 붙인다. privacy.html의 안쪽 <style>은 건드리지 않는다(src/ CSS 파일만). */
+   data-device는 public/device-canvas.js가 <head> 맨 앞에서 붙인다. privacy.html의 안쪽 <style>은 건드리지 않는다(src/ CSS 파일만).
+   PC 캔버스 스위치(public/device-canvas.js의 `var PC_CANVAS = …;` 한 줄이 유일한 원본 — 이 플러그인은 그 줄을 읽는다):
+     켜짐 — PC도 위처럼 2560×1440에서 미리 평가한다.
+     꺼짐 — PC는 지금 라이브 배치 그대로: PC 몫은 원래 @media를 그대로 두고 선택자에 `:where([data-device="pc"])`만 붙인 사본으로 남기고,
+            휴대폰 · 태블릿 몫만 기준 크기로 평가한다. 화면 단위 변수(--vw · --vh)도 넣지 않으므로 PC는 원래 vw · vh 그대로다. */
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 export const REFERENCE = { pc: [2560, 1440], 'tablet-l': [1366, 1024], 'tablet-p': [1024, 1366], phone: [390, 844] };
 const SIZE = /^\((min|max)-(width|height)\s*:\s*([\d.]+)px\)$/;
 
@@ -42,8 +50,21 @@ export function convertUnits(value) {
   });
 }
 
+/** public/device-canvas.js의 `var PC_CANVAS = true|false;` — 없거나 모양이 다르면 빌드를 멈춘다(조용히 한쪽으로 기울지 않게). */
+// 경로는 문자열로 — 시험(jsdom)에서는 전역 URL이 jsdom 것이라 fs가 URL 객체를 받지 않는다
+const CANVAS_FILE = resolve(dirname(fileURLToPath(import.meta.url)), '../../public/device-canvas.js');
+export function readPcCanvas(src = readFileSync(CANVAS_FILE, 'utf8')) {
+  const m = src.match(/^\s*var PC_CANVAS = (true|false);/m);
+  if (!m) throw new Error('public/device-canvas.js에 «var PC_CANVAS = true|false;» 줄이 없다');
+  return m[1] === 'true';
+}
+
 const ALL = Object.keys(REFERENCE).length;
-export default function deviceMedia() {
+const prefixRules = (node, devices) => node.walkRules((rule) => {
+  if (rule.parent?.type === 'atrule' && /keyframes$/i.test(rule.parent.name)) return;
+  rule.selectors = rule.selectors.map((s) => prefixSelector(s, devices));
+});
+export default function deviceMedia({ pcCanvas = readPcCanvas() } = {}) {
   return {
     postcssPlugin: 'device-media',
     Once(root) {
@@ -54,11 +75,11 @@ export default function deviceMedia() {
         if (at.params.includes(',')) throw at.error('쉼표로 묶은 미디어 쿼리는 아직 다루지 않는다 — device-media.mjs를 늘릴 것');
         const q = splitQuery(at.params);
         if (!q) return;
-        if (!q.devices.length) { at.remove(); return; }
-        if (q.devices.length < ALL) at.walkRules((rule) => {
-          if (rule.parent?.type === 'atrule' && /keyframes$/i.test(rule.parent.name)) return;
-          rule.selectors = rule.selectors.map((s) => prefixSelector(s, q.devices));
-        });
+        // PC 캔버스가 꺼져 있으면 PC 몫은 원래 조건 그대로(창 크기로 고른다) — 같은 자리에 사본으로 둔다
+        if (!pcCanvas) { const pc = at.clone(); prefixRules(pc, ['pc']); at.before(pc); }
+        const devices = pcCanvas ? q.devices : q.devices.filter((d) => d !== 'pc');
+        if (!devices.length) { at.remove(); return; }
+        if (devices.length < ALL) prefixRules(at, devices);
         if (q.rest) at.params = q.rest; else at.replaceWith(at.nodes);
       });
     },

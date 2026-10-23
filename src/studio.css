@@ -830,6 +830,22 @@ main.app {
   .poster-carousel[data-hint] .poster-slide { animation: none; }
   .poster-slide { transition: none; }
 }
+/* 2단계 단추 줄 — 761~1099(태블릿 세로 1024): 오른쪽 칸 안쪽 폭이 302px라 «이전»(112) + «이 사진으로 포스터 만들기»(252)가 한 줄에 안 들어가
+   주 단추 오른쪽 50px가 칸 밖으로 잘렸다(10/23 실측, 라이브도 같음 — 켠 뒤 «3초 뒤 사진 찍기»도 12px 넘쳤다). 두 줄로 쌓는다 — 화면 순서 그대로
+   «이전»이 위, 주 단추가 아래(다른 크기에서 주 단추가 놓이는 맨 아래 자리), 둘 다 칸 폭 가득. */
+@media (min-width: 761px) and (max-width: 1099px) {
+  #cameraWorkspace .camera-actions { flex-wrap: wrap; }
+  #cameraWorkspace .camera-actions > .back-button,
+  #cameraWorkspace .camera-actions > .primary-button { flex: 1 1 100%; }
+}
+/* 같은 폭 · 낮은 창(PC 1024×768 등 — 태블릿은 기준 높이라 해당 없음): «오늘 촬영할 영화» 티켓이 단추 줄 밑으로 들어가 겹쳤다(10/23, 라이브도 같음).
+   포스터 칸(최소 140 + 사이 26)까지 담을 높이가 없으면 포스터 그림은 빼고 티켓만 둔다 — 920부터 포스터까지 담긴다(10/23 실측: 920에서 티켓 끝 = 단추 줄 위).
+   그래도 모자라는 더 낮은 창은 안내 칸이 내용보다 작아지지 않아 오른쪽 칸을 내려 보게 된다(겹치지 않는 것이 먼저). */
+@media (min-width: 761px) and (max-width: 1099px) and (max-height: 919px) {
+  #cameraWorkspace .camera-guide { flex: 1 0 auto; }
+  #cameraWorkspace .camera-film-scene { display: none; }
+  #cameraWorkspace .camera-film-card { flex: none; min-height: 0; }
+}
 
 /* ───── 비율 기준 전환(2026-10-23, _docs/intents/2026-10-23-ratio-canvas) — PC 캔버스 ─────
    public/device-canvas.js가 기준 크기(2560×1440)가 아닌 PC 창에서 <html>에 zoom과 .ps-canvas를 건다. 캔버스는 2560×1440 한 장 —
@@ -837,3 +853,6 @@ main.app {
    기준 크기 창에서는 아무것도 붙지 않는다 — 지금 화면과 화소 하나 다르지 않게. */
 html.ps-canvas { width: 2560px; margin: 0 auto; }
 html.ps-canvas body { width: 2560px; min-height: 1440px; contain: layout; }
+/* 칸 안 스크롤 막대: 2560×1440에 꼭 맞게 짠 칸(2단계 · 3단계 오른쪽, 로딩 창)이 배율 반올림으로 1~2px 넘치면 스크롤 막대가 생겨 칸 안이 통째로
+   15px 좁아졌다(10/23 실측 — 3단계 1280×800 · 1440×900 · 1536×731). 기준 크기에서는 넘치지 않으므로 막대 자리만 없앤다(넘치면 바퀴로는 그대로 내려간다). */
+html.ps-canvas #cameraWorkspace, html.ps-canvas #resultView #resultWorkspace, html.ps-canvas .generation-wait { scrollbar-width: none; }
