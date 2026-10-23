@@ -11,7 +11,7 @@ import type { GenerateFailure } from "../generateFailure.js";
 import type { BoothCodeCheck } from "../boothCode.js";
 import { approvedCameraVideo } from "./cameraVideo.js";
 import { savePlatform, savePoster } from "../savePoster.js";
-import { designNameEn } from "../designNames.js";
+import { designName } from "../designNames.js";
 
 const choices = [
   ["sf", "SF", "reference-sf.jpg"],
@@ -727,7 +727,7 @@ export default function StudioView(p: StudioViewProps) {
               onTouchStart={onCarouselTouchStart} onTouchEnd={onCarouselTouchEnd}>
               {p.posters.map((poster, i) => (
                 <button type="button" key={poster.label + i} className="poster-slide" aria-current={i === p.selected || undefined}
-                  aria-label={i === p.selected ? `${poster.label} 크게 보기` : `${poster.label} 보기`}
+                  aria-label={i === p.selected ? `${designName(poster.label)} 크게 보기` : `${designName(poster.label)} 보기`}
                   onClick={() => (i === p.selected ? openDialog() : p.select(i))}>
                   <img src={posterURLs[i]} alt="" />
                 </button>
@@ -748,8 +748,8 @@ export default function StudioView(p: StudioViewProps) {
               </button>;
             })()}
           </div>
-          {/* 10/20 Bumm님 «이름은 영어로, · 1 / 8은 없앰» — PC 썸네일 이름은 한글 그대로 */}
-          {p.posters[p.selected] && <p className="poster-carousel-caption">{designNameEn(p.posters[p.selected].label)}</p>}
+          {/* 디자인 이름은 한글(10/23 Bumm님 «아이들 대상이라») · 순번(1 / 8)은 없음(10/20) */}
+          {p.posters[p.selected] && <p className="poster-carousel-caption">{designName(p.posters[p.selected].label)}</p>}
         </div>
         <div className="workspace" id="resultWorkspace">
           <div className="page-heading">
@@ -772,7 +772,7 @@ export default function StudioView(p: StudioViewProps) {
                   key={poster.label + i}
                   className={`style-option thumb${i === p.selected ? " active" : ""}`}
                   aria-pressed={i === p.selected}
-                  aria-label={`${poster.label} 버전 고르기`}
+                  aria-label={`${designName(poster.label)} 버전 고르기`}
                   onClick={() => p.select(i)}
                 >
                   <span className="style-image">
@@ -782,7 +782,7 @@ export default function StudioView(p: StudioViewProps) {
                     </span>
                   </span>
                   <span className="style-caption">
-                    <span className="style-name label">{designNameEn(poster.label)}</span>
+                    <span className="style-name label">{designName(poster.label)}</span>
                   </span>
                 </button>
               ))}
@@ -832,7 +832,7 @@ export default function StudioView(p: StudioViewProps) {
         )}
         {/* ⑩ 휴대폰: 크게 보기 창 안에서도 좌우로 넘긴다(PC에서는 숨김 — 위 한 장이 그대로 보인다) */}
         <div className="dialog-carousel" ref={dialogCarouselRef} onScroll={(event) => onSwipe(event.currentTarget)}>
-          {p.posters.map((poster, i) => <img key={poster.label + i} src={posterURLs[i]} alt={`${poster.label} 포스터`} />)}
+          {p.posters.map((poster, i) => <img key={poster.label + i} src={posterURLs[i]} alt={`${designName(poster.label)} 포스터`} />)}
         </div>
       </dialog>
     </>
