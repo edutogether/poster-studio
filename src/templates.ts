@@ -656,7 +656,8 @@ export const TEMPLATES: Template[] = [
     vg.addColorStop(Math.min(0.98, (tagTop - 10) / H), css(k.veil, 0.84)); vg.addColorStop(1, css(k.veil, 0.92));
     c.save(); c.fillStyle = vg;
     c.beginPath(); rectPath(c, 0, 0, W, H); archPath(c, cx, spring, r, archBottom); c.fill('evenodd'); c.restore();
-    c.save(); c.strokeStyle = gold; c.lineWidth = 2; c.beginPath(); archPath(c, cx, spring, r + 14, archBottom + 14); c.stroke(); c.restore();
+    // 테두리 선은 사진 가장자리에 딱 붙인다(2026-10-23 Bumm님 «아치 모양으로 딱 맞춰야지») — 예전에는 14px 바깥에 그어 선과 사진 사이에 흐린 띠가 보였다
+    c.save(); c.strokeStyle = gold; c.lineWidth = 2; c.beginPath(); archPath(c, cx, spring, r, archBottom); c.stroke(); c.restore();
     draw(c, tag, cx, tagTop, soft, 'center');
     draw(c, title, cx, titleTop, gold, 'center');
     bill.draw(cx, 1728, 'center');
