@@ -20,7 +20,7 @@ import PosterStudio, { getMeta } from '../src/PosterStudio.js';
 import * as homeRestart from '../src/restartHome.js';
 import * as posterModule from '../src/poster.js';
 import * as saveModule from '../src/savePoster.js';
-import { designNameEn } from '../src/designNames.js';
+import { designName } from '../src/designNames.js';
 import { PHONE_QUERY, slideAt, useTap } from '../src/studio/StudioView.js';
 import { captureBoothCode } from '../src/boothCode.js';
 
@@ -1044,7 +1044,7 @@ describe('휴대폰 흐름', () => {
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
     const slides = document.querySelectorAll<HTMLButtonElement>('.poster-slide');
     expect(slides).toHaveLength(8);
-    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe(designNameEn(TEMPLATES[0].label));
+    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe(designName(TEMPLATES[0].label));
     await act(async () => { slides[2].click(); });
     expect(document.querySelectorAll('#gallery .thumb')[2].getAttribute('aria-pressed')).toBe('true');
     expect(document.querySelector<HTMLDialogElement>('.poster-dialog')!.open).toBe(false);
@@ -1053,7 +1053,7 @@ describe('휴대폰 흐름', () => {
     expect(document.querySelectorAll('.dialog-carousel img')).toHaveLength(8);
   });
 
-  test('3단계 양쪽 화살표(10/19): 다음 · 이전 장을 고르고, 첫 장에서는 왼쪽을 누를 수 없다. 이름은 영어 · 순번 없음(10/20)', async () => {
+  test('3단계 양쪽 화살표(10/19): 다음 · 이전 장을 고르고, 첫 장에서는 왼쪽을 누를 수 없다. 이름은 한글(10/23) · 순번 없음(10/20)', async () => {
     asPhone(true);
     installFetch();
     await act(async () => { renderApp(); });
@@ -1064,12 +1064,14 @@ describe('휴대폰 흐름', () => {
     const caption = () => document.querySelector('.poster-carousel-caption')!.textContent;
     expect(prev.disabled).toBe(true);
     await act(async () => { next.click(); });
-    expect(caption()).toBe(designNameEn(TEMPLATES[1].label));
+    expect(caption()).toBe(designName(TEMPLATES[1].label));
     await act(async () => { prev.click(); });
-    expect(caption()).toBe(designNameEn(TEMPLATES[0].label));
-    expect(caption()).toBe('Cinema');
-    for (let i = 0; i < 7; i++) await act(async () => { next.click(); });
-    expect(caption()).toBe(designNameEn(TEMPLATES[7].label));
+    expect(caption()).toBe(designName(TEMPLATES[0].label));
+    expect(caption()).toBe('시네마');
+    for (let i = 0; i < 4; i++) await act(async () => { next.click(); });
+    expect(caption()).toBe('필름 스트립');
+    for (let i = 0; i < 3; i++) await act(async () => { next.click(); });
+    expect(caption()).toBe(designName(TEMPLATES[7].label));
     expect(caption()).not.toMatch(/\d|\//);
   });
 
@@ -1089,7 +1091,7 @@ describe('휴대폰 흐름', () => {
     expect(next.dataset.rewind).toBe('true');
     await act(async () => { next.click(); });
     expect(document.querySelector('.poster-slide[aria-current]')).toBe(document.querySelectorAll('.poster-slide')[0]);
-    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe('Cinema');
+    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe('시네마');
     expect(next.getAttribute('aria-label')).toBe('다음 포스터');
   });
 
@@ -1119,7 +1121,7 @@ describe('휴대폰 흐름', () => {
     expect(current()).toBe(7);   // 세로로 더 민 것도 아니다
     await swipe(-120);
     expect(current()).toBe(0);
-    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe('Cinema');
+    expect(document.querySelector('.poster-carousel-caption')!.textContent).toBe('시네마');
   });
 
   test('2단계 «샘플 포스터 보기»: 손가락은 떼는 순간(click 없이도) 한 번에 로딩으로 들어간다(10/20 저녁 Bumm님 «두 번 눌러야 들어감»)', async () => {
@@ -1174,15 +1176,15 @@ describe('휴대폰 흐름', () => {
     expect(document.querySelector('.photo-review .label-pc')!.textContent).toBe('표정과 구도가 마음에 드나요?다시 찍어도 괜찮아요.');
   });
 
-  test('PC 3단계 썸네일 이름은 영어(10/23 Bumm님) — 읽기 도구용 이름은 한글 그대로', async () => {
+  test('3단계 썸네일 이름은 한글(10/23 Bumm님 «아이들 대상이라») — 읽기 도구가 읽는 이름도 보이는 이름과 같다', async () => {
     installFetch();
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await shoot();
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
     const names = [...document.querySelectorAll('#gallery .style-name')].map((n) => n.textContent);
-    expect(names).toEqual(['Cinema', 'Editorial', 'Color Block', 'Arch Frame', 'Film Strip', 'Polaroid', 'Typography', 'Triptych']);
-    expect(document.querySelectorAll('#gallery .thumb')[0].getAttribute('aria-label')).toBe(`${TEMPLATES[0].label} 버전 고르기`);
+    expect(names).toEqual(['시네마', '에디토리얼', '컬러 블록', '아치 프레임', '필름 스트립', '폴라로이드', '타이포그래피', '트립틱']);
+    expect([...document.querySelectorAll('#gallery .thumb')].map((b) => b.getAttribute('aria-label'))).toEqual(names.map((n) => `${n} 버전 고르기`));
   });
 
   test('3단계 «내 휴대폰에 저장»(10/20): 아이폰은 «공유 창에서 ‘이미지 저장’을 누르세요» 한 줄, 안드로이드 · PC는 없음', async () => {
