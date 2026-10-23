@@ -9,8 +9,9 @@
       떠 있는 것이 끼면 글 · 단추끼리만 센다(그림 위 배지 · 화살표는 일부러 얹은 것), 배경 칠한 고정 줄이 덮는 것은 맨 위 · 맨 아래 두 스크롤 자리에서
       모두 덮일 때만, 잠깐 뜨는 알림(role=status)은 빼고, 모달 창이 떠 있으면 그 창 안만)
    ⑤ 아래로 잘림(감춘 칸 밖으로 글자가 밀려나 안 보임 — 로고처럼 그림을 일부러 잘라 보이는 칸은 세지 않는다).
+   ⑥ 빈 띠(카메라 영상 · 찍은 사진을 칸에 다 담았는데 칸 비율이 사진과 달라 위아래 · 양옆에 띠가 남음, 2px 넘게).
    --sizes는 «갈래:가로x세로»(갈래 = pc · tablet · phone, 안 적으면 폭으로 짐작). 같은 크기도 갈래가 다르면 따로 잰다.
-   --selftest는 결함 · 미끼를 심은 시험 페이지 네 장으로 판정 16가지를 확인한다(하나라도 틀리면 종료코드 1).
+   --selftest는 결함 · 미끼를 심은 시험 페이지 여섯 장으로 판정 18가지를 확인한다(하나라도 틀리면 종료코드 1).
    --view를 주면 결함이 없어도 화면마다 창 크기 그대로 한 장씩 남긴다(사람이 눈으로 볼 것). 표의 «↓N»은 참고 — 주 단추까지 N px 내려야 보인다.
    결함이 있는 화면은 «갈래-크기-화면.png»(원본 해상도, 페이지 전체)로 남기고, 모두를 report.json · report.md 표로 낸다.
    카메라는 가짜(라이브의 공개 예시 인물), 생성(/generate)은 페이지 안에서 답한다 — 네트워크로 나가면 종료코드 2. 휴대폰 크기는 아이폰, 태블릿은 아이패드로 흉내 낸다. */
@@ -143,7 +144,17 @@ const MEASURE = `(() => {
       if (cut) { cutY.push(name(el) + ' «' + t.textContent.trim().slice(0, 16) + '» ' + el.scrollHeight + '/' + el.clientHeight); break; }
     }
   }
-  return { hscroll, off: [...new Set(off)].slice(0, 12), clipped: clipped.slice(0, 12), overlaps: overlaps.slice(0, 12), cutY: cutY.slice(0, 8), below, docH: document.documentElement.scrollHeight, H };
+  // 빈 띠: 카메라 영상 · 찍은 사진(#video · #snapshot)을 «안에 다 담기»(contain)로 그렸는데 그 칸 비율이 사진과 달라 위아래 · 양옆에 빈 띠가 남는 것.
+  //   10/23 태블릿 세로 · PC 1024×768에서 찍은 뒤 큰 검은 띠가 남았다(위 판정들은 빈 자리는 보지 않는다). 2px 넘으면 센다. 꽉 채우기(cover)는 띠가 없다.
+  const bands = [];
+  for (const el of document.querySelectorAll('#video, #snapshot')) {
+    if (!vis(el) || el.classList.contains('hidden')) continue;
+    const iw = el.videoWidth || el.naturalWidth, ih = el.videoHeight || el.naturalHeight; if (!iw || !ih) continue;
+    const fit = getComputedStyle(el).objectFit; if (fit !== 'contain' && fit !== 'scale-down') continue;
+    const r = el.getBoundingClientRect(), ar = iw / ih, bx = r.width - Math.min(r.width, r.height * ar), by = r.height - Math.min(r.height, r.width / ar);
+    if (bx > 2 || by > 2) bands.push(name(el) + ' ' + (bx > 2 ? '양옆 ' + Math.round(bx) : '위아래 ' + Math.round(by)) + 'px · 칸 ' + Math.round(r.width) + '×' + Math.round(r.height) + ' · 사진 ' + iw + '×' + ih);
+  }
+  return { hscroll, off: [...new Set(off)].slice(0, 12), clipped: clipped.slice(0, 12), overlaps: overlaps.slice(0, 12), cutY: cutY.slice(0, 8), bands, below, docH: document.documentElement.scrollHeight, H };
 })()`;
 const delay = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
 
@@ -172,6 +183,9 @@ if (SELFTEST) {
     <div style="width:200px;height:80px;overflow-y:auto"><button id=widebtn style="width:260px">칸보다 넓은 단추</button></div>
     <div style="width:200px;display:flex;overflow-x:auto;scroll-snap-type:x mandatory"><button id=snap1 style="flex:0 0 180px">한 장</button><button id=snap2 style="flex:0 0 180px">두 장</button></div>
     <div style="width:120px;overflow-x:auto;overflow-y:hidden;white-space:nowrap"><span id=chip>옆으로 넘겨 보는 긴 이름표</span></div></body>`;
+  // 빈 띠: 정사각 사진을 가로로 긴 칸에 다 담기(contain) → 양옆 띠, 같은 사진을 꽉 채우기(cover) → 띠 없음
+  const E = `<!doctype html><meta charset=utf-8><body style="margin:0"><img id=snapshot style="width:300px;height:100px;object-fit:contain;background:#000" src="${svg}"></body>`;
+  const F = `<!doctype html><meta charset=utf-8><body style="margin:0"><img id=snapshot style="width:300px;height:100px;object-fit:cover" src="${svg}"></body>`;
   const port = 9579, dir = await fs.mkdtemp(path.join(os.tmpdir(), 'survey-self-'));
   const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
   let fails = 0;
@@ -185,7 +199,7 @@ if (SELFTEST) {
     const call = (method, params = {}) => new Promise((r) => { const id = ++seq; pending.set(id, r); ws.send(JSON.stringify({ id, method, params })); });
     await call('Emulation.setDeviceMetricsOverride', { width: 1000, height: 700, deviceScaleFactor: 1, mobile: false });
     const run = async (html) => { await call('Page.navigate', { url: 'data:text/html;charset=utf-8,' + encodeURIComponent(html) }); await delay(700); return (await call('Runtime.evaluate', { expression: MEASURE, returnByValue: true })).result.result.value; };
-    const a = await run(A), b = await run(B), c = await run(C), d = await run(D);
+    const a = await run(A), b = await run(B), c = await run(C), d = await run(D), e = await run(E), f = await run(F);
     const has = (list, id) => list.some((s) => s.includes('#' + id));
     const expect = [
       ['글자 잘림을 잡는다', has(a.cutY, 'textcut')], ['일부러 자른 로고는 안 잡는다', !has(a.cutY, 'logo')], ['1px 숨김 제목은 안 잡는다', !has(a.cutY, 'sr')],
@@ -202,6 +216,8 @@ if (SELFTEST) {
       ['세로 스크롤 칸 밖으로 잘린 단추를 잡는다', has(d.off, 'widebtn')],
       ['옆으로 넘기는 칸(scroll-snap)의 다음 장은 안 잡는다', !has(d.off, 'snap2')],
       ['가로만 스크롤하는 이름표 줄은 안 잡는다', !d.off.some((s) => s.includes('옆으로 넘겨'))],
+      ['사진을 다 담은 칸의 빈 띠를 잡는다', has(e.bands, 'snapshot')],
+      ['꽉 채운 사진은 띠로 안 잡는다', f.bands.length === 0],
     ];
     for (const [what, ok] of expect) { console.log(`${ok ? '통과' : '실패'}: ${what}`); if (!ok) fails++; }
     ws.close();
@@ -264,7 +280,7 @@ try {
         const shot = async (screen) => {
           await delay(500);
           const m = await evaluate(MEASURE);
-          const bad = m.hscroll || m.off.length || m.clipped.length || m.overlaps.length || m.cutY.length;
+          const bad = m.hscroll || m.off.length || m.clipped.length || m.overlaps.length || m.cutY.length || m.bands.length;
           report.push({ size: tag, kind: g, screen, ...m, bad: !!bad });
           if (bad) {
             const metrics = await call('Page.getLayoutMetrics');
@@ -279,7 +295,7 @@ try {
             await fs.writeFile(path.join(out, `${g}-${tag}-${screen}-view.png`), Buffer.from(s.result.data, 'base64'));
           }
           if (SNAPSHOT) await fs.writeFile(path.join(out, `snap-${g}-${tag}-${screen}.json`), JSON.stringify(await evaluate(LAYOUT), null, 0));
-          console.log(`${tag} ${screen}: ${bad ? `가로 ${m.hscroll} · 화면 밖 ${m.off.length} · 잘림 ${m.clipped.length} · 겹침 ${m.overlaps.length} · 아래 잘림 ${m.cutY.length}` : '깨끗'}`);
+          console.log(`${tag} ${screen}: ${bad ? `가로 ${m.hscroll} · 화면 밖 ${m.off.length} · 잘림 ${m.clipped.length} · 겹침 ${m.overlaps.length} · 아래 잘림 ${m.cutY.length} · 빈 띠 ${m.bands.length}` : '깨끗'}`);
         };
         try {
           await call('Page.navigate', { url: base });
@@ -333,7 +349,7 @@ for (const { w, h, kind } of sizes) {
   const cell = (s) => { const r = rs.find((x) => x.screen === s); if (!r) return rs.find((x) => x.error) ? '막힘' : '—';
     const down = r.below?.length ? ` ↓${Math.max(...r.below.map((b) => b.px))}` : '';
     if (!r.bad) return '🟢' + down;
-    const k = []; if (r.hscroll) k.push(`가로${r.hscroll}`); if (r.off.length) k.push(`밖${r.off.length}`); if (r.clipped.length) k.push(`잘림${r.clipped.length}`); if (r.overlaps.length) k.push(`겹침${r.overlaps.length}`); if (r.cutY.length) k.push(`아래${r.cutY.length}`); return '🔴 ' + k.join(' ') + down; };
+    const k = []; if (r.hscroll) k.push(`가로${r.hscroll}`); if (r.off.length) k.push(`밖${r.off.length}`); if (r.clipped.length) k.push(`잘림${r.clipped.length}`); if (r.overlaps.length) k.push(`겹침${r.overlaps.length}`); if (r.cutY.length) k.push(`아래${r.cutY.length}`); if (r.bands?.length) k.push(`띠${r.bands.length}`); return '🔴 ' + k.join(' ') + down; };
   lines.push(`| ${tag} | ${kind} | ${screens.map(cell).join(' | ')} |`);
 }
 await fs.writeFile(path.join(out, 'report.md'), lines.join('\n') + '\n');

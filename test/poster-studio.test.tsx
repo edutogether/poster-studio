@@ -534,6 +534,23 @@ describe('카메라', () => {
     expect(el('status').textContent).toBe('');
   });
 
+  test('사진 틀: 켠 뒤에는 카메라 비율을 칸에 알리고(data-fit · --cam-ar), 끄면 칸을 예시 그림 크기로 돌린다(10/23 검은 띠)', async () => {
+    await act(async () => renderApp());
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    const box = document.querySelector<HTMLElement>('.cameraBox')!;
+    const video = el<HTMLVideoElement>('video');
+    expect(video.parentElement!.classList.contains('camera-frame')).toBe(true);
+    expect(box.hasAttribute('data-fit')).toBe(false);
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    Object.defineProperty(video, 'videoWidth', { configurable: true, value: 1280 });
+    Object.defineProperty(video, 'videoHeight', { configurable: true, value: 960 });
+    await act(async () => { video.dispatchEvent(new Event('loadedmetadata')); });
+    expect(box.hasAttribute('data-fit')).toBe(true);
+    expect(Number(box.style.getPropertyValue('--cam-ar'))).toBeCloseTo(4 / 3);
+    await act(async () => { el<HTMLButtonElement>('stopCameraBtn').click(); });
+    expect(box.hasAttribute('data-fit')).toBe(false);
+  });
+
   test('카메라 끄기는 스트림을 해제하고 켜짐 표시와 준비 알림을 지운다', async () => {
     const view = await act(async () => renderApp());
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
@@ -1173,7 +1190,7 @@ describe('휴대폰 흐름', () => {
     expect(btn.querySelector('.label-phone svg')).not.toBeNull();
     expect(btn.querySelector('.label-pc')!.textContent).toBe('주인공이 될 순간 만들러 가기 →');
     expect(document.querySelector('.photo-review .label-phone')!.textContent).toBe('표정과 구도가 마음에 드나요 ?');
-    expect(document.querySelector('.photo-review .label-pc')!.textContent).toBe('표정과 구도가 마음에 드나요?다시 찍어도 괜찮아요.');
+    expect(document.querySelector('.photo-review .label-pc')!.textContent).toBe('표정과 구도가 마음에 드나요 ?다시 찍어도 괜찮아요.');
   });
 
   test('3단계 썸네일 이름은 한글(10/23 Bumm님 «아이들 대상이라») — 읽기 도구가 읽는 이름도 보이는 이름과 같다', async () => {
