@@ -4,13 +4,13 @@
      node scripts/verify/viewport-survey.mjs <주소> <결과 폴더> [--sizes pc:1366x768,tablet:1024x768,...]
 
    크기마다 같은 흐름(1단계 → 2단계 찍기 전 → 카메라 켠 뒤 → 찍은 뒤 → 로딩 → 3단계 → 저장 · 출력)을 지나며 화면마다 잰다:
-   ① 가로 스크롤(문서 폭 > 화면 폭) ② 화면 밖(오른쪽 · 왼쪽으로 삐져나간 요소 — 잘라 내는 부모가 없을 때)
+   ① 가로 스크롤(문서 폭 > 화면 폭) ② 화면 밖(오른쪽 · 왼쪽으로 삐져나간 요소 — 잘라 내는 부모가 없을 때. 있으면 그 칸의 가장자리를 넘어 감춰진 단추 · 글을 «칸 밖»으로 센다)
    ③ 잘린 글자(overflow로 감춘 칸보다 글이 김 · 말줄임) ④ 겹침(글 · 그림 · 단추끼리 4px 넘게 포개짐 — 글은 글자가 실제로 차지한 자리로 잰다.
       떠 있는 것이 끼면 글 · 단추끼리만 센다(그림 위 배지 · 화살표는 일부러 얹은 것), 배경 칠한 고정 줄이 덮는 것은 맨 위 · 맨 아래 두 스크롤 자리에서
       모두 덮일 때만, 잠깐 뜨는 알림(role=status)은 빼고, 모달 창이 떠 있으면 그 창 안만)
    ⑤ 아래로 잘림(감춘 칸 밖으로 글자가 밀려나 안 보임 — 로고처럼 그림을 일부러 잘라 보이는 칸은 세지 않는다).
    --sizes는 «갈래:가로x세로»(갈래 = pc · tablet · phone, 안 적으면 폭으로 짐작). 같은 크기도 갈래가 다르면 따로 잰다.
-   --selftest는 결함 · 미끼를 심은 시험 페이지 세 장으로 판정 13가지를 확인한다(하나라도 틀리면 종료코드 1).
+   --selftest는 결함 · 미끼를 심은 시험 페이지 네 장으로 판정 16가지를 확인한다(하나라도 틀리면 종료코드 1).
    --view를 주면 결함이 없어도 화면마다 창 크기 그대로 한 장씩 남긴다(사람이 눈으로 볼 것). 표의 «↓N»은 참고 — 주 단추까지 N px 내려야 보인다.
    결함이 있는 화면은 «갈래-크기-화면.png»(원본 해상도, 페이지 전체)로 남기고, 모두를 report.json · report.md 표로 낸다.
    카메라는 가짜(라이브의 공개 예시 인물), 생성(/generate)은 페이지 안에서 답한다 — 네트워크로 나가면 종료코드 2. 휴대폰 크기는 아이폰, 태블릿은 아이패드로 흉내 낸다. */
@@ -67,6 +67,18 @@ const MEASURE = `(() => {
   for (const el of scope.querySelectorAll('*')) {
     if (!vis(el) || inModalOrHidden(el)) continue; const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) continue;
     if ((r.right > W + 1 || r.left < -1) && !clipsX(el) && getComputedStyle(el).position !== 'fixed') off.push(name(el) + ' ' + Math.round(r.left) + '~' + Math.round(r.right));
+  }
+  // 칸 밖: 화면 안이라도 가로를 잘라 내는 가장 가까운 조상(overflow ≠ visible)의 가장자리를 넘어 감춰진 단추 · 글. 위 «화면 밖»은 잘라 내는 부모가 있으면
+  //   건너뛰어서, 10/23 태블릿 세로 2단계 «이 사진으로 포스터 만들기»가 오른쪽 칸 밖으로 50px 나가 잘린 것을 «깨끗»으로 냈다.
+  //   일부러 옆으로 넘기는 칸(가로 scroll-snap · 세로는 감추고 가로만 스크롤)과 그림(일부러 자른 로고)은 세지 않는다.
+  const cutBox = (el) => { for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) { const s = getComputedStyle(a); if (!/(hidden|clip|auto|scroll)/.test(s.overflowX)) continue;
+    return /x|both|inline/.test(s.scrollSnapType) || (/(auto|scroll)/.test(s.overflowX) && /(hidden|clip)/.test(s.overflowY)) ? null : a; } return null; };
+  for (const el of scope.querySelectorAll('button, a, input, select, textarea, label, h1, h2, h3, p, li, span, strong')) {
+    if (!vis(el) || inModalOrHidden(el)) continue; const r = el.getBoundingClientRect(); if (r.width <= 2 || r.height <= 2) continue;
+    if (/^(SPAN|STRONG|A|LABEL)$/.test(el.tagName) && el.parentElement?.closest('button, a, p, h1, h2, h3, li, label')) continue;
+    if (!/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName) && !el.textContent.trim()) continue;
+    const box = cutBox(el); if (!box) continue; const b = box.getBoundingClientRect();
+    if (r.right > b.right + 1 || r.left < b.left - 1) off.push('(칸 밖) ' + name(el) + ' ' + Math.round(r.left) + '~' + Math.round(r.right) + ' / 칸 ' + Math.round(b.left) + '~' + Math.round(b.right));
   }
   const clipped = [];
   for (const el of scope.querySelectorAll('*')) {
@@ -156,6 +168,10 @@ if (SELFTEST) {
   const C = `<!doctype html><meta charset=utf-8><body style="margin:0;font:20px/30px sans-serif"><p id=behind style="margin:40px">모달 뒤에 가려진 페이지 글</p>
     <dialog id=dlg style="margin:0;inset:0;width:600px;height:300px"><div style="position:relative"><p id=inmodal style="margin:0">창 안 문단입니다</p><span id=inmodalfloat style="position:absolute;left:10px;top:0">겹친 글</span></div></dialog>
     <script>document.getElementById('dlg').showModal()</script></body>`;
+  const D = `<!doctype html><meta charset=utf-8><body style="margin:0;font:20px/30px sans-serif">
+    <div style="width:200px;height:80px;overflow-y:auto"><button id=widebtn style="width:260px">칸보다 넓은 단추</button></div>
+    <div style="width:200px;display:flex;overflow-x:auto;scroll-snap-type:x mandatory"><button id=snap1 style="flex:0 0 180px">한 장</button><button id=snap2 style="flex:0 0 180px">두 장</button></div>
+    <div style="width:120px;overflow-x:auto;overflow-y:hidden;white-space:nowrap"><span id=chip>옆으로 넘겨 보는 긴 이름표</span></div></body>`;
   const port = 9579, dir = await fs.mkdtemp(path.join(os.tmpdir(), 'survey-self-'));
   const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', `--remote-debugging-port=${port}`, `--user-data-dir=${dir}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
   let fails = 0;
@@ -169,7 +185,7 @@ if (SELFTEST) {
     const call = (method, params = {}) => new Promise((r) => { const id = ++seq; pending.set(id, r); ws.send(JSON.stringify({ id, method, params })); });
     await call('Emulation.setDeviceMetricsOverride', { width: 1000, height: 700, deviceScaleFactor: 1, mobile: false });
     const run = async (html) => { await call('Page.navigate', { url: 'data:text/html;charset=utf-8,' + encodeURIComponent(html) }); await delay(700); return (await call('Runtime.evaluate', { expression: MEASURE, returnByValue: true })).result.result.value; };
-    const a = await run(A), b = await run(B), c = await run(C);
+    const a = await run(A), b = await run(B), c = await run(C), d = await run(D);
     const has = (list, id) => list.some((s) => s.includes('#' + id));
     const expect = [
       ['글자 잘림을 잡는다', has(a.cutY, 'textcut')], ['일부러 자른 로고는 안 잡는다', !has(a.cutY, 'logo')], ['1px 숨김 제목은 안 잡는다', !has(a.cutY, 'sr')],
@@ -183,6 +199,9 @@ if (SELFTEST) {
       ['그림 위에 잠깐 띄운 알림은 안 잡는다', !a.overlaps.some((s) => s.includes('#toast'))],
       ['모달 뒤 페이지 글은 안 잡는다', !c.overlaps.some((s) => s.includes('#behind'))],
       ['모달 안 겹침은 잡는다', c.overlaps.some((s) => s.includes('#inmodalfloat') && s.includes('#inmodal'))],
+      ['세로 스크롤 칸 밖으로 잘린 단추를 잡는다', has(d.off, 'widebtn')],
+      ['옆으로 넘기는 칸(scroll-snap)의 다음 장은 안 잡는다', !has(d.off, 'snap2')],
+      ['가로만 스크롤하는 이름표 줄은 안 잡는다', !d.off.some((s) => s.includes('옆으로 넘겨'))],
     ];
     for (const [what, ok] of expect) { console.log(`${ok ? '통과' : '실패'}: ${what}`); if (!ok) fails++; }
     ws.close();
@@ -197,22 +216,23 @@ const base = url.replace(/\/?$/, '/');
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'survey-'));
 const art = path.join(profile, 'art.webp');
 await fs.writeFile(art, Buffer.from(await (await fetch(base + 'studio/camera-student.webp')).arrayBuffer()));
-// 가짜 카메라는 가로(PC · 태블릿 노트북 카메라)와 세로(휴대폰) 두 벌 — 크롬 한 번에 한 파일이라 갈래마다 크롬을 새로 띄운다
+// 가짜 카메라는 가로(PC · 태블릿 가로)와 세로(휴대폰 · 태블릿 세로 — 세워 든 아이패드는 세로 영상을 준다) 두 벌 — 크롬 한 번에 한 파일이라 묶음마다 크롬을 새로 띄운다
 const y4m = (w, h) => { const f = path.join(profile, `cam-${w}x${h}.y4m`); const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-loop', '1', '-i', art, '-t', '3', '-r', '15', '-pix_fmt', 'yuv420p', '-vf', `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`, f]); if (r.status !== 0) throw new Error('y4m: ' + r.stderr); return f; };
 
 const report = [];
 let generateSeen = 0;
 let port = 9580;
-const groups = [['pc', [1280, 720]], ['tablet', [1280, 720]], ['phone', [960, 1280]]];
+const portrait = (s) => s.h > s.w;
+const groups = [['pc', [1280, 720], () => true], ['tablet', [1280, 720], (s) => !portrait(s)], ['tablet', [960, 1280], portrait], ['phone', [960, 1280], () => true]];
 try {
-  for (const [g, [cw, ch]] of groups) {
-    const list = sizes.filter((s) => s.kind === g);
+  for (const [g, [cw, ch], pick] of groups) {
+    const list = sizes.filter((s) => s.kind === g && pick(s));
     if (!list.length) continue;
     const cam = y4m(cw, ch);
     port += 1;
     const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--mute-audio', '--autoplay-policy=no-user-gesture-required',
       '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${cam}`,
-      `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(profile, 'chrome-' + g)}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
+      `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(profile, 'chrome-' + g + '-' + port)}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
     try {
       let target;
       for (let i = 0; i < 80 && !target; i++) { try { target = (await (await fetch(`http://127.0.0.1:${port}/json`)).json()).find((t) => t.type === 'page'); } catch { /* 아직 */ } if (!target) await delay(100); }
@@ -236,7 +256,7 @@ try {
           return new Response(JSON.stringify({ images: [data] }), { status: 200, headers: { 'content-type': 'application/json' } }); };
         // 인쇄 창은 띄우지 않고, 창이 닫힌 것처럼 afterprint를 보낸다 — 앱이 인쇄용 큰 포스터를 그때 걷어 낸다(안 보내면 화면 아래에 남아 겹침으로 잘못 잡힌다)
         window.print = () => { setTimeout(() => window.dispatchEvent(new Event('afterprint')), 0); }; navigator.canShare = () => true; navigator.share = async () => {};
-        ${g === 'phone' ? `const md = navigator.mediaDevices; const gum = md.getUserMedia.bind(md); md.getUserMedia = (c) => { const v = c && c.video; return gum(v && typeof v === 'object' && v.width && v.height ? { ...c, video: { ...v, width: v.height, height: v.width } } : c); };` : ''}
+        ${ch > cw ? `const md = navigator.mediaDevices; const gum = md.getUserMedia.bind(md); md.getUserMedia = (c) => { const v = c && c.video; return gum(v && typeof v === 'object' && v.width && v.height ? { ...c, video: { ...v, width: v.height, height: v.width } } : c); };` : ''}
       })();` });
       for (const { w, h } of list) {
         const tag = `${w}x${h}`;
@@ -275,6 +295,8 @@ try {
           else { await evaluate("document.getElementById('phoneShotBtn').click(); true"); }
           if (!await waitFor('(() => { const v = document.getElementById("video"); return !!v && !v.classList.contains("hidden") && v.videoWidth > 0; })()')) throw new Error('카메라');
           await delay(900);
+          // «카메라 준비 완료» 알림(1.8초)이 사라진 뒤에 잰다 — 남아 있으면 그 알림 하나로 칸 안 요소 순서가 밀려 배치 대조가 매번 달라졌다(10/23)
+          await waitFor('!document.querySelector(".camera-ready-notice")', 4000);
           await shot('3-2단계-켠뒤');
           if (!phoneBtn) await evaluate("document.getElementById('shotBtn').click(); true");
           if (!await waitFor('!document.getElementById("generateBtn").hidden', 20000)) throw new Error('촬영');
