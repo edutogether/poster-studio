@@ -13,9 +13,12 @@
   if (UA[cls]) {
     Object.defineProperty(Navigator.prototype, 'userAgent', { get: () => UA[cls], configurable: true });
     Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { get: () => 5, configurable: true });
-    // 폰 · 태블릿의 스크롤 막대는 화면 위에 겹쳐 떠 폭을 차지하지 않는다 — 데스크톱 막대(15px)가 390px 폭을 375px로 줄이지 않게 감춘다
-    const sb = document.createElement('style'); sb.textContent = '*{scrollbar-width:none!important}'; document.head.append(sb);
   }
+  // 스크롤 막대는 폭을 차지하지 않게 감춘다(스크롤은 그대로 된다).
+  //  · 폰 · 태블릿: 막대가 화면 위에 겹쳐 뜬다 — 데스크톱 막대(15px)가 390px 폭을 375px로 줄이지 않게.
+  //  · PC: 기준 2560×1440 화면은 원래 스크롤이 없다. 요소를 화면 끝 너머로 옮기면 막대가 생겨 화면 전체가 다시 배치됐다
+  //    (10/23 실측: 고르지 않은 칸이 6px 밀리고 폭이 줄었다 — Bumm님 «옮기다가 다 깨져 버려»).
+  { const sb = document.createElement('style'); sb.textContent = '*{scrollbar-width:none!important}'; document.head.append(sb); }
   const SAMPLE = '/studio/camera-student.webp';
   const dataURL = async (src) => { const b = await (await net(src)).blob(); return new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); };
   const net = window.fetch.bind(window);
