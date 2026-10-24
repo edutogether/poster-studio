@@ -627,9 +627,8 @@ export default function StudioView(p: StudioViewProps) {
                 className="primary-button"
                 onClick={() => go(2)}
               >
-                {/* 10/20 저녁 Bumm님: 휴대폰은 «주인공이 될 순간 보러 가기» + 앞에 Lucide clapperboard. PC는 그대로. */}
-                <span className="label-pc">주인공이 될 순간 만들러 가기 <span aria-hidden="true">→</span></span>
-                <span className="label-phone"><svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>주인공이 될 순간 보러 가기</span>
+                {/* «주인공이 될 순간 보러 가기» + 앞에 Lucide clapperboard — 10/20 저녁 휴대폰에 먼저, 10/24 Bumm님 «모든 해상도 같이»(PC «만들러 가기 →»를 바꿈) */}
+                <span className="next-label"><svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>주인공이 될 순간 보러 가기</span>
               </button>
             </div>
           </form>
