@@ -854,16 +854,22 @@ main.app {
   /* 1단계도 같은 모양(Bumm님 «다른 해상도도 같이»): 위 칸(제목 27px · 모드 카드와 입력칸 140px)이 높이를 먹어 장르 포스터가 1366×768에서 86×130,
      1280×720에서 70×105였다. 제목 · 모드 카드 · 입력칸 · 사이를 줄인 만큼(약 44px) 포스터 두 줄이 커진다. 모드 카드 = 입력칸 두 줄(62 + 8 + 62)로 높이를 맞춘다.
      같은 날 저녁 Bumm님(1440×900): «단체 이름 · 영화 제목 두께를 출연진 이름만큼, 단독 주연 · 우리 같이도 세로 길이 맞춰 주기» — 입력칸 34 → 40px(출연진 칸과 같음),
-     한 칸 = 이름 18 + 4 + 40 = 62, 모드 카드 120 → 132px. «자간 줄여서 왼쪽 표가 두꺼워지지 않게» — 티켓 «별 보러 가요 | 북두칠성 · …»가 1440에서 0.5px 넘쳐
-     두 줄이 됐다(티켓 22px 두꺼워짐) → 자간 −0.6px이면 1440 · 1366에서 한 줄. */
+     한 칸 = 이름 18 + 4 + 40 = 62, 모드 카드 120 → 132px. 티켓 이름 줄은 아래 «1단계 티켓 — 언제나 한 줄»(모든 해상도). */
   #prepareWorkspace .page-heading h1, #prepareWorkspace .genre-section h2 { font-size: 23px; }
   #prepareWorkspace .segmented button { height: 132px; min-height: 132px; padding: 18px 12px 12px; }
   #prepareWorkspace .field-row { grid-template-rows: repeat(2, 62px); gap: 8px; }
   #prepareWorkspace .field label { font-size: 13px; line-height: 18px; }
   #prepareWorkspace .field input { height: 40px; min-height: 40px; padding: 6px 12px; font-size: 15px; }
-  .exhibition .movie-ticket #ticketName { letter-spacing: -0.6px; }
   #prepareWorkspace .genre-section { margin-top: 12px; padding-top: 10px; }
 }
+/* 1단계 티켓 — 영화 제목 줄과 단체 · 출연진 줄은 언제나 한 줄(2026-10-24 Bumm님: 1440에서 «자간 줄여서 표가 두꺼워지지 않게», 1280대에서 «카시 / 오페아»로
+   넘침 → «해상도별로 손대지 말고 모든 해상도에서 자동으로»). 이름 줄은 자간 −0.04em(15px에서 −0.6px)에 글자 크기를 칸 폭에 맞춰 15px부터 줄인다 —
+   예시 «별 보러 가요 | 북두칠성 · … · 카시오페아»가 이 자간에서 23.4em이라 «칸 폭 ÷ 23.6»이면 다 들어간다(1366 이상 15px, 1280 13.5px, 태블릿 가로 14.6px).
+   12px 아래로는 줄이지 않는다 — 그보다 좁은 칸(PC 1024 · 태블릿 세로, 약 200px)과 사람이 넣은 긴 이름은 한 줄 끝에서 «…»로 끊긴다. */
+.exhibition .movie-ticket > div:first-child { container-type: inline-size; }
+.exhibition .movie-ticket strong,
+.exhibition .movie-ticket #ticketName { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: none; }
+.exhibition .movie-ticket #ticketName { letter-spacing: -0.04em; font-size: clamp(12px, 100cqi / 23.6, 15px); }
 /* 더 낮은 창(높이 820 이하 — 1366×768 · 1280×720 · 1536×731 등): 사이를 한 번 더 줄이고(위 여백은 위 규칙의 26px 그대로 — 글자 윗선 맞춤), 10/14 규칙이 160px로 묶어 둔 포스터 칸을
    다시 남는 높이만큼 늘게 한다(묶여 있어 줄인 높이가 포스터가 아니라 티켓 ↔ 단추 사이로 갔다 — 1366×768 실측). */
 @media (min-width: 1100px) and (max-height: 820px) {
