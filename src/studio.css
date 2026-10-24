@@ -834,6 +834,39 @@ main.app {
   .poster-carousel[data-hint] .poster-slide { animation: none; }
   .poster-slide { transition: none; }
 }
+/* 2단계 오른쪽 칸 — 작은 PC · 태블릿 가로(폭 1100 이상 · 높이 959 이하: 1536×864 · 1440×900 · 1366×768 · 1280×720 · 1600×900 · 1920×947 ·
+   태블릿 1180×820 등). 2026-10-24 Bumm님(1549×877에서 봄): «제목 · 설명 글씨를 줄이고 그만큼 영화 포스터 그림을 키운다(지금 너무 작음) · 티켓과 아래 단추가 붙어 있다».
+   제목(32px) · 1·2·3 설명(18/15px, 사이 22 · 아래 40)이 칸 높이를 먹어 포스터가 최소 크기(94×140)로 줄고, 그래도 넘쳐 티켓이 단추 줄에 닿았다(1536×864에서 1px).
+   글씨와 사이를 줄인 만큼 포스터 칸(flex)이 커진다. 포스터 ↔ 티켓 26px는 10/20 Bumm님이 정한 값이라 그대로. 1920×1080 · 2560×1440은 이 조건 밖이라 화소 하나 안 바뀐다. */
+@media (min-width: 1100px) and (max-height: 959px) {
+  #cameraWorkspace .page-heading { margin-bottom: 20px; }
+  #cameraWorkspace .page-heading h1 { font-size: 26px; }
+  #cameraView .camera-tips { gap: 12px; margin-bottom: 20px; }
+  #cameraView .camera-tips strong { font-size: 16px; }
+  #cameraView .camera-tips p { font-size: 13px; }
+  #cameraWorkspace .camera-film-heading { margin-bottom: 12px; }
+  #cameraWorkspace .camera-film-heading h2 { font-size: 24px; }
+  #cameraWorkspace .camera-actions { padding-top: 20px; }   /* 티켓 ↔ 단추 줄 사이 — 1920×1080과 같은 20px(낮은 창의 10 · 14px 대신) */
+  /* 1단계도 같은 모양(Bumm님 «다른 해상도도 같이»): 위 칸(제목 27px · 모드 카드와 입력칸 140px)이 높이를 먹어 장르 포스터가 1366×768에서 86×130,
+     1280×720에서 70×105였다. 제목 · 모드 카드 · 입력칸 · 사이를 줄인 만큼(약 44px) 포스터 두 줄이 커진다. 모드 카드 = 입력칸 두 줄(56 + 8 + 56)로 높이를 맞춘다. */
+  #prepareWorkspace .page-heading h1, #prepareWorkspace .genre-section h2 { font-size: 23px; }
+  #prepareWorkspace .segmented button { height: 120px; min-height: 120px; padding: 18px 12px 12px; }
+  #prepareWorkspace .field-row { grid-template-rows: repeat(2, 56px); gap: 8px; }
+  #prepareWorkspace .field label { font-size: 13px; line-height: 18px; }
+  #prepareWorkspace .field input { height: 34px; min-height: 34px; padding: 6px 12px; font-size: 15px; }
+  #prepareWorkspace .genre-section { margin-top: 12px; padding-top: 10px; }
+}
+/* 더 낮은 창(높이 820 이하 — 1366×768 · 1280×720 · 1536×731 등): 위 여백 · 사이를 한 번 더 줄이고, 10/14 규칙이 160px로 묶어 둔 포스터 칸을
+   다시 남는 높이만큼 늘게 한다(묶여 있어 줄인 높이가 포스터가 아니라 티켓 ↔ 단추 사이로 갔다 — 1366×768 실측). */
+@media (min-width: 1100px) and (max-height: 820px) {
+  #cameraWorkspace { padding-top: 30px; }
+  #cameraWorkspace .page-heading { margin-bottom: 14px; }
+  #cameraView .camera-tips { gap: 8px; margin-bottom: 16px; }
+  #cameraWorkspace .camera-film-heading { margin-bottom: 10px; }
+  #cameraWorkspace .camera-guide { flex: 1 0 auto; }   /* 내용보다 작아지지는 않는다 — 더 낮은 창(1366×635 등)은 겹치지 않고 오른쪽 칸을 내려 본다 */
+  #cameraWorkspace .camera-film-card { flex: 1; }
+  #cameraWorkspace .camera-film-scene { flex: 1; height: 0; contain: size; }   /* 그림 본래 크기가 칸 높이 계산에 끼지 않게(최소 140만 센다) */
+}
 /* 2단계 단추 줄 — 761~1099(태블릿 세로 1024): 오른쪽 칸 안쪽 폭이 302px라 «이전»(112) + «이 사진으로 포스터 만들기»(252)가 한 줄에 안 들어가
    주 단추 오른쪽 50px가 칸 밖으로 잘렸다(10/23 실측, 라이브도 같음 — 켠 뒤 «3초 뒤 사진 찍기»도 12px 넘쳤다). 두 줄로 쌓는다 — 화면 순서 그대로
    «이전»이 위, 주 단추가 아래(다른 크기에서 주 단추가 놓이는 맨 아래 자리), 둘 다 칸 폭 가득. */
