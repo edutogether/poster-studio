@@ -1116,17 +1116,25 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
    안내 위 · 아래 회색 빈 곳을 줄여라» — 10/23 «16:9를 절대 깨지 않게»를 바꾼 결정). 칸 16:9 → 4:3: 영상은 칸을 덮어 그리므로 늘어나지 않고 좌우가
    12.5%씩 잘린다(양끝 얼굴은 남는다). 칸이 65px 커진 만큼 회색 칸 위 · 아래 빈 곳(합 139 → 74px)이 줄어든다. 세로가 짧은 휴대폰(높이 790 미만 —
    360×640 · 390×664 · 430×740)은 넣을 높이가 없어 16:9 그대로(단추 줄이 첫 화면 안). 카메라를 켠 뒤 화면은 그대로. 같은 날 밤 다시 바꿈(아래 블록 안 설명). */
-@media (max-width: 760px) and (min-height: 790px) {
+/* 조건: 높이 790 이상, 또는 세로가 폭의 두 배 이상인 창(10/25 — 크롬 F12 터치 없이 360×780을 열면 폭 360 그대로 그려 높이가 780이라
+   위 조건에 안 걸려 칸이 16:9로 남고 단추 줄 위가 73px 비었다. 실제 휴대폰은 폭 390으로 그려 높이 845라 원래 걸린다). */
+@media (max-width: 760px) and (min-height: 790px), (max-width: 760px) and (max-aspect-ratio: 1/2) and (min-height: 700px) {
   /* 같은 날 밤 Bumm님(390×844) «더 세로로 — 좌우를 더 잘라내고, 제목과 1 · 2 · 3 사이를 띄우고, 남는 회색 빈 곳만큼 칸을 더 길게»:
      4:3 대신 칸이 남는 높이를 다 받는다(화면 높이에 맞춰 자동). 제목 ↔ 안내 14 → 24px, 회색 칸 위 · 아래의 자동 여백은 없앤다. */
   #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-surface { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
-  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-large { flex: 1 1 auto; aspect-ratio: auto; height: auto; min-height: 260px; }
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-large { flex: 1 1 auto; aspect-ratio: auto; height: auto; min-height: 200px; }   /* 최소 260 → 200: 360×780(F12)은 남는 높이가 232라 260이면 28px 넘쳤다 */
   #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) #cameraWorkspace { flex: none; }
   #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .page-heading { margin: 0 0 24px; padding-top: 18px; }
   #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-guide { margin-bottom: 0; }
   /* 예시 영상은 칸을 그대로 덮는다(object-fit: cover — 좌우가 잘린다). 16:9 무대를 칸 높이로 키우는 계산(cqh)이 늘어난 칸 높이를 못 따라가
      위아래에 검은 띠가 났다. 숫자 3 · 2 · 1은 무대 가운데라 그대로다(말풍선은 지금 영상에 없다). */
   #cameraView .camera-example-stage { left: 0; top: 0; width: 100%; height: 100%; aspect-ratio: auto; transform: none; }
+}
+/* 폭 360 휴대폰 화면(크롬 F12 360×780 등 — 폭 370 이하, 세로가 폭의 두 배 이상) 2단계: 10/25 Bumm님 «제목과 1 · 2 · 3 사이, 1 · 2 · 3끼리 붙어 있다».
+   제목 ↔ 안내 24 → 30px, 안내 사이 6 → 14px. 늘린 만큼은 위 칸(사진)이 남는 높이에서 덜 받는다. 390 · 375 · 430은 그대로. */
+@media (max-width: 370px) and (max-aspect-ratio: 1/2) and (min-height: 700px) {
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .page-heading { margin-bottom: 30px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-tips { gap: 14px; }
 }
 /* 휴대폰 2단계 아래 단추 줄(«← 이전 · 샘플 포스터 보기»)을 3단계(«← 다시 찍기 · 내 휴대폰에 저장») 기준으로(2026-10-25 Bumm님 390×844 «2쪽 배치가 약간 비뚤다»):
    좌우 끝 23 → 22px(3단계 단추 줄 안쪽 여백 22), 화면 아래 12 → 14px, «이전» 폭 112 → 114 · 글자 15 → 16px, 카메라 아이콘 21 → 22px. 두 단계 «이전»을 같은 폭(114)으로 고정해
@@ -1136,6 +1144,11 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions > .back-button,
   #resultView .result-actions > .back-button { flex: 0 0 114px; width: 114px; min-width: 0; padding-inline: 0; font-size: 16px; }
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions .studio-icon { width: 22px; height: 22px; }
+}
+/* 짧은 화면(높이 720 이하)은 위 아래 여백 12 → 14로 늘어난 2px만큼 단추 줄 위 여백을 6 → 4px로 — 크롬 F12 360×640에서 2px 넘쳐 세로 스크롤 막대가
+   생기고(폭 360 → 345) 사진 칸이 15px 좁아졌다(10/25 실측). 단추 줄 높이는 예전과 같은 66px. */
+@media (max-width: 760px) and (max-height: 720px) {
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions { padding-top: 4px; }
 }
 /* 휴대폰 아래 단추 높이 하나로(같은 날 Bumm님 «페이지마다 단추 높이가 다르다 — 2단계 단추 높이 기준으로 전부»): 2단계 48px 기준.
    1단계 «주인공이 될 순간 보러 가기» 56 → 48, 3단계 «다시 찍기 · 내 휴대폰에 저장» 60 → 48(48로 적은 규칙이 result.css의 60px보다 약해 지고 있었다). */
