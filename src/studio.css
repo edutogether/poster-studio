@@ -1027,16 +1027,18 @@ main.app {
   /* 2단계: 위 = 카메라 칸(남는 높이), 아래 = 왼쪽 안내 · 오른쪽 오늘 촬영할 영화, 맨 아래 단추 줄 */
   .camera-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
   .camera-top { flex-direction: row; align-items: center; gap: 12px; }
-  #cameraView .camera-surface { padding: 32px 28px 12px; }   /* 위 32: 머리글 아래 «개인정보처리방침»(오른쪽 위)과 «촬영 구도 예시»가 겹치지 않게 */
+  /* 위 32: 머리글 아래 «개인정보처리방침»(오른쪽 위)과 «촬영 구도 예시»가 겹치지 않게. 아래 32: 사진과 회색 안내 칸 사이도 위쪽 여백과 같게
+     (Bumm님 «회색이 너무 올라가 사진과 딱 붙었다», 12 → 32) */
+  #cameraView .camera-surface { padding: 32px 28px 32px; }
   #cameraView .camera-bottom { display: none; }   /* 칸 아래 설명은 안내 1과 같은 말 — 그 높이를 카메라 칸에(휴대폰과 같음) */
   .camHint.camera-example-caption { flex-direction: row; align-items: flex-end; }
   .camera-example-label { padding-bottom: 0; translate: 0 4px; }
-  #cameraWorkspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 28px; padding: 18px 28px 0; }
+  #cameraWorkspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 28px; padding: 26px 28px 0; }
   /* 안내 묶음(aside)은 칸을 만들지 않게 해 그 안의 «안내»와 «오늘 촬영할 영화»를 나란히 둔다 */
   #cameraWorkspace .camera-guide { display: contents; }
-  #cameraWorkspace .page-heading { grid-column: 1; grid-row: 1; margin-bottom: 14px; }
+  #cameraWorkspace .page-heading { grid-column: 1; grid-row: 1; margin-bottom: 26px; }   /* 제목 ↔ 1 · 2 · 3 14 → 26(Bumm님 «여백을 더») */
   #cameraWorkspace .camera-instructions { grid-column: 1; grid-row: 2; align-self: start; }
-  #cameraWorkspace .camera-film-heading { grid-column: 2; grid-row: 1; margin-bottom: 14px; }
+  #cameraWorkspace .camera-film-heading { grid-column: 2; grid-row: 1; margin-bottom: 26px; }
   #cameraWorkspace .camera-film-card { grid-column: 2; grid-row: 2; flex: none; align-self: start; }
   #cameraWorkspace .camera-film-scene { display: flex; flex: none; height: 150px; }
   #cameraWorkspace .camera-actions { grid-column: 1 / -1; grid-row: 3; flex-wrap: nowrap; padding: 16px 0 20px; }
