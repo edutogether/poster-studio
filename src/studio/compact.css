@@ -635,7 +635,9 @@ dialog #dialogContent > .poster {
 .poster[data-template="3"] .poster-festival {
   display: none;
 }
-@media (min-width: 1100px) and (min-height: 700px) {
+/* PC 한 화면 배치 — 폭 1100 이상, 그리고 2026-10-24부터 폭 761~1099의 낮은 창(PC 1024×768 등, 높이 700~959)도 같은 배치(Bumm님 «1024부터는 제대로 안 돼 있다»).
+   세로로 긴 761~1099(태블릿 세로 1024×1366 · PC 820×1180)는 그대로. 이 폭에서 달라지는 것은 studio.css «761~1099 낮은 창» 규칙. */
+@media (min-width: 1100px) and (min-height: 700px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 959px) {
   .prepare-layout {
     height: calc(100svh - 76px);
     min-height: 0;
