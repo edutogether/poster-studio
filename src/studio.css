@@ -379,7 +379,7 @@ main.app {
 .result-more summary { cursor: pointer; padding: 8px 0; }
 .result-more > div { position: absolute; right: 0; bottom: 100%; width: 160px; padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; background: #fff; box-shadow: 0 8px 30px #0002; z-index: 5; }
 .result-more .quiet-button { display: flex; width: 100%; text-align: left; }
-@media (min-width: 1100px) and (max-height: 820px) {
+@media (min-width: 1100px) and (max-height: 820px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 820px) {
   #cameraWorkspace, #resultWorkspace { padding-top: 44px; }
   #cameraWorkspace .page-heading { margin-bottom: 22px; }
   #cameraWorkspace .camera-tips { gap: 14px; margin-bottom: 22px; }
@@ -392,7 +392,7 @@ main.app {
   #cameraWorkspace, #resultWorkspace { padding-top: 40px; }
   .camHint.camera-example-caption { flex-direction: column; align-items: flex-start; }
 }
-@media (min-width: 1100px) and (max-height: 740px) {
+@media (min-width: 1100px) and (max-height: 740px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 740px) {
   #cameraWorkspace .page-heading { margin-bottom: 18px; }
   #cameraWorkspace .camera-tips { gap: 10px; margin-bottom: 18px; }
   .camera-film-scene { height: 96px; }
@@ -449,7 +449,7 @@ main.app {
 @keyframes camera-on-pulse { 0%, 38%, 100% { opacity: 1; } 50%, 88% { opacity: .18; } }
 .camera-example-caption .camera-start-button { align-self: flex-end; }
 @media (prefers-reduced-motion: reduce) { .camera-live-indicator i { animation: none; } }
-@media (min-width: 1100px) and (max-height: 820px) {
+@media (min-width: 1100px) and (max-height: 820px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 820px) {
   #cameraWorkspace { padding-top: 36px; }
   #cameraWorkspace .page-heading { margin-bottom: 16px; }
   #cameraWorkspace .camera-tips { gap: 8px; margin-bottom: 18px; }
@@ -465,7 +465,7 @@ main.app {
   #cameraWorkspace .camera-actions { padding: 14px 0 22px; }   /* 아래 14 → 22: 1366×768에서 단추 아래 여백이 14px뿐이었다(2026-10-14) */
 }
 @media (max-width: 1099px) { #cameraView .camera-tips { grid-template-columns: 1fr; gap: 10px; } }
-@media (min-width: 1100px) and (max-height: 740px) {
+@media (min-width: 1100px) and (max-height: 740px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 740px) {
   #cameraWorkspace .camera-tips { margin-bottom: 12px; }
   .photo-review { margin-bottom: 12px; }
   #cameraWorkspace .camera-film-scene { height: 140px; }
@@ -838,7 +838,7 @@ main.app {
    같은 날 Bumm님(1536×864): «위에만 여백이 많다 — 제목의 가로 윗선을 촬영 구도 예시 줄과 맞게». 위 여백 64(높이 820 이하는 30) → 26px이면
    «나답게, …» 글자 윗선이 왼쪽 «카메라 미리 보기 · 촬영 구도 예시» 글자 윗선과 같은 높이다(둘 다 108px, 이 조건 전체 — nadap-probe 실측).
    올라간 만큼(38 · 4px) 포스터 칸이 커지고 티켓 · 단추는 아래에 그대로 붙는다. */
-@media (min-width: 1100px) and (max-height: 959px) {
+@media (min-width: 1100px) and (max-height: 959px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 959px) {
   #cameraWorkspace { padding-top: 26px; }
   #cameraWorkspace .page-heading { margin-bottom: 20px; }
   #cameraWorkspace .page-heading h1 { font-size: 26px; }
@@ -888,7 +888,7 @@ main.app {
 }
 /* 더 낮은 창(높이 820 이하 — 1366×768 · 1280×720 · 1536×731 등): 사이를 한 번 더 줄이고(위 여백은 위 규칙의 26px 그대로 — 글자 윗선 맞춤), 10/14 규칙이 160px로 묶어 둔 포스터 칸을
    다시 남는 높이만큼 늘게 한다(묶여 있어 줄인 높이가 포스터가 아니라 티켓 ↔ 단추 사이로 갔다 — 1366×768 실측). */
-@media (min-width: 1100px) and (max-height: 820px) {
+@media (min-width: 1100px) and (max-height: 820px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 820px) {
   #cameraWorkspace .page-heading { margin-bottom: 14px; }
   #cameraView .camera-tips { gap: 8px; margin-bottom: 16px; }
   #cameraWorkspace .camera-film-heading { margin-bottom: 10px; }
@@ -901,7 +901,7 @@ main.app {
    3단계만 60px였다(result.css). 같은 높이로 맞추고, 줄어든 12px(높이 700 미만은 4px)를 디자인 8칸에 준다: 격자 폭은 «(창 높이 − 340) × 4/3»과
    최소 520px 중 큰 쪽이라(result.css) 두 값에 «줄어든 높이 × 4/3»을 더하면 카드 네 칸이 그만큼 넓어지고 두 줄 높이가 꼭 그만큼 커진다(비율 2:3 그대로).
    1920×1080 · 2560×1440은 이 조건 밖이라 60px 그대로 — 화소 하나 안 바뀐다. 확인: btn-probe(1·2·3단계 단추 높이 · 썸네일 · 겹침 · 스크롤). */
-@media (min-width: 1100px) and (max-height: 959px) {
+@media (min-width: 1100px) and (max-height: 959px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 959px) {
   #resultView .result-actions .primary-button, #resultView .result-actions .back-button { height: 48px; }
   #resultView #gallery.style-grid, #resultView .result-actions { max-width: max(calc(520px + 12px * 4 / 3), calc((100svh - 340px + 12px) * 4 / 3)); }
 }
@@ -911,7 +911,7 @@ main.app {
 }
 /* 오른쪽 칸 폭이 먼저 차는 창(태블릿 1180×820 = 1366×949 등 가로 ÷ 세로 3/2 이하): 격자가 칸 폭(791px)을 다 써서 위 규칙으로는 카드가 안 커진다 —
    칸 사이 가로만 16 → 12px로 좁혀 카드를 3px씩 넓힌다(두 줄 높이 +9px, 단추에서 줄어든 12px 안). 선택 테두리(바깥 5px)끼리는 그래도 2px 떨어진다. */
-@media (min-width: 1100px) and (max-height: 959px) and (max-aspect-ratio: 3/2) {
+@media (min-width: 1100px) and (max-height: 959px) and (max-aspect-ratio: 3/2), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 959px) and (max-aspect-ratio: 3/2) {
   #resultView #gallery.style-grid { column-gap: 12px; }
 }
 /* 3단계 — 세로가 넉넉한 4:3 계열 화면(1366×1024 · 1280×1024 · 1600×1200 등, 아이패드 가로 포함). 기기 종류가 아니라 화면 크기로 가른다 — 터치 태블릿만
@@ -966,6 +966,31 @@ main.app {
   #cameraWorkspace .camera-guide { flex: 1 0 auto; }
   #cameraWorkspace .camera-film-scene { display: none; }
   #cameraWorkspace .camera-film-card { flex: none; min-height: 0; }
+}
+/* 761~1099 낮은 창(PC 1024×768 등, 높이 700~959) — 2026-10-24 Bumm님(F12 1024×768) «1024부터는 제대로 안 돼 있다». PC 한 화면 배치(compact.css)와
+   작은 PC 띠 규칙(위 «높이 959 · 820 · 740 이하»)을 이 창에도 걸고, 이 폭에서만 다른 것을 여기서 맞춘다. 세로로 긴 761~1099(태블릿 세로)는 그대로.
+   1단계: 장르 포스터 두 줄을 남는 높이에 맞춰(폭 기준으로 커져 문서가 213px 넘쳤다) — 한 화면, 왼쪽 · 오른쪽 위 · 아래 끝이 같다.
+   2단계: 오른쪽 칸 350 → 400px(«이전» + 주 단추가 한 줄에 든다), «카메라 미리 보기 · 촬영 구도 예시» 한 줄, «오늘 촬영할 영화» 포스터 다시 보이기(위 «919 이하» 규칙을 풂),
+          촬영 틀 아래 꺾쇠만 9 → 15%로 올려 «카메라 켜기»와 안 겹치게, 예시 칸 글은 «카메라 켜기»와 한 줄 · 아래 끝을 맞추고 4px 더(1100~1279와 같음).
+   3단계: 디자인 8칸을 2열 4줄 → 4열 2줄(아래로 1041px 넘쳤다) — 칸 폭이 먼저 차서 카드는 칸 폭에 맞춘다. 왼쪽 큰 포스터는 그대로. */
+@media (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 959px) {
+  .genre-section .genre-grid { gap: 12px 18px; }
+  .genre-art { width: auto; height: calc(100% - 26px); }
+  .camera-layout { grid-template-columns: minmax(0, 1fr) 400px; }
+  .camera-top { flex-direction: row; align-items: center; gap: 12px; }
+  #cameraWorkspace .camera-film-scene { display: flex; }
+  #cameraWorkspace .camera-film-card { flex: 1; }   /* 위 «919 이하»의 flex: none을 풀어 포스터가 티켓 위 남는 높이만큼 커진다 */
+  #cameraWorkspace .camera-actions { flex-wrap: nowrap; }
+  #cameraWorkspace .camera-actions > .back-button { flex: 0 0 auto; }
+  #cameraWorkspace .camera-actions > .primary-button { flex: 1 1 auto; }
+  .camera-guides { inset: 9% 26% 15%; }
+  .camHint.camera-example-caption { flex-direction: row; align-items: flex-end; }
+  .camera-example-label { padding-bottom: 0; translate: 0 4px; }
+  #resultView #resultWorkspace { padding: 28px 20px 24px; }
+  #resultView #gallery.style-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 16px; }
+}
+@media (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 740px) {
+  #resultView #resultWorkspace { padding-top: 16px; }   /* 1000×700: 8칸이 11px 넘쳤다 */
 }
 
 /* ───── 비율 기준 전환(2026-10-23, _docs/intents/2026-10-23-ratio-canvas) — PC 캔버스 ─────

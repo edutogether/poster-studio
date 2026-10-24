@@ -129,11 +129,26 @@ test("소리 있는 재생이 거부되면 소리 없이, 그것도 거부되면
   expect(still.getAttribute("src")).toBe(fake.endStill);
 });
 
-test("4초 동안 재생이 시작되지 않으면 끝 정지 그림으로 돌아간다", () => {
+test("4초 동안 재생이 시작되지 않으면 끝 정지 그림을 보이되 영상은 계속 받아, 늦게라도 재생되면 영상으로 넘긴다(10/24)", () => {
   const view = render(<CameraExample {...base} />);
   act(() => vi.advanceTimersByTime(4_000));
-  expect(view.container.querySelector("video")).toBeNull();
   expect(view.container.querySelector(".camera-example-still")!.getAttribute("src")).toBe(fake.endStill);
+  const video = view.container.querySelector("video")!;
+  expect(video.getAttribute("src")).toBe(fake.src);
+  fireEvent.playing(video);
+  expect(video.dataset.active).toBe("true");
+  expect((view.container.querySelector(".camera-example-still") as HTMLElement).dataset.active).toBe("false");
+});
+
+test("재생에 실패해도 2단계를 떠났다 다시 오면 다시 시도한다(10/24 «이전 갔다 와도 안 됨»)", async () => {
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(new Error("NotAllowedError"));
+  const view = render(<CameraExample {...base} />);
+  await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
+  expect(view.container.querySelector("video")).toBeNull();
+  view.rerender(<CameraExample {...base} offstage />);
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+  view.rerender(<CameraExample {...base} />);
+  expect(view.container.querySelector("video")!.getAttribute("src")).toBe(fake.src);
 });
 
 test("숫자·말풍선은 영상 시각에 맞춰 얹고, 끝나면 지운다(다시 재생하지 않음)", () => {
