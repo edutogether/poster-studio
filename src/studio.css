@@ -1050,6 +1050,8 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   #cameraView .camera-tips strong { font-size: clamp(19px, 2.4vw, 24px); line-height: 1.35; }
   #cameraView .camera-tips p { font-size: clamp(15px, 1.95vw, 19px); line-height: 1.5; margin-top: 4px; }
   #cameraWorkspace .camera-film-heading { grid-column: 2; grid-row: 1; margin-bottom: 26px; }
+  /* 두 제목 «나답게/우리답게, …» · «오늘 촬영할 영화» 26 → 30px(2026-10-25 Bumm님 «한 단계씩 키우기», 같은 크기 · 같은 줄 높이) */
+  #cameraWorkspace .page-heading h1, #cameraWorkspace .camera-film-heading h2 { font-size: 30px; line-height: 1.35; }
   #cameraWorkspace .camera-film-card { grid-column: 2; grid-row: 2; flex: none; align-self: start; }
   #cameraWorkspace .camera-film-scene { display: flex; flex: none; height: 150px; }
   /* 시안(10/24 Bumm님, 배포 전 확인): «오늘 촬영할 영화» — 왼쪽 반 영화 포스터, 오른쪽 반 세로형 티켓. 포스터는 반 폭에 맞춘 2:3, 티켓은 같은 높이로
@@ -1090,6 +1092,9 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   #resultView .result-poster-slot > canvas { width: 100%; height: 100%; }
   #resultView #resultWorkspace { padding: 18px 28px 20px; overflow: visible; }
   #resultView .page-heading { margin-bottom: 14px; }
+  /* 3단계(같은 날 Bumm님): 단추 60 → 48px(1 · 2단계와 같게), 그만큼 제목 «나만의 영화 포스터, 완성 !» 23 → 28px. 큰 포스터 · 8칸은 줄지 않는다(포스터가 남는 높이를 받음) */
+  #resultView .result-actions .primary-button, #resultView .result-actions .back-button { height: 48px; }
+  #resultView .page-heading h1 { font-size: 28px; }
   #resultView #gallery.style-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; max-width: none; }
   #resultView #gallery .style-name { font-size: 13px; white-space: nowrap; }
   #resultView .result-actions { max-width: none; margin-top: 16px; }
