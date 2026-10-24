@@ -122,7 +122,7 @@ try {
   await send("Runtime.enable");
   await send("Network.enable");
   await send("Network.setBlockedURLs", {
-    urls: ["https://*", "http://*.cloudfunctions.net/*", ...(selfTest ? ["*/reference-sf.jpg"] : [])],
+    urls: ["https://*", "http://*.cloudfunctions.net/*", ...(selfTest ? ["*/sf-*.jpg"] : [])],
   });
   await send("Page.addScriptToEvaluateOnNewDocument", {
     source: `

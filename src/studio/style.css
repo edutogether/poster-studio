@@ -30,7 +30,7 @@
   --accent: #2449ce;
   --line: #d7dce5;
   --stage: #101722;
-  font-family: Studio, PretendardFull, "Malgun Gothic", sans-serif;
+  font-family: Studio, PretendardFull, PretendardFullRare, "Malgun Gothic", sans-serif;
   color: var(--ink);
   background: var(--paper);
   font-synthesis: none;

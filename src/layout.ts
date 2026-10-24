@@ -6,6 +6,7 @@
    ──────────────────────────────────────────────────────────────────── */
 import { FEST, DATE, VENUE, EN } from './constants.js';
 import { state, type Meta } from './state.js';
+import FULL_CORE from './fullFontCore.json';
 
 /* ── 폰트 보장(캔버스는 폰트 로드 후 그려야 깨지지 않음) ── */
 export async function ensureFonts(){
@@ -24,21 +25,45 @@ export async function ensureFonts(){
     await document.fonts.ready;
   }catch(e){ /* 폰트 못 받아도 기본글꼴로 진행 */ }
 }
+/* PretendardFull(핵심 조각)에 없는 글자만 골라낸다 — scripts/fonts/slice-full.py와 같은 정의다:
+   KS X 1001 상용 한글 2350자 + fullFontCore.json의 범위. 나머지는 PretendardFullRare의 구간 조각에 있다(2026-10-24).
+   글 전체를 넘기면 상용 음절이 구간마다 걸려 조각을 거의 다 받게 되므로, 드문 글자만 넘긴다. */
+const CORE_RANGES = FULL_CORE.ranges.map((r) => r.split('-').map((x) => parseInt(x, 16)));
+let commonSyllables: Set<number> | null = null;
+export function rareGlyphs(text: string){
+  if(!commonSyllables){
+    const bytes: number[] = [];
+    for(let lead = 0xb0; lead <= 0xc8; lead++) for(let trail = 0xa1; trail <= 0xfe; trail++) bytes.push(lead, trail);
+    commonSyllables = new Set([...new TextDecoder('euc-kr').decode(Uint8Array.from(bytes))].map((c) => c.codePointAt(0)!));
+  }
+  const out = new Set<string>();
+  for(const ch of text){
+    const cp = ch.codePointAt(0)!;
+    if(!commonSyllables.has(cp) && !CORE_RANGES.some(([a, b]) => a <= cp && cp <= b)) out.add(ch);
+  }
+  return [...out].join('');
+}
+const SANS_WEIGHTS = [400,500,600,700,800,900];
+
 /* 실제로 그릴 글자(제목·이름·문구 등)의 글꼴 조각을 미리 모두 로드.
    구글폰트 한글은 subset으로 쪼개 받아서, 안 받은 글자가 기본글꼴로 깨질 수 있음 → 텍스트 인자로 강제 로드 */
 export async function ensureGlyphs(meta: Meta){
   const txt = [meta.title, meta.name, meta.groupName, meta.members, meta.tagline, FEST, DATE, VENUE]
     .filter(Boolean).join(' ') + ' 주연감독출연';
   const jobs = [];
+  const rare = rareGlyphs(txt);
   for(const fam of ["Black Han Sans","Noto Serif KR","PretendardFull"]){
     /* 600(SemiBold)이 빠져 있었다 — templates의 클래식 판이 출연진 줄을 600으로
        그린다. 폰트 서브셋 전에는 화면 UI가 이미 Pretendard 600을 받아둔 덕에
        우연히 문제가 안 났는데, 캔버스를 별도 패밀리(PretendardFull)로 가르자
        **그 줄만 대체 글꼴로 그려졌다** — master에서 포스터 픽셀 대조 20건 중
        1건 불일치로 잡힌 것이다(2026-09-09). */
-    for(const w of [400,500,600,700,800,900]){
+    for(const w of SANS_WEIGHTS){
       try{ jobs.push(document.fonts.load(`${w} 80px '${fam}'`, txt)); }catch(e){}
     }
+  }
+  if(rare) for(const w of SANS_WEIGHTS){
+    try{ jobs.push(document.fonts.load(`${w} 80px 'PretendardFullRare'`, rare)); }catch(e){}
   }
   // 손글씨·세로 제목 글꼴은 굵기가 하나뿐이라 그 굵기로만 받는다(2026-10-14).
   for(const face of ["700 80px 'Gaegu'", "400 80px 'Song Myung'"]){
@@ -67,12 +92,17 @@ export function setFitFont(ctx: CanvasRenderingContext2D, weight: number, px: nu
   return s;
 }
 
-/* 인천광역시교육청 로고: 흰글씨(어두운 배경용)·짙은글씨(밝은 배경용) 각각 로드 */
-export async function ensureLogo(){
-  if(state.LOGO_TRIED) return; state.LOGO_TRIED = true;
-  try{ state.LOGO_LIGHT = await loadImg('logo-white.png'); }catch(e){ state.LOGO_LIGHT = null; }
-  try{ state.LOGO_DARK  = await loadImg('logo-dark.png'); }catch(e){ state.LOGO_DARK = null; }
-  try{ state.LOGO_FESTIVAL = await loadImg('studio/inky-logo.png'); }catch(e){ state.LOGO_FESTIVAL = null; }
+/* 인천광역시교육청 로고: 흰글씨(어두운 배경용)·짙은글씨(밝은 배경용) 각각 로드.
+   세 장을 한꺼번에 받고, 받는 중에 다시 불려도 같은 약속을 돌려준다 — 생성 단추에서 미리 부른 뒤
+   조판에서 또 부르므로, 먼저 끝난 척 돌아가면 로고 없이 그려진다(2026-10-24). */
+let logoJob: Promise<void> | null = null;
+export function ensureLogo(): Promise<void> {
+  if(state.LOGO_TRIED) return logoJob ?? Promise.resolve();
+  state.LOGO_TRIED = true;
+  const one = (src: string) => loadImg(src).catch(() => null);
+  logoJob = Promise.all([one('logo-white.png'), one('logo-dark.png'), one('studio/inky-logo.png')])
+    .then(([light, dark, festival]) => { state.LOGO_LIGHT = light; state.LOGO_DARK = dark; state.LOGO_FESTIVAL = festival; });
+  return logoJob;
 }
 /* 로고를 (cx, cy) 중심에 높이 h로 그린다. variant: 'light'(흰글씨) | 'dark'(짙은글씨), 받침 없음 */
 export function drawOrgLogo(ctx: CanvasRenderingContext2D, cx: number, cy: number, h: number, variant: string){

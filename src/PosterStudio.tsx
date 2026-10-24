@@ -12,7 +12,7 @@ import {
   W,
   H,
 } from "./constants.js";
-import { buildPosters } from "./poster.js";
+import { buildPosters, preparePosterAssets } from "./poster.js";
 import { boothCodeHeaders, saveBoothCode, verifyBoothCode } from "./boothCode.js";
 import { classifyGenerateFailure, type GenerateFailure } from "./generateFailure.js";
 import StudioView from "./studio/StudioView.js";
@@ -416,6 +416,8 @@ export default function PosterStudio() {
     form.append("genre", meta.genre);
     form.append("mode", meta.mode);
 
+    // 조판 글꼴·로고는 AI를 기다리는 동안 받아 둔다 — 응답 뒤에 받기 시작하면 느린 와이파이에서 그만큼 더 기다린다(2026-10-24)
+    void preparePosterAssets(meta);
     const stopElapsed = startElapsed();
     const ctrl = new AbortController(); // 요청 시간 제한(부스 무한 멈춤 방지)
     const timer = setTimeout(() => ctrl.abort(), 150_000);
@@ -521,7 +523,7 @@ export default function PosterStudio() {
     const stopElapsed = startElapsed();
     const waited = new Promise((resolve) => setTimeout(resolve, SAMPLE_WAIT_SCENES * SCENE_MS));
     try {
-      const { default: sampleArt } = await import("./studio/design-sample.png");
+      const { default: sampleArt } = await import("./studio/design-sample.webp");
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
       const built = await buildPosters([sampleArt], meta);
@@ -545,7 +547,7 @@ export default function PosterStudio() {
     if (!POSTER_PREVIEW) return;
     let alive = true;
     (async () => {
-      const { default: sampleArt } = await import("./studio/design-sample.png");
+      const { default: sampleArt } = await import("./studio/design-sample.webp");
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
       const built = await buildPosters([sampleArt], meta);

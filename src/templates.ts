@@ -22,11 +22,11 @@ export interface Template {
 }
 type Ctx = CanvasRenderingContext2D;
 type Align = 'left' | 'center' | 'right';
-const SANS = "'PretendardFull', sans-serif";
+const SANS = "'PretendardFull', 'PretendardFullRare', sans-serif";
 const SERIF = "'Noto Serif KR', serif";
 const DISPLAY = "'Black Han Sans', sans-serif";
 /** 폴라로이드 캡션 손글씨 — Gaegu 700(OFL): 획 굵기가 고른 유성 매직 느낌(2026-10-14 Dokdo와 같은 캡션으로 견줘 골랐다). */
-const MARKER = "'Gaegu', 'PretendardFull', sans-serif";
+const MARKER = "'Gaegu', 'PretendardFull', 'PretendardFullRare', sans-serif";
 /** 타이포그래피 세로 제목 — Song Myung(OFL): 옛 활판 명조의 굵고 가는 획 대비. */
 const SONG = "'Song Myung', 'Noto Serif KR', serif";
 const WHEN = `${DATE}  ·  ${VENUE}`;
