@@ -596,8 +596,9 @@ main.app {
 @media (prefers-reduced-motion: reduce) {
   .hero-next { animation: none; }
 }
-/* 첫 페이지 단추 글(10/20 저녁 F3): PC 글을 감싼 칸은 없는 것처럼 — 글과 화살표가 예전처럼 단추의 줄 배치(간격)를 그대로 받는다 */
-#prepareNextBtn .label-pc { display: contents; }
+/* 첫 페이지 단추 글: 앞에 Lucide clapperboard + «주인공이 될 순간 보러 가기» — 모든 해상도(10/24 Bumm님, 10/20 저녁 휴대폰에 먼저 넣었던 것) */
+#prepareNextBtn .next-label { display: inline-flex; align-items: center; gap: 8px; }
+#prepareNextBtn .btn-icon { width: 20px; height: 20px; flex: 0 0 auto; }
 .phone-shot { display: none; }
 @media (max-width: 760px) {
   /* ⑤ 2단계: 카메라 칸을 화면 높이에 맞춰 줄여 «나답게, 편하게 웃어주세요.»와 안내 1~3이 첫 화면에 들어오게.
@@ -713,10 +714,6 @@ main.app {
   #cameraView #startBtn { display: none; }
   /* 10/20 저녁 Bumm님 «휴대폰 영상 칸 안 “이렇게, 얼굴과 어깨가 보이게” 글은 지운다»(PC는 그대로) */
   #cameraView .camera-example-label { display: none; }
-  /* 10/20 저녁 Bumm님(F3) 첫 페이지 단추: 휴대폰은 앞에 Lucide clapperboard + «주인공이 될 순간 보러 가기»(PC는 «만들러 가기 →» 그대로) */
-  #prepareNextBtn .label-pc { display: none; }
-  #prepareNextBtn .label-phone { display: inline-flex; align-items: center; gap: 8px; }
-  #prepareNextBtn .btn-icon { width: 20px; height: 20px; flex: 0 0 auto; }
   .phone-shot .studio-icon { width: 30px; height: 30px; }
   .phone-shot:active:not(:disabled) { transform: scale(.96); }
   .phone-shot:disabled { background: #bdbdbd; box-shadow: none; cursor: default; }
@@ -897,6 +894,28 @@ main.app {
    칸 사이 가로만 16 → 12px로 좁혀 카드를 3px씩 넓힌다(두 줄 높이 +9px, 단추에서 줄어든 12px 안). 선택 테두리(바깥 5px)끼리는 그래도 2px 떨어진다. */
 @media (min-width: 1100px) and (max-height: 959px) and (max-aspect-ratio: 3/2) {
   #resultView #gallery.style-grid { column-gap: 12px; }
+}
+/* 3단계 — 태블릿 가로 기준 화면 1366×1024(아이패드 4:3. 높이 960 이상인 태블릿 가로만 — 1180×820 = 1366×949는 위 띠 규칙). 2026-10-24 Bumm님: «아래가 너무 많이 빈다 —
+   제목 글자 키우고 여백들을 고르게 조금씩 키워, 지금 느낌 안 깨지게». 양쪽 칸 모두 폭이 먼저 차서(포스터 463 · 카드 184px) 그림이 세로로 커지지 못해 오른쪽 아래 126px,
+   왼쪽 아래 177px가 비었다. 제목 23 → 30px · 설명 16 → 18 · 이름 14 → 16 · 단추 60 → 68px(글자 18), 사이를 한 단계씩 넓히고, 좌우 여백 28 → 20px로 그림을
+   조금 키운다(포스터 463 → 479 · 카드 184 → 188px). 왼쪽 큰 포스터는 머리줄 아래 남는 높이 가운데에 둔다. */
+@media (min-height: 960px) {
+  :root[data-device="tablet-l"] #resultView .result-artboard { padding: 44px 20px 26px; gap: 26px; }
+  :root[data-device="tablet-l"] #resultView .result-artboard-top { min-height: 42px; }
+  :root[data-device="tablet-l"] #resultView .result-brand { font-size: 22px; }
+  :root[data-device="tablet-l"] #resultView .result-brand-icon { width: 34px; height: 34px; }
+  :root[data-device="tablet-l"] #resultView .result-artboard .icon-button { width: 42px; height: 42px; }
+  :root[data-device="tablet-l"] #resultView .result-poster-slot { margin-block: auto; }
+  :root[data-device="tablet-l"] #resultView #resultWorkspace { padding: 44px 20px 24px; }
+  :root[data-device="tablet-l"] #resultView .page-heading { margin-bottom: 26px; }
+  :root[data-device="tablet-l"] #resultView .page-heading h1 { font-size: 30px; }
+  :root[data-device="tablet-l"] #resultView .page-heading p { margin-top: 10px; font-size: 18px; }
+  :root[data-device="tablet-l"] #resultView #gallery.style-grid { row-gap: 26px; }
+  :root[data-device="tablet-l"] #resultView #gallery .style-option { gap: 12px; }
+  :root[data-device="tablet-l"] #resultView #gallery .style-name { font-size: 16px; }
+  :root[data-device="tablet-l"] #resultView .result-actions { margin-top: 28px; }
+  :root[data-device="tablet-l"] #resultView .result-actions .primary-button,
+  :root[data-device="tablet-l"] #resultView .result-actions .back-button { height: 68px; font-size: 18px; }
 }
 /* 2단계 단추 줄 — 761~1099(태블릿 세로 1024): 오른쪽 칸 안쪽 폭이 302px라 «이전»(112) + «이 사진으로 포스터 만들기»(252)가 한 줄에 안 들어가
    주 단추 오른쪽 50px가 칸 밖으로 잘렸다(10/23 실측, 라이브도 같음 — 켠 뒤 «3초 뒤 사진 찍기»도 12px 넘쳤다). 두 줄로 쌓는다 — 화면 순서 그대로

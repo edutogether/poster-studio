@@ -1183,12 +1183,11 @@ describe('휴대폰 흐름', () => {
     expect(action).toHaveBeenCalledTimes(2);   // 막힌 단추
   });
 
-  test('첫 페이지 단추(10/20 저녁 Bumm님): 휴대폰 글은 아이콘 + «주인공이 될 순간 보러 가기», PC 글은 «만들러 가기 →» 그대로 · 찍은 뒤 휴대폰 문구는 한 줄', async () => {
+  test('첫 페이지 단추(10/20 저녁 · 10/24 Bumm님): 모든 해상도 같은 글 — 아이콘 + «주인공이 될 순간 보러 가기» · 찍은 뒤 휴대폰 문구는 한 줄', async () => {
     await act(async () => { renderApp(); });
     const btn = el('prepareNextBtn');
-    expect(btn.querySelector('.label-phone')!.textContent).toBe('주인공이 될 순간 보러 가기');
-    expect(btn.querySelector('.label-phone svg')).not.toBeNull();
-    expect(btn.querySelector('.label-pc')!.textContent).toBe('주인공이 될 순간 만들러 가기 →');
+    expect(btn.textContent).toBe('주인공이 될 순간 보러 가기');
+    expect(btn.querySelector('.next-label svg')).not.toBeNull();
     expect(document.querySelector('.photo-review .label-phone')!.textContent).toBe('표정과 구도가 마음에 드나요 ?');
     expect(document.querySelector('.photo-review .label-pc')!.textContent).toBe('표정과 구도가 마음에 드나요 ?다시 찍어도 괜찮아요.');
   });
