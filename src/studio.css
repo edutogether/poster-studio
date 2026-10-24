@@ -354,7 +354,7 @@ main.app {
 .camera-ticket .ticket-label { font-size: 12px; font-weight: 500; }
 .camera-ticket strong { font-size: 24px; margin: 5px 0; }
 .camera-ticket-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; letter-spacing: -0.3px; font-weight: 700; color: #535353; line-height: 1.5; }
-.camera-ticket .ticket-cast { font-weight: 400; }
+.camera-ticket .ticket-cast, .camera-ticket .ticket-sep { font-weight: 400; }
 .camera-ticket .ticket-admit { width: 72px; flex: 0 0 72px; border-left: 1px dashed #bcbcbc; }
 .camera-ticket .ticket-admit:before, .camera-ticket .ticket-admit:after { background: #242424; }
 .camera-ticket .ticket-admit > span { font-size: 27px; }
@@ -1058,6 +1058,10 @@ main.app {
   #cameraWorkspace .camera-ticket .ticket-label { font-size: clamp(10px, 6.4cqi, 13px); }
   #cameraWorkspace .camera-ticket strong { font-size: clamp(17px, 11.5cqi, 26px); line-height: 1.2; margin: 1.5cqi 0; }
   #cameraWorkspace .camera-ticket-name { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: clamp(10px, 6.4cqi, 13px); }
+  /* 단체(10/24 Bumm님 시안2 답 «단체일 때만 — 단체 이름 한 줄, 출연진 한 줄(넘치면 «…»)»): 구분 «|»는 빼고 두 줄로 */
+  #cameraWorkspace .camera-ticket[data-mode="group"] .camera-ticket-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #cameraWorkspace .camera-ticket[data-mode="group"] .ticket-sep { display: none; }
+  #cameraWorkspace .camera-ticket[data-mode="group"] .ticket-cast { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #cameraWorkspace .camera-ticket .ticket-info { display: grid; grid-template-columns: 1fr 1fr; gap: 3.5cqi 4cqi; margin: 4cqi 0 0; padding-top: 4cqi; border-top: 1px solid #ececec; }
   #cameraWorkspace .camera-ticket .ticket-info dt { font-size: clamp(9px, 5.6cqi, 12px); color: #8c8c8c; font-weight: 500; }
   #cameraWorkspace .camera-ticket .ticket-info dd { margin: 0.5cqi 0 0; font-size: clamp(11px, 7.6cqi, 16px); font-weight: 800; color: #191919; white-space: nowrap; letter-spacing: -0.3px; }
