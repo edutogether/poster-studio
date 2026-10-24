@@ -70,8 +70,9 @@ dialog #dialogContent > .poster {
   white-space: nowrap;
   font-weight: 800;
 }
+/* «Film Festival»은 보통 굵기 — «InKY»(800)와 굵기가 갈라져야 한다(2026-10-24 Bumm님: 10/16 3b786a6의 650은 Bold로 그려져 «InKY»와 같아 보였다 → 그 전 400으로 되돌림). */
 .festival-brand strong {
-  font-weight: 650;
+  font-weight: 400;
 }
 .festival-symbol {
   position: relative;
