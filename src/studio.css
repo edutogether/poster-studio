@@ -207,6 +207,13 @@ main.app {
 }
 .completion-notice strong { display: block; font-size: 26px; font-weight: 800; }
 .completion-notice p { margin: 8px 0 0; font-size: 16px; color: #666; line-height: 1.5; word-break: keep-all; }
+/* 2026-10-25 Bumm님 «체크와 «완성 !»을 한 줄에 나란히(체크 왼쪽), 그만큼 창을 낮추고 폭도 설명 한 줄에 맞춰 좁게» — 모든 해상도.
+   자리(화면 가운데) · 2.2초는 그대로. */
+.completion-notice { display: grid; grid-template-columns: 1fr auto auto 1fr; align-items: center; column-gap: 12px;
+  width: max-content; max-width: calc(100vw - 32px); padding: 22px 28px 24px; }
+.completion-notice-mark { grid-column: 2; margin: 0; }
+.completion-notice strong { grid-column: 3; }
+.completion-notice p { grid-column: 1 / -1; white-space: nowrap; }   /* 설명이 체크 · 제목보다 넓어 남는 폭은 양끝 칸(1fr)이 나눠 갖는다 — 체크 + 제목이 가운데 */
 @media print { .completion-notice { display: none !important; } }
 .generation-overlay {
   position: fixed;
@@ -815,8 +822,8 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   #resultView .label-phone { display: inline; }
   /* ⑫ «완성 !» — 10/25 Bumm님 «알약이 위 Poster Studio 글자에 겹쳐 이상하다 · 설명이 빠졌다 → PC처럼 체크 + 완성 ! + 설명 한 줄 창으로,
      PC 크기는 과하니 작게»: PC 창(화면 가운데 · 같은 시간에 떴다 사라짐)을 줄인 모양. 화면 가운데는 큰 포스터 가운데쯤이라 머리글 · 단추와 안 겹친다. */
-  .completion-notice { width: min(300px, calc(100vw - 64px)); padding: 20px 18px 18px; border-radius: 16px; box-shadow: 0 12px 40px #0003; }
-  .completion-notice-mark { width: 32px; height: 32px; margin: 0 auto 10px; font-size: 18px; }
+  .completion-notice { width: max-content; column-gap: 10px; padding: 16px 20px 17px; border-radius: 16px; box-shadow: 0 12px 40px #0003; }
+  .completion-notice-mark { width: 30px; height: 30px; margin: 0; font-size: 17px; }
   .completion-notice strong { font-size: 20px; }
   .completion-notice p { margin-top: 6px; font-size: 14px; }
   .completion-notice .label-pc { display: none; }
@@ -1120,6 +1127,15 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   /* 예시 영상은 칸을 그대로 덮는다(object-fit: cover — 좌우가 잘린다). 16:9 무대를 칸 높이로 키우는 계산(cqh)이 늘어난 칸 높이를 못 따라가
      위아래에 검은 띠가 났다. 숫자 3 · 2 · 1은 무대 가운데라 그대로다(말풍선은 지금 영상에 없다). */
   #cameraView .camera-example-stage { left: 0; top: 0; width: 100%; height: 100%; aspect-ratio: auto; transform: none; }
+}
+/* 휴대폰 2단계 아래 단추 줄(«← 이전 · 샘플 포스터 보기»)을 3단계(«← 다시 찍기 · 내 휴대폰에 저장») 기준으로(2026-10-25 Bumm님 390×844 «2쪽 배치가 약간 비뚤다»):
+   좌우 끝 23 → 22px(3단계 단추 줄 안쪽 여백 22), 화면 아래 12 → 14px, «이전» 폭 112 → 114 · 글자 15 → 16px, 카메라 아이콘 21 → 22px. 두 단계 «이전»을 같은 폭(114)으로 고정해
+   글자 길이와 상관없이 폭 비율이 같다. 찍기 전 화면만(찍은 뒤 «이 사진으로 만들까요 ?»는 10/19 «지금처럼» 그대로). */
+@media (max-width: 760px) {
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions { margin-inline: -1px; padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions > .back-button,
+  #resultView .result-actions > .back-button { flex: 0 0 114px; width: 114px; min-width: 0; padding-inline: 0; font-size: 16px; }
+  #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions .studio-icon { width: 22px; height: 22px; }
 }
 /* 휴대폰 아래 단추 높이 하나로(같은 날 Bumm님 «페이지마다 단추 높이가 다르다 — 2단계 단추 높이 기준으로 전부»): 2단계 48px 기준.
    1단계 «주인공이 될 순간 보러 가기» 56 → 48, 3단계 «다시 찍기 · 내 휴대폰에 저장» 60 → 48(48로 적은 규칙이 result.css의 60px보다 약해 지고 있었다). */
