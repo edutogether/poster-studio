@@ -827,7 +827,8 @@ export default function StudioView(p: StudioViewProps) {
       {completionVisible && step === 3 && !p.generating && <div className="completion-notice" role="status">
         <span className="completion-notice-mark" aria-hidden="true">✓</span>
         <strong>완성 !</strong>
-        <p>마음에 드는 버전을 고르고 인쇄하세요.</p>
+        {/* 휴대폰은 단추가 «내 휴대폰에 저장»이라 «저장하세요»(10/25 Bumm님) */}
+        <p><span className="label-pc">마음에 드는 버전을 고르고 인쇄하세요.</span><span className="label-phone">마음에 드는 버전을 고르고 저장하세요.</span></p>
       </div>}
       <div className="studio-status" hidden={p.spinning || !p.status}>
         <p id="status" role="status">

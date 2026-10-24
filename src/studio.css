@@ -781,8 +781,10 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   .poster-slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .poster-slide:focus-visible { outline: 3px solid #d82d23; outline-offset: 3px; }
   .poster-carousel[data-hint] .poster-slide { animation: carousel-hint 1.2s ease-in-out 1; }
-  /* 10/20 Bumm님 «이름은 영어로, · 1 / 8은 없앰, 이름이 아래(단추 쪽)에 딱 붙어 있으니 위아래 여백을 적당히» */
-  .poster-carousel-caption { display: block; margin: 8px 0 12px; text-align: center; font-size: 14px; font-weight: 600; line-height: 20px; letter-spacing: .02em; color: #444; }
+  /* 10/20 Bumm님 «이름은 영어로, · 1 / 8은 없앰, 이름이 아래(단추 쪽)에 딱 붙어 있으니 위아래 여백을 적당히».
+     10/25 Bumm님 «아직 아래에 붙어 있다 — 포스터 아래 끝과 회색 끝 사이 가운데, 또는 살짝 아래»: 위 8 → 2, 아래 12 → 18px
+     (글자 위 · 아래 여백 390×844 30 · 14 → 24 · 20, 낮은 화면 28 · 14 → 22 · 20 — 넘겨도 같은 자리) */
+  .poster-carousel-caption { display: block; margin: 2px 0 18px; text-align: center; font-size: 14px; font-weight: 600; line-height: 20px; letter-spacing: .02em; color: #444; }
   /* 10/19 Bumm님 «양쪽에 화살표를 두어 넘기며 보게»: 포스터 줄 좌우 가장자리에 흰 원 화살표(밀어 넘기기도 그대로). 끝 장에서는 옅게 · 누를 수 없게. */
   .carousel-arrow {
     position: absolute; top: 50%; z-index: 2; display: grid; place-items: center;
@@ -811,15 +813,14 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   #resultView #printBtn, #resultView .label-pc { display: none; }
   #resultView #saveBtn { display: inline-flex; }
   #resultView .label-phone { display: inline; }
-  /* ⑫ «완성 !»은 화면을 가리지 않는 짧은 알림 — 머리말 아래 작은 알약 */
-  .completion-notice {
-    top: calc(var(--phone-header-h) + 10px); transform: translateX(-50%);
-    display: flex; align-items: center; gap: 8px; width: auto; padding: 8px 16px;
-    border-radius: 999px; box-shadow: 0 8px 24px #0002;
-  }
-  .completion-notice-mark { width: 22px; height: 22px; margin: 0; font-size: 13px; }
-  .completion-notice strong { font-size: 15px; }
-  .completion-notice p { display: none; }
+  /* ⑫ «완성 !» — 10/25 Bumm님 «알약이 위 Poster Studio 글자에 겹쳐 이상하다 · 설명이 빠졌다 → PC처럼 체크 + 완성 ! + 설명 한 줄 창으로,
+     PC 크기는 과하니 작게»: PC 창(화면 가운데 · 같은 시간에 떴다 사라짐)을 줄인 모양. 화면 가운데는 큰 포스터 가운데쯤이라 머리글 · 단추와 안 겹친다. */
+  .completion-notice { width: min(300px, calc(100vw - 64px)); padding: 20px 18px 18px; border-radius: 16px; box-shadow: 0 12px 40px #0003; }
+  .completion-notice-mark { width: 32px; height: 32px; margin: 0 auto 10px; font-size: 18px; }
+  .completion-notice strong { font-size: 20px; }
+  .completion-notice p { margin-top: 6px; font-size: 14px; }
+  .completion-notice .label-pc { display: none; }
+  .completion-notice .label-phone { display: inline; }
   /* ⑩ 크게 보기 창: 전체 화면에서 좌우로 넘긴다 — × 닫기는 오른쪽 위 */
   .poster-dialog { padding: 0; }
   .poster-dialog > img { display: none; }
