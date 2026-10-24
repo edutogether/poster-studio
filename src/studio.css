@@ -1006,6 +1006,20 @@ main.app {
   #resultView #gallery .style-option { gap: 8px; }
   #resultView .result-actions { margin-top: 16px; }
 }
+/* 휴대폰 2단계 예시 칸(2026-10-24 Bumm님 390×844 «가로로 넓고 납작해 작다 — 좌우를 어느 정도 잘라(양끝 남자애들 어깨 정도) 칸을 세로로 키우고,
+   안내 위 · 아래 회색 빈 곳을 줄여라» — 10/23 «16:9를 절대 깨지 않게»를 바꾼 결정). 칸 16:9 → 4:3: 영상은 칸을 덮어 그리므로 늘어나지 않고 좌우가
+   12.5%씩 잘린다(양끝 얼굴은 남는다). 칸이 65px 커진 만큼 회색 칸 위 · 아래 빈 곳(합 139 → 74px)이 줄어든다. 세로가 짧은 휴대폰(높이 790 미만 —
+   360×640 · 390×664 · 430×740)은 넣을 높이가 없어 16:9 그대로(단추 줄이 첫 화면 안). 카메라를 켠 뒤 화면은 그대로. */
+@media (max-width: 760px) and (min-height: 790px) {
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-large { aspect-ratio: 4 / 3; }
+}
+/* 휴대폰 아래 단추 높이 하나로(같은 날 Bumm님 «페이지마다 단추 높이가 다르다 — 2단계 단추 높이 기준으로 전부»): 2단계 48px 기준.
+   1단계 «주인공이 될 순간 보러 가기» 56 → 48, 3단계 «다시 찍기 · 내 휴대폰에 저장» 60 → 48(48로 적은 규칙이 result.css의 60px보다 약해 지고 있었다). */
+@media (max-width: 760px) {
+  #prepareNextBtn { min-height: 48px; height: 48px; }
+  #resultView .result-actions > .primary-button, #resultView .result-actions > .back-button { min-height: 48px; height: 48px; }
+  #cameraView .camera-actions > button { min-height: 48px; height: 48px; }
+}
 
 /* ───── 비율 기준 전환(2026-10-23, _docs/intents/2026-10-23-ratio-canvas) — PC 캔버스 ─────
    public/device-canvas.js가 기준 크기(2560×1440)가 아닌 PC 창에서 <html>에 zoom과 .ps-canvas를 건다. 캔버스는 2560×1440 한 장 —
