@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /* 느린 망 첫 방문 · 재방문 재기(2026-10-24 Bumm님 «와이파이 환경에서 너무 느려서 제대로 사용하지 못할 정도», 팀장 전달) — 고치기 전과 뒤를 같은 자로 잰다.
 
-     node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow]
+     node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>]
 
    창 없는 크롬(새 프로필 = 캐시 없음)으로 망을 흉내 내고(slow4g: 지연 150ms · 내려받기 1.6Mbps, fast3g: 562ms · 1.47Mbps, wifi: 40ms · 10Mbps):
      ① 첫 방문 — 첫 그림(FCP) · 큰 그림(LCP) · 1단계가 쓸 수 있게 된 때(스플래시가 걷히고 «주인공이 될 순간 만들러 가기»가 보임) ·
         그때까지 받은 용량 · 요청 수, 그리고 5초 더 기다리며 미리 받는 것까지
      ② 재방문 — 같은 창에서 다시 열기(캐시 그대로): 같은 수치 · 캐시에서 온 요청 수
      ③ --flow: 첫 방문 뒤 2단계로 넘어가 예시 영상 · «샘플 포스터 보기» → 로딩 → 3단계까지 — 단계마다 받은 용량 · 걸린 시간
+     ④ --real N: 첫 방문 뒤 진짜 생성 흐름(가짜 카메라 · 찍기 · 생성) — AI 응답은 페이지 안에서 N초 뒤에 준다(망에 안 나감, 실제 응답 그림을 받는
+        시간은 빠진다). 응답이 온 뒤 포스터가 보일 때까지를 따로 적는다(--flow와 같이 쓰지 않는다 — 앞 흐름이 3단계에서 끝난다)
    결과: 표준 출력 표 + <결과 폴더>/net-perf.json(요청 전부: 주소 · 종류 · 받은 바이트 · 캐시 여부 · 언제). 큰 파일 위 10개를 함께 적는다.
    생성(/generate)은 부르지 않는다 — 샘플 흐름만 지난다(페이지가 생성 요청을 내면 종료코드 2). */
 import { spawn } from 'node:child_process';
@@ -17,12 +19,13 @@ import path from 'node:path';
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
-const [url, outArg] = args.filter((a, i) => !a.startsWith('--') && !['--net', '--device'].includes(args[i - 1]));
-if (!url || !outArg) { console.error('사용법: node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow]'); process.exit(2); }
+const [url, outArg] = args.filter((a, i) => !a.startsWith('--') && !['--net', '--device', '--real'].includes(args[i - 1]));
+if (!url || !outArg) { console.error('사용법: node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>]'); process.exit(2); }
 const NETS = { slow4g: { latency: 150, down: 1.6e6, up: 750e3 }, fast3g: { latency: 562.5, down: 1.47e6, up: 675e3 }, wifi: { latency: 40, down: 10e6, up: 5e6 } };
 const netName = opt('--net', 'slow4g'); const net = NETS[netName]; if (!net) { console.error('망: ' + Object.keys(NETS).join(' · ')); process.exit(2); }
 const device = opt('--device', 'pc');
 const FLOW = args.includes('--flow');
+const REAL = Number(opt('--real', 0));
 const out = path.resolve(outArg); await fs.mkdir(out, { recursive: true });
 const delay = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
 
@@ -104,6 +107,28 @@ if (FLOW) {
   const done = await waitFor('!document.getElementById("resultView").hidden && !!document.querySelector("#gallery img, .poster-slide img")', 240000);
   await delay(3000);
   flow.push({ step: '샘플 → 로딩 → 3단계', ms: done, ...sum('로딩 → 3단계') });
+}
+if (REAL) {
+  // 진짜 생성 흐름: 가짜 카메라(캔버스) → 찍기 → «이 사진으로 포스터 만들기» → AI 응답은 페이지 안에서 REAL초 뒤에 준다(망에 안 나감).
+  // 응답이 온 뒤 포스터가 보일 때까지 = 조판 준비(글꼴 · 로고)를 응답 뒤에 받느라 더 기다리는 시간.
+  phase = '진짜 생성';
+  await ev(`(() => { const c = document.createElement('canvas'); c.width = 1024; c.height = 1536; const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 1024, 1536); g.addColorStop(0, '#d9a44a'); g.addColorStop(1, '#172633'); x.fillStyle = g; x.fillRect(0, 0, 1024, 1536);
+    window.__tick = setInterval(() => x.fillRect(0, 1534, 2, 2), 33); const stream = c.captureStream(30);
+    navigator.mediaDevices.getUserMedia = async () => stream; const art = c.toDataURL('image/png'); const original = window.fetch;
+    window.fetch = async (u, o) => { if (String(u).includes('/generate')) { await new Promise((r) => setTimeout(r, ${REAL} * 1000)); window.__answered = performance.now();
+      return new Response(JSON.stringify({ images: [art] }), { status: 200, headers: { 'content-type': 'application/json' } }); } return original(u, o); };
+    if (!document.getElementById('cameraView').hidden) return true; scrollTo(0, 1e5); document.getElementById('prepareNextBtn').click(); return true; })()`);
+  await waitFor('!document.getElementById("cameraView").hidden && !!document.getElementById("startBtn")', 30000);
+  await ev('document.getElementById("startBtn").click(); true');
+  await waitFor('document.getElementById("video").videoWidth > 0', 30000);
+  await ev('document.getElementById("shotBtn").click(); true');
+  await waitFor('!document.getElementById("generateBtn").hidden', 30000);
+  await ev('window.__clicked = performance.now(); document.getElementById("generateBtn").click(); true');
+  const shown = await waitFor('!document.getElementById("resultView").hidden && !!document.querySelector("#gallery img, .poster-slide img, .style-option")', 300000);
+  const t = await ev('({ answered: window.__answered - window.__clicked, shown: performance.now() - window.__clicked })');
+  await delay(2000);
+  flow.push({ step: `진짜 생성(AI ${REAL}초 흉내) → 3단계 · 응답 뒤 ${shown === null ? '시간 넘음' : ((t.shown - t.answered) / 1000).toFixed(1) + '초'}`, ms: shown === null ? null : t.shown, ...sum('진짜 생성') });
 }
 rows.push(await visit('재방문'));
 ws.close(); chrome.kill(); await delay(300); await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
