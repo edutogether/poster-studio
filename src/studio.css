@@ -370,6 +370,10 @@ main.app {
    확인: scripts/verify/result-layout-probe.mjs(두 단계 모두 «이전» 밝기 ≤ 80·굵기 ≥ 600을 판정). */
 #cameraWorkspace .camera-actions .back-button, #resultWorkspace .result-actions .back-button { background: #ededed; color: #1c1c1c; font-weight: 700; }
 #cameraWorkspace .camera-actions .back-button:hover:not(:disabled), #resultWorkspace .result-actions .back-button:hover:not(:disabled) { background: #e2e2e2; }
+/* 단계를 막 넘긴 뒤 움직이지 않은 마우스 · 손가락 아래 단추는 올림 색을 켜지 않는다(StudioView의 data-hover-rest) — 2026-10-25 Bumm님 «1024×1366 «샘플 포스터 보기»가 탁하다».
+   «다음»을 누른 자리에 다음 단계의 단추가 와서 올림 색(빨강 #bd241c · 회색 #e2e2e2)이 켜진 채 보였다. 마우스를 움직이면 평소대로 올림 색이 켜진다. */
+body[data-hover-rest] .primary-button:hover:not(:disabled) { background: #d82d23; }
+body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:disabled), body[data-hover-rest] #resultWorkspace .result-actions .back-button:hover:not(:disabled) { background: #ededed; }
 #cameraWorkspace .camera-actions .back-button { min-width: 112px; padding-left: 18px; padding-right: 18px; }
 #resultWorkspace .page-heading p { font-size: 16px; line-height: 1.5; margin-top: 10px; color: #666; }
 .result-secondary { align-items: center; gap: 8px 18px; flex-shrink: 0; margin: 14px 0 0; }
@@ -1039,6 +1043,12 @@ main.app {
   #cameraWorkspace .camera-guide { display: contents; }
   #cameraWorkspace .page-heading { grid-column: 1; grid-row: 1; margin-bottom: 26px; }   /* 제목 ↔ 1 · 2 · 3 14 → 26(Bumm님 «여백을 더») */
   #cameraWorkspace .camera-instructions { grid-column: 1; grid-row: 2; align-self: start; }
+  /* 왼쪽 안내 1 · 2 · 3(2026-10-25 Bumm님 «소제목 · 설명을 더 크게, 항목 사이를 더 벌려 위에 딱 붙은 느낌이 없게»): 화면 폭에 맞춰
+     소제목 18 → 20~24px, 설명 15 → 16~19px, 항목 사이 10 → 22~30px(768 · 820 · 1024). 오른쪽 포스터 · 티켓과 단추 줄은 그대로. */
+  #cameraView .camera-tips { gap: clamp(20px, 2.9vw, 30px); }
+  #cameraView .camera-tips li > span { width: 32px; height: 32px; font-size: 16px; }
+  #cameraView .camera-tips strong { font-size: clamp(19px, 2.4vw, 24px); line-height: 1.35; }
+  #cameraView .camera-tips p { font-size: clamp(15px, 1.95vw, 19px); line-height: 1.5; margin-top: 4px; }
   #cameraWorkspace .camera-film-heading { grid-column: 2; grid-row: 1; margin-bottom: 26px; }
   #cameraWorkspace .camera-film-card { grid-column: 2; grid-row: 2; flex: none; align-self: start; }
   #cameraWorkspace .camera-film-scene { display: flex; flex: none; height: 150px; }
