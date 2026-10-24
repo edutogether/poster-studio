@@ -852,12 +852,16 @@ main.app {
   #cameraWorkspace .camera-film-heading h2 { font-size: 24px; }
   #cameraWorkspace .camera-actions { padding-top: 20px; }   /* 티켓 ↔ 단추 줄 사이 — 1920×1080과 같은 20px(낮은 창의 10 · 14px 대신) */
   /* 1단계도 같은 모양(Bumm님 «다른 해상도도 같이»): 위 칸(제목 27px · 모드 카드와 입력칸 140px)이 높이를 먹어 장르 포스터가 1366×768에서 86×130,
-     1280×720에서 70×105였다. 제목 · 모드 카드 · 입력칸 · 사이를 줄인 만큼(약 44px) 포스터 두 줄이 커진다. 모드 카드 = 입력칸 두 줄(56 + 8 + 56)로 높이를 맞춘다. */
+     1280×720에서 70×105였다. 제목 · 모드 카드 · 입력칸 · 사이를 줄인 만큼(약 44px) 포스터 두 줄이 커진다. 모드 카드 = 입력칸 두 줄(62 + 8 + 62)로 높이를 맞춘다.
+     같은 날 저녁 Bumm님(1440×900): «단체 이름 · 영화 제목 두께를 출연진 이름만큼, 단독 주연 · 우리 같이도 세로 길이 맞춰 주기» — 입력칸 34 → 40px(출연진 칸과 같음),
+     한 칸 = 이름 18 + 4 + 40 = 62, 모드 카드 120 → 132px. «자간 줄여서 왼쪽 표가 두꺼워지지 않게» — 티켓 «별 보러 가요 | 북두칠성 · …»가 1440에서 0.5px 넘쳐
+     두 줄이 됐다(티켓 22px 두꺼워짐) → 자간 −0.6px이면 1440 · 1366에서 한 줄. */
   #prepareWorkspace .page-heading h1, #prepareWorkspace .genre-section h2 { font-size: 23px; }
-  #prepareWorkspace .segmented button { height: 120px; min-height: 120px; padding: 18px 12px 12px; }
-  #prepareWorkspace .field-row { grid-template-rows: repeat(2, 56px); gap: 8px; }
+  #prepareWorkspace .segmented button { height: 132px; min-height: 132px; padding: 18px 12px 12px; }
+  #prepareWorkspace .field-row { grid-template-rows: repeat(2, 62px); gap: 8px; }
   #prepareWorkspace .field label { font-size: 13px; line-height: 18px; }
-  #prepareWorkspace .field input { height: 34px; min-height: 34px; padding: 6px 12px; font-size: 15px; }
+  #prepareWorkspace .field input { height: 40px; min-height: 40px; padding: 6px 12px; font-size: 15px; }
+  .exhibition .movie-ticket #ticketName { letter-spacing: -0.6px; }
   #prepareWorkspace .genre-section { margin-top: 12px; padding-top: 10px; }
 }
 /* 더 낮은 창(높이 820 이하 — 1366×768 · 1280×720 · 1536×731 등): 사이를 한 번 더 줄이고(위 여백은 위 규칙의 26px 그대로 — 글자 윗선 맞춤), 10/14 규칙이 160px로 묶어 둔 포스터 칸을
