@@ -22,8 +22,11 @@ describe("포스터 생성 대기", () => {
     const approved=JSON.parse(fs.readFileSync('_docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/assets/sets.json','utf8'));
     for(const scene of waitingSets){
       const saved=approved.find((s:{id:number})=>s.id===scene.id);
-      // 설명의 \n은 휴대폰에서 줄을 바꾸는 자리일 뿐 문구는 확정본 그대로다(10/20)
-      expect(scene.title).toBe(saved.title); expect({ ...scene.fact, body: scene.fact.body.replace(/\n/g, " ") }).toEqual(saved.fact);
+      // 설명의 \n은 휴대폰에서 줄을 바꾸는 자리일 뿐 문구는 확정본 그대로다(10/20). 빨간 글씨(fact.title) 끝 온점은 10/24 Bumm님 지시로 뺐다 —
+      // 확정 자료는 기록이라 그대로 두고 여기서 온점만 떼어 견준다.
+      expect(scene.title).toBe(saved.title);
+      expect({ ...scene.fact, body: scene.fact.body.replace(/\n/g, " ") }).toEqual({ ...saved.fact, title: saved.fact.title.replace(/\.$/, "") });
+      expect(scene.fact.title.endsWith("."), `${scene.id}번 빨간 글씨 끝 온점`).toBe(false);
     }
   });
   test("휴대폰 줄 바꿈은 10/20 Bumm님이 고른 자리 한 곳뿐이다(1 · 3 · 6번은 한 줄)",()=>{
