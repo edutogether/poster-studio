@@ -212,6 +212,16 @@ export default function StudioView(p: StudioViewProps) {
       previousStep.current = step;
     }
   }, [step]);
+  // 단계를 넘기면 마우스를 움직이거나 누를 때까지 단추 «올림» 색을 쓰지 않는다(body[data-hover-rest], studio.css) — 2026-10-25 Bumm님 «1024×1366에서만
+  // «샘플 포스터 보기»가 탁하다»: «다음»을 누른 자리에 2단계 빨간 단추가 그대로 와서, 움직이지 않은 마우스(터치는 누른 손가락)가 올림 색(#bd241c)을 켰다.
+  useEffect(() => {
+    const body = document.body;
+    body.dataset.hoverRest = "";
+    const clear = () => { delete body.dataset.hoverRest; };
+    window.addEventListener("pointermove", clear, { once: true });
+    window.addEventListener("pointerdown", clear, { once: true });
+    return () => { window.removeEventListener("pointermove", clear); window.removeEventListener("pointerdown", clear); };
+  }, [step]);
   // 포스터가 오면 그리기 전에 3단계로(useLayoutEffect) — 같은 렌더에서 로딩 화면이 걷히므로, 그린 뒤(useEffect)에 넘기면
   // 2단계가 두 프레임 보였다가 3단계로 넘어갔다(2026-10-24 Bumm님, 모든 해상도 — 프레임 기록으로 확인).
   useLayoutEffect(() => {
