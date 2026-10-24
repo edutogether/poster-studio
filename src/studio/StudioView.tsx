@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import type { Poster } from "../state.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "../defaults.js";
@@ -212,7 +212,9 @@ export default function StudioView(p: StudioViewProps) {
       previousStep.current = step;
     }
   }, [step]);
-  useEffect(() => {
+  // 포스터가 오면 그리기 전에 3단계로(useLayoutEffect) — 같은 렌더에서 로딩 화면이 걷히므로, 그린 뒤(useEffect)에 넘기면
+  // 2단계가 두 프레임 보였다가 3단계로 넘어갔다(2026-10-24 Bumm님, 모든 해상도 — 프레임 기록으로 확인).
+  useLayoutEffect(() => {
     if (p.posters.length && p.posters !== shownPosters.current) setStep(3);
     shownPosters.current = p.posters;
   }, [p.posters]);
