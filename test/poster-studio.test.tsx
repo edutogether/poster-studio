@@ -243,7 +243,8 @@ describe('세 단계 화면 연결', () => {
     vi.useFakeTimers();
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
     expect(document.querySelector('.completion-notice strong')!.textContent).toBe('완성 !');
-    expect(document.querySelector('.completion-notice p')!.textContent).toBe('마음에 드는 버전을 고르고 인쇄하세요.');
+    expect(document.querySelector('.completion-notice p .label-pc')!.textContent).toBe('마음에 드는 버전을 고르고 인쇄하세요.');
+    expect(document.querySelector('.completion-notice p .label-phone')!.textContent).toBe('마음에 드는 버전을 고르고 저장하세요.');   // 휴대폰(10/25)
     expect(el('status').textContent).toBe('');
     await act(async () => { await vi.advanceTimersByTimeAsync(2200); });
     expect(document.querySelector('.completion-notice')).toBe(null);
