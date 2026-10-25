@@ -93,7 +93,9 @@ mod._setClientForTesting({
       const ok = await withLock(async () => {
         const rows = await readLedger();
         const ended = new Set(rows.filter((r) => r.key && r.type !== 'start').map((r) => r.key));
-        const spent = rows.reduce((s, r) => s + (r.type === 'start' ? 0 : r.cost || 0), 0);
+        // 응답(usage)을 못 받은 실패 줄은 청구됐는지 모른다 — 상한 계산에서는 그 요청의 예약액을 쓴 것으로 센다(10/26 독립 리뷰)
+        const reserveOf = new Map(rows.filter((r) => r.type === 'start').map((r) => [r.key, r.reserve]));
+        const spent = rows.reduce((s, r) => s + (r.type === 'start' ? 0 : r.status === 'error' && !r.usage && reserveOf.has(r.key) ? reserveOf.get(r.key) : r.cost || 0), 0);
         const reserved = rows.filter((r) => r.type === 'start' && !ended.has(r.key)).reduce((s, r) => s + r.reserve, 0);
         if (spent + reserved + RESERVE > cap) return false;
         await fs.appendFile(ledger, JSON.stringify({ type: 'start', key, caseId: current ?? 'real-loop', arm: 'R', reserve: RESERVE, quality: params.quality ?? null, at: new Date().toISOString(), pid: process.pid, tag: 'real-loop' }) + '\n');
@@ -292,7 +294,8 @@ try {
 const openaiCalls = calls.length, cost = calls.reduce((s, c) => s + c.cost, 0);
 // 지시문 판 확인: 생성마다 «맞는 판 = 선택표의 그 칸 하나»
 for (const c of calls) {
-  const ok = !!c.prompt && c.prompt.matched.length === 1 && c.prompt.matched[0] === c.prompt.frozen;
+  // 선택표의 판으로 만든 지시문과 같아야 통과 — SF 단체 · 판타지 혼자 · 단체는 v1과 v1plus가 글자까지 같아 맞는 판이 둘일 수 있다(10/26 독립 리뷰)
+  const ok = !!c.prompt && c.prompt.matched.includes(c.prompt.frozen);
   const note = c.prompt ? `${c.prompt.genre}/${c.prompt.mode} 선택표 ${c.prompt.frozen} · 맞는 판 ${c.prompt.matched.join(',') || '없음'} · ${c.prompt.version}` : '화면 입력을 못 읽음';
   steps.push({ scenario: c.caseId, step: '지시문 판 = 선택표 칸', ok, at: new Date().toISOString(), note });
   console.log(`${c.caseId} 지시문 판 = 선택표 칸 ${ok ? 'OK' : '실패'} ${note}`);

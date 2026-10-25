@@ -146,7 +146,10 @@ function budgetState(rows) {
   const open = rows.filter((r) => r.type === 'start' && !ended.has(r.key));
   const now = Date.now();
   const fresh = open.filter((r) => now - Date.parse(r.at) < STALE_MS);
-  const spent = rows.reduce((s, r) => s + (r.type === 'start' ? 0 : r.cost || 0), 0);
+  // 응답(usage)을 못 받은 실패 줄은 청구됐는지 모른다 — 상한 계산에서는 그 요청의 예약액을 쓴 것으로 센다(10/26 독립 리뷰)
+  const reserveOf = new Map(rows.filter((r) => r.type === 'start').map((r) => [r.key, r.reserve]));
+  const unknownCost = (r) => r.key && r.status !== 'ok' && !(r.cost > 0) && reserveOf.has(r.key);
+  const spent = rows.reduce((s, r) => s + (r.type === 'start' ? 0 : unknownCost(r) ? reserveOf.get(r.key) : r.cost || 0), 0);
   const reserved = open.reduce((s, r) => s + r.reserve, 0);
   return { spent, reserved, open, fresh };
 }
