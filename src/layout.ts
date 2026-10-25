@@ -67,12 +67,17 @@ export function setFitFont(ctx: CanvasRenderingContext2D, weight: number, px: nu
   return s;
 }
 
-/* 인천광역시교육청 로고: 흰글씨(어두운 배경용)·짙은글씨(밝은 배경용) 각각 로드 */
-export async function ensureLogo(){
-  if(state.LOGO_TRIED) return; state.LOGO_TRIED = true;
-  try{ state.LOGO_LIGHT = await loadImg('logo-white.png'); }catch(e){ state.LOGO_LIGHT = null; }
-  try{ state.LOGO_DARK  = await loadImg('logo-dark.png'); }catch(e){ state.LOGO_DARK = null; }
-  try{ state.LOGO_FESTIVAL = await loadImg('studio/inky-logo.png'); }catch(e){ state.LOGO_FESTIVAL = null; }
+/* 인천광역시교육청 로고: 흰글씨(어두운 배경용)·짙은글씨(밝은 배경용) 각각 로드.
+   세 장을 한꺼번에 받고, 받는 중에 다시 불려도 같은 약속을 돌려준다 — 생성 단추에서 미리 부른 뒤
+   조판에서 또 부르므로, 먼저 끝난 척 돌아가면 로고 없이 그려진다(2026-10-24). */
+let logoJob: Promise<void> | null = null;
+export function ensureLogo(): Promise<void> {
+  if(state.LOGO_TRIED) return logoJob ?? Promise.resolve();
+  state.LOGO_TRIED = true;
+  const one = (src: string) => loadImg(src).catch(() => null);
+  logoJob = Promise.all([one('logo-white.png'), one('logo-dark.png'), one('studio/inky-logo.png')])
+    .then(([light, dark, festival]) => { state.LOGO_LIGHT = light; state.LOGO_DARK = dark; state.LOGO_FESTIVAL = festival; });
+  return logoJob;
 }
 /* 로고를 (cx, cy) 중심에 높이 h로 그린다. variant: 'light'(흰글씨) | 'dark'(짙은글씨), 받침 없음 */
 export function drawOrgLogo(ctx: CanvasRenderingContext2D, cx: number, cy: number, h: number, variant: string){
