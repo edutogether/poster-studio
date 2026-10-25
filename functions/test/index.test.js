@@ -473,9 +473,32 @@ test('mapGenerateError: 실패 종류마다 화면이 가를 code를 준다', ()
 // 플랫폼처럼 본문을 다 읽어 req.rawBody로 넘기되, 플랫폼의 HTTP 요청 한도(32MiB)까지만 받는다.
 // 시험 중에만 잠깐 뜨는 서버라도 이 컴퓨터(127.0.0.1)에서만 연다.
 const TEST_SERVER_MAX_BODY = 32 * 1024 * 1024;
-function startTestServer() {
-  return new Promise((resolve) => {
-    const server = http.createServer((req, res) => {
+// fetch(Node의 undici)는 Fetch 표준의 «막힌 포트»로는 아예 요청을 보내지 않는다(«fetch failed / bad port»).
+// 윈도의 동적 포트 범위가 1024부터인 컴퓨터(이 개발 PC가 그렇다 — netsh int ipv4 show dynamicport tcp)에서는 listen(0)이
+// 이 포트를 줄 때가 있어 시험 하나가 가끔 빨간불이 됐다(2026-10-25 실측, 다시 돌리면 통과). 막힌 포트를 받으면 닫고 다시 받는다.
+// 목록: https://fetch.spec.whatwg.org/#port-blocking
+const FETCH_BLOCKED_PORTS = new Set([
+  1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135,
+  137, 139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 548, 554, 556, 563, 587, 601, 636, 989, 990, 993, 995, 1719, 1720,
+  1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10080
+]);
+async function listenAvoidingBlockedPorts(server, firstPort = 0) {
+  for (let i = 0, port = firstPort; i < 20; i++, port = 0) {
+    const bound = await new Promise((resolve) => {
+      const onError = () => resolve(false);   // 처음 시도한 포트가 이미 쓰이고 있으면 빈 포트(0)로 넘어간다
+      server.once('error', onError);
+      server.listen(port, '127.0.0.1', () => { server.off('error', onError); resolve(true); });
+    });
+    if (!bound) continue;
+    if (!FETCH_BLOCKED_PORTS.has(server.address().port)) return server;
+    await new Promise((r) => server.close(r));
+  }
+  throw new Error('fetch가 막지 않는 포트를 20번 안에 받지 못했다');
+}
+
+function startTestServer({ firstPort = 0 } = {}) {
+  return listenAvoidingBlockedPorts(
+    http.createServer((req, res) => {
       const chunks = [];
       let size = 0;
       req.on('data', (c) => {
@@ -491,10 +514,23 @@ function startTestServer() {
         req.rawBody = Buffer.concat(chunks);
         app(req, res);
       });
-    });
-    server.listen(0, '127.0.0.1', () => resolve(server));
-  });
+    }),
+    firstPort
+  );
 }
+
+test('시험 서버: fetch가 막는 포트를 받으면 다시 받아, 시험 요청이 «bad port»로 실패하지 않는다', async () => {
+  // 처음 시도를 일부러 막힌 포트로 — 예전에는 listen(0)이 가끔 이런 포트를 주면 그 시험의 fetch가 «bad port»로 실패했다
+  const server = await startTestServer({ firstPort: 10080 });
+  try {
+    const port = server.address().port;
+    expect(FETCH_BLOCKED_PORTS.has(port), `받은 포트 ${port}`).toBe(false);
+    const res = await fetch(`http://127.0.0.1:${port}/no-such-path`);
+    expect(res.status).toBe(404);
+  } finally {
+    server.close();
+  }
+});
 
 test('시험 서버: 이 컴퓨터(127.0.0.1)에서만 열린다', async () => {
   const server = await startTestServer();
