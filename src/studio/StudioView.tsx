@@ -650,7 +650,15 @@ export default function StudioView(p: StudioViewProps) {
                 onClick={() => go(2)}
               >
                 {/* «주인공이 될 순간 보러 가기» + 앞에 Lucide clapperboard — 10/20 저녁 휴대폰에 먼저, 10/24 Bumm님 «모든 해상도 같이»(PC «만들러 가기 →»를 바꿈) */}
-                <span className="next-label"><svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>주인공이 될 순간 보러 가기</span>
+                <span className="next-label">
+                  <svg className="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/>
+                    <path d="m6.2 5.3 3.1 3.9"/>
+                    <path d="m12.4 3.4 3.1 4"/>
+                    <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>
+                  </svg>
+                  주인공이 될 순간 보러 가기
+                </span>
               </button>
             </div>
           </form>
@@ -710,7 +718,13 @@ export default function StudioView(p: StudioViewProps) {
               <li><span>3</span><div><strong>준비되면 촬영</strong><p>버튼을 누르고 3초만 포즈를 유지해 주세요.</p></div></li>
             </ul>
 
-            <div className="photo-review" aria-hidden={p.phase !== "shot"}><p><span className="label-pc">표정과 구도가 마음에 드나요 ?<br/>다시 찍어도 괜찮아요.</span><span className="label-phone">표정과 구도가 마음에 드나요 ?</span></p><button id="retakeBtn" type="button" className="quiet-button" disabled={locked || p.phase !== "shot"} onClick={p.onRetake}><StudioIcon name="reset"/>다시 찍기</button></div>
+            <div className="photo-review" aria-hidden={p.phase !== "shot"}>
+              <p>
+                <span className="label-pc">표정과 구도가 마음에 드나요 ?<br/>다시 찍어도 괜찮아요.</span>
+                <span className="label-phone">표정과 구도가 마음에 드나요 ?</span>
+              </p>
+              <button id="retakeBtn" type="button" className="quiet-button" disabled={locked || p.phase !== "shot"} onClick={p.onRetake}><StudioIcon name="reset"/>다시 찍기</button>
+            </div>
             </div>
             <div className="camera-film-heading"><h2>오늘 촬영할 <span className="camera-heading-accent">영화</span></h2></div>
             <div className="camera-film-card">
