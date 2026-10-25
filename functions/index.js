@@ -595,7 +595,7 @@ async function generateArt(filePath, mimetype, prompt, deadlineAt = Date.now() +
       lastErr = err;
       const msg = String(err?.message || '');
       // 안전 차단은 파라미터 거절이 아니다 — 문구에 «not allowed»가 들어 있어도 같은 사진 · 지시문을 다시 보내지 않는다(10/26 Bumm님 · 독립 리뷰)
-      const moderated = [err?.code, err?.error?.code].includes('moderation_blocked') || /moderation|safety|content policy/i.test(msg);
+      const moderated = isModerationError(err);
       const paramRejected =
         !moderated && err?.status === 400 && /unknown|unsupported|invalid|not (allowed|supported)|input_fidelity|quality/i.test(msg);
       // 파라미터 폴백 재시도도 남은 예산 안에서만 한다(위 editWithRetry와 같은 이유).
@@ -753,7 +753,7 @@ function releaseCounter(collectionName, docId) {
 // 다만 이 상수는 바꾸지 않는다 — 50은 노트북 대수가 아니라 **공인 IP 개수(3)**에서
 // 나온 공정 배분 값이고, 3대 실사용에 맞춰 좁히면 대표가 지시한 20대 부하 테스트가
 // 429로 막혀 불가능해진다. 두 목적(실운영 3대 / 목표 20대) 중 큰 쪽에 맞춰 두는 게
-// 맞고, 최악의 지출은 어차피 DAILY_BUDGET_MAX(4000건=$160)가 물리적으로 막는다.
+// 맞고, 최악의 지출은 어차피 DAILY_BUDGET_MAX(4000건 = 약 $200, 장당 약 $0.05 — 2026-10-26 실측)가 물리적으로 막는다.
 // 재산정이 필요한 조건은 대수 변경이 아니라 **공인 IP 개수가 3이 아니게 되는 것**이다
 // (예: 1개가 되면 전 부스가 한 버킷을 공유해 실효 전역 한도가 150이 아니라 50이 된다).
 //
@@ -787,6 +787,7 @@ function _resetFallbackForTesting() {
 // 시간대·트래픽 패턴이든 하루 지출이 물리적으로 넘을 수 없게 만든다.
 // 4000건 = $0.04 × 4000 = $160 — 행사 당일 목표치($162 근처)를 그대로 하루
 // 전체의 물리적 상한으로 삼는다. 날짜 경계는 행사가 KST 기준이라 KST로 자른다.
+// 2026-10-26: 지금 지시문 · gpt-image-2 medium의 실측 장당 비용은 $0.049~0.050이라 같은 4000건이 약 $200이다(건수 상한은 그대로).
 const DAILY_BUDGET_MAX = 4000;
 
 function kstDateKey(now = Date.now()) {
@@ -964,6 +965,12 @@ async function checkPhotoGenerationLimit(req, res, next) {
 /* OpenAI 오류를 상태코드·사용자 문구로 매핑한다. 알 수 없는 오류의 원문(raw)은
    OpenAI 내부 구현 세부사항이 그대로 사용자 화면에 노출될 수 있어(4차 감사 🟡)
    절대 클라이언트로 돌려주지 않는다 — 서버 로그(console.error, 호출부)에만 남긴다. */
+/* 안전 차단(moderation) 판정은 이 한 곳 — 파라미터 폴백을 막는 generateArt와 화면 안내를 고르는 mapGenerateError가 같은 답을 내야 한다
+   (2026-10-26 종합감사: 코드만 moderation_blocked이고 문구에 safety가 없으면 화면이 «다시 만들기»를 보여 같은 요청이 되풀이될 수 있었다). */
+function isModerationError(err) {
+  return [err?.code, err?.error?.code].includes('moderation_blocked') || /moderation|safety|content policy/i.test(String(err?.message || ''));
+}
+
 function mapGenerateError(err) {
   const status = err?.status || err?.response?.status;
   const raw = String(err?.message || '');
@@ -974,7 +981,7 @@ function mapGenerateError(err) {
     return { status: 429, code: 'openai_busy', message: '지금 요청이 몰려 잠시 대기가 필요합니다. 10~20초 후 다시 시도해 주세요.' };
   if (status === 401 || /api key|incorrect key/i.test(raw))
     return { status: 500, code: 'key', message: 'API 키가 올바르지 않습니다. Firebase 시크릿(OPENAI_API_KEY)을 확인해 주세요.' };
-  if (/moderation|safety|content policy/i.test(raw))
+  if (isModerationError(err))
     return {
       status: 400,
       code: 'safety',
@@ -1015,6 +1022,10 @@ async function generateHandler(req, res) {
   const mode = req.body.mode === 'group' ? 'group' : 'solo';
   const title = sanitizePromptField(req.body.movieTitle, 60);
   const tagline = sanitizePromptField(req.body.tagline, 80);
+  // 기록에 남길 칸 · 판(개인정보 없음) — 16칸이 서로 다른 판이라 실패 · 안전 차단을 칸별로 가르려면 서버 기록에 있어야 한다(2026-10-26 종합감사).
+  // 장르는 알려진 이름으로 바꿔 적는다(받은 글자를 그대로 기록에 넣지 않는다)
+  const key = genreKey(genre);
+  const cell = `${key}/${mode} · 판=${PROMPT_VERSIONS[PROMPT_VARIANT_BY_CELL[key][mode]]}`;
 
   const t0 = Date.now();
   const deadlineAt = (req.startedAt ?? t0) + GENERATE_BUDGET_MS;
@@ -1024,10 +1035,10 @@ async function generateHandler(req, res) {
     const prompt = buildPrompt({ genre, mode, title, tagline });
     const images = await generateArt(req.file.path, req.file.mimetype, prompt, deadlineAt);
     const sec = ((Date.now() - t0) / 1000).toFixed(1);
-    console.log(`[generate] 완료 ${sec}초  (모델=${MODEL} · 화질=${QUALITY} · 얼굴보존=${SENT_INPUT_FIDELITY ?? '보내지 않음(모델 기본)'})`);
+    console.log(`[generate] 완료 ${sec}초  (칸=${cell} · 모델=${MODEL} · 화질=${QUALITY} · 얼굴보존=${SENT_INPUT_FIDELITY ?? '보내지 않음(모델 기본)'})`);
     result = { status: 200, body: { images, meta: { genre, mode, seconds: Number(sec) } } };
   } catch (err) {
-    console.error('[generate]', err?.status || '', err?.message || err);
+    console.error('[generate]', `칸=${cell}`, err?.status || '', err?.message || err);
     const { status, message, code } = mapGenerateError(err);
     result = { status, body: { error: message, code } };
     // 실패는 «사진당 2회»를 쓰지 않는다(결정 1). 되돌리기가 실패해도 응답은 그대로 보낸다 — 기회를 하나 잃을 뿐이다.

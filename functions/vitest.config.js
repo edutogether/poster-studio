@@ -7,6 +7,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['test/**/*.test.js']
+    include: ['test/**/*.test.js'],
+    // 시험마다 따로 쓰는 OS 임시 폴더(UPLOAD_DIR가 그 아래) — 공용 임시 폴더를 다른 프로세스와 나눠 쓰다 흔들리던 것(2026-10-26)
+    setupFiles: ['test/isolated-tmp.js']
   }
 });

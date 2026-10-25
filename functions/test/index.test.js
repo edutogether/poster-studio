@@ -2023,3 +2023,65 @@ test('판 이름: 기본 속성 이름(constructor · toString · __proto__)도 
     expect(() => promptVersionFor('sf', 'solo', variant), variant).toThrow(/알 수 없는 지시문 판/);
   }
 });
+
+// ── 2026-10-26 종합감사 지적 고침 ─────────────────────────────────────
+
+test('안전 차단: 코드만 moderation_blocked이고 문구에 safety가 없어도 safety로 가르고, 같은 사진 · 지시문을 다시 보내지 않는다', async () => {
+  const blocked = () => Object.assign(new Error('400 Image rejected.'), { status: 400, code: 'moderation_blocked' });
+  expect(mapGenerateError(blocked()).code).toBe('safety');
+  expect(mapGenerateError({ status: 400, error: { code: 'moderation_blocked' }, message: '400 Bad request.' }).code).toBe('safety');
+  let calls = 0;
+  _setClientForTesting(makeFakeClient(async () => { calls++; throw blocked(); }));
+  const filePath = makeTempFile(Buffer.from('fake-photo-bytes'));
+  try {
+    const err = await generateArt(filePath, 'image/png', 'a test prompt').catch((e) => e);
+    expect(mapGenerateError(err).code).toBe('safety');
+    expect(calls, '파라미터 폴백으로 같은 요청을 다시 보내면 안 된다').toBe(1);
+  } finally {
+    _setClientForTesting(null);
+    fs.unlinkSync(filePath);
+  }
+});
+
+test('서버 기록: 완료 · 실패 줄에 칸(장르/혼자·단체)과 판이 있고, 받은 장르 글자는 그대로 적지 않는다', async () => {
+  const lines = [];
+  const log = vi.spyOn(console, 'log').mockImplementation((...a) => lines.push(a.join(' ')));
+  const err = vi.spyOn(console, 'error').mockImplementation((...a) => lines.push(a.join(' ')));
+  try {
+    for (const [genre, mode, ok] of [['hero', 'group', true], ['constructor', 'solo', false]]) {
+      _setClientForTesting(makeFakeClient(async () => { if (ok) return { data: [{ b64_json: 'AAA' }] }; throw Object.assign(new Error('boom'), { status: 500 }); }));
+      _setSleepForTesting(async () => {});
+      const filePath = makeTempFile(Buffer.from([0xff, 0xd8, 0xff, ...crypto.randomBytes(8)]));
+      try {
+        await runHandler({ file: { path: filePath, mimetype: 'image/jpeg' }, body: { genre, mode, movieTitle: '제목', tagline: '문구' }, startedAt: Date.now() });
+      } finally {
+        _setClientForTesting(null);
+        _setSleepForTesting(null);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      }
+    }
+  } finally {
+    log.mockRestore();
+    err.mockRestore();
+  }
+  expect(lines.some((l) => l.includes('[generate] 완료') && l.includes('칸=hero/group · 판=v2-20261025'))).toBe(true);
+  expect(lines.some((l) => l.startsWith('[generate]') && l.includes('칸=animation/solo · 판=v1plus2-20261025'))).toBe(true);
+  expect(lines.some((l) => l.includes('constructor')), '받은 장르 글자를 기록에 그대로 넣지 않는다').toBe(false);
+});
+
+test('화면 장르 8개(src/constants.ts GENRES · 1단계 장르 칸) = 서버 선택표 장르 8개', () => {
+  const root = path.resolve(import.meta.dirname, '../..');
+  const constants = fs.readFileSync(path.join(root, 'src/constants.ts'), 'utf8');
+  const view = fs.readFileSync(path.join(root, 'src/studio/StudioView.tsx'), 'utf8');
+  const block = constants.slice(constants.indexOf('export const GENRES'));
+  const uiGenres = [...block.slice(0, block.indexOf('\n};')).matchAll(/^\s{2}(\w+):\s*\{/gm)].map((m) => m[1]).sort();
+  const viewGenres = [...view.matchAll(/^\s{2}\["(\w+)", "[^"]+", \w+\],?$/gm)].map((m) => m[1]).sort();
+  const server = Object.keys(PROMPT_VARIANT_BY_CELL).sort();
+  expect(server).toHaveLength(8);
+  expect(uiGenres, 'src/constants.ts GENRES').toEqual(server);
+  expect(viewGenres, 'StudioView 장르 칸').toEqual(server);
+});
+
+test('시험은 이 실행만의 OS 임시 폴더를 쓴다 — 공용 임시 폴더의 uploads를 다른 프로세스와 나눠 쓰지 않는다', () => {
+  expect(path.basename(path.dirname(UPLOAD_DIR))).toMatch(/^poster-fn-test-/);
+});
