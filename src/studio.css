@@ -205,14 +205,18 @@ main.app {
   color: #e63025;
   font-size: 23px;
 }
-.completion-notice strong { display: block; font-size: 26px; font-weight: 800; }
+.completion-notice strong { display: block; font-size: var(--notice-title); font-weight: 800; }
 .completion-notice p { margin: 8px 0 0; font-size: 16px; color: #666; line-height: 1.5; word-break: keep-all; }
 /* 2026-10-25 Bumm님 «체크와 «완성 !»을 한 줄에 나란히(체크 왼쪽), 그만큼 창을 낮추고 폭도 설명 한 줄에 맞춰 좁게» — 모든 해상도.
    자리(화면 가운데) · 2.2초는 그대로. */
 .completion-notice { display: grid; grid-template-columns: 1fr auto auto 1fr; align-items: center; column-gap: 12px;
-  width: max-content; max-width: calc(100vw - 32px); padding: 22px 28px 24px; }
+  width: max-content; max-width: calc(100vw - 32px); padding: 22px 28px 24px; --notice-title: 26px; }
 .completion-notice-mark { grid-column: 2; margin: 0; }
 .completion-notice strong { grid-column: 3; }
+/* 같은 날 Bumm님(390×844) «체크 + 완성 ! 줄이 수치로는 가운데인데 글자 쪽이 무거워 오른쪽으로 치우쳐 보인다» — 시안 5개(0 · 0.2 · 0.4 · 0.6em ·
+   제목 가운데) 중 C: 줄 전체를 제목 글자 크기의 0.4배만큼 왼쪽으로(휴대폰 20px 글자 → 8px, PC 26px → 10.4px). 체크와 제목은 글자 크기가 달라
+   em을 각자 쓰면 서로 다르게 움직이므로 제목 크기(--notice-title) 하나로 잰다. 아래 설명 문장은 그대로 가운데. */
+.completion-notice-mark, .completion-notice strong { translate: calc(var(--notice-title) * -0.4) 0; }
 .completion-notice p { grid-column: 1 / -1; white-space: nowrap; }   /* 설명이 체크 · 제목보다 넓어 남는 폭은 양끝 칸(1fr)이 나눠 갖는다 — 체크 + 제목이 가운데 */
 @media print { .completion-notice { display: none !important; } }
 .generation-overlay {
@@ -824,7 +828,7 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
      PC 크기는 과하니 작게»: PC 창(화면 가운데 · 같은 시간에 떴다 사라짐)을 줄인 모양. 화면 가운데는 큰 포스터 가운데쯤이라 머리글 · 단추와 안 겹친다. */
   .completion-notice { width: max-content; column-gap: 10px; padding: 16px 20px 17px; border-radius: 16px; box-shadow: 0 12px 40px #0003; }
   .completion-notice-mark { width: 30px; height: 30px; margin: 0; font-size: 17px; }
-  .completion-notice strong { font-size: 20px; }
+  .completion-notice { --notice-title: 20px; }
   .completion-notice p { margin-top: 6px; font-size: 14px; }
   .completion-notice .label-pc { display: none; }
   .completion-notice .label-phone { display: inline; }
@@ -915,8 +919,9 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
    두껍다 — 세로 두께를 맞추고 남은 공간으로 포스터 그림을 조금이라도 키우게». 1·2단계 단추는 이 창들에서 48px(compact.css — 높이 700 미만은 56px)인데
    3단계만 60px였다(result.css). 같은 높이로 맞추고, 줄어든 12px(높이 700 미만은 4px)를 디자인 8칸에 준다: 격자 폭은 «(창 높이 − 340) × 4/3»과
    최소 520px 중 큰 쪽이라(result.css) 두 값에 «줄어든 높이 × 4/3»을 더하면 카드 네 칸이 그만큼 넓어지고 두 줄 높이가 꼭 그만큼 커진다(비율 2:3 그대로).
-   1920×1080 · 2560×1440은 이 조건 밖이라 60px 그대로 — 화소 하나 안 바뀐다. 확인: btn-probe(1·2·3단계 단추 높이 · 썸네일 · 겹침 · 스크롤). */
-@media (min-width: 1100px) and (max-height: 959px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 959px) {
+   10/25 Bumm님 «1920 · 2560 · 아이패드 1366×1024에서도 다른 화면과 맞춤» — 폭 1100 이상이면 높이와 상관없이 같은 규칙(1920 · 2560은 썸네일이
+   같은 방식으로 커진다, 4:3 화면은 아래 4:3 덩어리가 48px로 맞춘다). 확인: btn-probe(1·2·3단계 단추 높이 · 썸네일 · 겹침 · 스크롤). */
+@media (min-width: 1100px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 959px) {
   #resultView .result-actions .primary-button, #resultView .result-actions .back-button { height: 48px; }
   #resultView #gallery.style-grid, #resultView .result-actions { max-width: max(calc(520px + 12px * 4 / 3), calc((100svh - 340px + 12px) * 4 / 3)); }
 }
@@ -935,7 +940,9 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
    1920×1080 · 1440×900 · 2560×1440 · 1180×820 태블릿(1366×949)은 조건 밖. 2026-10-24 Bumm님(1366×1024): «아래가 너무 많이 빈다 —
    제목 글자 키우고 여백들을 고르게 조금씩 키워, 지금 느낌 안 깨지게». 양쪽 칸 모두 폭이 먼저 차서(포스터 463 · 카드 184px) 그림이 세로로 커지지 못해 오른쪽 아래 126px,
    왼쪽 아래 177px가 비었다. 제목 23 → 30px · 설명 16 → 18 · 이름 14 → 16 · 단추 60 → 68px(글자 18), 사이를 한 단계씩 넓히고, 좌우 여백 28 → 20px로 그림을
-   조금 키운다(포스터 463 → 479 · 카드 184 → 188px). 왼쪽 큰 포스터는 머리줄 아래 남는 높이 가운데에 둔다. */
+   조금 키운다(포스터 463 → 479 · 카드 184 → 188px). 왼쪽 큰 포스터는 머리줄 아래 남는 높이 가운데에 둔다.
+   10/25 Bumm님 «3단계 단추 두께를 다른 화면과 맞춤»: 단추 68px(글자 18) → 48px(글자 16, 1·2단계와 같음). 카드는 칸 폭이 먼저 차 커지지 못하므로
+   줄어든 20px는 제목 아래 26 → 33 · 카드 두 줄 사이 26 → 33 · 단추 줄 위 28 → 34px로 나눠 오른쪽 아래 여백(35px)이 그대로다. */
 @media (min-width: 1100px) and (min-height: 1000px) and (max-aspect-ratio: 683/512) {
   #resultView .result-artboard { padding: 44px 20px 26px; gap: 26px; }
   #resultView .result-artboard-top { min-height: 42px; }
@@ -944,15 +951,15 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   #resultView .result-artboard .icon-button { width: 42px; height: 42px; }
   #resultView .result-poster-slot { margin-block: auto; }
   #resultView #resultWorkspace { padding: 44px 20px 24px; }
-  #resultView .page-heading { margin-bottom: 26px; }
+  #resultView .page-heading { margin-bottom: 33px; }
   #resultView .page-heading h1 { font-size: 30px; }
   #resultView .page-heading p { margin-top: 10px; font-size: 18px; }
-  #resultView #gallery.style-grid { row-gap: 26px; }
+  #resultView #gallery.style-grid { row-gap: 33px; }
   #resultView #gallery .style-option { gap: 12px; }
   #resultView #gallery .style-name { font-size: 16px; }
-  #resultView .result-actions { margin-top: 28px; }
+  #resultView .result-actions { margin-top: 34px; }
   #resultView .result-actions .primary-button,
-  #resultView .result-actions .back-button { height: 68px; font-size: 18px; }
+  #resultView .result-actions .back-button { height: 48px; font-size: 16px; }
 }
 /* 2단계 단추 줄 — 761~1099(태블릿 세로 1024): 오른쪽 칸 안쪽 폭이 302px라 «이전»(112) + «이 사진으로 포스터 만들기»(252)가 한 줄에 안 들어가
    주 단추 오른쪽 50px가 칸 밖으로 잘렸다(10/23 실측, 라이브도 같음 — 켠 뒤 «3초 뒤 사진 찍기»도 12px 넘쳤다). 두 줄로 쌓는다 — 화면 순서 그대로
