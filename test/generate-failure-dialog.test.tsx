@@ -28,7 +28,7 @@ test("모든 종류가 단추 두 개·아이콘·같은 줄 구성이고, 진�
   const kinds: GenerateFailure[] = [
     { action: "retry", message: "그림을 다 그리지 못했어요.", staffNote: "응답 504" },
     { action: "wait", waitSeconds: 3, message: "지금 만드는 사람이 많아요.", staffNote: "x" },
-    { action: "fix", message: "AI 안전 기준에 걸렸어요.", staffNote: "x" },
+    { action: "fix", message: "내용을 바꾸거나 다시 찍어 볼까요 ?", staffNote: "x" },
     { action: "retake", message: "이 사진으로는 더 만들 수 없어요.", staffNote: "x" },
     { action: "offline", message: "인터넷 연결이 끊겼어요." },
     { action: "staff", message: "지금은 만들 수 없어요.", staffNote: "오늘의 생성 한도에 도달했습니다." },
@@ -66,7 +66,7 @@ test("기다렸다 다시: 초를 센 뒤에 «다시 만들기»가 켜진다",
 });
 
 test("안전 기준: «다시 찍기» · «제목 · 문구 고치기»", () => {
-  const { view, buttons, onEditInputs } = show({ action: "fix", message: "AI 안전 기준에 걸렸어요." });
+  const { view, buttons, onEditInputs } = show({ action: "fix", message: "내용을 바꾸거나 다시 찍어 볼까요 ?" });
   expect(buttons()).toEqual(["다시 찍기", "제목 · 문구 고치기"]);
   fireEvent.click(view.getByText("제목 · 문구 고치기"));
   expect(onEditInputs).toHaveBeenCalled();

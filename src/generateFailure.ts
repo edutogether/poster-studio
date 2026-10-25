@@ -6,7 +6,8 @@
 export type FailureAction =
   | "retry"    // 같은 사진·같은 입력으로 다시 만들면 될 수 있다
   | "wait"     // 잠깐 기다렸다 다시 만들면 될 수 있다(waitSeconds 뒤에 단추를 켠다)
-  | "fix"      // 제목·문구가 안전 기준에 걸렸다 — 문구를 고치거나 다시 찍는다
+  | "fix"      // 사진이나 제목·문구가 안전 기준에 걸렸다(서버는 둘을 가르지 못한다) — 문구를 고치거나 다시 찍는다.
+               // 같은 사진·같은 입력으로는 다시 보내지 않는다(PosterStudio의 safetyBlockedRef) — 같은 요청을 되풀이하는 단추는 없다
   | "retake"   // 이 사진으로는 더 만들 수 없다 — 다시 찍는다
   | "staff"    // 현장에서 풀 수 없다 — 선생님(진행자)을 부른다
   | "offline"  // 부스 인터넷이 끊겼다 — 연결이 돌아오면 다시 만든다
@@ -41,7 +42,8 @@ export function classifyGenerateFailure({ status, body, aborted, network, malfor
     case "upstream":
     case "unknown":
     case "bad_request": return { action: "retry", message: "그림을 다 그리지 못했어요.", staffNote };
-    case "safety": return { action: "fix", message: "AI 안전 기준에 걸렸어요.", staffNote };
+    // 아이에게는 탓하는 말 대신 할 일을 묻는다(2026-10-26 Bumm님: «영화 제목이나 내용을 바꾸거나 사진을 다시 찍어 볼까요?»를 한 줄로)
+    case "safety": return { action: "fix", message: "내용을 바꾸거나 다시 찍어 볼까요 ?", staffNote };
     case "photo_limit":
     case "too_large":
     case "no_photo": return { action: "retake", message: "이 사진으로는 더 만들 수 없어요.", staffNote };

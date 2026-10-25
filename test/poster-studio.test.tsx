@@ -327,6 +327,41 @@ describe('세 단계 화면 연결', () => {
     expect(el('status').textContent).toContain('재생성 횟수를 모두 사용했어요');
   });
 
+  test('안전 차단: 같은 요청을 되풀이하는 단추가 없고, 사진 · 입력을 바꾸지 않으면 다시 보내지 않는다(2026-10-26 Bumm님)', async () => {
+    const view = await act(async () => renderApp());
+    await shoot();
+    const f = installFetch((url) => url.includes('/generate')
+      ? new Response(JSON.stringify({ error: '입력한 제목·문구 또는 사진이 안전 기준에 걸렸어요.', code: 'safety' }), { status: 400 })
+      : okResponse(url));
+    const sent = () => f.calls.filter((u) => u.includes('/generate')).length;
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(sent()).toBe(1);
+    const dialog = view.getByRole('alertdialog');
+    expect(dialog.textContent).toContain('내용을 바꾸거나 다시 찍어 볼까요 ?');
+    expect(dialog.textContent).not.toContain('안전 기준');   // 아이에게 탓하는 말 · 서버 원인은 보이지 않는다
+    expect(view.queryByRole('button', { name: '다시 만들기' })).toBeNull();
+    // 제목 · 문구 고치기 → 1단계 → 아무것도 바꾸지 않고 다시 2단계에서 만들기 → 서버로 보내지 않고 같은 안내
+    await act(async () => { view.getByRole('button', { name: '제목 · 문구 고치기' }).click(); });
+    expect(el('prepareView').hidden).toBe(false);
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(sent(), '바꾸지 않은 요청은 보내지 않는다').toBe(1);
+    expect(view.getByRole('alertdialog').textContent).toContain('내용을 바꾸거나 다시 찍어 볼까요 ?');
+    // 제목을 고치면 새 요청이 나간다
+    await act(async () => { view.getByRole('button', { name: '제목 · 문구 고치기' }).click(); });
+    fireEvent.input(el('movieTitle'), { target: { value: '바꾼 제목' } });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(sent()).toBe(2);
+    expect(f.bodies[1].get('movieTitle')).toBe('바꾼 제목');
+    // 다시 찍은 사진도 새 요청으로 나간다(같은 입력이어도) — 안내 창의 «다시 찍기»
+    const retake = [...document.querySelectorAll<HTMLButtonElement>('.generate-failure-dialog button')].find((b) => b.textContent?.includes('다시 찍기'))!;
+    await act(async () => { retake.click(); });
+    await shoot();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(sent()).toBe(3);
+  });
+
   test('같은 사진으로 다시 해 볼 만한 실패가 3번 쌓이면 «다시 찍기»로 안내한다', async () => {
     const view = await act(async () => renderApp());
     await shoot();

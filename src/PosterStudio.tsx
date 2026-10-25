@@ -134,6 +134,11 @@ export default function PosterStudio() {
   const capturedBlobRef = useRef<Blob | null>(null);
   const snapshotURLRef = useRef<string | null>(null);
   const isGeneratingRef = useRef(false); // 이중 클릭 방지(중복 과금 차단)
+  /* 안전 차단(safety)을 받은 «사진 · 입력» 묶음(2026-10-26 Bumm님) — 같은 사진 · 같은 제목 · 문구 · 장르 · 혼자/단체로는 다시 보내지 않고
+     같은 안내를 다시 띄운다. 사진을 다시 찍거나 입력을 고치면 새 요청이 나간다. 안전 기준을 우회하는 자동 재시도 · 지시문 변경은 없다.
+     비어 있는 문구는 보낼 때마다 장르 예시에서 무작위로 골라지므로(getMeta) 입력칸 값 그대로 비교한다. */
+  // 꺾쇠 제네릭(useRef<…>)을 쓰지 않는다 — 글자 집합 추출기(scripts/fonts/charset.mjs)가 .tsx의 «>…<» 사이를 화면 문구로 읽어 위 주석까지 끌어간다
+  const safetyBlockedRef = useRef(null as { photo: Blob; inputs: string } | null);
   const genCountRef = useRef(0);
   const placeholderDrawnRef = useRef(false);
 
@@ -402,6 +407,13 @@ export default function PosterStudio() {
       );
       return;
     }
+    const photo = capturedBlobRef.current;
+    const inputs = JSON.stringify([val("movieTitle"), val("tagline"), val("genre") || "animation", mode]);
+    const blocked = safetyBlockedRef.current;
+    if (blocked && blocked.photo === photo && blocked.inputs === inputs) {
+      showFailure(classifyGenerateFailure({ status: 400, body: { code: "safety", error: "안전 차단 뒤 사진 · 입력을 바꾸지 않고 다시 누름 — 서버로 보내지 않음" } }));
+      return;
+    }
     const meta = getMeta(mode);
     isGeneratingRef.current = true;
     setGenerating(true);
@@ -410,7 +422,7 @@ export default function PosterStudio() {
     setStatus("AI가 영화 포스터를 그리고 있어요. 완성되면 자동으로 보여드릴게요.");
 
     const form = new FormData();
-    form.append("photo", capturedBlobRef.current, "capture.jpg");
+    form.append("photo", photo, "capture.jpg");
     form.append("movieTitle", meta.title);
     form.append("tagline", meta.tagline);
     form.append("genre", meta.genre);
@@ -463,6 +475,7 @@ export default function PosterStudio() {
       setGenerating(false);
       setSpinning(false);
     }
+    if (failed?.action === "fix") safetyBlockedRef.current = { photo, inputs };
     if (failed) showFailure(failed);
   };
 
