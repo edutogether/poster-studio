@@ -228,8 +228,46 @@ test('buildPrompt v1plus: 장르마다 채점에서 좋았던 것이 들어간�
   expect(promptVersionFor('hero', 'v1plus')).toBe(PROMPT_VERSIONS.v1plus);
 });
 
-test('buildPrompt: 이름 · 단체명 · 출연진은 넘겨도 지시문에 들어가지 않는다(화면 고지 약속) — v1 · v1plus 모두', () => {
-  for (const variant of ['v1', 'v1plus']) {
+test('buildPrompt v1plus2: 고르신 그림의 공통점 — 혼자는 소품 · 크게 · 비켜 선 자세, 단체는 사람마다 다른 색 · 나란히 전신, 모두 얼굴 키 라이트', () => {
+  for (const genre of GENRE_KEYS) {
+    for (const mode of ['solo', 'group']) {
+      const story = { genre, mode, title: '별을 찾는 아이', tagline: '우주 너머, 미지의 세계로' };
+      const p = buildPrompt({ ...story, variant: 'v1plus2' });
+      expect(p, `${genre}/${mode}`).not.toBe(buildPrompt({ ...story, variant: 'v1' }));
+      for (const keep of ['never crop or cut off the top of the head', 'BOTTOM THIRD', 'NO text, NO letters', 'Safe, wholesome, child-appropriate', 'This film is titled', 'Transform the uploaded photo', mode === 'group' ? 'ENSEMBLE CAST' : 'single lead star']) {
+        expect(p, `${genre}/${mode}: ${keep}`).toContain(keep);
+      }
+      expect(p).toMatch(/bright, clean key light/);
+      // «금빛을 빼라»는 쓰지 않는다(금빛 배경이어도 얼굴이 밝으면 고르셨다) · 개선판(v2)의 % 구도도 쓰지 않는다
+      expect(p).not.toMatch(/golden-orange cast|no heavy golden glow|neither overly golden/);
+      expect(p).not.toMatch(/% of the image height|middle 40%|central 80%/);
+      if (mode === 'solo') {
+        expect(p).toMatch(/from about the knees or the waist up/);
+        expect(p).toMatch(/face in the upper third/);
+        expect(p).toMatch(/slightly turned three-quarter stance/);
+        expect(p).not.toMatch(/FULLY VISIBLE/);
+        if (genre !== 'hero') expect(p, `${genre} 혼자 소품`).toMatch(/stance, holding /);
+      } else {
+        expect(p).toMatch(/each person in a different color/);
+        expect(p).toMatch(/fully visible from head to toe/);
+        expect(p).toMatch(/re-stage them so no one looms larger/);
+        expect(p).toMatch(/FULLY VISIBLE/);
+      }
+    }
+  }
+  const p = (genre, mode = 'solo') => buildPrompt({ genre, mode, title: '', tagline: '', variant: 'v1plus2' });
+  expect(p('fantasy', 'group')).toMatch(/green, red, blue and purple cloaks/);
+  expect(p('music', 'group')).toMatch(/electric guitar, a microphone, a keyboard and drums/);
+  expect(p('music', 'group')).toMatch(/playing together as a band/);
+  expect(p('music')).toMatch(/dimly lit stage floor/);
+  expect(p('animation')).toMatch(/stylized 3D animated character face/);
+  expect(p('animation', 'group')).not.toMatch(/stylized 3D animated character face/);
+  expect(p('mystery')).toMatch(/holding a magnifying glass/);
+  expect(promptVersionFor('sf', 'v1plus2')).toBe(PROMPT_VERSIONS.v1plus2);
+});
+
+test('buildPrompt: 이름 · 단체명 · 출연진은 넘겨도 지시문에 들어가지 않는다(화면 고지 약속) — v1 · v1plus · v1plus2 모두', () => {
+  for (const variant of ['v1', 'v1plus', 'v1plus2']) {
     const p = buildPrompt({ genre: 'music', mode: 'group', title: '우주 탐험', tagline: '', name: '홍길동', groupName: '별빛반', members: '김철수, 이영희', variant });
     for (const pii of ['홍길동', '별빛반', '김철수', '이영희']) expect(p.includes(pii), `${variant}: ${pii}`).toBe(false);
   }

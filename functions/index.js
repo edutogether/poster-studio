@@ -329,7 +329,89 @@ const genrePromptsV1Plus = {
   }
 };
 
-/* 장르별 지시문 선택표 — Bumm님이 장르마다 기존(v1) · 기존+(v1plus)를 고르시면 이 표만 바꾼다.
+/* 기존+ 2차(v1plus2) — 2026-10-25 Bumm님 «제일 마음에 드는 것» 48장(위 채점 문서 1 · 2 · 3차). 고르신 그림의 공통점만 v1에 더한다.
+     혼자: 장르 옷 · 손에 장르 소품 하나 · 무릎 위~허리 위로 크게(고르신 혼자 24장 대부분) · 자신감 있게 살짝 비켜 선 자세
+     단체: 같은 장르 옷이되 사람마다 다른 색 · 소품 나눠 들기 · 어깨동무 같은 친한 자세 · 모두 같은 크기로 나란히 전신(셀카 원근도 다시 세운다)
+     색: «금빛을 빼라»는 쓰지 않는다 — 금빛 배경이어도 얼굴이 밝으면 고르셨다. 대신 얼굴마다 밝은 키 라이트, 따뜻함 · 차가움 대비.
+   genre 칸: base(장르 한 줄 바꾸기) · prop(혼자 소품) · soloCostume · soloLook(혼자에만 붙는 문장) · groupCostume · groupProps · groupPose · bottom. */
+const genrePromptsV1Plus2 = {
+  animation: {
+    all: genrePromptsV1Plus.animation.all,
+    soloLook:
+      "Make the lead's face a stylized 3D animated character face as well — soft rounded features, big expressive eyes and smooth animated shading like a modern animated feature, never a photorealistic face — while keeping the same face shape, eye shape, nose, mouth, skin tone, hairstyle and glasses if worn.",
+    prop: "a rolled-up treasure map, with an adventurer's backpack on the shoulders",
+    groupCostume: 'adventure outfits with hats or scarves',
+    groupProps: 'they share out the props — a map, a compass and a spyglass'
+  },
+  fantasy: {
+    prop: 'a softly glowing lantern or a carved wooden staff',
+    groupCostume: "adventurers' cloaks (for example green, red, blue and purple cloaks)",
+    groupProps: 'they share out the props — a glowing lantern, a staff, an old map and a small glowing orb'
+  },
+  sf: {
+    prop: 'a space helmet tucked under one arm',
+    groupCostume: 'futuristic space suits',
+    groupProps: 'each holds a different small glowing hologram and one carries a space helmet'
+  },
+  hero: {
+    soloCostume: genrePromptsV1Plus.hero.solo,
+    groupCostume: 'original superhero suits with short capes and no emblems'
+  },
+  mystery: {
+    base: genrePromptsV1Plus.mystery.base,
+    prop: 'a magnifying glass',
+    soloCostume: 'Dress the subject in a detective coat and cap, replacing their everyday clothes.',
+    groupCostume: 'detective coats and checked jackets',
+    groupProps: 'one holds a magnifying glass and the others a notebook and a flashlight'
+  },
+  director: {
+    base: "a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, glowing stage and studio lights with gentle haze, a director's chair, film reels and a blank clapperboard placed naturally around them, warm nostalgic cinematic mood",
+    prop: 'a vintage movie camera',
+    soloCostume: genrePromptsV1Plus.director.solo,
+    groupCostume: 'film-set outfits such as simple jackets, vests, caps and scarves',
+    groupProps: 'they share out the props — a vintage movie camera, a clapperboard, a film reel and a megaphone'
+  },
+  sports: {
+    prop: 'a soccer ball',
+    soloCostume: genrePromptsV1Plus.sports.solo,
+    groupCostume: 'plain original team uniforms with no numbers or logos',
+    groupProps: 'a soccer ball at their feet'
+  },
+  music: {
+    prop: 'an electric guitar or a microphone, kept away from the face',
+    soloCostume: 'Dress the subject in a sparkling stage performance outfit, replacing their everyday clothes.',
+    groupCostume: 'stage performance outfits',
+    groupProps: 'they are set up as a band with an electric guitar, a microphone, a keyboard and drums shared out, instruments kept away from faces',
+    groupPose: 'playing together as a band with big genuine smiles',
+    bottom: genrePromptsV1Plus.music.bottom
+  }
+};
+const V1PLUS2_LIGHT =
+  "Give every face its own bright, clean key light so faces are always bright, clear and natural — never muddy, gray, dim or lost in shadow, whatever the scene's colors — with warm light on the people against a cooler background (or cool light against a warm background) for contrast.";
+const V1PLUS2_STAGING =
+  'Stage everyone side by side in one row at the same size and the same distance from the camera, everyone fully visible from head to toe — even if the photo is a close-up selfie with someone much bigger in front, re-stage them so no one looms larger.';
+/** v1plus2 문장 묶음 — buildPrompt가 v1 문장 사이에 끼운다(없는 칸은 v1 그대로). */
+function v1Plus2Lines(key, group) {
+  const g = genrePromptsV1Plus2[key];
+  const cast = group
+    ? [
+        `Everyone wears the same ${g.groupCostume || 'genre costume'} but each person in a different color${g.groupProps ? `; ${g.groupProps}` : ''}; ${g.groupPose || "a friendly pose with arms around each other's shoulders or leaning together and big genuine smiles"}.`,
+        V1PLUS2_STAGING
+      ]
+    : [g.soloCostume, g.soloLook, `Show the lead in a confident, slightly turned three-quarter stance${g.prop ? `, holding ${g.prop}` : ''}.`];
+  return {
+    base: g.base,
+    all: g.all,
+    cast,
+    // 혼자만 크게 — 얼굴은 위 1/3에 두어 디자인의 얼굴 자리(주인공 상자 세로 5~67% · 아치 얼굴 띠 8~35%)를 지킨다
+    composition: group ? null : 'Composition: tall vertical 2:3 movie poster, the lead framed large from about the knees or the waist up, with the face in the upper third of the image.',
+    frame: group ? null : 'Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head.',
+    light: V1PLUS2_LIGHT,
+    bottom: g.bottom
+  };
+}
+
+/* 장르별 지시문 선택표 — Bumm님이 장르마다 기존(v1) · 기존+(v1plus) · 기존+ 2차(v1plus2)를 고르시면 이 표만 바꾼다.
    기본은 전 장르 v1이고, v1은 라이브(7ad0ad5)와 글자 하나까지 같다(functions/test/fixtures/prompt-v1-7ad0ad5.json으로 고정). */
 const PROMPT_VARIANT_BY_GENRE = {
   animation: 'v1',
@@ -341,7 +423,7 @@ const PROMPT_VARIANT_BY_GENRE = {
   sports: 'v1',
   music: 'v1'
 };
-const PROMPT_VERSIONS = { v1: 'v1', v1plus: 'v1plus-20261025' };
+const PROMPT_VERSIONS = { v1: 'v1', v1plus: 'v1plus-20261025', v1plus2: 'v1plus2-20261025' };
 const promptVariantFor = (genre, variant) => variant || PROMPT_VARIANT_BY_GENRE[genrePrompts[genre] ? genre : 'animation'];
 const promptVersionFor = (genre, variant) => PROMPT_VERSIONS[promptVariantFor(genre, variant)];
 
@@ -360,7 +442,8 @@ function sanitizePromptField(value, maxLen) {
 // variant는 QA가 갈래를 강제할 때만 넘긴다 — 운영 /generate는 넘기지 않아 위 선택표를 따른다.
 function buildPrompt({ genre, mode, title, tagline, variant }) {
   const key = genrePrompts[genre] ? genre : 'animation';
-  const plus = promptVariantFor(key, variant) === 'v1plus' ? genrePromptsV1Plus[key] : {};
+  const chosen = promptVariantFor(key, variant);
+  const plus = chosen === 'v1plus' ? genrePromptsV1Plus[key] : chosen === 'v1plus2' ? v1Plus2Lines(key, mode === 'group') : {};
   const base = plus.base || genrePrompts[key];
   const ensemble =
     mode === 'group'
@@ -374,11 +457,13 @@ function buildPrompt({ genre, mode, title, tagline, variant }) {
     base + '.',
     plus.all,
     mode === 'group' ? plus.group : plus.solo,
+    ...(plus.cast || []),
     'Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art.',
     ensemble,
     concept,
-    'Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE.',
-    'Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame.',
+    plus.composition || 'Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE.',
+    plus.frame || 'Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame.',
+    plus.light,
     plus.bottom || 'IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later.',
     'Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image.',
     'Safe, wholesome, child-appropriate. High detail, professional, keepsake quality.'
