@@ -39,7 +39,12 @@ const [dryMsMin, dryMsMax] = arg('dry-ms', '50-50').split('-').map(Number);
 const dryRateEvery = Number(arg('dry-rate-limit-every', '0'));
 // OpenAI 공식 오류 코드 — 잔액 · 지출 한도는 429로 온다(functions/index.js isBillingError와 같은 판정, 운영 7ad0ad5 모듈에는 없어 여기 둔다)
 const BILLING_CODE = /^(insufficient_quota|credit_balance_exhausted|(organization|project)_(spend|usage)_limit_exceeded|billing_hard_limit_reached)$/;
-const isBilling = (e) => [e?.code, e?.type, e?.error?.code, e?.error?.type].some((v) => typeof v === 'string' && BILLING_CODE.test(v)) || /billing|quota|hard limit/i.test(String(e?.message || ''));
+const isBilling = (e) => {
+  const codes = [e?.code, e?.type, e?.error?.code, e?.error?.type];
+  if (codes.some((v) => typeof v === 'string' && BILLING_CODE.test(v))) return true;
+  if (codes.includes('rate_limit_exceeded')) return false;   // 속도 한도 문구의 결제 안내 링크는 잔액 소진이 아니다(서버와 같은 판정, 10/26 독립 리뷰)
+  return /billing|quota|hard limit/i.test(String(e?.message || ''));
+};
 const isRateLimit = (e) => (e?.status ?? e?.response?.status) === 429 && !isBilling(e);
 let billingStop = false, dryOk = 0, dryAttempts = 0;
 if (!modulePath || !armName || !planPath || !inputs || !out || !ledger || !(cap > 0) || !(globalMax >= 1)) {

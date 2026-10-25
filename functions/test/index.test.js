@@ -2016,3 +2016,10 @@ test('/health: gpt-image-2에는 보내지 않는 얼굴보존 값을 «high»�
     _resetOpenAIHealthCacheForTesting();
   }
 });
+
+test('판 이름: 기본 속성 이름(constructor · toString · __proto__)도 «알 수 없는 판»으로 막는다 — 조용히 v1로 떨어지지 않게', () => {
+  for (const variant of ['constructor', 'toString', '__proto__']) {
+    expect(() => buildPrompt({ genre: 'sf', mode: 'solo', title: '제목', tagline: '문구', variant }), variant).toThrow(/알 수 없는 지시문 판/);
+    expect(() => promptVersionFor('sf', 'solo', variant), variant).toThrow(/알 수 없는 지시문 판/);
+  }
+});

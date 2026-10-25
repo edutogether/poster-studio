@@ -464,7 +464,7 @@ const genreKey = (genre) => (Object.hasOwn(genrePrompts, genre) ? genre : 'anima
 function promptVariantFor(genre, mode, variant) {
   const key = genreKey(genre), cell = mode === 'group' ? 'group' : 'solo';
   const chosen = variant || PROMPT_VARIANT_BY_CELL[key][cell];
-  if (!PROMPT_VERSIONS[chosen]) throw new Error(`알 수 없는 지시문 판: ${chosen}`);
+  if (!Object.hasOwn(PROMPT_VERSIONS, chosen)) throw new Error(`알 수 없는 지시문 판: ${chosen}`);
   if (chosen === 'v2' && !(key === 'hero' && cell === 'group')) throw new Error(`v2 지시문은 히어로 단체에만 있다: ${key}/${cell}`);
   return chosen;
 }
