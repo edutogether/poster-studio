@@ -134,7 +134,7 @@ const server = http.createServer((req, res) => {
       req.rawBody = Buffer.concat(chunks);
       req.url = req.url.slice('/posterStudio'.length);
       if (req.method === 'POST' && req.url.startsWith('/generate')) {
-        try { const fd = await new Response(req.rawBody, { headers: { 'content-type': req.headers['content-type'] || '' } }).formData(); lastForm = Object.fromEntries(['genre', 'mode', 'movieTitle', 'tagline'].map((k) => [k, fd.get(k)])); } catch { lastForm = null; }
+        try { const fd = await new globalThis.Response(req.rawBody, { headers: { 'content-type': req.headers['content-type'] || '' } }).formData(); lastForm = Object.fromEntries(['genre', 'mode', 'movieTitle', 'tagline'].map((k) => [k, fd.get(k)])); } catch { lastForm = null; }
       }
       const end = res.end.bind(res);
       const bodyParts = [];
