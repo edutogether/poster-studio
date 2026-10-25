@@ -36,7 +36,8 @@ const handler = (req, res) => {
     req.on('end', () => globalThis.setTimeout(() => { res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Content-Length': replay.length, 'Cache-Control': 'no-store' }); res.end(replay); }, Number(u.searchParams.get('delay') || 0) * 1000));
     return;
   }
-  const p = decodeURIComponent(u.pathname);
+  let p; // 깨진 주소면 400 — 예외로 서버가 죽지 않게(10/26)
+  try { p = decodeURIComponent(u.pathname); } catch { res.writeHead(400); res.end(); return; }
   let file = path.join(root, p);
   if (p.endsWith('/')) file = path.join(file, 'index.html');
   if (!file.startsWith(root + path.sep) ||!fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }

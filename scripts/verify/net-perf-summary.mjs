@@ -5,7 +5,9 @@
 
    상위 폴더 아래 폴더 이름이 «판-망-기기-번호»(예: before-slow4g-pc-03)인 net-perf.json을 모은다.
    p50 · p95는 가까운 순위(nearest-rank) — 10회면 p95는 가장 큰 값이다. 표: 조건 · 횟수 · 1단계 쓸 수 있음 · 누른 때 → 포스터 ·
-   응답 완료 → 포스터 · 받은 용량 · AI 대기 중(응답 완료 전에 시작한) 장면 가운데 영상이 재생된 장면 · 같은 파일 두 번 받기(합계). */
+   응답 완료 → 포스터 · 받은 용량 · AI 대기 중(응답 완료 전에 시작한) 장면 가운데 영상이 재생된 장면 · 같은 파일 두 번 받기(합계).
+   시간 안에 못 끝난 실행은 «실패»로 세고 백분위에서 가장 큰 값(∞)으로 둔다 — 빼면 실패가 있어도 p95가 작아진다(10/26 종합감사).
+   결과가 하나도 없거나, 결과 파일이 없는 실행 폴더 · 실패가 하나라도 있으면 종료코드 1. */
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -13,27 +15,32 @@ const args = process.argv.slice(2);
 const top = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--json');
 const jsonAt = args.indexOf('--json');
 if (!top) { console.error('사용: net-perf-summary.mjs <결과 상위 폴더> [--json <출력>]'); process.exit(2); }
-const q = (xs, p) => { const s = xs.filter((x) => x != null).sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.ceil(p * s.length) - 1)] : null; };
+const q = (xs, p) => { const s = xs.map((x) => (x == null ? Infinity : x)).sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.ceil(p * s.length) - 1)] : null; };
 const groups = new Map();
+const missing = [];
 for (const d of fs.readdirSync(top)) {
   const f = path.join(top, d, 'net-perf.json');
-  if (!fs.existsSync(f)) continue;
-  const m = d.match(/^(.+)-(\d+)$/); if (!m) continue;
+  const m = d.match(/^(.+)-(\d+)$/); if (!m || !fs.statSync(path.join(top, d)).isDirectory()) continue;
+  if (!fs.existsSync(f)) { missing.push(d); continue; }
   const j = JSON.parse(fs.readFileSync(f, 'utf8'));
   for (const g of j.gens || []) {
     const visit = g.label.startsWith('재방문') ? '재방문' : '첫 방문';
     const row = j.rows.find((r) => r.name === visit);
     const key = `${m[1]} · ${visit}`;
-    const a = groups.get(key) || { key, n: 0, ready: [], shown: [], after: [], answered: [], bytes: [], scenes: 0, videoScenes: 0, waitScenes: 0, waitVideoScenes: 0, dup: 0 };
+    const a = groups.get(key) || { key, n: 0, ready: [], shown: [], after: [], answered: [], bytes: [], scenes: 0, videoScenes: 0, waitScenes: 0, waitVideoScenes: 0, dup: 0, fail: 0 };
     a.n++; a.ready.push(row?.ready); a.shown.push(g.shownMs); a.after.push(g.afterAnswerMs); a.answered.push(g.answeredMs); a.bytes.push(g.bytes);
     a.scenes += g.scenes; a.videoScenes += g.videoScenes; a.waitScenes += g.waitScenes ?? 0; a.waitVideoScenes += g.waitVideoScenes ?? 0; a.dup += g.duplicates.length;
+    if (g.shownMs == null || row?.ready == null) a.fail++;
     groups.set(key, a);
   }
 }
-const s = (ms) => (ms == null ? '—' : (ms / 1000).toFixed(1));
+const s = (ms) => (ms == null ? '—' : ms === Infinity ? '실패' : (ms / 1000).toFixed(1));
 const mb = (b) => (b == null ? '—' : (b / 1048576).toFixed(1));
 const rows = [...groups.values()].sort((a, b) => a.key.localeCompare(b.key, 'ko'));
-console.log('| 조건 | 횟수 | 1단계 p50/p95(초) | 누른 때→포스터 p50/p95(초) | 응답 완료→포스터 p50/p95(초) | 받은 용량 p50/p95(MB) | AI 대기 중 영상 재생 장면 | 두 번 받기 |');
-console.log('|---|---|---|---|---|---|---|---|');
-for (const a of rows) console.log(`| ${a.key} | ${a.n} | ${s(q(a.ready, 0.5))}/${s(q(a.ready, 0.95))} | ${s(q(a.shown, 0.5))}/${s(q(a.shown, 0.95))} | ${s(q(a.after, 0.5))}/${s(q(a.after, 0.95))} | ${mb(q(a.bytes, 0.5))}/${mb(q(a.bytes, 0.95))} | ${a.waitVideoScenes}/${a.waitScenes} | ${a.dup} |`);
+console.log('| 조건 | 횟수 | 1단계 p50/p95(초) | 누른 때→포스터 p50/p95(초) | 응답 완료→포스터 p50/p95(초) | 받은 용량 p50/p95(MB) | AI 대기 중 영상 재생 장면 | 두 번 받기 | 실패 |');
+console.log('|---|---|---|---|---|---|---|---|---|');
+for (const a of rows) console.log(`| ${a.key} | ${a.n} | ${s(q(a.ready, 0.5))}/${s(q(a.ready, 0.95))} | ${s(q(a.shown, 0.5))}/${s(q(a.shown, 0.95))} | ${s(q(a.after, 0.5))}/${s(q(a.after, 0.95))} | ${mb(q(a.bytes, 0.5))}/${mb(q(a.bytes, 0.95))} | ${a.waitVideoScenes}/${a.waitScenes} | ${a.dup} | ${a.fail} |`);
 if (jsonAt >= 0) fs.writeFileSync(args[jsonAt + 1], JSON.stringify(rows.map((a) => ({ ...a, p: { ready: [q(a.ready, 0.5), q(a.ready, 0.95)], shown: [q(a.shown, 0.5), q(a.shown, 0.95)], after: [q(a.after, 0.5), q(a.after, 0.95)], bytes: [q(a.bytes, 0.5), q(a.bytes, 0.95)] } })), null, 1));
+const failed = rows.reduce((n, a) => n + a.fail, 0);
+if (!rows.length) { console.error('❌ 결과가 하나도 없다 — «판-망-기기-번호» 폴더의 net-perf.json(--real로 잰 것)을 찾지 못했다'); process.exit(1); }
+if (missing.length || failed) { console.error(`❌ 결과 파일이 없는 실행 ${missing.length}건${missing.length ? ' (' + missing.slice(0, 5).join(', ') + ')' : ''} · 시간 안에 못 끝난 생성 ${failed}건`); process.exit(1); }

@@ -181,3 +181,6 @@ for (const r of top) console.log(`  ${kb(r.bytes).padStart(7)}  ${r.type?.padEnd
 await fs.writeFile(path.join(out, 'net-perf.json'), JSON.stringify({ net: netName, device, url, replay: REPLAY, rows, flow, gens, requests: all }, null, 1));
 if (generate) { console.error(`❌ 생성 요청 ${generate}건`); process.exit(2); }
 if (gens.some((g) => g.shownMs === null)) { console.error('❌ 포스터가 5분 안에 안 보였다'); process.exit(1); }
+// 잴 것을 못 쟀으면 통과가 아니다(10/26 종합감사: 1단계가 안 떠도 «3분 넘음»만 찍고 0으로 끝났다 — 없는 주소를 먹여도 통과했다)
+if (rows.some((r) => r.ready === null)) { console.error('❌ 1단계가 3분 안에 쓸 수 있게 되지 않았다'); process.exit(1); }
+if (flow.some((f) => f.ms === null)) { console.error('❌ 흐름의 한 단계가 시간 안에 끝나지 않았다'); process.exit(1); }

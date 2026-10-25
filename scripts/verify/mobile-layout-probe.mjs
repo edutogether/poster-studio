@@ -59,7 +59,8 @@ await fs.mkdir(out, { recursive: true });
 // 정적 서버 — 127.0.0.1에만 묶고, dist 밖으로 나가는 경로는 막는다.
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.mp4': 'video/mp4', '.webm': 'video/webm', '.txt': 'text/plain' };
 const server = http.createServer((req, res) => {
-  const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  let p; // 깨진 주소면 400 — 예외로 서버가 죽지 않게(10/26)
+  try { p = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400); res.end(); return; }
   const file = path.resolve(dist, '.' + (p.endsWith('/') ? p + 'index.html' : p));
   if (!file.startsWith(dist + path.sep) || !fss.existsSync(file) || fss.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });

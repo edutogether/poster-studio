@@ -11,7 +11,8 @@ const compiled = new Map(result.outputFiles.map(file => ['/' + path.basename(fil
 const html = '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Poster Studio · 로딩 미리보기</title><link rel="stylesheet" href="/fonts/pretendard.css"><link rel="stylesheet" href="/app.css"><style>*{box-sizing:border-box}body{margin:0}button{font:inherit}</style><div id="root"></div><script type="module" src="/app.js"></script></html>';
 const mime = { '.html': 'text/html;charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.webp': 'image/webp', '.txt': 'text/plain;charset=utf-8', '.json': 'application/json', '.zip': 'application/zip' };
 http.createServer(async (req, res) => {
-  const name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  let name; // 깨진 주소면 400 — 예외로 서버가 죽지 않게(10/26)
+  try { name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); } catch { res.writeHead(400); res.end(); return; }
   if (req.method !== 'GET') return res.writeHead(405).end();
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', mime[path.extname(name)] || 'text/html;charset=utf-8');

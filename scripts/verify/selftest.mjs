@@ -15,7 +15,14 @@
      - 이 저장소가 가장 두려워하는 것: transition/animation 타이밍 변화
    ──────────────────────────────────────────────────────────────────── */
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { diffSnapshots, summarize } from './compare.mjs';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 const base = () => ({
   meta: { url: '/', viewport: { w: 1366, h: 768 }, capturedAt: '2026-09-09T00:00:00Z' },
@@ -188,6 +195,29 @@ check('high가 있으면 summarize가 high>0을 보고한다', () => {
   delete after.elements['#generateBtn'];
   assert.ok(summarize(diffSnapshots(base(), after)).high > 0);
 });
+
+// 8) net-perf-summary.mjs(2026-10-26 종합감사): 결과 0건 · 결과 파일 없는 실행 · 시간 안에 못 끝난 생성은 실패, 멀쩡한 결과만 통과
+{
+  const top = fs.mkdtempSync(path.join(os.tmpdir(), 'netperf-summary-selftest-'));
+  const run = () => spawnSync(process.execPath, [path.join(HERE, 'net-perf-summary.mjs'), top], { encoding: 'utf8' }).status;
+  const put = (name, shownMs) => {
+    fs.mkdirSync(path.join(top, name), { recursive: true });
+    fs.writeFileSync(path.join(top, name, 'net-perf.json'), JSON.stringify({ rows: [{ name: '첫 방문', ready: 6000 }],
+      gens: [{ label: '첫 방문 생성', shownMs, answeredMs: 30000, afterAnswerMs: shownMs == null ? null : shownMs - 30000, bytes: 1, scenes: 1, videoScenes: 1, waitScenes: 1, waitVideoScenes: 1, duplicates: [] }] }));
+  };
+  try {
+    check('net-perf-summary: 결과가 0건이면 실패한다', () => assert.equal(run(), 1));
+    put('after-slow4g-pc-01', 40000);
+    check('net-perf-summary: 멀쩡한 결과는 통과한다', () => assert.equal(run(), 0));
+    fs.mkdirSync(path.join(top, 'after-slow4g-pc-02'));
+    check('net-perf-summary: 결과 파일이 없는 실행 폴더가 있으면 실패한다', () => assert.equal(run(), 1));
+    fs.rmSync(path.join(top, 'after-slow4g-pc-02'), { recursive: true });
+    put('after-slow4g-pc-03', null);
+    check('net-perf-summary: 시간 안에 못 끝난 생성이 있으면 실패한다', () => assert.equal(run(), 1));
+  } finally {
+    fs.rmSync(top, { recursive: true, force: true });
+  }
+}
 
 console.log(failures === 0
   ? '\n✅ 자기검사 통과 — 이 도구는 빈 게이트가 아니다.'

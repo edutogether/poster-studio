@@ -25,7 +25,8 @@ await build({ root, configFile: path.join(root, 'vite.config.ts'), logLevel: 'wa
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.woff2': 'font/woff2', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json' };
 const server = http.createServer(async (req, res) => {
-  const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  let p; // 깨진 주소면 400 — 예외로 서버가 죽지 않게(10/26)
+  try { p = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400); res.end(); return; }
   const f = path.join(site, p.endsWith('/') ? p + 'index.html' : p);
   try { const b = await fs.readFile(f); res.writeHead(200, { 'content-type': types[path.extname(f)] || 'application/octet-stream' }); res.end(b); }
   catch { res.writeHead(404); res.end(); }

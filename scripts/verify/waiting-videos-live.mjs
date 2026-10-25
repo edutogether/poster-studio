@@ -34,7 +34,8 @@ await fs.mkdir(out, { recursive: true });
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.mp4': 'video/mp4', '.webp': 'image/webp',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.json': 'application/json', '.svg': 'image/svg+xml' };
 const server = http.createServer((req, res) => {
-  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  let p; // 깨진 주소면 400 — 예외로 서버가 죽지 않게(10/26)
+  try { p = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400); res.end(); return; }
   if (p.endsWith('/')) p += 'index.html';
   const file = path.resolve(DIST, '.' + p);
   if (!file.startsWith(DIST + path.sep) || !fss.existsSync(file) || fss.statSync(file).isDirectory()) { res.writeHead(404).end(); return; }

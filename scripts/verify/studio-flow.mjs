@@ -35,9 +35,8 @@ const mime = {
 };
 for (let i = 0; i < roots.length; i++) {
   const server = http.createServer(async (req, res) => {
-    const name = decodeURIComponent(
-      new URL(req.url, "http://localhost").pathname,
-    );
+    let name; // 깨진 주소면 400 — 예외로 서버가 죽지 않게(10/26)
+    try { name = decodeURIComponent(new URL(req.url, "http://localhost").pathname); } catch { res.writeHead(400); res.end(); return; }
     const file = path.resolve(
       roots[i],
       "." + (name === "/" ? "/index.html" : name),

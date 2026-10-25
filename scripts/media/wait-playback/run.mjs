@@ -28,7 +28,8 @@ const CONDS = {
 
 // 시험 페이지와 검토 폴더의 영상을 내주는 작은 서버 — 검토 폴더 밖은 내주지 않는다.
 const server = http.createServer((req, res) => {
-  const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  let p; // 깨진 주소면 400 — 예외로 서버가 죽지 않게(10/26)
+  try { p = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400); res.end(); return; }
   const file = p === '/sim.html' ? path.join(HERE, 'sim.html') : path.resolve(root, '.' + p);
   if ((file !== path.join(HERE, 'sim.html') && !file.startsWith(root + path.sep)) || !fs.existsSync(file)) { res.writeHead(404).end(); return; }
   res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });

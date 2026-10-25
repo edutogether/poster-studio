@@ -156,7 +156,8 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  const p = decodeURIComponent(u.pathname);
+  let p; // 깨진 주소면 400 — 예외로 서버가 죽지 않게(10/26)
+  try { p = decodeURIComponent(u.pathname); } catch { res.writeHead(400); res.end(); return; }
   const file = path.resolve(dist, '.' + (p.endsWith('/') ? p + 'index.html' : p));
   if (!file.startsWith(dist + path.sep) || !fss.existsSync(file) || fss.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });

@@ -5,9 +5,11 @@
    로컬 실행에서 5개 입력 × 8개 디자인을 저장하고 라이브 실행은 저장 지문과 대조한다.
    ⚠ 촬영 흐름을 누르므로 **실제 모드 빌드**가 필요하다. 배포 빌드는 샘플 단추가 있는 판일 수 있으니(예전에는 .env.production의
    VITE_SAMPLE_MODE) 로컬은 진짜 생성만인 판으로 빌드한 뒤 돌린다 — 10/20부터 `npx vite build --mode check-real`(스위치는 src/studioMode.ts).
-   --rare(2026-10-26): 입력을 드문 음절 · 영문 · 숫자 · 기호 3종(24장)으로 바꾼다 — 포스터 글꼴 조각(핵심 · 드문 글자)을 두 판에서 견줄 때.
+   --rare(2026-10-26): 입력을 드문 음절 · 영문 · 숫자 · 기호 4종(32장)으로 바꾼다 — 포스터 글꼴 조각(핵심 · 드문 글자)을 두 판에서 견줄 때.
    --block <주소 무늬,...>(2026-10-26): 그 파일들을 망에서 막는다 — 예: fonts/full 아래 «-r» 조각(드문 글자) 무늬로 못 받는 경우를 만들어
-   결과가 막지 않은 때와 같은지(원본 통글꼴로 대신 받는지) 본다. 두 선택은 기준선 대조(라이브)와 같이 쓰지 않는다. */
+   결과가 막지 않은 때와 같은지(원본 통글꼴로 대신 받는지) 본다. 막힌 요청이 0건이면 실패다(무늬 오타를 통과시키지 않게).
+   --expect <pixels.json>(2026-10-26): 지문이 그 파일과 장마다 같아야 통과 — 두 판 대조 · 막기 대조를 손으로 하지 않게.
+   이 선택들은 기준선 대조(라이브)와 같이 쓰지 않는다. */
 import fs from "node:fs/promises";
 import path from "node:path";
 import http from "node:http";
@@ -19,7 +21,13 @@ const liveURL = process.argv.slice(2).find(arg => /^https?:/.test(arg));
 const selfTest = process.argv.includes("--selftest");
 const rareCases = process.argv.includes("--rare");
 const blockAt = process.argv.indexOf("--block");
-const extraBlocked = blockAt > 0 ? process.argv[blockAt + 1].split(",") : [];
+const blockValue = blockAt > 0 ? process.argv[blockAt + 1] : null;
+if (blockAt > 0 && (!blockValue || blockValue.startsWith("--"))) { console.error("--block에는 막을 주소 무늬(쉼표로 여럿)를 준다"); process.exit(2); }
+const extraBlocked = blockValue ? blockValue.split(",") : [];
+// --expect <pixels.json>(2026-10-26): 그 지문과 장마다 같은지 단언한다 — 막기 결과를 손으로 대조하지 않게
+const expectAt = process.argv.indexOf("--expect");
+const expectFile = expectAt > 0 ? process.argv[expectAt + 1] : null;
+if (expectAt > 0 && (!expectFile || expectFile.startsWith("--"))) { console.error("--expect에는 기준 pixels.json 경로를 준다"); process.exit(2); }
 const out = path.join(root, ".cache", liveURL ? "release-live" : `release-local${rareCases ? "-rare" : ""}${extraBlocked.length ? "-blocked" : ""}`);
 await fs.mkdir(out, { recursive: true });
 const headers = JSON.parse(await fs.readFile("firebase.json", "utf8")).hosting
@@ -39,9 +47,8 @@ const mime = {
 };
 for (let i = 0; i < roots.length; i++) {
   const server = http.createServer(async (req, res) => {
-    const name = decodeURIComponent(
-      new URL(req.url, "http://localhost").pathname,
-    );
+    let name; // 깨진 주소면 400 — 예외로 서버가 죽지 않게(10/26)
+    try { name = decodeURIComponent(new URL(req.url, "http://localhost").pathname); } catch { res.writeHead(400); res.end(); return; }
     const file = path.resolve(
       roots[i],
       "." + (name === "/" ? "/index.html" : name),
@@ -84,6 +91,7 @@ let socket,
 const pending = new Map(),
   errors = [],
   network = [];
+let blockedRequests = 0;
 const wait = (ms) =>
   new Promise((resolve) => globalThis.setTimeout(resolve, ms));
 try {
@@ -114,6 +122,8 @@ try {
       errors.push(m.params.exceptionDetails);
     if (m.method === "Network.requestWillBeSent")
       network.push(m.params.request.url);
+    if (m.method === "Network.loadingFailed" && m.params.blockedReason)
+      blockedRequests++;
   };
   const send = (method, params = {}) =>
     new Promise((resolve, reject) => {
@@ -264,9 +274,15 @@ try {
     assert.deepEqual(pixels,expected,'배포된 40종 픽셀은 승인 로컬 기준선과 일치');
   }
   await fs.writeFile(path.join(out,'pixels.json'),JSON.stringify(pixels,null,2)+'\n');
+  // --block은 실제로 막힌 요청이 있어야 의미가 있다 — 무늬 오타면 아무것도 안 막고 통과했다(10/26 종합감사)
+  if(extraBlocked.length)assert.ok(blockedRequests>0,`--block 무늬에 걸려 막힌 요청이 0건이다: ${extraBlocked.join(',')}`);
+  if(expectFile){
+    const expected=JSON.parse(await fs.readFile(expectFile,'utf8'));
+    assert.deepEqual(pixels,expected,`포스터 지문이 기준(${expectFile})과 다르다`);
+  }
   assert.equal(errors.length,0,JSON.stringify(errors));
   assert.equal(network.filter(u=>/cloudfunctions\.net|run\.app|api\.openai/.test(u)).length,0);
-  console.log(JSON.stringify({posters:pixels.length,errors:0,actualApiRequests:0,liveCompared:!!liveURL,rare:rareCases,blocked:extraBlocked}));
+  console.log(JSON.stringify({posters:pixels.length,errors:0,actualApiRequests:0,liveCompared:!!liveURL,rare:rareCases,blocked:extraBlocked,blockedRequests,expected:expectFile}));
   await send('Browser.close');
 } finally {
   socket?.close();chrome.kill();for(const server of servers)server.close();
