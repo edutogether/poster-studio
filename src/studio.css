@@ -591,7 +591,9 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   /* 10/19 Bumm님 «제목 글씨가 너무 화면 가운데에 있음 → 더 아래로, “인천을 대표하는 …” 두 줄은 더 작고 연하게»:
      글 덩어리를 가운데에서 아래(«내려가기» 화살표 바로 위)로 옮기고, 부제는 18 → 15px · 흰색 72%. */
   body[data-step="1"] #prepareView .exhibition { justify-content: flex-end; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
-  #prepareView .exhibition-description { font-size: 15px; line-height: 1.6; color: #ffffffb8; }
+  /* 10/25 Bumm님(F12 360×780 · 360×640 — 휴대폰 전체): 폭 360에서 이 한 줄이 오른쪽 끝까지 붙었다(15px 고정이라 글 폭 331px).
+     PC 설명과 같은 «칸 폭 ÷ 22.4»로 15px부터 줄여 오른쪽 여백이 왼쪽 여백(24px)보다 좁아지지 않게 — 폭 430 · 실제 휴대폰(폭 390으로 그림)은 15px 그대로. */
+  #prepareView .exhibition-description { font-size: clamp(12px, 100cqi / 22.4, 15px); line-height: 1.6; color: #ffffffb8; }
 
   /* ③ «단독 주연 / 우리 같이»: 140px 네모 카드 → 낮은 가로 칸(아이콘 왼쪽 · 글씨 오른쪽 · 고름 표시 오른쪽 끝) */
   #prepareWorkspace .segmented button {
@@ -1156,6 +1158,41 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
    생기고(폭 360 → 345) 사진 칸이 15px 좁아졌다(10/25 실측). 단추 줄 높이는 예전과 같은 66px. */
 @media (max-width: 760px) and (max-height: 720px) {
   #cameraView:has(.camera-instructions[data-review="false"]) .camera-actions { padding-top: 4px; }
+}
+/* 휴대폰 2단계 세로가 짧은 화면(높이 790 미만 — 390×664 · 360×640 · 430×740) 찍기 전: 2026-10-25 Bumm님(390×664) «답답해 보인다 — 제목을 조금 아래로,
+   제목 ↔ 1 · 2 · 3, 1 · 2 · 3끼리 더 띄우고, 단추 줄과 겹치거나 넘치지 않게». 남는 높이를 제목 위 · 안내 아래에 반씩 나누던 것을 제목 위로만 보내고
+   (안내 아래 자동 여백 0), 회색 칸 아래 안쪽 여백 21 → 13px(높이 720 이하) · 사진 칸 위 34 → 30px에서 얻은 높이로 간격을 늘린다.
+   높이 720 이하: 제목 위 4 → 6 · 제목 아래 10 → 14 · 안내 사이 4 → 6px(360×640 — 남는 높이가 0이라 얻은 만큼만),
+   그중 높이 655 이상(390×664, 실제 휴대폰의 640 · 740)은 제목 위 8 · 제목 아래 16 · 안내 사이 8px.
+   높이 721~789(430×740 — 같은 날 Bumm님 «제목과 1 · 2 · 3을 좀 더 아래로, 3번 아래 ~ 단추 줄의 빈 자리를 써서 위아래 균형»)는 제목 아래 14 → 22 ·
+   안내 사이 6 → 8px, 회색 칸 아래 안쪽 25 → 19px · 자동 여백 0 — 회색 칸 위 끝 → 제목과 3번 → 단추 위 끝이 같은 27px(390×664도 17 · 17px).
+   키 큰 화면(790 이상 · 세로가 폭의 두 배 이상 — 390×844 · 430×932 · 375×812 · 360×780)과 카메라를 켠 뒤 화면은 그대로. */
+@media (max-width: 760px) and (max-height: 720px) {
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-surface { padding-top: 30px; }
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .page-heading { padding-top: 6px; margin-bottom: 14px; }
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-tips { gap: 6px; }
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-instructions { padding-bottom: 4px; }
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-guide { padding-bottom: 9px; margin-bottom: 0; }
+}
+@media (max-width: 760px) and (min-height: 655px) and (max-height: 720px) {
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .page-heading { padding-top: 8px; margin-bottom: 16px; }
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-tips { gap: 8px; }
+}
+@media (max-width: 760px) and (min-height: 721px) and (max-height: 789px) and (min-aspect-ratio: 1001/2000) {
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .page-heading { margin-bottom: 22px; }
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-tips { gap: 8px; }
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-instructions { padding-bottom: 6px; }
+  #cameraView:has(.camera-instructions[data-review="false"]):not(:has(#video:not(.hidden))) .camera-guide { padding-bottom: 13px; margin-bottom: 0; }
+}
+/* 휴대폰 1단계 첫 화면 윗줄(2026-10-25 Bumm님 F12 360×780 · 360×640 — 휴대폰 전체): «● Poster Studio · CGV 인천»은 너무 내려와 있고 오른쪽
+   «개인정보처리방침»은 너무 올라가 있었다(글 세로 가운데가 14px 어긋남) → 사진 위 끝에서 약 21px 같은 가로선에(윗줄 18 → 11px 올리고, 방침은
+   1단계에서만 7px 내림 — 2단계 자리는 그대로). 폭 370 이하는 그 줄이 빡빡해 윗줄 글자 13 → 12px. */
+@media (max-width: 760px) {
+  #prepareView .exhibition .sample-tag { top: 11px; }
+  body[data-step="1"] .privacy-link { top: calc(100% + 12px); }
+}
+@media (max-width: 370px) {
+  #prepareView .exhibition .sample-tag { font-size: 12px; }
 }
 /* 휴대폰 아래 단추 높이 하나로(같은 날 Bumm님 «페이지마다 단추 높이가 다르다 — 2단계 단추 높이 기준으로 전부»): 2단계 48px 기준.
    1단계 «주인공이 될 순간 보러 가기» 56 → 48, 3단계 «다시 찍기 · 내 휴대폰에 저장» 60 → 48(48로 적은 규칙이 result.css의 60px보다 약해 지고 있었다). */
