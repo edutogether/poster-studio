@@ -24,7 +24,7 @@ public/          정적 자산 — Vite가 dist/ 루트로 그대로 복사한�
   splash-font-gate.js  boot-splash.js  fonts/  poster-wall.webp  logo-*.png  og.jpg(공유 카드 그림)  favicon-inky.png(파비콘)
 dist/            빌드 산출물 = 배포 폴더 (Firebase Hosting — https://poster.edutogether.kr)
                  커밋하지 않는다
-test/            vitest 228개(2026-10-17) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
+test/            vitest 400개(2026-10-26) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/       Firebase Cloud Functions (AI 이미지 생성 API만 담당) — index.js 하나에 전부
 scripts/         loadtest.mjs(부하테스트) fonts/(서브셋) verify/(전환 대조 도구)
 _docs/           저장소 문서 (배포 대상 아님 — hosting public은 dist/ 뿐)
@@ -66,13 +66,13 @@ firebase deploy --only functions
 - `IMAGE_QUALITY`: low / medium / high (4x6 인화는 medium 충분, 귀빈용만 high)
 - `VARIANTS`: 한 번에 만드는 AI 그림 장수(1~2). 1이면 4컷, 2면 8컷.
 
-> 비용 감(참고): gpt-image-2 세로 medium 약 **$0.04/장**. 2K·4K는 4x6 인화에 불필요하니 medium 권장.
+> 비용 감(참고): gpt-image-2 세로 medium 약 **$0.05/장**(2026-10-26 실측 $0.049~0.050). 2K·4K는 4x6 인화에 불필요하니 medium 권장.
 >
 > **상한은 추정이 아니라 코드가 물리적으로 강제한다.** 참가자는 교육청 명단 기준 **2,000명 하드캡**이고
 > 사진 한 장당 생성은 **최대 2회**(최초 1회 + 재생성 1회, `PHOTO_GENERATION_LIMIT`)이므로 산술 상한은
-> 2,000 × 2 × $0.04 = **$160**이다. 여기에 더해 `functions/index.js`가 두 겹으로 막는다 —
-> `DAILY_BUDGET_MAX=4000`(하루 $160)과 `RATE_LIMIT_MAX=150`(10분당). 행사시간 270분은 10분 구간 27개라
-> 레이트리밋만으로도 최대 4,050건 = **$162**를 넘길 수 없다. 최종 백스톱은 OpenAI 조직의 **강제 한도 $250**이다
+> 2,000 × 2 × $0.05 = **$200**이다. 여기에 더해 `functions/index.js`가 두 겹으로 막는다 —
+> `DAILY_BUDGET_MAX=4000`(하루 약 $200)과 `RATE_LIMIT_MAX=150`(10분당). 행사시간 270분은 10분 구간 27개라
+> 레이트리밋만으로도 최대 4,050건 = **약 $203**를 넘길 수 없다. 최종 백스톱은 OpenAI 조직의 **강제 한도 $250**이다
 > (2026-10-05 Bumm님 설정 확인, 알림은 $10 단위).
 >
 > ⚠️ OpenAI **이용 등급 1단계는 월 사용 한도가 $100**이라 위 설정보다 먼저 걸릴 수 있다 — 행사 전 2단계(누적 결제 $50)

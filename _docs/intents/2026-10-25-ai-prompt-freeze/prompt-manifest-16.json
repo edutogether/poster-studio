@@ -1,0 +1,182 @@
+{
+ "createdAt": "2026-10-25T15:50:09.263Z",
+ "note": "지시문 지문은 A/B 시험과 같은 제목 · 문구로 만든 것. 다른 제목 · 문구는 그 자리만 바뀐다(템플릿은 고정 자료 시험이 막는다).",
+ "cells": [
+  {
+   "genre": "sf",
+   "mode": "solo",
+   "variant": "v1plus2",
+   "version": "v1plus2-20261025",
+   "madeIn": "2bd8177",
+   "title": "별빛 탐험대",
+   "tagline": "우주 너머, 미지의 세계로",
+   "chars": 1645,
+   "sha256": "e3874c2530e4cc13ffc3ea600523e56a778914afaed3fe0dfba3344c697ae2c8"
+  },
+  {
+   "genre": "sf",
+   "mode": "group",
+   "variant": "v1",
+   "version": "v1",
+   "madeIn": "7ad0ad5(라이브)",
+   "title": "별빛 탐험대",
+   "tagline": "우주 너머, 미지의 세계로",
+   "chars": 1295,
+   "sha256": "62d4d1a8dc64bbb5aa316b73e7e6473233645f0a3aa78f68fa83083d01001b53"
+  },
+  {
+   "genre": "fantasy",
+   "mode": "solo",
+   "variant": "v1",
+   "version": "v1",
+   "madeIn": "7ad0ad5(라이브)",
+   "title": "마법의 문",
+   "tagline": "마법의 문이 열린다",
+   "chars": 1237,
+   "sha256": "561399a570db6200f51ca86612dde4c116d239f5b0d6c038fa0e782937444dd2"
+  },
+  {
+   "genre": "fantasy",
+   "mode": "group",
+   "variant": "v1",
+   "version": "v1",
+   "madeIn": "7ad0ad5(라이브)",
+   "title": "마법의 문",
+   "tagline": "마법의 문이 열린다",
+   "chars": 1292,
+   "sha256": "d748f45c5900c254d5a0c0b70c3486433be361cc5ea407dab6f9bcce5187841f"
+  },
+  {
+   "genre": "animation",
+   "mode": "solo",
+   "variant": "v1plus2",
+   "version": "v1plus2-20261025",
+   "madeIn": "2bd8177",
+   "title": "구름 위 모험",
+   "tagline": "오늘, 가장 신나는 모험",
+   "chars": 2409,
+   "sha256": "814eb27cf4add32a30ba8d6f6053e55b00515aa8c41b464c0e0370b2dc1d98aa"
+  },
+  {
+   "genre": "animation",
+   "mode": "group",
+   "variant": "v1plus",
+   "version": "v1plus-20261025",
+   "madeIn": "74386aa",
+   "title": "구름 위 모험",
+   "tagline": "오늘, 가장 신나는 모험",
+   "chars": 1719,
+   "sha256": "e215e018cacb603547a78b605dbacda890a478b1b954c8b771ea23b8ac88185a"
+  },
+  {
+   "genre": "hero",
+   "mode": "solo",
+   "variant": "v1plus2",
+   "version": "v1plus2-20261025",
+   "madeIn": "2bd8177",
+   "title": "우리 동네 영웅",
+   "tagline": "세상을 지키는 작은 영웅",
+   "chars": 1701,
+   "sha256": "c485007296a1f86a1083117a37c892fd4885bca79400d376445f2f0f155805f4"
+  },
+  {
+   "genre": "hero",
+   "mode": "group",
+   "variant": "v2",
+   "version": "v2-20261025",
+   "madeIn": "6886bfc",
+   "title": "우리 동네 영웅",
+   "tagline": "세상을 지키는 작은 영웅",
+   "chars": 2089,
+   "sha256": "853d04f12ec12da11e6f3323ffcf8e217bcf7f2c3674d276e6d65d5e7018d78f"
+  },
+  {
+   "genre": "mystery",
+   "mode": "solo",
+   "variant": "v1plus2",
+   "version": "v1plus2-20261025",
+   "madeIn": "2bd8177",
+   "title": "사라진 열쇠",
+   "tagline": "단 하나의 단서",
+   "chars": 1832,
+   "sha256": "62c61cee132d8b08934c4ea4bb17f5d07cf3b33cdeebbbb35aa4148ec9bd1410"
+  },
+  {
+   "genre": "mystery",
+   "mode": "group",
+   "variant": "v1",
+   "version": "v1",
+   "madeIn": "7ad0ad5(라이브)",
+   "title": "사라진 열쇠",
+   "tagline": "단 하나의 단서",
+   "chars": 1274,
+   "sha256": "c0458c0fc36754c1a58192b83c0e1cc6f924e28151dffe9b05d85e41b7a4f62e"
+  },
+  {
+   "genre": "director",
+   "mode": "solo",
+   "variant": "v1plus2",
+   "version": "v1plus2-20261025",
+   "madeIn": "2bd8177",
+   "title": "나의 첫 영화",
+   "tagline": "카메라 뒤, 또 하나의 주인공",
+   "chars": 1817,
+   "sha256": "dc88e0a128b52adcce9f9330338ad74cf2e95c72928fb640fa260259007b5f90"
+  },
+  {
+   "genre": "director",
+   "mode": "group",
+   "variant": "v1plus",
+   "version": "v1plus-20261025",
+   "madeIn": "74386aa",
+   "title": "나의 첫 영화",
+   "tagline": "카메라 뒤, 또 하나의 주인공",
+   "chars": 1617,
+   "sha256": "b5e25015519a16c2b08460ed088de10aa13e5963cd4c1da70150f0a1f87c3a64"
+  },
+  {
+   "genre": "sports",
+   "mode": "solo",
+   "variant": "v1plus",
+   "version": "v1plus-20261025",
+   "madeIn": "74386aa",
+   "title": "마지막 한 골",
+   "tagline": "포기하지 않는 한, 끝이 아니다",
+   "chars": 1393,
+   "sha256": "827a00b4cc2aaefd4f269bb597688a841d4d68ba04b5da132b70bd0f0986d9d3"
+  },
+  {
+   "genre": "sports",
+   "mode": "group",
+   "variant": "v1plus",
+   "version": "v1plus-20261025",
+   "madeIn": "74386aa",
+   "title": "마지막 한 골",
+   "tagline": "포기하지 않는 한, 끝이 아니다",
+   "chars": 1453,
+   "sha256": "d325af54c75d6e17f40f563593b898ee981037c64a7ab9f552acfc6dcf801011"
+  },
+  {
+   "genre": "music",
+   "mode": "solo",
+   "variant": "v1plus2",
+   "version": "v1plus2-20261025",
+   "madeIn": "2bd8177",
+   "title": "무대 위의 별",
+   "tagline": "오늘 밤, 무대의 주인공",
+   "chars": 1820,
+   "sha256": "df38759335c829818deff32c3a60401139288ee46f35af22f3e56f96a20208d7"
+  },
+  {
+   "genre": "music",
+   "mode": "group",
+   "variant": "v1plus",
+   "version": "v1plus-20261025",
+   "madeIn": "74386aa",
+   "title": "무대 위의 별",
+   "tagline": "오늘 밤, 무대의 주인공",
+   "chars": 1563,
+   "sha256": "82c4b594e32ff7df44de794ffa28eca8065fead892f34719cc20e4e10fde5065"
+  }
+ ]
+}

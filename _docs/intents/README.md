@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-10-25 | [ai-prompt-freeze](2026-10-25-ai-prompt-freeze/intent.md) | 2 | in-progress | 장르 × 혼자/단체 16칸 지시문 동결(Bumm님 확정) · 안전 차단 창 · 독립 리뷰 · 실제 생성 3건 · 격리 리허설 — 배포 승인 대기. ⚠ 사후 기록 |
 | 2026-10-23 | [ratio-canvas](2026-10-23-ratio-canvas/intent.md) | 2 | in-progress | 갈래(PC 2560×1440 · 태블릿 1024×1366/1366×1024 · 휴대폰 390×844)마다 기준 화면 하나를 통째로 줄이고 키운다 — 설계안만, PC 글자 크기 결정 대기 |
 | 2026-10-16 | [camera-example-video](2026-10-16-camera-example-video/intent.md) | 2 | in-progress | 촬영 화면 «자리 잡는 영상» 2편을 앱에 연결하는 자리 — 승인 전에는 화면 변화 0, 숫자·말풍선은 앱이 얹음 |
 | 2026-10-15 | [local-deploy-github-suspended](2026-10-15-local-deploy-github-suspended/intent.md) | 2 | done | GitHub 정지 중 master를 이 컴퓨터에서 Firebase로 직접 배포 — LF 사본·CI와 같은 검사·되돌림 채널 |
