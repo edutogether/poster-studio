@@ -20,6 +20,8 @@ const outDir = arg('out'), manifestPath = arg('manifest'), inputsDir = arg('inpu
 const runDirs = list(arg('run')), resultsDirs = list(arg('results')), designsDirs = list(arg('designs'));
 const armsShown = list(arg('arms'));
 const scoreKey = arg('score-key') || 'aiq-human-scores-v1';
+// --picks <json>: 사람이 조건마다 고른 판 { caseId: { arms: ['A'], how: '화소' | '설명', note } } — 갤러리에서 그 칸에 «선택» 표시를 한다
+const picksPath = arg('picks');
 if (!outDir || !manifestPath || !inputsDir || !runDirs.length || !resultsDirs.length) {
   console.error('사용: report.mjs --out <폴더> --manifest <manifest.json> --inputs <폴더> --run <폴더[,폴더]> --results <폴더[,폴더]> [--designs <폴더[,폴더]>] [--arms A,B,E] [--score-key 이름]');
   process.exit(1);
@@ -34,6 +36,7 @@ const plan = [...new Map(planAll.filter((c) => !armsShown.length || armsShown.in
 const ledgerRows = runDirs.flatMap((d) => fs.readFileSync(path.join(d, 'ledger.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)));
 const checks = runDirs.flatMap((d) => readIf(path.join(d, 'checks.json'), []));
 const colors = runDirs.flatMap((d) => readIf(path.join(d, 'color.json'), []));
+const picks = picksPath ? readJson(picksPath) : null;
 const compose = designsDirs.flatMap((d) => readIf(path.join(d, 'compose.json'), []).map((c) => ({ ...c, dir: d })));
 
 const url = (abs) => path.relative(outDir, abs).split(path.sep).map(encodeURIComponent).join('/');
@@ -48,7 +51,7 @@ const colorOf = new Map(colors.map((c) => [key(c.caseId, c.arm), c]));
 const designsOf = new Map(compose.map((c) => [c.id, c.files.map((f) => ({ label: f.label, src: url(path.join(c.dir, f.file)) }))]));
 
 const GENRE = { sf: 'SF', fantasy: '판타지', animation: '애니메이션', hero: '히어로', mystery: '스릴러', director: '드라마', sports: '스포츠', music: '뮤지컬' };
-const ARM = { A: '기존 — 운영 지시문 v1', B: '새것 — 개선 지시문 v2', C: '새것 v2 + 전처리', D: '새것 v2 + high 화질', E: '기존+ — v1 + 채점에서 좋았던 것(v1plus)' };
+const ARM = { A: '기존 — 운영 지시문 v1', B: '새것 — 개선 지시문 v2', C: '새것 v2 + 전처리', D: '새것 v2 + high 화질', E: '기존+ — v1 + 채점에서 좋았던 것(v1plus)', F: '기존+2 — v1 + 고르신 그림의 공통점(v1plus2)' };
 const LEVEL = { easy: '쉬움', medium: '보통', hard: '어려움' };
 const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.ceil(p * s.length) - 1)]; };
 // 자동 주의 표시(사람 판단을 돕는 기준 — 10/25 A/B 수치와 Bumm님 채점이 맞아떨어진 값으로 정했다. 얼굴 닮음 · 의상은 재지 않는다)
@@ -113,6 +116,7 @@ for (const a of [...new Set(plan.map((c) => c.arm))].sort()) {
     rejectedAttempts: cs.reduce((s, c) => s + c.attempts.filter((t) => t.error).length, 0),
     checks: Object.fromEntries(['overall', 'file', 'count', 'edge', 'position', 'bottom', 'text', 'designBox', 'archBand'].map((k) => [k, tally(k)])),
     color: colorMeans(ok), flags: flagCount, flagged: ok.filter((c) => c.flags.length).length,
+    picked: picks ? cs.filter((c) => picks[c.caseId]?.arms.includes(a)).length : null,
     byGenre: Object.fromEntries(Object.keys(GENRE).map((g) => { const gs = ok.filter((c) => c.genre === g); return [g, { n: gs.length, flagged: gs.filter((c) => c.flags.length).length, ...colorMeans(gs) }]; })),
   };
 }
@@ -139,6 +143,7 @@ const results = {
   })(),
   stress: fs.existsSync(path.join(runDir, 'stress.json')) ? readJson(path.join(runDir, 'stress.json')) : null,
   realLoop: (() => { const p = path.join(outDir, 'real-loop', 'real-loop.json'); if (!fs.existsSync(p)) return null; const r = readJson(p); return { dry: r.dry, steps: r.steps.map((s) => ({ scenario: s.scenario, photoId: s.photoId, step: s.step, ok: s.ok, note: s.note || null, serverStatus: s.serverStatus ?? null, waitS: s.waitS ?? null })), openai: { calls: r.openai.calls, cost: r.openai.cost }, blockedExternal: r.blockedExternal }; })(),
+  picks: picks || null,
   humanScores: null, humanScoresNote: '사람 평가 전 — 갤러리의 채점을 «점수 내보내기»로 받은 JSON을 붙인다. 세션이 점수를 채우지 않는다.',
   calls,
 };
@@ -150,7 +155,7 @@ const preFixed = manifest.photos.filter((p) => (prep[p.id]?.preprocessApplied ||
 const resultOf = (photoId) => [...new Set(plan.filter((c) => c.photoId === photoId).map((c) => c.caseId))].map((id) => {
   const v = (a) => calls.find((c) => c.caseId === id && c.arm === a);
   const s = (c) => (!c ? '—' : c.status !== 'ok' ? c.status : c.checks?.overall || '검사 전');
-  const extra = ['C', 'D', 'E'].filter((a) => v(a)).map((a) => ` · ${a} ${s(v(a))}`).join('');
+  const extra = ['C', 'D', 'E', 'F'].filter((a) => v(a)).map((a) => ` · ${a} ${s(v(a))}`).join('');
   return `${id}: ${v('A') ? 'A ' + s(v('A')) : ''}${v('B') ? ' → B ' + s(v('B')) : ''}${extra}`;
 }).join('<br>');
 const md = `# 시험 사진 기록 — Poster Studio AI 품질 A/B
@@ -194,7 +199,7 @@ fs.writeFileSync(path.join(outDir, 'poster-test-photo-manifest.md'), md);
 
 // 페이지에 넣는 자료(그림은 경로만)
 const page = {
-  generatedAt: results.generatedAt, kind: results.kind, dry: anyDry, genre: GENRE, arm: ARM, level: LEVEL, arms, flagRules: FLAG_RULES, scoreKey,
+  generatedAt: results.generatedAt, kind: results.kind, dry: anyDry, genre: GENRE, arm: ARM, level: LEVEL, arms, flagRules: FLAG_RULES, scoreKey, picks,
   photos: Object.fromEntries(manifest.photos.map((p) => [p.id, {
     id: p.id, mode: p.mode, difficulty: p.difficulty, condition: p.condition, people: p.people, note: p.note || '', facesInFrame: p.facesInFrame,
     input: url(path.join(inputsDir, `${p.id}.jpg`)), pre: url(path.join(inputsDir, `${p.id}-pre.jpg`)), original: url(path.join(photoDir, p.file)),
@@ -236,6 +241,7 @@ details{margin-top:10px}summary{cursor:pointer;color:var(--ind-ink);font-weight:
 #lb img{display:block;margin:12px auto;max-width:calc(100vw - 32px);max-height:calc(100vh - 80px)}#lb.full img{max-width:none;max-height:none}
 .empty{padding:40px;text-align:center;color:var(--sub)}
 table.cmp{border-collapse:collapse;margin:8px 0;font-size:12.5px;background:var(--card);display:block;overflow-x:auto;max-width:100%}table.cmp th,table.cmp td{border:1px solid var(--line);padding:4px 7px;white-space:nowrap;text-align:right}table.cmp th{background:var(--ind-bg);color:var(--ind-ink);text-align:center}table.cmp td:first-child{text-align:left}
+figure.arm.picked img{outline:4px solid var(--bad);outline-offset:-4px}.pick{display:inline-block;background:var(--bad-bg);color:var(--bad);font-weight:700;border-radius:6px;padding:1px 7px;margin-bottom:2px}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:8px 0}.fitem{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;color:var(--ink);text-decoration:none}.fitem img{width:100%;border-radius:4px}.fitem .cap{font-size:12px;line-height:1.5}`;
 
 const LIGHTBOX = `
@@ -293,7 +299,7 @@ const done=(s)=>s&&ITEMS.every(([k])=>s[k]!=null);
 const okRuns=D.cases.flatMap((c)=>c.runs.filter((r)=>r.status==='ok').map((r)=>c.caseId+'-'+r.arm));
 function scoredText(){const n=okRuns.filter((k)=>done(scores[k])).length;document.getElementById('scored').textContent='사람 채점 '+n+' / '+okRuns.length}
 document.getElementById('kind').innerHTML=D.dry?'<span class="kind dry">⚠ 드라이런(가짜) 그림이 섞여 있다 — 실제 API 생성 결과가 아니다</span>':'<span class="kind real">실제 API 생성 결과</span> <span class="sub">만든 시각 '+esc(D.generatedAt)+'</span>';
-document.getElementById('tiles').innerHTML=Object.entries(D.arms).map(([a,s])=>'<div class="tile"><b>'+a+' · '+esc(s.label)+'</b><div class="n">'+s.ok+' / '+s.planned+' 성공</div><div class="sub">p50 '+(s.p50s??'—')+'초 · p95 '+(s.p95s??'—')+'초 · $'+s.costUSD.toFixed(3)+'</div><div>'+['PASS','WARN','FAIL'].map((v)=>s.checks.overall[v]?'<span class="b '+v+'">'+v+' '+s.checks.overall[v]+'</span>':'').join('')+(s.error?badge('FAIL','오류 '+s.error):'')+(s.budgetSkip?badge('WARN','예산 정지 '+s.budgetSkip):'')+(s.billingStop?badge('FAIL','잔액 · 한도 정지 '+s.billingStop):'')+'</div></div>').join('');
+document.getElementById('tiles').innerHTML=Object.entries(D.arms).map(([a,s])=>'<div class="tile"><b>'+a+' · '+esc(s.label)+'</b><div class="n">'+s.ok+' / '+s.planned+' 성공</div>'+(s.picked!=null?'<div class="sub">★ Bumm님 선택 '+s.picked+'칸</div>':'')+'<div class="sub">p50 '+(s.p50s??'—')+'초 · p95 '+(s.p95s??'—')+'초 · $'+s.costUSD.toFixed(3)+'</div><div>'+['PASS','WARN','FAIL'].map((v)=>s.checks.overall[v]?'<span class="b '+v+'">'+v+' '+s.checks.overall[v]+'</span>':'').join('')+(s.error?badge('FAIL','오류 '+s.error):'')+(s.budgetSkip?badge('WARN','예산 정지 '+s.budgetSkip):'')+(s.billingStop?badge('FAIL','잔액 · 한도 정지 '+s.billingStop):'')+'</div></div>').join('');
 const ARMS=Object.keys(D.arms);
 document.getElementById('lead').textContent='원본 사진 → '+ARMS.map((a)=>a+' '+D.arm[a].split(' — ')[0]).join(' → ')+'을 같은 사진으로 나란히 본다. 그림을 누르면 크게, 얼굴 띠를 누르면 얼굴만 크게 본다.';
 for(const a of ARMS.slice(1))fArm.insertAdjacentHTML('beforeend','<option value="'+a+'">'+a+' 있는 조건</option>');
@@ -301,8 +307,8 @@ for(const [k,v] of Object.entries(D.flagRules))fFlag.insertAdjacentHTML('beforee
 // 자동 비교 표 — 갈래별(검사 PASS · 색 · 주의 수) + 장르별(황금빛 · 푸른빛 · 채도 · 얼굴 밝기 · 아래 검정 · 주의)
 const pctf=(x)=>x==null?'—':Math.round(x*100)+'%',n1=(x)=>x==null?'—':(+x).toFixed(x<1?2:0);
 const pass=(s,k)=>{const t=s.checks[k]||{};const tot=Object.values(t).reduce((a,b)=>a+b,0);return tot?(t.PASS||0)+' / '+tot:'—'};
-let cmp='<table class="cmp"><tr><th>갈래</th><th>인원수 PASS</th><th>가장자리 PASS</th><th>얼굴 자리 PASS</th><th>아래 1/3 PASS</th><th>글자 없음</th><th>아치 띠 PASS</th><th>황금빛</th><th>푸른빛</th><th>채도</th><th>대비</th><th>얼굴 밝기</th><th>얼굴 세로</th><th>주의 있는 그림</th></tr>';
-for(const a of ARMS){const s=D.arms[a],c=s.color||{};cmp+='<tr><td><b>'+a+'</b> '+esc(s.label)+'</td><td>'+pass(s,'count')+'</td><td>'+pass(s,'edge')+'</td><td>'+pass(s,'position')+'</td><td>'+pass(s,'bottom')+'</td><td>'+pass(s,'text')+'</td><td>'+pass(s,'archBand')+'</td><td>'+pctf(c.gold)+'</td><td>'+pctf(c.teal)+'</td><td>'+n1(c.sat)+'</td><td>'+n1(c.contrast)+'</td><td>'+n1(c.faceLuma)+'</td><td>'+pctf(c.faceCy)+'</td><td>'+s.flagged+' / '+s.ok+'</td></tr>'}
+let cmp='<table class="cmp"><tr><th>갈래</th><th>인원수 PASS</th><th>가장자리 PASS</th><th>얼굴 자리 PASS</th><th>아래 1/3 PASS</th><th>글자 없음</th><th>아치 띠 PASS</th><th>황금빛</th><th>푸른빛</th><th>채도</th><th>대비</th><th>얼굴 밝기</th><th>얼굴 세로</th><th>주의 있는 그림</th><th>Bumm님 선택</th></tr>';
+for(const a of ARMS){const s=D.arms[a],c=s.color||{};cmp+='<tr><td><b>'+a+'</b> '+esc(s.label)+'</td><td>'+pass(s,'count')+'</td><td>'+pass(s,'edge')+'</td><td>'+pass(s,'position')+'</td><td>'+pass(s,'bottom')+'</td><td>'+pass(s,'text')+'</td><td>'+pass(s,'archBand')+'</td><td>'+pctf(c.gold)+'</td><td>'+pctf(c.teal)+'</td><td>'+n1(c.sat)+'</td><td>'+n1(c.contrast)+'</td><td>'+n1(c.faceLuma)+'</td><td>'+pctf(c.faceCy)+'</td><td>'+s.flagged+' / '+s.ok+'</td><td>'+(s.picked??'—')+'</td></tr>'}
 cmp+='</table><table class="cmp"><tr><th>장르</th>'+ARMS.map((a)=>'<th>'+a+' 황금빛 · 푸른빛</th><th>'+a+' 채도 · 얼굴 밝기</th><th>'+a+' 아래 검정</th><th>'+a+' 주의</th>').join('')+'</tr>';
 for(const g of Object.keys(D.genre)){cmp+='<tr><td><b>'+esc(D.genre[g])+'</b></td>'+ARMS.map((a)=>{const x=D.arms[a].byGenre[g]||{};return '<td>'+pctf(x.gold)+' · '+pctf(x.teal)+'</td><td>'+n1(x.sat)+' · '+n1(x.faceLuma)+'</td><td>'+pctf(x.bottomBlack)+'</td><td>'+(x.flagged??'—')+' / '+(x.n??'—')+'</td>'}).join('')+'</tr>'}
 cmp+='</table><div class="sub">주의 기준: '+Object.values(D.flagRules).map(esc).join(' · ')+'. 숫자는 그림 전체(1024×1536) 평균 · 얼굴은 검출 상자 안 평균.</div>';
@@ -335,11 +341,12 @@ function card(c){
   h+='<div class="story">제목 «'+esc(c.title)+'» · 문구 «'+esc(c.tagline)+'» · 기대 인원 '+p.people+'명'+(p.note?' · '+esc(p.note):'')+'</div><div class="row">';
   h+='<figure class="in"><img data-k="in" src="'+p.input+'" alt="입력"><figcaption><span class="armname">원본(입력)</span><br>웹캠 재현 1024×768 · 거울 · JPEG 0.85<br>원본 <a href="'+p.original+'" target="_blank">Pexels '+p.source.pexelsId+'</a> · '+esc(p.source.creator)+'</figcaption></figure>';
   for(const r of c.runs){
-    h+='<figure class="arm" data-arm="'+r.arm+'">';
+    const pk=D.picks&&D.picks[c.caseId];const picked=!!(pk&&pk.arms.includes(r.arm));
+    h+='<figure class="arm'+(picked?' picked':'')+'" data-arm="'+r.arm+'">';
     if(r.status==='ok')h+='<div class="'+(r.dry?'dryflag':'')+'"><img data-k="'+r.arm+'" src="'+r.image+'" alt="'+r.arm+'"></div>';
     else h+='<div class="miss">'+r.arm+' — '+esc(r.status==='budget-skip'?'예산 상한으로 호출하지 않음':r.status==='billing-skip'?'잔액 · 지출 한도 오류 뒤라 호출하지 않음':r.status==='billing-stop'?'잔액 · 지출 한도 오류(429 '+(r.error?.code||'')+')':r.status==='not-run'?'아직 실행 안 함':'오류: '+(r.error?.message||''))+'</div>';
     const rej=r.attempts.filter((a)=>a.error);
-    h+='<figcaption><span class="armname">'+r.arm+' '+esc(D.arm[r.arm])+'</span>'+(r.dry?' <b style="color:var(--bad)">DRY</b>':'')+'<br>';
+    h+='<figcaption>'+(picked?'<span class="pick" title="'+esc(pk.note)+'">★ Bumm님 선택'+(pk.how==='설명'?' (설명으로 맞춤'+(pk.arms.length>1?' — '+pk.arms.join(' 또는 '):'')+')':'')+'</span><br>':'')+'<span class="armname">'+r.arm+' '+esc(D.arm[r.arm])+'</span>'+(r.dry?' <b style="color:var(--bad)">DRY</b>':'')+'<br>';
     if(r.status==='ok')h+=(r.ms/1000).toFixed(1)+'초 · $'+(r.cost??0).toFixed(4)+' · '+esc(r.model)+' '+esc(r.quality||'')+' · 지시문 '+esc(r.promptVersion)+' ('+r.promptChars+'자)<br>시도 '+r.attempts.length+(rej.length?' (거절 '+rej.map((a)=>a.error.status||'?').join(',')+' 뒤 재시도)':'')+(r.input.endsWith('-pre.jpg')?'<br>전처리: '+esc(p.preApplied.join(' · ')):'')+'<br>';
     if(r.checks)h+=badge(r.checks.overall,'검사')+'<br>'+Object.entries(CHECK_NAMES).map(([k,n])=>r.checks[k]?badge(r.checks[k].v,n):'').join('');
     if(r.color)h+='<br><span title="황금빛 · 푸른빛 화소 비율, 평균 채도, 얼굴 평균 밝기">황금빛 '+pctf(r.color.gold)+' · 푸른빛 '+pctf(r.color.teal)+' · 채도 '+n1(r.color.sat)+(r.color.faceLuma!=null?' · 얼굴 밝기 '+n1(r.color.faceLuma):'')+'</span>';
@@ -421,8 +428,8 @@ for(const id of REP){const c=D.cases.find((x)=>x.caseId===id);if(!c)continue;con
   h+='</div></section>';
 }
 const groups=D.cases.filter((c)=>c.mode==='group');
-h+='<h2 style="margin-top:18px">단체 — 아치 프레임 전부('+['A','B','E'].filter((a)=>D.arms[a]).join(' · ')+'): 위쪽 흐린 띠 · 얼굴 잘림 · 인물 비율</h2><section class="case"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">';
-for(const c of groups)for(const r of c.runs.filter((r)=>['A','B','E'].includes(r.arm)&&r.status==='ok'&&r.designs.length)){
+h+='<h2 style="margin-top:18px">단체 — 아치 프레임 전부('+['A','B','E','F'].filter((a)=>D.arms[a]).join(' · ')+'): 위쪽 흐린 띠 · 얼굴 잘림 · 인물 비율</h2><section class="case"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">';
+for(const c of groups)for(const r of c.runs.filter((r)=>['A','B','E','F'].includes(r.arm)&&r.status==='ok'&&r.designs.length)){
   const d=r.designs.find((x)=>x.label==='아치 프레임')||r.designs[3];allItems.push({src:d.src,cap:c.caseId+' '+r.arm+' 아치 프레임'});
   h+='<figure><div class="'+(r.dry?'dryflag':'')+'"><img data-i="'+(allItems.length-1)+'" loading="lazy" src="'+d.src+'" style="height:auto;width:100%"></div><figcaption>'+c.caseId+' <b>'+r.arm+'</b> '+badge(r.checks?.archBand?.v,'아치 띠')+'</figcaption></figure>';
 }

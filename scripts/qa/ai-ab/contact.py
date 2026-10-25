@@ -14,7 +14,7 @@ GENRES = ['sf', 'fantasy', 'animation', 'hero', 'mystery', 'director', 'sports',
 GNAME = {'sf': 'SF', 'fantasy': '판타지', 'animation': '애니메이션', 'hero': '히어로', 'mystery': '스릴러', 'director': '드라마', 'sports': '스포츠', 'music': '뮤지컬'}
 LEVELS = ['easy', 'medium', 'hard']
 LNAME = {'easy': '쉬움', 'medium': '보통', 'hard': '어려움'}
-ARMNAME = {'A': 'A 기존(운영 지시문 v1)', 'B': 'B 새것(개선 지시문 v2)', 'C': 'C 새것 + 전처리', 'D': 'D 새것 + high', 'E': 'E 기존+(v1plus)'}
+ARMNAME = {'A': 'A 기존(운영 지시문 v1)', 'B': 'B 새것(개선 지시문 v2)', 'C': 'C 새것 + 전처리', 'D': 'D 새것 + high', 'E': 'E 기존+(v1plus)', 'F': 'F 기존+2(v1plus2)'}
 F = lambda s, b=False: ImageFont.truetype('C:/Windows/Fonts/malgunbd.ttf' if b else 'C:/Windows/Fonts/malgun.ttf', s)
 fT, fH, fS = F(40, True), F(26, True), F(20)
 
