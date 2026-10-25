@@ -3,6 +3,8 @@
 //
 //   node scripts/qa/ai-ab/real-loop.mjs --module <functions/index.js> --dist <check-real 빌드 폴더> --manifest <manifest.json>
 //        --solo <사진 ID> --group <사진 ID> --out <결과 폴더> --ledger <ledger.jsonl> --cap <달러> [--dry --dry-art <png>]
+//   또는 --solo · --group 대신 --cases <cases.json> — [{ name, genre, mode, photoId, title }] 장면마다 장르 · 제목을 화면에서 고르고 한 번만 만든다
+//        (다시 만들기 없음). [--reserve <달러>](1회 예약, 기본 0.09) [--max-calls <n>](이 실행의 OpenAI 호출 상한)
 //
 // - 정적 파일과 서버를 같은 주소(127.0.0.1:5500 — 서버 허용 출처)에 둔다: /posterStudio/* 는 후보 함수 앱(express)으로, 나머지는 빌드 파일.
 //   페이지 안에서 API_BASE(라이브 함수 주소)만 이 주소로 바꿔 부른다 — 같은 출처라 CSP · CORS를 바꾸지 않는다.
@@ -17,15 +19,17 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const has = (k) => process.argv.includes('--' + k);
 const modulePath = arg('module'), dist = path.resolve(arg('dist', '')), manifestPath = arg('manifest'), out = arg('out'), ledger = arg('ledger');
 const soloId = arg('solo'), groupId = arg('group'), cap = Number(arg('cap', '0')), dry = has('dry'), dryArt = arg('dry-art');
-if (!modulePath || !manifestPath || !out || !ledger || !soloId || !groupId || !(cap > 0) || !fss.existsSync(path.join(dist, 'index.html')) || (dry && !dryArt)) {
-  console.error('사용: real-loop.mjs --module <index.js> --dist <빌드> --manifest <manifest.json> --solo <ID> --group <ID> --out <폴더> --ledger <jsonl> --cap <달러> [--dry --dry-art <png>]');
+const cases = arg('cases') ? JSON.parse(fss.readFileSync(arg('cases'), 'utf8')) : null;
+const RESERVE = Number(arg('reserve', '0.09')), maxCalls = Number(arg('max-calls', 'Infinity'));
+if (!modulePath || !manifestPath || !out || !ledger || !(cases?.length || (soloId && groupId)) || !(cap > 0) || !(RESERVE > 0) || !(maxCalls > 0) || !fss.existsSync(path.join(dist, 'index.html')) || (dry && !dryArt)) {
+  console.error('사용: real-loop.mjs --module <index.js> --dist <빌드> --manifest <manifest.json> (--solo <ID> --group <ID> | --cases <json>) --out <폴더> --ledger <jsonl> --cap <달러> [--reserve <달러>] [--max-calls <n>] [--dry --dry-art <png>]');
   process.exit(1);
 }
 await fs.mkdir(out, { recursive: true });
@@ -33,7 +37,6 @@ const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
 const photoDir = path.resolve(path.dirname(manifestPath), manifest.photoDir || '.');
 const sleep = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
 const PRICE = { text: 5, image: 8, out: 30 };   // gpt-image-2, 100만 토큰당(2026-10-25 공식 단가)
-const RESERVE = 0.09;
 
 // ── 후보 서버 코드 ────────────────────────────────────────────────
 // 부스 토큰: 화면 번들에 이미 들어 있는 공개 값(src/constants.ts)을 그대로 쓴다 — 출력하지 않는다.
@@ -64,6 +67,16 @@ async function withLock(fn) {
   }
 }
 const calls = [];
+let started = 0, current = null, lastForm = null;
+// 서버가 실제로 보낸 지시문이 어느 판인지: 화면이 보낸 입력(장르 · 혼자/단체 · 제목 · 문구)으로 판마다 지시문을 만들어 글자 그대로 견준다.
+// 맞는 판이 선택표(PROMPT_VARIANT_BY_CELL)의 그 칸 하나뿐이어야 한다 — 다른 판이 불리거나 조용히 기본값으로 떨어지면 여기서 드러난다.
+const promptCheck = (prompt) => {
+  if (!lastForm) return null;
+  const input = { genre: lastForm.genre || 'animation', mode: lastForm.mode === 'group' ? 'group' : 'solo', title: mod.sanitizePromptField(lastForm.movieTitle, 60), tagline: mod.sanitizePromptField(lastForm.tagline, 80) };
+  const matched = ['v1', 'v1plus', 'v1plus2', 'v2'].filter((variant) => { try { return mod.buildPrompt({ ...input, variant }) === prompt; } catch { return false; } });
+  return { sha256: createHash('sha256').update(prompt).digest('hex'), chars: prompt.length, genre: input.genre, mode: input.mode, title: input.title, tagline: input.tagline,
+    frozen: mod.PROMPT_VARIANT_BY_CELL[input.genre]?.[input.mode] ?? null, version: mod.promptVersionFor(input.genre, input.mode), matched };
+};
 let realClient;
 if (!dry) {
   if (!process.env.OPENAI_API_KEY_QA) { console.error('OPENAI_API_KEY_QA가 없다'); process.exit(1); }
@@ -75,26 +88,32 @@ mod._setClientForTesting({
   images: {
     edit: async (params, opts) => {
       const key = randomUUID();
+      if (started >= maxCalls) throw Object.assign(new Error(`QA 호출 상한 ${maxCalls}건 — 부르지 않음`), { status: 400 });
+      const prompt = promptCheck(params.prompt);
       const ok = await withLock(async () => {
         const rows = await readLedger();
         const ended = new Set(rows.filter((r) => r.key && r.type !== 'start').map((r) => r.key));
         const spent = rows.reduce((s, r) => s + (r.type === 'start' ? 0 : r.cost || 0), 0);
         const reserved = rows.filter((r) => r.type === 'start' && !ended.has(r.key)).reduce((s, r) => s + r.reserve, 0);
         if (spent + reserved + RESERVE > cap) return false;
-        await fs.appendFile(ledger, JSON.stringify({ type: 'start', key, caseId: 'real-loop', arm: 'R', reserve: RESERVE, quality: params.quality ?? null, at: new Date().toISOString(), pid: process.pid, tag: 'real-loop' }) + '\n');
+        await fs.appendFile(ledger, JSON.stringify({ type: 'start', key, caseId: current ?? 'real-loop', arm: 'R', reserve: RESERVE, quality: params.quality ?? null, at: new Date().toISOString(), pid: process.pid, tag: 'real-loop' }) + '\n');
         return true;
       });
       if (!ok) throw Object.assign(new Error('QA 예산 상한 — 부르지 않음'), { status: 400 });
+      started++;
       const t0 = Date.now();
       let data, error = null;
       try {
         if (dry) { await sleep(3000); data = { data: [{ b64_json: dryB64 }], usage: { input_tokens_details: { text_tokens: 0, image_tokens: 0 }, output_tokens: 0 } }; }
         else data = await realClient.images.edit(params, opts);
+        // AI가 그린 원본 그림(포스터에 얹기 전) — 같은 사진 · 같은 판의 예전 결과와 나란히 보려고 남긴다(이 폴더 밖으로 옮기지 않는다)
+        const b64 = data?.data?.[0]?.b64_json;
+        if (b64 && current) await fs.writeFile(path.join(out, `${current}-art.png`), Buffer.from(b64, 'base64')).catch((e) => console.error('원본 그림 저장 실패', e.message));
         return data;
       } catch (e) { error = { status: e?.status ?? null, code: e?.code ?? null, message: String(e?.message || e).slice(0, 200) }; throw e; } finally {
         const u = data?.usage;
         const cost = u ? ((u.input_tokens_details?.text_tokens ?? 0) * PRICE.text + (u.input_tokens_details?.image_tokens ?? 0) * PRICE.image + (u.output_tokens ?? 0) * PRICE.out) / 1e6 : 0;
-        const row = { key, caseId: 'real-loop', arm: 'R', status: error ? 'error' : 'ok', error, model: params.model, quality: params.quality ?? null, input_fidelity: params.input_fidelity ?? null, ms: Date.now() - t0, cost: Number(cost.toFixed(5)), usage: u ?? null, at: new Date().toISOString(), dry, tag: 'real-loop' };
+        const row = { key, caseId: current ?? 'real-loop', arm: 'R', status: error ? 'error' : 'ok', error, prompt, model: params.model, size: params.size ?? null, n: params.n ?? null, quality: params.quality ?? null, input_fidelity: params.input_fidelity ?? null, ms: Date.now() - t0, cost: Number(cost.toFixed(5)), usage: u ?? null, at: new Date().toISOString(), dry, tag: 'real-loop' };
         calls.push(row);
         await withLock(() => fs.appendFile(ledger, JSON.stringify(row) + '\n'));
       }
@@ -111,9 +130,12 @@ const server = http.createServer((req, res) => {
   if (u.pathname.startsWith('/posterStudio/')) {
     const chunks = [];
     req.on('data', (c) => chunks.push(c));
-    req.on('end', () => {
+    req.on('end', async () => {
       req.rawBody = Buffer.concat(chunks);
       req.url = req.url.slice('/posterStudio'.length);
+      if (req.method === 'POST' && req.url.startsWith('/generate')) {
+        try { const fd = await new Response(req.rawBody, { headers: { 'content-type': req.headers['content-type'] || '' } }).formData(); lastForm = Object.fromEntries(['genre', 'mode', 'movieTitle', 'tagline'].map((k) => [k, fd.get(k)])); } catch { lastForm = null; }
+      }
       const end = res.end.bind(res);
       const bodyParts = [];
       const write = res.write.bind(res);
@@ -158,7 +180,8 @@ async function makeY4m(id) {
 }
 
 const steps = [];
-async function scenario(name, id, mode, { regen }) {
+async function scenario(name, id, mode, { regen, genre, title }) {
+  current = name; lastForm = null;
   const { y4m } = await makeY4m(id);
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'real-loop-'));
   const port = 9563;
@@ -189,6 +212,14 @@ async function scenario(name, id, mode, { regen }) {
     if (!log('1단계 열림', await waitFor('!!document.getElementById("prepareNextBtn")', 20000))) return;
     await evaluate(`document.querySelector('[data-mode="${mode}"]').click() || true`);
     await sleep(300);
+    if (genre) {
+      await evaluate(`document.querySelector('.genre-option[data-genre="${genre}"]').click() || true`);
+      // 제목: 화면 입력칸에 사람이 친 것처럼(값 + input 이벤트). 문구 입력칸은 화면에 없다 — 앱이 장르 예시에서 고른다(getMeta)
+      if (title) await evaluate(`(() => { const el = document.getElementById("movieTitle"); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, ${JSON.stringify(title)}); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })()`);
+      await sleep(300);
+      const picked = await evaluate(`(() => ({ genre: document.getElementById("genre").value, pressed: document.querySelector('.genre-option[aria-pressed="true"]')?.dataset.genre ?? null, title: document.getElementById("movieTitle").value }))()`);
+      if (!log('장르 · 제목', picked.genre === genre && picked.pressed === genre && (!title || picked.title === title), { note: JSON.stringify(picked) })) return;
+    }
     await shot('1-step1');
     await evaluate('document.getElementById("prepareNextBtn").click() || true');
     if (!log('2단계', await waitFor('!document.getElementById("cameraView").hidden', 10000))) return;
@@ -249,14 +280,24 @@ async function scenario(name, id, mode, { regen }) {
 }
 
 try {
-  await scenario('solo', soloId, 'solo', { regen: true });
-  await scenario('group', groupId, 'group', { regen: false });
+  if (cases) for (const c of cases) await scenario(c.name, c.photoId, c.mode, { regen: false, genre: c.genre, title: c.title });
+  else {
+    await scenario('solo', soloId, 'solo', { regen: true });
+    await scenario('group', groupId, 'group', { regen: false });
+  }
 } finally {
   server.close();
   await fs.rm(tmp, { recursive: true, force: true });
 }
 const openaiCalls = calls.length, cost = calls.reduce((s, c) => s + c.cost, 0);
-const summary = { createdAt: new Date().toISOString(), dry, module: modulePath, photos: { solo: soloId, group: groupId }, steps, server: served, openai: { calls: openaiCalls, cost: Number(cost.toFixed(4)), detail: calls }, blockedExternal: 'https://*' };
+// 지시문 판 확인: 생성마다 «맞는 판 = 선택표의 그 칸 하나»
+for (const c of calls) {
+  const ok = !!c.prompt && c.prompt.matched.length === 1 && c.prompt.matched[0] === c.prompt.frozen;
+  const note = c.prompt ? `${c.prompt.genre}/${c.prompt.mode} 선택표 ${c.prompt.frozen} · 맞는 판 ${c.prompt.matched.join(',') || '없음'} · ${c.prompt.version}` : '화면 입력을 못 읽음';
+  steps.push({ scenario: c.caseId, step: '지시문 판 = 선택표 칸', ok, at: new Date().toISOString(), note });
+  console.log(`${c.caseId} 지시문 판 = 선택표 칸 ${ok ? 'OK' : '실패'} ${note}`);
+}
+const summary = { createdAt: new Date().toISOString(), dry, module: modulePath, photos: cases ?? { solo: soloId, group: groupId }, reserve: RESERVE, maxCalls, cap, steps, server: served, openai: { calls: openaiCalls, cost: Number(cost.toFixed(4)), detail: calls }, blockedExternal: 'https://*' };
 await fs.writeFile(path.join(out, 'real-loop.json'), JSON.stringify(summary, null, 1));
 const failed = steps.filter((s) => !s.ok);
 console.log(`실제 모드 한 바퀴: 단계 ${steps.length - failed.length}/${steps.length} 통과 · OpenAI 호출 ${openaiCalls}건 · $${cost.toFixed(4)}${dry ? ' (DRY)' : ''}`);
