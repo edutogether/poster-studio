@@ -16,7 +16,9 @@ import crypto from 'node:crypto';
 import {
   app,
   buildPrompt,
-  PROMPT_VERSION,
+  PROMPT_VERSIONS,
+  PROMPT_VARIANT_BY_GENRE,
+  promptVersionFor,
   editAttempts,
   sanitizePromptField,
   checkBoothToken,
@@ -177,36 +179,60 @@ test('buildPrompt: 제목/문구가 없으면 concept 문장 자체를 안 넣�
 });
 
 const GENRE_KEYS = ['animation', 'fantasy', 'sf', 'hero', 'mystery', 'director', 'sports', 'music'];
-test('buildPrompt v2: 장르 8 × 혼자/단체 16조합 모두 우선순위 순서(정체성 → 인원 → 구도 → 장면 → 이야기 → 금지)를 지킨다', () => {
-  expect(PROMPT_VERSION).toMatch(/^v2-/);
-  const scenes = new Set();
-  for (const genre of GENRE_KEYS) {
-    for (const mode of ['solo', 'group']) {
-      const p = buildPrompt({ genre, mode, title: '별을 찾는 아이', tagline: '우주 너머, 미지의 세계로' });
-      const order = ['IDENTITY', 'PEOPLE COUNT', 'LAYOUT', 'SCENE', 'STORY', 'RULES'].map((k) => p.indexOf(k + ':') >= 0 ? p.indexOf(k + ':') : p.indexOf(k + ' ('));
-      expect(order.every((i) => i >= 0), `${genre}/${mode} 덩어리 빠짐`).toBe(true);
-      expect([...order].sort((a, b) => a - b), `${genre}/${mode} 순서`).toEqual(order);
-      expect(p).toMatch(/NO text, NO letters/);
-      expect(p).toMatch(/BOTTOM THIRD/);
-      expect(p).toMatch(/10% and 35% of the image height/);
-      scenes.add(p.slice(p.indexOf('SCENE:'), p.indexOf('STORY:')));
-      if (mode === 'group') {
-        expect(p).toMatch(/ENSEMBLE CAST/);
-        expect(p).toMatch(/exactly as many people as are in the photo/);
-        expect(p).toMatch(/central 80% of the width/);
-      } else {
-        expect(p).toMatch(/exactly one person/);
-        expect(p).toMatch(/middle 40% of the width/);
-      }
-      expect(p.length < 4000, `${genre}/${mode} 길이 ${p.length}`).toBe(true);
-    }
+// 라이브(7ad0ad5) buildPrompt가 실제로 낸 문장 48건(장르 8 × 혼자/단체 × 제목 세 가지) — 후보의 v1은 이것과 글자 하나까지 같아야 한다.
+const V1_LIVE = JSON.parse(fs.readFileSync(new globalThis.URL('./fixtures/prompt-v1-7ad0ad5.json', import.meta.url), 'utf8'));
+test('buildPrompt v1: 기본 선택표는 전 장르 v1이고, 그 지시문이 라이브 7ad0ad5와 글자 하나까지 같다(48건)', () => {
+  expect(Object.keys(PROMPT_VARIANT_BY_GENRE).sort()).toEqual([...GENRE_KEYS].sort());
+  expect(Object.values(PROMPT_VARIANT_BY_GENRE).every((v) => v === 'v1')).toBe(true);
+  expect(V1_LIVE.cases.length).toBe(48);
+  for (const c of V1_LIVE.cases) {
+    const input = { genre: c.genre, mode: c.mode, title: c.title, tagline: c.tagline };
+    expect(buildPrompt(input), `${c.genre}/${c.mode}/${c.title || '제목 없음'}`).toBe(c.prompt);
+    expect(buildPrompt({ ...input, variant: 'v1' })).toBe(c.prompt);
+    expect(promptVersionFor(c.genre)).toBe(PROMPT_VERSIONS.v1);
   }
-  expect(scenes.size, '16조합의 장면 문장이 서로 달라야 한다').toBe(16);
 });
 
-test('buildPrompt v2: 이름 · 단체명 · 출연진은 넘겨도 지시문에 들어가지 않는다(화면 고지 약속)', () => {
-  const p = buildPrompt({ genre: 'sf', mode: 'group', title: '우주 탐험', tagline: '', name: '홍길동', groupName: '별빛반', members: '김철수, 이영희' });
-  for (const pii of ['홍길동', '별빛반', '김철수', '이영희']) expect(p.includes(pii)).toBe(false);
+test('buildPrompt v1plus: 판타지(와 SF 단체)는 v1 그대로, 나머지는 덧붙기만 하고 v1의 구도 · 금지 문장은 그대로 남는다', () => {
+  for (const genre of GENRE_KEYS) {
+    for (const mode of ['solo', 'group']) {
+      const story = { genre, mode, title: '별을 찾는 아이', tagline: '우주 너머, 미지의 세계로' };
+      const v1 = buildPrompt({ ...story, variant: 'v1' });
+      const plus = buildPrompt({ ...story, variant: 'v1plus' });
+      if (genre === 'fantasy' || (genre === 'sf' && mode === 'group')) expect(plus, `${genre}/${mode}`).toBe(v1);
+      else expect(plus, `${genre}/${mode}`).not.toBe(v1);
+      for (const keep of ['FULLY VISIBLE', 'never crop or cut off the top of the head', 'BOTTOM THIRD', 'NO text, NO letters', 'Safe, wholesome, child-appropriate', 'This film is titled', mode === 'group' ? 'ENSEMBLE CAST' : 'single lead star']) {
+        expect(plus, `${genre}/${mode}: ${keep}`).toContain(keep);
+      }
+      // 개선판(v2)의 얼굴 크기 · 가로 % 구도 지시는 쓰지 않는다(단체 몸 잘림 · 혼자 얼굴 쏠림의 원인 — Bumm님 채점)
+      expect(plus).not.toMatch(/% of the image height|middle 40%|central 80%/);
+    }
+  }
+});
+
+test('buildPrompt v1plus: 장르마다 채점에서 좋았던 것이 들어간다', () => {
+  const p = (genre, mode = 'solo') => buildPrompt({ genre, mode, title: '', tagline: '', variant: 'v1plus' });
+  for (const mode of ['solo', 'group']) expect(p('animation', mode)).toMatch(/fully 3D animated characters/);
+  expect(p('sf')).toMatch(/brighter than the background/);
+  for (const genre of ['hero', 'director', 'sports', 'music']) for (const mode of ['solo', 'group']) expect(p(genre, mode), `${genre}/${mode} 장르 의상`).toMatch(/outfits?|suits?|uniforms?/);
+  expect(p('hero')).toMatch(/no emblem/);
+  expect(p('hero')).not.toMatch(/at dusk/);
+  expect(p('sports')).not.toMatch(/triumphant golden/);
+  expect(p('sports', 'group')).toMatch(/matching plain original team uniforms/);
+  expect(p('mystery')).toMatch(/glowing footprints/);
+  expect(p('mystery')).toMatch(/no teal or blue cast/);
+  expect(p('director')).toMatch(/director's chair/);
+  expect(p('music', 'group')).toMatch(/drums/);
+  expect(p('music')).toMatch(/dimly lit stage floor/);
+  expect(p('music')).not.toMatch(/keep the BOTTOM THIRD darker, calmer and uncluttered so a title/);
+  expect(promptVersionFor('hero', 'v1plus')).toBe(PROMPT_VERSIONS.v1plus);
+});
+
+test('buildPrompt: 이름 · 단체명 · 출연진은 넘겨도 지시문에 들어가지 않는다(화면 고지 약속) — v1 · v1plus 모두', () => {
+  for (const variant of ['v1', 'v1plus']) {
+    const p = buildPrompt({ genre: 'music', mode: 'group', title: '우주 탐험', tagline: '', name: '홍길동', groupName: '별빛반', members: '김철수, 이영희', variant });
+    for (const pii of ['홍길동', '별빛반', '김철수', '이영희']) expect(p.includes(pii), `${variant}: ${pii}`).toBe(false);
+  }
 });
 
 // ── parseMultipart(실제 OpenAI 호출 없이 업로드 파싱만 검증) ──────────

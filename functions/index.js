@@ -262,62 +262,88 @@ function clientIpForRateLimit(req) {
   return req.ip || 'unknown';
 }
 
-/* 생성 지시문 v2(2026-10-25 Bumm님 «AI 생성 그림 품질 개선» — _shared/ops/poster-studio-20261017/ai-quality-ab-validation-prompt-20261025.md).
-   v1(장르 한 줄 + 문장 이어 붙이기)을 우선순위 순서의 이름 붙은 덩어리로 다시 짰다 — OpenAI gpt-image-2 안내(장면 → 인물 → 세부 → 제약,
-   지킬 특징을 하나씩 이름 붙여 적기)를 따른다.
-     1. 인물 정체성(얼굴 · 피부색 · 머리 · 안경 · 나이 그대로, 미화 · 성인화 · 유명인화 · 뻔한 만화 얼굴 금지)
-     2. 인원수(혼자 = 정확히 한 명, 단체 = 사진 속 사람 수 그대로 — 빠짐 · 합쳐짐 · 복제 · 추가 금지)
-     3. 구도 계약 — 숫자는 브라우저 틀(templates.ts)의 실제 좌표에서 왔다: 주인공 상자 세로 5~67%(혼자 가로 16~84%, 단체 4~96%),
-        아치 얼굴 띠 세로 8~35%(혼자 가로 30~70%, 단체 8~92%). 그래서 얼굴은 세로 10~35%, 혼자는 가로 가운데 40%, 단체는 가로 가운데 80% 안,
-        머리 위 빈 배경, 아래 1/3은 제목 자리.
-     4. 장르 장면 — 장르 8종마다 혼자 · 단체를 따로(16조합): 의상 · 장소 · 빛 · 색 · 카메라 · 깊이
-     5. 제목 · 홍보 문구는 장면의 분위기 · 소품 · 색으로만(글자 금지)
-     6. 아동 안전 · 글자 · 로고 금지
-   학생이 입력한 제목 · 문구만 들어간다 — 이름 · 단체명 · 출연진은 이 함수에 오지 않는다(화면 고지 약속). */
-const genreScenes = {
+/* 장르별 '그림 컨셉' 프롬프트.
+   공통 규칙: 글자/문자 절대 금지(한글은 브라우저 캔버스가 입힘), 세로 영화 포스터,
+   하단 1/3은 어둡고 단순하게 비워서 제목 자리 확보, 아이 얼굴은 알아볼 수 있게 유지. */
+const genrePrompts = {
+  animation:
+    'a premium 3D animated feature-film poster key art in the polished style of a major animation studio, the subject as a cheerful heroic main character, warm cinematic rim lighting, vibrant but tasteful color palette, soft depth of field, sense of wonder and adventure',
+  fantasy:
+    'an epic fantasy adventure movie poster key art, the subject as a young hero of legend, magical glowing particles, enchanted painterly atmosphere, dramatic golden-hour light, sweeping mythical landscape, rich saturated jewel tones',
+  sf: 'a sleek science-fiction blockbuster movie poster key art, the subject as a brave young space explorer, futuristic suit, glowing holographic interfaces, distant planets and starfield, cinematic teal-and-orange grade, lens flares',
+  hero: 'a dynamic superhero blockbuster movie poster key art, the subject as a courageous young hero in a heroic pose, dramatic backlight, city skyline at dusk, comic-cinematic energy, bold confident composition',
+  mystery:
+    'a stylish mystery-adventure movie poster key art, the subject as a clever young detective, moody cinematic lighting, fog and warm street lamps, intriguing but child-friendly noir atmosphere, elegant muted palette',
+  director:
+    'a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, glowing stage and studio lights, film reels and clapperboard motifs, warm nostalgic cinematic mood',
+  sports:
+    'an inspiring sports movie poster key art, the subject as a determined young athlete mid-motion, dramatic stadium lights, dust and energy, triumphant golden cinematic glow, sense of teamwork and growth',
+  music:
+    'a vibrant music movie poster key art, the subject as a radiant young performer on a glowing stage, colorful concert lighting, bokeh light beams, joyful uplifting festival atmosphere'
+};
+
+/* 기존+(v1plus) — 2026-10-25 Bumm님 A/B 눈 채점(_shared/ops/poster-studio-20261017/ai-ab-bumm-review-20261025.md).
+   기존(v1)을 장르별 기준선으로 두고, 채점에서 실제로 좋았던 것만 덧붙인 최소 변경판이다. 구도 문장(전신 · 위 2/3 · 머리 여백 ·
+   아래 1/3 어둡게)은 v1 그대로 쓴다 — 개선판(v2)의 얼굴 크기 · 가로 % 구도 지시는 쓰지 않는다(단체 몸 잘림 · 혼자 얼굴 쏠림의 원인).
+     base                  장르 한 줄을 바꾼다(없으면 v1 그대로)
+     all · solo · group    장르 한 줄 바로 뒤에 덧붙이는 문장
+     bottom                아래 1/3 문장을 바꾼다(뮤지컬만 — 검은 띠가 아니라 어두운 무대 바닥)
+   판타지는 혼자 · 단체 모두 기존이 나아 바꾸지 않는다. */
+const genrePromptsV1Plus = {
+  // 혼자에서 사람 · 옷이 그대로였다 — 사람까지 3D 캐릭터로 다시 그리되 얼굴 특징은 알아보게(단체에서 기존이 성공한 방향을 더 세게)
   animation: {
-    look: 'premium 3D animated feature-film key art with soft rounded forms, rich materials and warm global illumination',
-    solo: 'the lead as a cheerful adventurer standing on a whimsical rooftop garden at sunset, paper lanterns and a friendly swirl of clouds behind, warm rim light, gentle low-angle camera',
-    group: 'the friends as the main cast of an animated adventure, standing together on a whimsical rooftop garden at sunset, paper lanterns and a friendly swirl of clouds behind, warm rim light, gentle low-angle camera',
-    stylize:
-      'Translate each real face into the 3D style while keeping its own shape, eye shape, nose, mouth, skin tone and hairstyle — not a generic cartoon face.'
+    all: 'Redraw the subject(s) entirely — face, hair, body and clothing — as fully 3D animated characters in the same studio style as the scene (never a real photo pasted onto a cartoon background), wearing new adventure outfits that belong to the animated world, while keeping each face recognizable through its own face shape, eye shape, nose, mouth, skin tone, hairstyle and glasses if worn.'
   },
-  fantasy: {
-    look: 'epic fantasy adventure movie poster key art, painterly cinematic realism',
-    solo: 'the lead as a young hero of legend in a hooded traveler\'s cloak and simple leather vest, holding a softly glowing lantern at the edge of an enchanted forest that opens onto a distant castle, magical floating light motes, golden-hour backlight, emerald and gold palette, eye-level camera with deep atmospheric perspective',
-    group: 'the friends as a fellowship of young adventurers in cloaks and leather vests, gathered together at the edge of an enchanted forest that opens onto a distant castle, magical floating light motes, golden-hour backlight, emerald and gold palette, eye-level camera with deep atmospheric perspective'
-  },
+  fantasy: {},
+  // 혼자에서 가끔 너무 어두웠다 — 얼굴 · 인물만 조금 밝게
   sf: {
-    look: 'sleek science-fiction blockbuster movie poster key art, photoreal cinematic lighting',
-    solo: 'the lead as a young space explorer in a white-and-teal spacesuit with the helmet off, standing on a starship bridge in front of a huge window onto a ringed planet and starfield, floating holographic panels with abstract shapes only, cool teal key light with warm orange rim light, slight low-angle camera',
-    group: 'the friends as a starship crew in matching white spacesuits with different colored accents, helmets off, standing together on the bridge in front of a huge window onto a ringed planet and starfield, floating holographic panels with abstract shapes only, cool teal key light with warm orange rim light, slight low-angle camera'
+    solo: "Light the subject's face and figure clearly, a little brighter than the background, so the person never sinks into darkness."
   },
+  // 장르 의상(엠블럼 없는 원작 슈트 · 짧은 망토) + 누런 노을 · 황금빛 빼고 맑은 색
   hero: {
-    look: 'dynamic superhero blockbuster movie poster key art, cinematic realism',
-    solo: 'the lead as a young superhero in an original colorful suit and short cape with no emblem, confident heroic stance on a rooftop at dusk above a glittering city skyline, wind in the hair, dramatic backlight and soft lens flare, low-angle camera',
-    group: 'the friends as a team of young heroes in coordinated original suits with no emblems, standing side by side on a rooftop at dusk above a glittering city skyline, wind in the hair, dramatic backlight and soft lens flare, low-angle camera'
+    base: 'a dynamic superhero blockbuster movie poster key art, the subject as a courageous young hero in a heroic pose, dramatic backlight, city skyline under a clear deep-blue evening sky, comic-cinematic energy, bold confident composition, crisp clean colors without a yellow or golden-orange cast',
+    solo: 'Dress the subject in an original colorful superhero suit with a short cape and no emblem, replacing their everyday clothes.',
+    group: 'Dress everyone in coordinated original superhero suits with short capes and no emblems, replacing their everyday clothes.'
   },
+  // 사람 · 옷 · 전신은 기존, 배경은 개선판의 젖은 돌바닥 · 빛나는 발자국 · 가로등 거리 — 푸른빛 없이, 기존보다 덜 칙칙하게
   mystery: {
-    look: 'stylish mystery-adventure movie poster key art, moody cinematic realism that stays child-friendly',
-    solo: 'the lead as a clever young detective in a trench coat holding a magnifying glass, on a foggy cobblestone street at night under warm street lamps, glowing footprints as clues, teal-and-amber lighting, intriguing but never scary, eye-level camera',
-    group: 'the friends as a young detective club in trench coats, one holding a magnifying glass, gathered together on a foggy cobblestone street at night under warm street lamps, glowing footprints as clues, teal-and-amber lighting, intriguing but never scary, eye-level camera'
+    base: 'a stylish mystery-adventure movie poster key art, the subject as a clever young detective, a foggy cobblestone street at night with wet stones reflecting warm street lamps and softly glowing footprints as clues, warm amber lamplight with clear readable mid-tones, no teal or blue cast, intriguing but child-friendly atmosphere, less murky than classic noir'
   },
+  // 콘셉트(영화를 좋아하는 아이)와 크고 밝은 인물은 기존 그대로 — 장르 옷 + 주변 영화 소품을 은은하게, 기존의 쨍함과 개선판의 탁함 사이 색
   director: {
-    look: 'heartfelt movie-about-movies poster key art, warm nostalgic cinematic realism',
-    solo: 'the lead as a passionate young film director beside a vintage film camera on a movie set, warm studio lights and soft haze, a director\'s chair and film reels nearby, a blank clapperboard, golden nostalgic mood, three-quarter camera angle',
-    group: 'the friends as a young film crew — director, camera operator and actors — gathered around a vintage film camera on a movie set, warm studio lights and soft haze, film reels and a blank clapperboard, golden nostalgic mood, three-quarter camera angle'
+    base: "a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, large and brightly lit in the foreground, soft studio lights with gentle haze, a vintage film camera, a director's chair, film reels and a blank clapperboard placed naturally and subtly around them, warm nostalgic cinematic mood with natural balanced colors, neither overly golden nor murky",
+    solo: 'Dress the subject in a neat film-set outfit such as a simple jacket or vest with a cap or scarf, replacing their everyday clothes.',
+    group: 'Dress everyone as a young film crew in neat film-set outfits such as simple jackets, vests, caps or scarves, replacing their everyday clothes.'
   },
+  // 동작 포즈 · 전신은 기존 — 팀 유니폼 + 황금빛 과다 빼기
   sports: {
-    look: 'inspiring sports movie poster key art, cinematic realism',
-    solo: 'the lead as a determined young athlete in a plain original team uniform with no numbers or logos, in a dynamic ready pose in a stadium under bright floodlights, dust and light streaks, triumphant golden glow, low-angle camera',
-    group: 'the friends as one team in matching plain original uniforms with no numbers or logos, standing together arms around each other\'s shoulders in a stadium under bright floodlights, dust and light streaks, triumphant golden glow, low-angle camera'
+    base: 'an inspiring sports movie poster key art, the subject as a determined young athlete mid-motion, dramatic stadium floodlights, dust and energy, crisp natural colors with only a touch of warm light and no heavy golden glow or yellow haze, sense of teamwork and growth',
+    solo: 'Dress the subject in a plain original team uniform with no numbers or logos, replacing their everyday clothes.',
+    group: 'Dress everyone in matching plain original team uniforms with no numbers or logos, replacing their everyday clothes.'
   },
+  // 전신은 기존 — 공연 의상 + 기타 · 드럼 · 마이크, 아래는 검은 띠가 아니라 어두운 무대 바닥
   music: {
-    look: 'vibrant music movie poster key art, cinematic concert lighting',
-    solo: 'the lead as a radiant young performer singing into a microphone on a glowing concert stage, colorful spotlight beams and bokeh, joyful festival atmosphere, low-angle camera',
-    group: 'the friends as a band performing together on a glowing concert stage, holding microphones and instruments away from their faces, colorful spotlight beams and bokeh, joyful festival atmosphere, low-angle camera'
+    solo: 'Dress the subject in a sparkling stage performance outfit, singing into a microphone or playing a guitar, with the microphone and instrument kept away from the face.',
+    group: 'Dress everyone in coordinated stage performance outfits as a band playing instruments such as an electric guitar, drums and a keyboard and singing into microphones, with instruments kept away from their faces.',
+    bottom: 'IMPORTANT: keep the BOTTOM THIRD darker and calmer as a dimly lit stage floor with soft reflections of the lights (a visible floor, not a flat black band), uncluttered so a title can be placed there later.'
   }
 };
+
+/* 장르별 지시문 선택표 — Bumm님이 장르마다 기존(v1) · 기존+(v1plus)를 고르시면 이 표만 바꾼다.
+   기본은 전 장르 v1이고, v1은 라이브(7ad0ad5)와 글자 하나까지 같다(functions/test/fixtures/prompt-v1-7ad0ad5.json으로 고정). */
+const PROMPT_VARIANT_BY_GENRE = {
+  animation: 'v1',
+  fantasy: 'v1',
+  sf: 'v1',
+  hero: 'v1',
+  mystery: 'v1',
+  director: 'v1',
+  sports: 'v1',
+  music: 'v1'
+};
+const PROMPT_VERSIONS = { v1: 'v1', v1plus: 'v1plus-20261025' };
+const promptVariantFor = (genre, variant) => variant || PROMPT_VARIANT_BY_GENRE[genrePrompts[genre] ? genre : 'animation'];
+const promptVersionFor = (genre, variant) => PROMPT_VERSIONS[promptVariantFor(genre, variant)];
 
 /* 학생이 입력한 제목/문구는 프롬프트 문자열 안에 큰따옴표로 감싸 그대로 삽입된다
    (buildPrompt 참고). 줄바꿈이나 큰따옴표를 그대로 두면 그 따옴표 경계를 깨고
@@ -331,40 +357,34 @@ function sanitizePromptField(value, maxLen) {
     .slice(0, maxLen);
 }
 
-const PROMPT_VERSION = 'v2-20261025';
-
-function buildPrompt({ genre, mode, title, tagline }) {
-  const g = genreScenes[genre] || genreScenes.animation;
-  const group = mode === 'group';
-  const identity = [
-    'IDENTITY (most important): the uploaded photo is the identity reference.',
-    group
-      ? 'Keep every person recognizably the same individual:'
-      : 'Keep the person recognizably the same individual:',
-    'same face shape, eyes, eyebrows, nose, mouth and jawline, same skin tone, same hairstyle and hair color, glasses if worn, and the same apparent age.',
-    'Do not beautify, slim, age up or make anyone look like a celebrity; keep natural, friendly expressions.',
-    g.stylize || 'Stylize lighting and costume, not the faces.'
-  ].join(' ');
-  const count = group
-    ? 'PEOPLE COUNT: this is an ENSEMBLE CAST. Show exactly as many people as are in the photo — every one of them, each with their own distinct face; never drop, merge, duplicate or add anyone, and no extra background characters with visible faces.'
-    : 'PEOPLE COUNT: exactly one person — the single lead star (hero portrait). Do not add any other person with a visible face.';
-  const layout = [
-    'LAYOUT (tall vertical 2:3 movie poster):',
-    'leave clear empty background above the highest head (about one tenth of the image height); never crop the top of a head;',
-    group
-      ? 'gather everyone closely in the center, shoulder to shoulder, heads at similar heights, with all faces between about 10% and 35% of the image height from the top and fully inside the central 80% of the width — no face near or cut by the left or right edge;'
-      : 'center the lead horizontally with head and shoulders large, the face between about 10% and 35% of the image height from the top and inside the middle 40% of the width;',
-    'bodies may continue downward into the scene;',
-    'keep the BOTTOM THIRD darker, calmer and uncluttered (ground, shadow, haze or soft background) with no faces, no hands and no important objects, so a title can be placed there later.'
-  ].join(' ');
-  const scene = `SCENE: ${g.look}; ${group ? g.group : g.solo}.`;
+// variant는 QA가 갈래를 강제할 때만 넘긴다 — 운영 /generate는 넘기지 않아 위 선택표를 따른다.
+function buildPrompt({ genre, mode, title, tagline, variant }) {
+  const key = genrePrompts[genre] ? genre : 'animation';
+  const plus = promptVariantFor(key, variant) === 'v1plus' ? genrePromptsV1Plus[key] : {};
+  const base = plus.base || genrePrompts[key];
+  const ensemble =
+    mode === 'group'
+      ? 'Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style.'
+      : 'Treat the person in the photo as the single lead star (hero portrait), centered and prominent.';
   const concept =
     title || tagline
-      ? `STORY: This film is titled "${title || ''}"${tagline ? ` with the tagline "${tagline}"` : ''}. Express that idea only through the setting, props, color and mood — never as written words.`
+      ? `This film is titled "${title || ''}"${tagline ? ` with the tagline "${tagline}"` : ''}. Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters.`
       : '';
-  const rules =
-    'RULES: Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark, no signs, captions or writing on clothing or props anywhere in the image. Safe, wholesome, child-appropriate: no weapons, violence, horror or suggestive content; modest clothing. High detail, professional, keepsake quality.';
-  return [identity, count, layout, scene, concept, rules].filter(Boolean).join('\n');
+  return [
+    base + '.',
+    plus.all,
+    mode === 'group' ? plus.group : plus.solo,
+    'Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art.',
+    ensemble,
+    concept,
+    'Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE.',
+    'Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame.',
+    plus.bottom || 'IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later.',
+    'Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image.',
+    'Safe, wholesome, child-appropriate. High detail, professional, keepsake quality.'
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /* 이미지 생성 호출.
@@ -930,7 +950,9 @@ const ALLOWED_ORIGINS = [
 export {
   app,
   buildPrompt,
-  PROMPT_VERSION,
+  PROMPT_VERSIONS,
+  PROMPT_VARIANT_BY_GENRE,
+  promptVersionFor,
   editAttempts,
   sanitizePromptField,
   parseMultipart,

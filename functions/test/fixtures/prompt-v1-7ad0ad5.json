@@ -1,0 +1,342 @@
+{
+ "source": "functions/index.js @ 7ad0ad5 (라이브)",
+ "createdAt": "2026-10-25T11:27:22.836Z",
+ "cases": [
+  {
+   "genre": "animation",
+   "mode": "solo",
+   "title": "",
+   "tagline": "",
+   "prompt": "a premium 3D animated feature-film poster key art in the polished style of a major animation studio, the subject as a cheerful heroic main character, warm cinematic rim lighting, vibrant but tasteful color palette, soft depth of field, sense of wonder and adventure. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "animation",
+   "mode": "solo",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a premium 3D animated feature-film poster key art in the polished style of a major animation studio, the subject as a cheerful heroic main character, warm cinematic rim lighting, vibrant but tasteful color palette, soft depth of field, sense of wonder and adventure. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "animation",
+   "mode": "solo",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a premium 3D animated feature-film poster key art in the polished style of a major animation studio, the subject as a cheerful heroic main character, warm cinematic rim lighting, vibrant but tasteful color palette, soft depth of field, sense of wonder and adventure. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "animation",
+   "mode": "group",
+   "title": "",
+   "tagline": "",
+   "prompt": "a premium 3D animated feature-film poster key art in the polished style of a major animation studio, the subject as a cheerful heroic main character, warm cinematic rim lighting, vibrant but tasteful color palette, soft depth of field, sense of wonder and adventure. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "animation",
+   "mode": "group",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a premium 3D animated feature-film poster key art in the polished style of a major animation studio, the subject as a cheerful heroic main character, warm cinematic rim lighting, vibrant but tasteful color palette, soft depth of field, sense of wonder and adventure. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "animation",
+   "mode": "group",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a premium 3D animated feature-film poster key art in the polished style of a major animation studio, the subject as a cheerful heroic main character, warm cinematic rim lighting, vibrant but tasteful color palette, soft depth of field, sense of wonder and adventure. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "fantasy",
+   "mode": "solo",
+   "title": "",
+   "tagline": "",
+   "prompt": "an epic fantasy adventure movie poster key art, the subject as a young hero of legend, magical glowing particles, enchanted painterly atmosphere, dramatic golden-hour light, sweeping mythical landscape, rich saturated jewel tones. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "fantasy",
+   "mode": "solo",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "an epic fantasy adventure movie poster key art, the subject as a young hero of legend, magical glowing particles, enchanted painterly atmosphere, dramatic golden-hour light, sweeping mythical landscape, rich saturated jewel tones. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "fantasy",
+   "mode": "solo",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "an epic fantasy adventure movie poster key art, the subject as a young hero of legend, magical glowing particles, enchanted painterly atmosphere, dramatic golden-hour light, sweeping mythical landscape, rich saturated jewel tones. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "fantasy",
+   "mode": "group",
+   "title": "",
+   "tagline": "",
+   "prompt": "an epic fantasy adventure movie poster key art, the subject as a young hero of legend, magical glowing particles, enchanted painterly atmosphere, dramatic golden-hour light, sweeping mythical landscape, rich saturated jewel tones. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "fantasy",
+   "mode": "group",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "an epic fantasy adventure movie poster key art, the subject as a young hero of legend, magical glowing particles, enchanted painterly atmosphere, dramatic golden-hour light, sweeping mythical landscape, rich saturated jewel tones. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "fantasy",
+   "mode": "group",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "an epic fantasy adventure movie poster key art, the subject as a young hero of legend, magical glowing particles, enchanted painterly atmosphere, dramatic golden-hour light, sweeping mythical landscape, rich saturated jewel tones. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sf",
+   "mode": "solo",
+   "title": "",
+   "tagline": "",
+   "prompt": "a sleek science-fiction blockbuster movie poster key art, the subject as a brave young space explorer, futuristic suit, glowing holographic interfaces, distant planets and starfield, cinematic teal-and-orange grade, lens flares. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sf",
+   "mode": "solo",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a sleek science-fiction blockbuster movie poster key art, the subject as a brave young space explorer, futuristic suit, glowing holographic interfaces, distant planets and starfield, cinematic teal-and-orange grade, lens flares. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sf",
+   "mode": "solo",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a sleek science-fiction blockbuster movie poster key art, the subject as a brave young space explorer, futuristic suit, glowing holographic interfaces, distant planets and starfield, cinematic teal-and-orange grade, lens flares. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sf",
+   "mode": "group",
+   "title": "",
+   "tagline": "",
+   "prompt": "a sleek science-fiction blockbuster movie poster key art, the subject as a brave young space explorer, futuristic suit, glowing holographic interfaces, distant planets and starfield, cinematic teal-and-orange grade, lens flares. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sf",
+   "mode": "group",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a sleek science-fiction blockbuster movie poster key art, the subject as a brave young space explorer, futuristic suit, glowing holographic interfaces, distant planets and starfield, cinematic teal-and-orange grade, lens flares. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sf",
+   "mode": "group",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a sleek science-fiction blockbuster movie poster key art, the subject as a brave young space explorer, futuristic suit, glowing holographic interfaces, distant planets and starfield, cinematic teal-and-orange grade, lens flares. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "hero",
+   "mode": "solo",
+   "title": "",
+   "tagline": "",
+   "prompt": "a dynamic superhero blockbuster movie poster key art, the subject as a courageous young hero in a heroic pose, dramatic backlight, city skyline at dusk, comic-cinematic energy, bold confident composition. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "hero",
+   "mode": "solo",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a dynamic superhero blockbuster movie poster key art, the subject as a courageous young hero in a heroic pose, dramatic backlight, city skyline at dusk, comic-cinematic energy, bold confident composition. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "hero",
+   "mode": "solo",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a dynamic superhero blockbuster movie poster key art, the subject as a courageous young hero in a heroic pose, dramatic backlight, city skyline at dusk, comic-cinematic energy, bold confident composition. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "hero",
+   "mode": "group",
+   "title": "",
+   "tagline": "",
+   "prompt": "a dynamic superhero blockbuster movie poster key art, the subject as a courageous young hero in a heroic pose, dramatic backlight, city skyline at dusk, comic-cinematic energy, bold confident composition. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "hero",
+   "mode": "group",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a dynamic superhero blockbuster movie poster key art, the subject as a courageous young hero in a heroic pose, dramatic backlight, city skyline at dusk, comic-cinematic energy, bold confident composition. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "hero",
+   "mode": "group",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a dynamic superhero blockbuster movie poster key art, the subject as a courageous young hero in a heroic pose, dramatic backlight, city skyline at dusk, comic-cinematic energy, bold confident composition. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "mystery",
+   "mode": "solo",
+   "title": "",
+   "tagline": "",
+   "prompt": "a stylish mystery-adventure movie poster key art, the subject as a clever young detective, moody cinematic lighting, fog and warm street lamps, intriguing but child-friendly noir atmosphere, elegant muted palette. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "mystery",
+   "mode": "solo",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a stylish mystery-adventure movie poster key art, the subject as a clever young detective, moody cinematic lighting, fog and warm street lamps, intriguing but child-friendly noir atmosphere, elegant muted palette. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "mystery",
+   "mode": "solo",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a stylish mystery-adventure movie poster key art, the subject as a clever young detective, moody cinematic lighting, fog and warm street lamps, intriguing but child-friendly noir atmosphere, elegant muted palette. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "mystery",
+   "mode": "group",
+   "title": "",
+   "tagline": "",
+   "prompt": "a stylish mystery-adventure movie poster key art, the subject as a clever young detective, moody cinematic lighting, fog and warm street lamps, intriguing but child-friendly noir atmosphere, elegant muted palette. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "mystery",
+   "mode": "group",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a stylish mystery-adventure movie poster key art, the subject as a clever young detective, moody cinematic lighting, fog and warm street lamps, intriguing but child-friendly noir atmosphere, elegant muted palette. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "mystery",
+   "mode": "group",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a stylish mystery-adventure movie poster key art, the subject as a clever young detective, moody cinematic lighting, fog and warm street lamps, intriguing but child-friendly noir atmosphere, elegant muted palette. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "director",
+   "mode": "solo",
+   "title": "",
+   "tagline": "",
+   "prompt": "a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, glowing stage and studio lights, film reels and clapperboard motifs, warm nostalgic cinematic mood. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "director",
+   "mode": "solo",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, glowing stage and studio lights, film reels and clapperboard motifs, warm nostalgic cinematic mood. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "director",
+   "mode": "solo",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, glowing stage and studio lights, film reels and clapperboard motifs, warm nostalgic cinematic mood. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "director",
+   "mode": "group",
+   "title": "",
+   "tagline": "",
+   "prompt": "a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, glowing stage and studio lights, film reels and clapperboard motifs, warm nostalgic cinematic mood. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "director",
+   "mode": "group",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, glowing stage and studio lights, film reels and clapperboard motifs, warm nostalgic cinematic mood. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "director",
+   "mode": "group",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, glowing stage and studio lights, film reels and clapperboard motifs, warm nostalgic cinematic mood. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sports",
+   "mode": "solo",
+   "title": "",
+   "tagline": "",
+   "prompt": "an inspiring sports movie poster key art, the subject as a determined young athlete mid-motion, dramatic stadium lights, dust and energy, triumphant golden cinematic glow, sense of teamwork and growth. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sports",
+   "mode": "solo",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "an inspiring sports movie poster key art, the subject as a determined young athlete mid-motion, dramatic stadium lights, dust and energy, triumphant golden cinematic glow, sense of teamwork and growth. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sports",
+   "mode": "solo",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "an inspiring sports movie poster key art, the subject as a determined young athlete mid-motion, dramatic stadium lights, dust and energy, triumphant golden cinematic glow, sense of teamwork and growth. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sports",
+   "mode": "group",
+   "title": "",
+   "tagline": "",
+   "prompt": "an inspiring sports movie poster key art, the subject as a determined young athlete mid-motion, dramatic stadium lights, dust and energy, triumphant golden cinematic glow, sense of teamwork and growth. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sports",
+   "mode": "group",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "an inspiring sports movie poster key art, the subject as a determined young athlete mid-motion, dramatic stadium lights, dust and energy, triumphant golden cinematic glow, sense of teamwork and growth. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "sports",
+   "mode": "group",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "an inspiring sports movie poster key art, the subject as a determined young athlete mid-motion, dramatic stadium lights, dust and energy, triumphant golden cinematic glow, sense of teamwork and growth. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "music",
+   "mode": "solo",
+   "title": "",
+   "tagline": "",
+   "prompt": "a vibrant music movie poster key art, the subject as a radiant young performer on a glowing stage, colorful concert lighting, bokeh light beams, joyful uplifting festival atmosphere. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "music",
+   "mode": "solo",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a vibrant music movie poster key art, the subject as a radiant young performer on a glowing stage, colorful concert lighting, bokeh light beams, joyful uplifting festival atmosphere. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "music",
+   "mode": "solo",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a vibrant music movie poster key art, the subject as a radiant young performer on a glowing stage, colorful concert lighting, bokeh light beams, joyful uplifting festival atmosphere. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the person in the photo as the single lead star (hero portrait), centered and prominent. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "music",
+   "mode": "group",
+   "title": "",
+   "tagline": "",
+   "prompt": "a vibrant music movie poster key art, the subject as a radiant young performer on a glowing stage, colorful concert lighting, bokeh light beams, joyful uplifting festival atmosphere. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "music",
+   "mode": "group",
+   "title": "별을 찾는 아이",
+   "tagline": "우주 너머, 미지의 세계로",
+   "prompt": "a vibrant music movie poster key art, the subject as a radiant young performer on a glowing stage, colorful concert lighting, bokeh light beams, joyful uplifting festival atmosphere. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"별을 찾는 아이\" with the tagline \"우주 너머, 미지의 세계로\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  },
+  {
+   "genre": "music",
+   "mode": "group",
+   "title": "나의 첫 영화",
+   "tagline": "",
+   "prompt": "a vibrant music movie poster key art, the subject as a radiant young performer on a glowing stage, colorful concert lighting, bokeh light beams, joyful uplifting festival atmosphere. Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art. Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style. This film is titled \"나의 첫 영화\". Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters. Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE. Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame. IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later. Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image. Safe, wholesome, child-appropriate. High detail, professional, keepsake quality."
+  }
+ ]
+}

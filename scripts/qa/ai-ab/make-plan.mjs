@@ -36,6 +36,15 @@ if (compact) {
 } else {
   for (const mode of ['solo', 'group']) for (const difficulty of ['easy', 'medium', 'hard']) GENRES.forEach((genre, i) => push(genre, mode, difficulty, PHOTOS[mode][difficulty][i % 4]));
 }
+// --plus(2026-10-25 저녁, Bumm님 눈 채점 뒤): 기존+(v1plus) 갈래 E만 — A와 같은 48조건 · 같은 입력 · 같은 제목. 지시문만 v1plus.
+// 처음 두 건이 혼자 1 · 단체 1이 되게 혼자 · 단체를 번갈아 놓는다(시범 두 건으로 둘 다 본다).
+if (process.argv.includes('--plus')) {
+  const a = cases.filter((c) => c.arm === 'A');
+  const solo = a.filter((c) => c.mode === 'solo'), group = a.filter((c) => c.mode === 'group');
+  const e = solo.flatMap((c, i) => [c, group[i]]).filter(Boolean).map((c) => ({ ...c, arm: 'E', variant: 'v1plus' }));
+  process.stdout.write(JSON.stringify(e, null, 1));
+  process.exit(0);
+}
 // C: 어려운 촬영(어두움 · 역광 · 작은 얼굴 · 복잡한 배경 · 조도 낮은 단체 · 넓은 줄 · 가장자리 · 복잡한 배경 단체) — 각 사진의 첫 장르 조건
 const firstCase = (photoId) => cases.find((c) => c.photoId === photoId && c.arm === 'B');
 for (const p of compact ? ['S08', 'S09', 'G05', 'G10'] : ['S08', 'S09', 'S10', 'S12', 'G05', 'G07', 'G08', 'G10']) { const b = firstCase(p); cases.push({ ...b, arm: 'C', input: `${p}-pre.jpg` }); }

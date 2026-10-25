@@ -184,7 +184,8 @@ async function runOne(c) {
   if (verdict.kind === 'done') { results.push({ ...verdict.row, resumed: true }); return; }
   if (verdict.kind === 'skip') { results.push(verdict.row); if (verdict.row.status === 'budget-skip') console.log('예산 정지', c.caseId, c.arm); return; }
 
-  const prompt = mod.buildPrompt({ genre: c.genre, mode: c.mode, title: mod.sanitizePromptField(c.title, 60), tagline: mod.sanitizePromptField(c.tagline, 80) });
+  // c.variant(예: 'v1plus')가 있으면 후보 모듈의 장르별 선택표 대신 그 판으로 만든다 — 운영 /generate는 넘기지 않는다
+  const prompt = mod.buildPrompt({ genre: c.genre, mode: c.mode, title: mod.sanitizePromptField(c.title, 60), tagline: mod.sanitizePromptField(c.tagline, 80), variant: c.variant });
   const input = path.join(inputs, c.input);
   const ctx = { attempts: [] };
   const t0 = Date.now();
@@ -202,7 +203,8 @@ async function runOne(c) {
   const model = okAttempt?.params.model || ctx.attempts[0]?.params.model || 'gpt-image-2';
   const cost = ctx.attempts.reduce((s, a) => s + (costOf(a.params.model, a.usage) || 0), 0);
   const r = { key, caseId: c.caseId, arm: c.arm, photoId: c.photoId, mode: c.mode, genre: c.genre, difficulty: c.difficulty, input: c.input, status, error, file,
-    startedAt: new Date(t0).toISOString(), ms, model, quality: okAttempt?.params.quality ?? null, promptVersion: mod.PROMPT_VERSION || 'v1', promptChars: prompt.length,
+    startedAt: new Date(t0).toISOString(), ms, model, quality: okAttempt?.params.quality ?? null,
+    promptVersion: mod.promptVersionFor ? mod.promptVersionFor(c.genre, c.variant) : mod.PROMPT_VERSION || 'v1', promptChars: prompt.length,
     rateLimitAttempts: ctx.attempts.filter((a) => a.rateLimit).length, attempts: ctx.attempts, cost: Number(cost.toFixed(5)), at: new Date().toISOString(), dry, tag };
   results.push(r);
   await withLock(() => fs.appendFile(ledger, JSON.stringify(r) + '\n'));

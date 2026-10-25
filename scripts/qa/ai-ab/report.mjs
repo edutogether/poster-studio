@@ -12,41 +12,80 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// --run · --results · --designs는 쉼표로 여러 폴더를 받는다(예: 10/25 A/B 회차 + 기존+ 회차). 같은 조건 · 갈래는 뒤 폴더가 이긴다.
+// --arms A,B,E: 이 갈래만 보인다(없으면 계획에 있는 전부). --score-key: 갤러리 사람 채점을 브라우저에 저장하는 이름(회차마다 따로).
 const arg = (k) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : undefined; };
-const outDir = arg('out'), manifestPath = arg('manifest'), inputsDir = arg('inputs'), runDir = arg('run'), resultsDir = arg('results'), designsDir = arg('designs');
-if (!outDir || !manifestPath || !inputsDir || !runDir || !resultsDir) {
-  console.error('사용: report.mjs --out <폴더> --manifest <manifest.json> --inputs <폴더> --run <폴더> --results <폴더> [--designs <폴더>]');
+const list = (v) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : []);
+const outDir = arg('out'), manifestPath = arg('manifest'), inputsDir = arg('inputs');
+const runDirs = list(arg('run')), resultsDirs = list(arg('results')), designsDirs = list(arg('designs'));
+const armsShown = list(arg('arms'));
+const scoreKey = arg('score-key') || 'aiq-human-scores-v1';
+if (!outDir || !manifestPath || !inputsDir || !runDirs.length || !resultsDirs.length) {
+  console.error('사용: report.mjs --out <폴더> --manifest <manifest.json> --inputs <폴더> --run <폴더[,폴더]> --results <폴더[,폴더]> [--designs <폴더[,폴더]>] [--arms A,B,E] [--score-key 이름]');
   process.exit(1);
 }
+const runDir = runDirs[0];
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+const readIf = (p, empty) => (fs.existsSync(p) ? readJson(p) : empty);
 const manifest = readJson(manifestPath);
 const prep = Object.fromEntries(readJson(path.join(inputsDir, 'prep.json')).map((p) => [p.id, p]));
-const plan = readJson(path.join(runDir, 'plan.json'));
-const ledgerRows = fs.readFileSync(path.join(runDir, 'ledger.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
-const checks = fs.existsSync(path.join(runDir, 'checks.json')) ? readJson(path.join(runDir, 'checks.json')) : [];
-const compose = designsDir && fs.existsSync(path.join(designsDir, 'compose.json')) ? readJson(path.join(designsDir, 'compose.json')) : [];
+const planAll = runDirs.flatMap((d) => readJson(path.join(d, 'plan.json')));
+const plan = [...new Map(planAll.filter((c) => !armsShown.length || armsShown.includes(c.arm)).map((c) => [`${c.caseId}-${c.arm}`, c])).values()];
+const ledgerRows = runDirs.flatMap((d) => fs.readFileSync(path.join(d, 'ledger.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)));
+const checks = runDirs.flatMap((d) => readIf(path.join(d, 'checks.json'), []));
+const colors = runDirs.flatMap((d) => readIf(path.join(d, 'color.json'), []));
+const compose = designsDirs.flatMap((d) => readIf(path.join(d, 'compose.json'), []).map((c) => ({ ...c, dir: d })));
 
 const url = (abs) => path.relative(outDir, abs).split(path.sep).map(encodeURIComponent).join('/');
+const resultPath = (file) => path.join(resultsDirs.find((d) => fs.existsSync(path.join(d, file))) || resultsDirs[0], file);
 const photoDir = path.resolve(path.dirname(manifestPath), manifest.photoDir || '.');
 const key = (caseId, arm) => `${caseId}-${arm}`;
 // 같은 조건 · 갈래를 다시 돌렸으면 마지막 기록이 그 호출의 결과다(예산 정지 뒤 이어서 돌린 경우 등)
 const last = new Map();
-for (const r of ledgerRows) if (r.type !== 'start') last.set(key(r.caseId, r.arm), r);   // 출발 줄(동시 실행 잠금용)은 결과가 아니다
+for (const r of ledgerRows) if (r.type !== 'start' && r.type !== 'carry') last.set(key(r.caseId, r.arm), r);   // 출발 줄(동시 실행 잠금용) · 이월 줄(누적 상한용)은 결과가 아니다
 const checkOf = new Map(checks.map((c) => [key(c.caseId, c.arm), c]));
-const designsOf = new Map(compose.map((c) => [c.id, c.files.map((f) => ({ label: f.label, src: url(path.join(designsDir, f.file)) }))]));
+const colorOf = new Map(colors.map((c) => [key(c.caseId, c.arm), c]));
+const designsOf = new Map(compose.map((c) => [c.id, c.files.map((f) => ({ label: f.label, src: url(path.join(c.dir, f.file)) }))]));
 
 const GENRE = { sf: 'SF', fantasy: '판타지', animation: '애니메이션', hero: '히어로', mystery: '스릴러', director: '드라마', sports: '스포츠', music: '뮤지컬' };
-const ARM = { A: '기존 — 운영 지시문 v1', B: '개선 — 지시문 v2', C: '개선 v2 + 전처리', D: '개선 v2 + high 화질' };
+const ARM = { A: '기존 — 운영 지시문 v1', B: '새것 — 개선 지시문 v2', C: '새것 v2 + 전처리', D: '새것 v2 + high 화질', E: '기존+ — v1 + 채점에서 좋았던 것(v1plus)' };
 const LEVEL = { easy: '쉬움', medium: '보통', hard: '어려움' };
 const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.ceil(p * s.length) - 1)]; };
+// 자동 주의 표시(사람 판단을 돕는 기준 — 10/25 A/B 수치와 Bumm님 채점이 맞아떨어진 값으로 정했다. 얼굴 닮음 · 의상은 재지 않는다)
+const FLAG_RULES = {
+  count: '인원 검출이 기대와 다름', edge: '얼굴이 가장자리에 잘림', position: '얼굴 자리 벗어남', text: '글자처럼 읽히는 것', bottom: '아래 1/3이 복잡(제목 자리)',
+  skew: '혼자 얼굴 쏠림 — 가운데에서 가로 12% 넘게', gold: '황금빛 · 주황 화소 30% 이상', teal: '푸른빛 화소 15% 이상(SF 제외)',
+  darkFace: '얼굴 평균 밝기 85 미만', dull: '평균 채도 0.33 미만(탁함)', blackBand: '뮤지컬 아래 1/3의 절반 이상이 거의 검정',
+};
+function flagsOf(c, ch, col) {
+  if (c.status !== 'ok') return [];
+  const f = [];
+  if (ch?.count?.v && ch.count.v !== 'PASS') f.push({ k: 'count', t: `인원 검출 ${ch.count.got}/${ch.count.want}` });
+  if (ch?.edge?.v === 'FAIL') f.push({ k: 'edge', t: '얼굴 가장자리 잘림' });
+  if (ch?.position?.v && ch.position.v !== 'PASS') f.push({ k: 'position', t: '얼굴 자리 벗어남' });
+  if (ch?.text?.v && ch.text.v !== 'PASS') f.push({ k: 'text', t: '글자처럼 읽히는 것' });
+  if (ch?.bottom?.v && ch.bottom.v !== 'PASS') f.push({ k: 'bottom', t: '아래 1/3 복잡' });
+  if (col) {
+    if (c.mode === 'solo' && col.faceCx != null && Math.abs(col.faceCx - 0.5) > 0.12) f.push({ k: 'skew', t: `얼굴 쏠림(가로 ${Math.round(col.faceCx * 100)}%)` });
+    if (col.gold >= 0.3) f.push({ k: 'gold', t: `황금빛 ${Math.round(col.gold * 100)}%` });
+    if (c.genre !== 'sf' && col.teal >= 0.15) f.push({ k: 'teal', t: `푸른빛 ${Math.round(col.teal * 100)}%` });
+    if (col.faceLuma != null && col.faceLuma < 85) f.push({ k: 'darkFace', t: `얼굴 어두움(${Math.round(col.faceLuma)})` });
+    if (col.sat < 0.33) f.push({ k: 'dull', t: `탁함(채도 ${col.sat.toFixed(2)})` });
+    if (c.genre === 'music' && col.bottomBlack >= 0.5) f.push({ k: 'blackBand', t: `아래 검은 띠 ${Math.round(col.bottomBlack * 100)}%` });
+  }
+  return f;
+}
 
 // 호출마다 기록
 const calls = plan.map((c) => {
   const r = last.get(key(c.caseId, c.arm));
   const ch = checkOf.get(key(c.caseId, c.arm));
+  const col = colorOf.get(key(c.caseId, c.arm)) || null;
+  const status = r ? r.status : 'not-run';
   return {
     caseId: c.caseId, arm: c.arm, photoId: c.photoId, mode: c.mode, genre: c.genre, difficulty: c.difficulty, title: c.title, tagline: c.tagline, input: c.input,
-    status: r ? r.status : 'not-run', dry: r?.dry ?? null, file: r?.file ?? null, image: r?.file ? url(path.join(resultsDir, r.file)) : null,
+    color: col && Object.fromEntries(Object.entries(col).filter(([k]) => !['caseId', 'arm', 'file'].includes(k))), flags: flagsOf({ ...c, status }, ch, col),
+    status, dry: r?.dry ?? null, file: r?.file ?? null, image: r?.file ? url(resultPath(r.file)) : null,
     ms: r?.ms ?? null, cost: r?.cost ?? null, model: r?.model ?? null, quality: r?.quality ?? null, promptVersion: r?.promptVersion ?? null, promptChars: r?.promptChars ?? null,
     attempts: (r?.attempts || []).map((a) => ({ at: a.at, ms: a.ms, request_id: a.request_id ?? a.error?.request_id ?? null, params: a.params, usage: a.usage ?? null, error: a.error ?? null })),
     error: r?.error ?? null, checks: ch ? { overall: ch.overall, ...Object.fromEntries(Object.entries(ch.checks).map(([k, v]) => [k, v])) } : null, faces: ch?.faces ?? [],
@@ -56,12 +95,15 @@ const calls = plan.map((c) => {
 
 // 갈래별 집계
 const arms = {};
-for (const a of ['A', 'B', 'C', 'D']) {
+const mean = (xs) => { const v = xs.filter((x) => x != null && Number.isFinite(x)); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+const colorMeans = (cs) => Object.fromEntries(['gold', 'teal', 'warm', 'sat', 'contrast', 'luma', 'faceLuma', 'faceCy', 'faceH', 'bottomBlack'].map((k) => [k, ((v) => (v == null ? null : +v.toFixed(3)))(mean(cs.map((c) => c.color?.[k])))]));
+for (const a of [...new Set(plan.map((c) => c.arm))].sort()) {
   const cs = calls.filter((c) => c.arm === a);
   if (!cs.length) continue;
   const ok = cs.filter((c) => c.status === 'ok');
   const ms = ok.map((c) => c.ms);
   const tally = (k) => ok.reduce((m, c) => { const v = k === 'overall' ? c.checks?.overall : c.checks?.[k]?.v; if (v) m[v] = (m[v] || 0) + 1; return m; }, {});
+  const flagCount = ok.reduce((m, c) => { for (const f of c.flags) m[f.k] = (m[f.k] || 0) + 1; return m; }, {});
   arms[a] = {
     label: ARM[a], planned: cs.length, ok: ok.length, error: cs.filter((c) => c.status === 'error').length, budgetSkip: cs.filter((c) => c.status === 'budget-skip').length,
     billingStop: cs.filter((c) => c.status === 'billing-stop' || c.status === 'billing-skip').length,
@@ -70,6 +112,8 @@ for (const a of ['A', 'B', 'C', 'D']) {
     costUSD: +cs.reduce((s, c) => s + (c.cost || 0), 0).toFixed(4), attempts: cs.reduce((s, c) => s + c.attempts.length, 0),
     rejectedAttempts: cs.reduce((s, c) => s + c.attempts.filter((t) => t.error).length, 0),
     checks: Object.fromEntries(['overall', 'file', 'count', 'edge', 'position', 'bottom', 'text', 'designBox', 'archBand'].map((k) => [k, tally(k)])),
+    color: colorMeans(ok), flags: flagCount, flagged: ok.filter((c) => c.flags.length).length,
+    byGenre: Object.fromEntries(Object.keys(GENRE).map((g) => { const gs = ok.filter((c) => c.genre === g); return [g, { n: gs.length, flagged: gs.filter((c) => c.flags.length).length, ...colorMeans(gs) }]; })),
   };
 }
 const used = plan.filter((c) => c.arm === 'A' || c.arm === 'B').reduce((m, c) => ((m[c.photoId] = (m[c.photoId] || 0) + 1), m), {});
@@ -81,7 +125,7 @@ const results = {
   arms, totalCostUSD: +calls.reduce((s, c) => s + (c.cost || 0), 0).toFixed(4),
   // ledger 전체 비용 — 계획 108건 밖의 기록(실제 모드 한 바퀴 · 중단 때 나가 있던 요청)과 끝 줄이 없는 출발(청구됐을 수 있음)까지
   costLedger: (() => {
-    const ends = ledgerRows.filter((r) => r.type !== 'start');
+    const ends = ledgerRows.filter((r) => r.type !== 'start' && r.type !== 'carry');   // 이월 줄은 앞 회차 누적의 사본이라 더하지 않는다
     const endedKeys = new Set(ends.filter((r) => r.key).map((r) => r.key));
     const openStarts = ledgerRows.filter((r) => r.type === 'start' && !endedKeys.has(r.key));
     const sum = (rs) => +rs.reduce((s, r) => s + (r.cost || 0), 0).toFixed(4);
@@ -106,8 +150,8 @@ const preFixed = manifest.photos.filter((p) => (prep[p.id]?.preprocessApplied ||
 const resultOf = (photoId) => [...new Set(plan.filter((c) => c.photoId === photoId).map((c) => c.caseId))].map((id) => {
   const v = (a) => calls.find((c) => c.caseId === id && c.arm === a);
   const s = (c) => (!c ? '—' : c.status !== 'ok' ? c.status : c.checks?.overall || '검사 전');
-  const extra = ['C', 'D'].filter((a) => v(a)).map((a) => ` · ${a} ${s(v(a))}`).join('');
-  return `${id}: A ${s(v('A'))} → B ${s(v('B'))}${extra}`;
+  const extra = ['C', 'D', 'E'].filter((a) => v(a)).map((a) => ` · ${a} ${s(v(a))}`).join('');
+  return `${id}: ${v('A') ? 'A ' + s(v('A')) : ''}${v('B') ? ' → B ' + s(v('B')) : ''}${extra}`;
 }).join('<br>');
 const md = `# 시험 사진 기록 — Poster Studio AI 품질 A/B
 
@@ -150,7 +194,7 @@ fs.writeFileSync(path.join(outDir, 'poster-test-photo-manifest.md'), md);
 
 // 페이지에 넣는 자료(그림은 경로만)
 const page = {
-  generatedAt: results.generatedAt, kind: results.kind, dry: anyDry, genre: GENRE, arm: ARM, level: LEVEL, arms,
+  generatedAt: results.generatedAt, kind: results.kind, dry: anyDry, genre: GENRE, arm: ARM, level: LEVEL, arms, flagRules: FLAG_RULES, scoreKey,
   photos: Object.fromEntries(manifest.photos.map((p) => [p.id, {
     id: p.id, mode: p.mode, difficulty: p.difficulty, condition: p.condition, people: p.people, note: p.note || '', facesInFrame: p.facesInFrame,
     input: url(path.join(inputsDir, `${p.id}.jpg`)), pre: url(path.join(inputsDir, `${p.id}-pre.jpg`)), original: url(path.join(photoDir, p.file)),
@@ -190,7 +234,9 @@ details{margin-top:10px}summary{cursor:pointer;color:var(--ind-ink);font-weight:
 .score button{padding:0 6px;font-size:12px;border-radius:5px}.score button.on{background:var(--ind);color:#fff;border-color:var(--ind)}.score input{width:100%;margin-top:3px;font-size:12px}
 #lb{position:fixed;inset:0;background:rgba(10,12,20,.92);display:none;z-index:20;overflow:auto}#lb.open{display:block}#lb .bar{position:sticky;top:0;display:flex;gap:8px;align-items:center;padding:8px 16px;background:rgba(10,12,20,.95);color:#fff}
 #lb img{display:block;margin:12px auto;max-width:calc(100vw - 32px);max-height:calc(100vh - 80px)}#lb.full img{max-width:none;max-height:none}
-.empty{padding:40px;text-align:center;color:var(--sub)}`;
+.empty{padding:40px;text-align:center;color:var(--sub)}
+table.cmp{border-collapse:collapse;margin:8px 0;font-size:12.5px;background:var(--card);display:block;overflow-x:auto;max-width:100%}table.cmp th,table.cmp td{border:1px solid var(--line);padding:4px 7px;white-space:nowrap;text-align:right}table.cmp th{background:var(--ind-bg);color:var(--ind-ink);text-align:center}table.cmp td:first-child{text-align:left}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:8px 0}.fitem{display:block;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px;color:var(--ink);text-decoration:none}.fitem img{width:100%;border-radius:4px}.fitem .cap{font-size:12px;line-height:1.5}`;
 
 const LIGHTBOX = `
 <div id="lb"><div class="bar"><button id="lbPrev">◀</button><button id="lbNext">▶</button><button id="lbFull">실제 크기</button><span id="lbCap"></span><span style="flex:1"></span><button id="lbClose">닫기 (Esc)</button></div><img id="lbImg" alt=""></div>`;
@@ -218,9 +264,11 @@ ${LIGHTBOX}
 const galleryBody = `
 <header>
   <h1>Poster Studio AI 품질 A/B 갤러리</h1>
-  <div class="sub">원본 사진 → 기존 결과(A) → 개선 결과(B · C · D)를 같은 사진으로 나란히 본다. 그림을 누르면 크게, 얼굴 띠를 누르면 얼굴만 크게 본다.</div>
+  <div class="sub" id="lead"></div>
   <div id="kind" style="margin-top:8px"></div>
   <div class="tiles" id="tiles"></div>
+  <details id="cmpBox" open><summary><b>자동 비교 — 갈래별 · 장르별</b> <span class="sub">(얼굴 닮음 · 의상은 재지 않는다 — 사람 판단. 생체 식별 없음)</span></summary><div id="cmp"></div></details>
+  <details id="failBox"><summary><b>자동 주의 사례</b> <span class="sub" id="failSum"></span></summary><div id="fails"></div></details>
 </header>
 <nav>
   <select id="fGenre"><option value="">장르 전체</option></select>
@@ -228,14 +276,15 @@ const galleryBody = `
   <select id="fLevel"><option value="">촬영 난이도 전체</option><option value="easy">쉬움</option><option value="medium">보통</option><option value="hard">어려움</option></select>
   <select id="fPhoto"><option value="">촬영 조건(사진) 전체</option></select>
   <select id="fCheck"><option value="">자동 검사 전체</option><option value="FAIL">FAIL 있는 조건</option><option value="WARN">WARN 이상 있는 조건</option></select>
-  <select id="fArm"><option value="">갈래 전체</option><option value="C">C(전처리) 있는 조건</option><option value="D">D(high) 있는 조건</option></select>
+  <select id="fArm"><option value="">갈래 전체</option></select>
+  <select id="fFlag"><option value="">주의 표시 전체</option></select>
   <span id="count" class="sub"></span><span style="flex:1"></span>
   <span id="scored" class="sub"></span><button id="exp" class="primary">점수 내보내기</button><label><button id="impBtn">점수 불러오기</button><input id="imp" type="file" accept="application/json" hidden></label>
 </nav>
 <main id="list"></main>`;
 
 const galleryScript = `
-const KEY='aiq-human-scores-v1';
+const KEY=D.scoreKey;
 const load=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return {}}};
 const save=(s)=>{try{localStorage.setItem(KEY,JSON.stringify(s))}catch{}};
 let scores=load();
@@ -245,6 +294,23 @@ const okRuns=D.cases.flatMap((c)=>c.runs.filter((r)=>r.status==='ok').map((r)=>c
 function scoredText(){const n=okRuns.filter((k)=>done(scores[k])).length;document.getElementById('scored').textContent='사람 채점 '+n+' / '+okRuns.length}
 document.getElementById('kind').innerHTML=D.dry?'<span class="kind dry">⚠ 드라이런(가짜) 그림이 섞여 있다 — 실제 API 생성 결과가 아니다</span>':'<span class="kind real">실제 API 생성 결과</span> <span class="sub">만든 시각 '+esc(D.generatedAt)+'</span>';
 document.getElementById('tiles').innerHTML=Object.entries(D.arms).map(([a,s])=>'<div class="tile"><b>'+a+' · '+esc(s.label)+'</b><div class="n">'+s.ok+' / '+s.planned+' 성공</div><div class="sub">p50 '+(s.p50s??'—')+'초 · p95 '+(s.p95s??'—')+'초 · $'+s.costUSD.toFixed(3)+'</div><div>'+['PASS','WARN','FAIL'].map((v)=>s.checks.overall[v]?'<span class="b '+v+'">'+v+' '+s.checks.overall[v]+'</span>':'').join('')+(s.error?badge('FAIL','오류 '+s.error):'')+(s.budgetSkip?badge('WARN','예산 정지 '+s.budgetSkip):'')+(s.billingStop?badge('FAIL','잔액 · 한도 정지 '+s.billingStop):'')+'</div></div>').join('');
+const ARMS=Object.keys(D.arms);
+document.getElementById('lead').textContent='원본 사진 → '+ARMS.map((a)=>a+' '+D.arm[a].split(' — ')[0]).join(' → ')+'을 같은 사진으로 나란히 본다. 그림을 누르면 크게, 얼굴 띠를 누르면 얼굴만 크게 본다.';
+for(const a of ARMS.slice(1))fArm.insertAdjacentHTML('beforeend','<option value="'+a+'">'+a+' 있는 조건</option>');
+for(const [k,v] of Object.entries(D.flagRules))fFlag.insertAdjacentHTML('beforeend','<option value="'+k+'">'+esc(v)+'</option>');
+// 자동 비교 표 — 갈래별(검사 PASS · 색 · 주의 수) + 장르별(황금빛 · 푸른빛 · 채도 · 얼굴 밝기 · 아래 검정 · 주의)
+const pctf=(x)=>x==null?'—':Math.round(x*100)+'%',n1=(x)=>x==null?'—':(+x).toFixed(x<1?2:0);
+const pass=(s,k)=>{const t=s.checks[k]||{};const tot=Object.values(t).reduce((a,b)=>a+b,0);return tot?(t.PASS||0)+' / '+tot:'—'};
+let cmp='<table class="cmp"><tr><th>갈래</th><th>인원수 PASS</th><th>가장자리 PASS</th><th>얼굴 자리 PASS</th><th>아래 1/3 PASS</th><th>글자 없음</th><th>아치 띠 PASS</th><th>황금빛</th><th>푸른빛</th><th>채도</th><th>대비</th><th>얼굴 밝기</th><th>얼굴 세로</th><th>주의 있는 그림</th></tr>';
+for(const a of ARMS){const s=D.arms[a],c=s.color||{};cmp+='<tr><td><b>'+a+'</b> '+esc(s.label)+'</td><td>'+pass(s,'count')+'</td><td>'+pass(s,'edge')+'</td><td>'+pass(s,'position')+'</td><td>'+pass(s,'bottom')+'</td><td>'+pass(s,'text')+'</td><td>'+pass(s,'archBand')+'</td><td>'+pctf(c.gold)+'</td><td>'+pctf(c.teal)+'</td><td>'+n1(c.sat)+'</td><td>'+n1(c.contrast)+'</td><td>'+n1(c.faceLuma)+'</td><td>'+pctf(c.faceCy)+'</td><td>'+s.flagged+' / '+s.ok+'</td></tr>'}
+cmp+='</table><table class="cmp"><tr><th>장르</th>'+ARMS.map((a)=>'<th>'+a+' 황금빛 · 푸른빛</th><th>'+a+' 채도 · 얼굴 밝기</th><th>'+a+' 아래 검정</th><th>'+a+' 주의</th>').join('')+'</tr>';
+for(const g of Object.keys(D.genre)){cmp+='<tr><td><b>'+esc(D.genre[g])+'</b></td>'+ARMS.map((a)=>{const x=D.arms[a].byGenre[g]||{};return '<td>'+pctf(x.gold)+' · '+pctf(x.teal)+'</td><td>'+n1(x.sat)+' · '+n1(x.faceLuma)+'</td><td>'+pctf(x.bottomBlack)+'</td><td>'+(x.flagged??'—')+' / '+(x.n??'—')+'</td>'}).join('')+'</tr>'}
+cmp+='</table><div class="sub">주의 기준: '+Object.values(D.flagRules).map(esc).join(' · ')+'. 숫자는 그림 전체(1024×1536) 평균 · 얼굴은 검출 상자 안 평균.</div>';
+document.getElementById('cmp').innerHTML=cmp;
+const lastArm=ARMS[ARMS.length-1];
+const failRuns=D.cases.flatMap((c)=>c.runs.filter((r)=>r.arm===lastArm&&r.status==='ok'&&r.flags.length).map((r)=>({c,r})));
+document.getElementById('failSum').textContent=lastArm+' '+D.arm[lastArm].split(' — ')[0]+' — 주의 표시가 붙은 그림 '+failRuns.length+'장 / '+D.arms[lastArm].ok+'장(그림을 누르면 그 조건으로 간다)';
+document.getElementById('fails').innerHTML='<div class="fgrid">'+failRuns.map(({c,r})=>'<a class="fitem" href="#'+c.caseId+'"><img loading="lazy" src="'+r.image+'" alt=""><div class="cap"><b>'+esc(D.genre[c.genre])+' · '+(c.mode==='group'?'단체':'혼자')+' · '+D.level[c.difficulty]+'</b> '+c.photoId+'<br>'+r.flags.map((f)=>'<span class="b WARN">'+esc(f.t)+'</span>').join(' ')+'</div></a>').join('')+'</div>';
 for(const [k,v] of Object.entries(D.genre))fGenre.insertAdjacentHTML('beforeend','<option value="'+k+'">'+esc(v)+'</option>');
 for(const p of Object.values(D.photos))fPhoto.insertAdjacentHTML('beforeend','<option value="'+p.id+'">'+p.id+' '+esc(p.condition)+'</option>');
 const CHECK_NAMES={file:'파일',count:'인원(검출)',edge:'가장자리',position:'얼굴 자리',bottom:'아래 1/3',text:'글자',designBox:'디자인 주인공 상자',archBand:'아치 얼굴 띠'};
@@ -254,8 +320,8 @@ function faceTile(src,imgW,imgH,b,cap,list,idx){ // b = 정규화 [x,y,w,h]
   return '<div class="face" data-lb="'+idx+'" title="'+esc(cap)+'" style="width:'+tw+'px;background-image:url(\\''+src+'\\');background-size:'+(tw/w).toFixed(1)+'px '+(th/h).toFixed(1)+'px;background-position:'+(-x*tw/w).toFixed(1)+'px '+(-y*th/h).toFixed(1)+'px"></div>';
 }
 function render(){
-  const g=fGenre.value,mo=fMode.value,lv=fLevel.value,ph=fPhoto.value,ck=fCheck.value,ar=fArm.value;
-  const list=D.cases.filter((c)=>(!g||c.genre===g)&&(!mo||c.mode===mo)&&(!lv||c.difficulty===lv)&&(!ph||c.photoId===ph)&&(!ar||c.runs.some((r)=>r.arm===ar))
+  const g=fGenre.value,mo=fMode.value,lv=fLevel.value,ph=fPhoto.value,ck=fCheck.value,ar=fArm.value,fl=fFlag.value;
+  const list=D.cases.filter((c)=>(!g||c.genre===g)&&(!mo||c.mode===mo)&&(!lv||c.difficulty===lv)&&(!ph||c.photoId===ph)&&(!ar||c.runs.some((r)=>r.arm===ar))&&(!fl||c.runs.some((r)=>r.flags.some((x)=>x.k===fl)))
     &&(!ck||c.runs.some((r)=>r.checks&&(ck==='FAIL'?r.checks.overall==='FAIL':r.checks.overall!=='PASS'))));
   document.getElementById('count').textContent=list.length+'개 조건';
   const box=document.getElementById('list');
@@ -276,6 +342,8 @@ function card(c){
     h+='<figcaption><span class="armname">'+r.arm+' '+esc(D.arm[r.arm])+'</span>'+(r.dry?' <b style="color:var(--bad)">DRY</b>':'')+'<br>';
     if(r.status==='ok')h+=(r.ms/1000).toFixed(1)+'초 · $'+(r.cost??0).toFixed(4)+' · '+esc(r.model)+' '+esc(r.quality||'')+' · 지시문 '+esc(r.promptVersion)+' ('+r.promptChars+'자)<br>시도 '+r.attempts.length+(rej.length?' (거절 '+rej.map((a)=>a.error.status||'?').join(',')+' 뒤 재시도)':'')+(r.input.endsWith('-pre.jpg')?'<br>전처리: '+esc(p.preApplied.join(' · ')):'')+'<br>';
     if(r.checks)h+=badge(r.checks.overall,'검사')+'<br>'+Object.entries(CHECK_NAMES).map(([k,n])=>r.checks[k]?badge(r.checks[k].v,n):'').join('');
+    if(r.color)h+='<br><span title="황금빛 · 푸른빛 화소 비율, 평균 채도, 얼굴 평균 밝기">황금빛 '+pctf(r.color.gold)+' · 푸른빛 '+pctf(r.color.teal)+' · 채도 '+n1(r.color.sat)+(r.color.faceLuma!=null?' · 얼굴 밝기 '+n1(r.color.faceLuma):'')+'</span>';
+    if(r.flags&&r.flags.length)h+='<br>'+r.flags.map((x)=>'<span class="b WARN">주의 '+esc(x.t)+'</span>').join('');
     const req=r.attempts.map((a)=>a.request_id).filter(Boolean);if(req.length)h+='<br><span title="요청 ID">req '+esc(req[req.length-1])+'</span>';
     h+='</figcaption>';
     if(r.status==='ok')h+=scoreBox(c.caseId+'-'+r.arm);
@@ -322,7 +390,7 @@ document.getElementById('exp').onclick=()=>{const blob=new Blob([JSON.stringify(
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='poster-ai-human-scores.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 document.getElementById('impBtn').onclick=()=>document.getElementById('imp').click();
 document.getElementById('imp').onchange=async(e)=>{const f=e.target.files[0];if(!f)return;const j=JSON.parse(await f.text());scores={...scores,...(j.scores||{})};save(scores);render();scoredText()};
-for(const id of ['fGenre','fMode','fLevel','fPhoto','fCheck','fArm'])document.getElementById(id).onchange=render;
+for(const id of ['fGenre','fMode','fLevel','fPhoto','fCheck','fArm','fFlag'])document.getElementById(id).onchange=render;
 render();scoredText();`;
 
 fs.writeFileSync(path.join(outDir, 'poster-ai-quality-gallery.html'), html('AI 품질 A/B 갤러리', 'Poster Studio 실제 사진 A/B — 원본 · 기존 · 개선 나란히', galleryBody, galleryScript));
@@ -343,7 +411,7 @@ document.getElementById('kind').innerHTML=D.dry?'<span class="kind dry">⚠ 드�
 const rate=(arm,mode,k)=>{const rs=D.cases.filter((c)=>c.mode===mode).flatMap((c)=>c.runs.filter((r)=>r.arm===arm&&r.status==='ok'&&r.checks));if(!rs.length)return '—';const n=rs.filter((r)=>r.checks[k]?.v==='PASS').length;return n+' / '+rs.length};
 document.getElementById('tiles').innerHTML=Object.keys(D.arms).map((a)=>'<div class="tile"><b>'+a+' · '+esc(D.arm[a])+'</b><div class="sub">주인공 상자 PASS — 혼자 '+rate(a,'solo','designBox')+' · 단체 '+rate(a,'group','designBox')+'</div><div class="sub">아치 얼굴 띠 PASS — 혼자 '+rate(a,'solo','archBand')+' · 단체 '+rate(a,'group','archBand')+'</div><div class="sub">가장자리 잘림 FAIL — '+D.cases.flatMap((c)=>c.runs.filter((r)=>r.arm===a&&r.checks?.edge?.v==='FAIL')).length+'</div></div>').join('');
 const REP=['sf-solo-easy','hero-solo-hard','fantasy-group-easy','music-group-hard'];
-let h='<h2 style="margin-top:18px">대표 조건 — 디자인마다 A · B(· D) 나란히</h2>';
+let h='<h2 style="margin-top:18px">대표 조건 — 디자인마다 '+Object.keys(D.arms).filter((a)=>a!=='C').join(' · ')+' 나란히</h2>';
 const allItems=[];
 for(const id of REP){const c=D.cases.find((x)=>x.caseId===id);if(!c)continue;const p=D.photos[c.photoId];
   const runs=c.runs.filter((r)=>r.status==='ok'&&r.designs.length&&r.arm!=='C');if(!runs.length)continue;
@@ -353,8 +421,8 @@ for(const id of REP){const c=D.cases.find((x)=>x.caseId===id);if(!c)continue;con
   h+='</div></section>';
 }
 const groups=D.cases.filter((c)=>c.mode==='group');
-h+='<h2 style="margin-top:18px">단체 — 아치 프레임 전부(A · B): 위쪽 흐린 띠 · 얼굴 잘림 · 인물 비율</h2><section class="case"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">';
-for(const c of groups)for(const r of c.runs.filter((r)=>(r.arm==='A'||r.arm==='B')&&r.status==='ok'&&r.designs.length)){
+h+='<h2 style="margin-top:18px">단체 — 아치 프레임 전부('+['A','B','E'].filter((a)=>D.arms[a]).join(' · ')+'): 위쪽 흐린 띠 · 얼굴 잘림 · 인물 비율</h2><section class="case"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">';
+for(const c of groups)for(const r of c.runs.filter((r)=>['A','B','E'].includes(r.arm)&&r.status==='ok'&&r.designs.length)){
   const d=r.designs.find((x)=>x.label==='아치 프레임')||r.designs[3];allItems.push({src:d.src,cap:c.caseId+' '+r.arm+' 아치 프레임'});
   h+='<figure><div class="'+(r.dry?'dryflag':'')+'"><img data-i="'+(allItems.length-1)+'" loading="lazy" src="'+d.src+'" style="height:auto;width:100%"></div><figcaption>'+c.caseId+' <b>'+r.arm+'</b> '+badge(r.checks?.archBand?.v,'아치 띠')+'</figcaption></figure>';
 }
