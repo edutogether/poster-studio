@@ -73,6 +73,10 @@
       근거: 지금 지문이 같은 5×8 범위를 순서까지 덮는다. 다른 것은 판 이름 «필름스트립» → «필름 스트립»과, 10/03 뒤 승인된 디자인 변경으로 달라진 지문 40/40뿐이다.
       대신 라이브 `81a07b4`(= master `6ac7dc3` check-real)의 지문을 `snapshots/release-20261026-windows.json`(5×8) · `release-20261026-rare-windows.json`(4×8)로 넣었다.
       `release-baseline.mjs`의 라이브 대조 · `--selftest`가 새 파일을 쓴다.
+      확인: 지금 빌드 `--expect`가 기본 40 · 드문 32 모두 같고, `--selftest`는 일부러 틀린 1장에서만 실패한다(`49c2674`).
+  - 4차(`49c2674`, Sonnet): 코드 품질 9.75 · 시험 10 · 기술 부채 10 · 오류 처리 10.
+    같은 모양의 긴 줄 `StudioView.tsx:653` · `:713`을 같은 방법으로 나눴다(`f8a1076`) — 빌드 1,193개 파일 해시가 그대로다.
+  - 5차(`f8a1076`, Sonnet): 코드 품질 10. **10개 항목 모두 10/10**(이 가지 트리 기준).
 - **시험**: 루트 415 · functions 118 · lint · typecheck · build · fonts:check · verify:selftest 종료코드 0, 양쪽 `npm audit` 0건.
 - **되돌림**: 이 가지는 master에 넣지 않았다. master `6ac7dc3` · 라이브 `81a07b4` · `rollback-20261025-7`은 그대로다.
   - 배포하면 **함수도 바뀐다**(body-parser 2.4.0 · 안전 차단 판정 · 기록 칸). runbook §9 순서로 함수 → 화면이고, `base` 사본은 잠금 파일이 달라 `npm ci`로 준비한다.
