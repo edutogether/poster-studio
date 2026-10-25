@@ -16,6 +16,8 @@ import crypto from 'node:crypto';
 import {
   app,
   buildPrompt,
+  PROMPT_VERSION,
+  editAttempts,
   sanitizePromptField,
   checkBoothToken,
   requirePhoto,
@@ -172,6 +174,39 @@ test('buildPrompt: 모르는 장르는 animation으로 대체된다', () => {
 test('buildPrompt: 제목/문구가 없으면 concept 문장 자체를 안 넣는다', () => {
   const p = buildPrompt({ genre: 'animation', mode: 'solo', title: '', tagline: '' });
   expect(!p.includes('This film is titled')).toBeTruthy();
+});
+
+const GENRE_KEYS = ['animation', 'fantasy', 'sf', 'hero', 'mystery', 'director', 'sports', 'music'];
+test('buildPrompt v2: 장르 8 × 혼자/단체 16조합 모두 우선순위 순서(정체성 → 인원 → 구도 → 장면 → 이야기 → 금지)를 지킨다', () => {
+  expect(PROMPT_VERSION).toMatch(/^v2-/);
+  const scenes = new Set();
+  for (const genre of GENRE_KEYS) {
+    for (const mode of ['solo', 'group']) {
+      const p = buildPrompt({ genre, mode, title: '별을 찾는 아이', tagline: '우주 너머, 미지의 세계로' });
+      const order = ['IDENTITY', 'PEOPLE COUNT', 'LAYOUT', 'SCENE', 'STORY', 'RULES'].map((k) => p.indexOf(k + ':') >= 0 ? p.indexOf(k + ':') : p.indexOf(k + ' ('));
+      expect(order.every((i) => i >= 0), `${genre}/${mode} 덩어리 빠짐`).toBe(true);
+      expect([...order].sort((a, b) => a - b), `${genre}/${mode} 순서`).toEqual(order);
+      expect(p).toMatch(/NO text, NO letters/);
+      expect(p).toMatch(/BOTTOM THIRD/);
+      expect(p).toMatch(/10% and 35% of the image height/);
+      scenes.add(p.slice(p.indexOf('SCENE:'), p.indexOf('STORY:')));
+      if (mode === 'group') {
+        expect(p).toMatch(/ENSEMBLE CAST/);
+        expect(p).toMatch(/exactly as many people as are in the photo/);
+        expect(p).toMatch(/central 80% of the width/);
+      } else {
+        expect(p).toMatch(/exactly one person/);
+        expect(p).toMatch(/middle 40% of the width/);
+      }
+      expect(p.length < 4000, `${genre}/${mode} 길이 ${p.length}`).toBe(true);
+    }
+  }
+  expect(scenes.size, '16조합의 장면 문장이 서로 달라야 한다').toBe(16);
+});
+
+test('buildPrompt v2: 이름 · 단체명 · 출연진은 넘겨도 지시문에 들어가지 않는다(화면 고지 약속)', () => {
+  const p = buildPrompt({ genre: 'sf', mode: 'group', title: '우주 탐험', tagline: '', name: '홍길동', groupName: '별빛반', members: '김철수, 이영희' });
+  for (const pii of ['홍길동', '별빛반', '김철수', '이영희']) expect(p.includes(pii)).toBe(false);
 });
 
 // ── parseMultipart(실제 OpenAI 호출 없이 업로드 파싱만 검증) ──────────
@@ -357,6 +392,10 @@ test('mapGenerateError: 실패 종류마다 화면이 가를 code를 준다', ()
   const cases = [
     [{ status: 429, message: 'Rate limit exceeded' }, 'openai_busy'],
     [{ message: 'You exceeded your current quota, billing details required' }, 'credit'],
+    // 실제 OpenAI는 잔액 · 지출 한도도 429로 준다 — 몰림(openai_busy)으로 읽으면 안 된다(2026-10-25)
+    [{ status: 429, code: 'credit_balance_exhausted', type: 'insufficient_quota', message: 'Your organization has no prepaid credits remaining.' }, 'credit'],
+    [{ status: 429, code: 'project_spend_limit_exceeded', message: 'Project spend limit reached.' }, 'credit'],
+    [{ status: 429, error: { code: 'organization_spend_limit_exceeded' }, message: '429 Organization spend limit reached.' }, 'credit'],
     [{ status: 401, message: 'Incorrect API key provided' }, 'key'],
     [{ message: 'Your request was rejected by our content moderation system' }, 'safety'],
     [{ message: 'Request timed out' }, 'timeout'],
@@ -839,6 +878,28 @@ test('editWithRetry: 재시도 불가능한 오류(예: 400)는 즉시 던지고
   }
 });
 
+test('editWithRetry: 잔액 · 지출 한도 429는 다시 시도하지 않고 바로 던진다', async () => {
+  let calls = 0;
+  _setClientForTesting(
+    makeFakeClient(async () => {
+      calls++;
+      const e = new Error('429 Your organization has no prepaid credits remaining.');
+      e.status = 429;
+      e.code = 'credit_balance_exhausted';
+      e.type = 'insufficient_quota';
+      throw e;
+    })
+  );
+  _setSleepForTesting(async () => { throw new Error('잔액 오류에서 기다리면 안 된다'); });
+  try {
+    await expect(editWithRetry({})).rejects.toThrow(/prepaid credits/);
+    expect(calls, '잔액 오류는 한 번만 호출돼야 한다').toBe(1);
+  } finally {
+    _setClientForTesting(null);
+    _setSleepForTesting(null);
+  }
+});
+
 test('editWithRetry: 429가 재시도 한도(4회)를 넘기면 결국 그 오류를 던진다', async () => {
   let calls = 0;
   _setClientForTesting(
@@ -915,13 +976,29 @@ test('editWithRetry: 각 시도의 타임아웃은 OPENAI_TIMEOUT_MS를 넘지 �
   }
 });
 
-test('generateArt: input_fidelity가 거부되면(400) 그 파라미터 없이 재시도해서 성공한다', async () => {
+test('editAttempts: gpt-image-2에는 input_fidelity를 붙이지 않는다(늘 높은 충실도 — 붙이면 400으로 헛돈다)', () => {
+  const base = { model: 'gpt-image-2', prompt: 'p', size: '1024x1536', quality: 'medium', n: 1 };
+  const tries = editAttempts(base, 'gpt-image-2', 'high');
+  expect(tries.some((t) => 'input_fidelity' in t)).toBe(false);
+  expect(tries[0]).toEqual(base);
+  expect('quality' in tries[tries.length - 1]).toBe(false);
+});
+
+test('editAttempts: input_fidelity를 받는 모델(gpt-image-1 · 1.5)은 high부터 시도하고, 끄면 붙이지 않는다', () => {
+  for (const model of ['gpt-image-1', 'gpt-image-1.5', 'gpt-image-1.5-2025-12-16']) {
+    const base = { model, prompt: 'p', size: '1024x1536', quality: 'medium', n: 1 };
+    expect(editAttempts(base, model, 'high')[0].input_fidelity, model).toBe('high');
+    expect(editAttempts(base, model, 'low').some((t) => 'input_fidelity' in t), model).toBe(false);
+  }
+});
+
+test('generateArt: 기본 모델(gpt-image-2)은 첫 시도부터 input_fidelity 없이 보내고, quality가 거부되면 빼고 다시 보낸다', async () => {
   const seenParams = [];
   _setClientForTesting(
     makeFakeClient(async (params) => {
       seenParams.push(params);
-      if ('input_fidelity' in params) {
-        const e = new Error('Unknown parameter: input_fidelity');
+      if ('quality' in params) {
+        const e = new Error('Unknown parameter: quality');
         e.status = 400;
         throw e;
       }
@@ -932,9 +1009,9 @@ test('generateArt: input_fidelity가 거부되면(400) 그 파라미터 없이 �
   try {
     const images = await generateArt(filePath, 'image/png', 'a test prompt');
     expect(images).toEqual(['data:image/png;base64,FALLBACK_OK']);
-    expect(seenParams.length >= 2, '최소 2번(원래 시도 + 폴백) 호출돼야 한다').toBeTruthy();
-    expect('input_fidelity' in seenParams[0], '첫 시도는 input_fidelity를 포함해야 한다').toBeTruthy();
-    expect(!('input_fidelity' in seenParams[seenParams.length - 1]), '마지막 성공 시도는 input_fidelity가 빠져야 한다').toBeTruthy();
+    expect(seenParams.length).toBe(2);
+    expect(seenParams.some((p) => 'input_fidelity' in p)).toBe(false);
+    expect('quality' in seenParams[1]).toBe(false);
   } finally {
     _setClientForTesting(null);
     fs.unlinkSync(filePath);

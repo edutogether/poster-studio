@@ -39,6 +39,19 @@ const ART_SIZE = process.env.IMAGE_SIZE || '1024x1536';
 const VARIANTS = Math.max(1, Math.min(2, parseInt(process.env.VARIANTS || '1', 10)));
 const MODEL = process.env.IMAGE_MODEL || 'gpt-image-2';
 const INPUT_FIDELITY = (process.env.INPUT_FIDELITY || 'high').toLowerCase();
+/* gpt-image-2는 input_fidelity를 받지 않는다(OpenAI 안내 «늘 높은 충실도라 꺼져 있음») — 예전에는 매 요청 첫 시도가 400으로 거절된 뒤
+   그 파라미터를 빼고 다시 보냈다(헛도는 왕복 한 번). 받는 모델(gpt-image-1 · 1.5 계열)에만 붙인다. */
+function acceptsInputFidelity(model) {
+  return /^gpt-image-1(\.5)?(-|$)/.test(model);
+}
+/** 한 요청에서 차례로 시도할 파라미터 묶음 — 거절되면 다음 것(빠지는 순서: input_fidelity → quality). */
+function editAttempts(base, model = MODEL, fidelity = INPUT_FIDELITY) {
+  const { quality: _quality, ...noQuality } = base;
+  const tries = [];
+  if (fidelity === 'high' && acceptsInputFidelity(model)) tries.push({ ...base, input_fidelity: 'high' });
+  tries.push(base, noQuality);
+  return tries;
+}
 
 // 원본(server.js)의 노트북 상주 서버와 달리, Functions 인스턴스는 파일시스템이 읽기전용이라
 // 업로드는 반드시 /tmp(os.tmpdir()) 아래에만 써야 한다.
@@ -249,24 +262,61 @@ function clientIpForRateLimit(req) {
   return req.ip || 'unknown';
 }
 
-/* 장르별 '그림 컨셉' 프롬프트.
-   공통 규칙: 글자/문자 절대 금지(한글은 브라우저 캔버스가 입힘), 세로 영화 포스터,
-   하단 1/3은 어둡고 단순하게 비워서 제목 자리 확보, 아이 얼굴은 알아볼 수 있게 유지. */
-const genrePrompts = {
-  animation:
-    'a premium 3D animated feature-film poster key art in the polished style of a major animation studio, the subject as a cheerful heroic main character, warm cinematic rim lighting, vibrant but tasteful color palette, soft depth of field, sense of wonder and adventure',
-  fantasy:
-    'an epic fantasy adventure movie poster key art, the subject as a young hero of legend, magical glowing particles, enchanted painterly atmosphere, dramatic golden-hour light, sweeping mythical landscape, rich saturated jewel tones',
-  sf: 'a sleek science-fiction blockbuster movie poster key art, the subject as a brave young space explorer, futuristic suit, glowing holographic interfaces, distant planets and starfield, cinematic teal-and-orange grade, lens flares',
-  hero: 'a dynamic superhero blockbuster movie poster key art, the subject as a courageous young hero in a heroic pose, dramatic backlight, city skyline at dusk, comic-cinematic energy, bold confident composition',
-  mystery:
-    'a stylish mystery-adventure movie poster key art, the subject as a clever young detective, moody cinematic lighting, fog and warm street lamps, intriguing but child-friendly noir atmosphere, elegant muted palette',
-  director:
-    'a heartfelt movie-about-movies poster key art, the subject as a passionate young film director holding a camera, glowing stage and studio lights, film reels and clapperboard motifs, warm nostalgic cinematic mood',
-  sports:
-    'an inspiring sports movie poster key art, the subject as a determined young athlete mid-motion, dramatic stadium lights, dust and energy, triumphant golden cinematic glow, sense of teamwork and growth',
-  music:
-    'a vibrant music movie poster key art, the subject as a radiant young performer on a glowing stage, colorful concert lighting, bokeh light beams, joyful uplifting festival atmosphere'
+/* 생성 지시문 v2(2026-10-25 Bumm님 «AI 생성 그림 품질 개선» — _shared/ops/poster-studio-20261017/ai-quality-ab-validation-prompt-20261025.md).
+   v1(장르 한 줄 + 문장 이어 붙이기)을 우선순위 순서의 이름 붙은 덩어리로 다시 짰다 — OpenAI gpt-image-2 안내(장면 → 인물 → 세부 → 제약,
+   지킬 특징을 하나씩 이름 붙여 적기)를 따른다.
+     1. 인물 정체성(얼굴 · 피부색 · 머리 · 안경 · 나이 그대로, 미화 · 성인화 · 유명인화 · 뻔한 만화 얼굴 금지)
+     2. 인원수(혼자 = 정확히 한 명, 단체 = 사진 속 사람 수 그대로 — 빠짐 · 합쳐짐 · 복제 · 추가 금지)
+     3. 구도 계약 — 숫자는 브라우저 틀(templates.ts)의 실제 좌표에서 왔다: 주인공 상자 세로 5~67%(혼자 가로 16~84%, 단체 4~96%),
+        아치 얼굴 띠 세로 8~35%(혼자 가로 30~70%, 단체 8~92%). 그래서 얼굴은 세로 10~35%, 혼자는 가로 가운데 40%, 단체는 가로 가운데 80% 안,
+        머리 위 빈 배경, 아래 1/3은 제목 자리.
+     4. 장르 장면 — 장르 8종마다 혼자 · 단체를 따로(16조합): 의상 · 장소 · 빛 · 색 · 카메라 · 깊이
+     5. 제목 · 홍보 문구는 장면의 분위기 · 소품 · 색으로만(글자 금지)
+     6. 아동 안전 · 글자 · 로고 금지
+   학생이 입력한 제목 · 문구만 들어간다 — 이름 · 단체명 · 출연진은 이 함수에 오지 않는다(화면 고지 약속). */
+const genreScenes = {
+  animation: {
+    look: 'premium 3D animated feature-film key art with soft rounded forms, rich materials and warm global illumination',
+    solo: 'the lead as a cheerful adventurer standing on a whimsical rooftop garden at sunset, paper lanterns and a friendly swirl of clouds behind, warm rim light, gentle low-angle camera',
+    group: 'the friends as the main cast of an animated adventure, standing together on a whimsical rooftop garden at sunset, paper lanterns and a friendly swirl of clouds behind, warm rim light, gentle low-angle camera',
+    stylize:
+      'Translate each real face into the 3D style while keeping its own shape, eye shape, nose, mouth, skin tone and hairstyle — not a generic cartoon face.'
+  },
+  fantasy: {
+    look: 'epic fantasy adventure movie poster key art, painterly cinematic realism',
+    solo: 'the lead as a young hero of legend in a hooded traveler\'s cloak and simple leather vest, holding a softly glowing lantern at the edge of an enchanted forest that opens onto a distant castle, magical floating light motes, golden-hour backlight, emerald and gold palette, eye-level camera with deep atmospheric perspective',
+    group: 'the friends as a fellowship of young adventurers in cloaks and leather vests, gathered together at the edge of an enchanted forest that opens onto a distant castle, magical floating light motes, golden-hour backlight, emerald and gold palette, eye-level camera with deep atmospheric perspective'
+  },
+  sf: {
+    look: 'sleek science-fiction blockbuster movie poster key art, photoreal cinematic lighting',
+    solo: 'the lead as a young space explorer in a white-and-teal spacesuit with the helmet off, standing on a starship bridge in front of a huge window onto a ringed planet and starfield, floating holographic panels with abstract shapes only, cool teal key light with warm orange rim light, slight low-angle camera',
+    group: 'the friends as a starship crew in matching white spacesuits with different colored accents, helmets off, standing together on the bridge in front of a huge window onto a ringed planet and starfield, floating holographic panels with abstract shapes only, cool teal key light with warm orange rim light, slight low-angle camera'
+  },
+  hero: {
+    look: 'dynamic superhero blockbuster movie poster key art, cinematic realism',
+    solo: 'the lead as a young superhero in an original colorful suit and short cape with no emblem, confident heroic stance on a rooftop at dusk above a glittering city skyline, wind in the hair, dramatic backlight and soft lens flare, low-angle camera',
+    group: 'the friends as a team of young heroes in coordinated original suits with no emblems, standing side by side on a rooftop at dusk above a glittering city skyline, wind in the hair, dramatic backlight and soft lens flare, low-angle camera'
+  },
+  mystery: {
+    look: 'stylish mystery-adventure movie poster key art, moody cinematic realism that stays child-friendly',
+    solo: 'the lead as a clever young detective in a trench coat holding a magnifying glass, on a foggy cobblestone street at night under warm street lamps, glowing footprints as clues, teal-and-amber lighting, intriguing but never scary, eye-level camera',
+    group: 'the friends as a young detective club in trench coats, one holding a magnifying glass, gathered together on a foggy cobblestone street at night under warm street lamps, glowing footprints as clues, teal-and-amber lighting, intriguing but never scary, eye-level camera'
+  },
+  director: {
+    look: 'heartfelt movie-about-movies poster key art, warm nostalgic cinematic realism',
+    solo: 'the lead as a passionate young film director beside a vintage film camera on a movie set, warm studio lights and soft haze, a director\'s chair and film reels nearby, a blank clapperboard, golden nostalgic mood, three-quarter camera angle',
+    group: 'the friends as a young film crew — director, camera operator and actors — gathered around a vintage film camera on a movie set, warm studio lights and soft haze, film reels and a blank clapperboard, golden nostalgic mood, three-quarter camera angle'
+  },
+  sports: {
+    look: 'inspiring sports movie poster key art, cinematic realism',
+    solo: 'the lead as a determined young athlete in a plain original team uniform with no numbers or logos, in a dynamic ready pose in a stadium under bright floodlights, dust and light streaks, triumphant golden glow, low-angle camera',
+    group: 'the friends as one team in matching plain original uniforms with no numbers or logos, standing together arms around each other\'s shoulders in a stadium under bright floodlights, dust and light streaks, triumphant golden glow, low-angle camera'
+  },
+  music: {
+    look: 'vibrant music movie poster key art, cinematic concert lighting',
+    solo: 'the lead as a radiant young performer singing into a microphone on a glowing concert stage, colorful spotlight beams and bokeh, joyful festival atmosphere, low-angle camera',
+    group: 'the friends as a band performing together on a glowing concert stage, holding microphones and instruments away from their faces, colorful spotlight beams and bokeh, joyful festival atmosphere, low-angle camera'
+  }
 };
 
 /* 학생이 입력한 제목/문구는 프롬프트 문자열 안에 큰따옴표로 감싸 그대로 삽입된다
@@ -281,29 +331,40 @@ function sanitizePromptField(value, maxLen) {
     .slice(0, maxLen);
 }
 
+const PROMPT_VERSION = 'v2-20261025';
+
 function buildPrompt({ genre, mode, title, tagline }) {
-  const base = genrePrompts[genre] || genrePrompts.animation;
-  const ensemble =
-    mode === 'group'
-      ? 'Treat the people in the photo as an ENSEMBLE CAST of co-stars standing together as a team, all of them transformed into the same heroic poster style.'
-      : 'Treat the person in the photo as the single lead star (hero portrait), centered and prominent.';
+  const g = genreScenes[genre] || genreScenes.animation;
+  const group = mode === 'group';
+  const identity = [
+    'IDENTITY (most important): the uploaded photo is the identity reference.',
+    group
+      ? 'Keep every person recognizably the same individual:'
+      : 'Keep the person recognizably the same individual:',
+    'same face shape, eyes, eyebrows, nose, mouth and jawline, same skin tone, same hairstyle and hair color, glasses if worn, and the same apparent age.',
+    'Do not beautify, slim, age up or make anyone look like a celebrity; keep natural, friendly expressions.',
+    g.stylize || 'Stylize lighting and costume, not the faces.'
+  ].join(' ');
+  const count = group
+    ? 'PEOPLE COUNT: this is an ENSEMBLE CAST. Show exactly as many people as are in the photo — every one of them, each with their own distinct face; never drop, merge, duplicate or add anyone, and no extra background characters with visible faces.'
+    : 'PEOPLE COUNT: exactly one person — the single lead star (hero portrait). Do not add any other person with a visible face.';
+  const layout = [
+    'LAYOUT (tall vertical 2:3 movie poster):',
+    'leave clear empty background above the highest head (about one tenth of the image height); never crop the top of a head;',
+    group
+      ? 'gather everyone closely in the center, shoulder to shoulder, heads at similar heights, with all faces between about 10% and 35% of the image height from the top and fully inside the central 80% of the width — no face near or cut by the left or right edge;'
+      : 'center the lead horizontally with head and shoulders large, the face between about 10% and 35% of the image height from the top and inside the middle 40% of the width;',
+    'bodies may continue downward into the scene;',
+    'keep the BOTTOM THIRD darker, calmer and uncluttered (ground, shadow, haze or soft background) with no faces, no hands and no important objects, so a title can be placed there later.'
+  ].join(' ');
+  const scene = `SCENE: ${g.look}; ${group ? g.group : g.solo}.`;
   const concept =
     title || tagline
-      ? `This film is titled "${title || ''}"${tagline ? ` with the tagline "${tagline}"` : ''}. Let the scene's mood, energy and theme clearly reflect that idea (while keeping the chosen genre style), but render absolutely NO text or letters.`
+      ? `STORY: This film is titled "${title || ''}"${tagline ? ` with the tagline "${tagline}"` : ''}. Express that idea only through the setting, props, color and mood — never as written words.`
       : '';
-  return [
-    base + '.',
-    'Transform the uploaded photo of real student(s) into this poster, keeping their faces clearly recognizable and friendly but stylized to match the art.',
-    ensemble,
-    concept,
-    'Composition: tall vertical 2:3 movie poster, the subject(s) in the upper two-thirds, FULLY VISIBLE.',
-    'Frame with comfortable margin: include the entire head and hair with empty space ABOVE the head; never crop or cut off the top of the head, and keep everyone fully within the frame.',
-    'IMPORTANT: keep the BOTTOM THIRD darker, calmer and uncluttered so a title can be placed there later.',
-    'Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark anywhere in the image.',
-    'Safe, wholesome, child-appropriate. High detail, professional, keepsake quality.'
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const rules =
+    'RULES: Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark, no signs, captions or writing on clothing or props anywhere in the image. Safe, wholesome, child-appropriate: no weapons, violence, horror or suggestive content; modest clothing. High detail, professional, keepsake quality.';
+  return [identity, count, layout, scene, concept, rules].filter(Boolean).join('\n');
 }
 
 /* 이미지 생성 호출.
@@ -325,6 +386,16 @@ function budgetExhaustedError() {
   return new Error('이미지 생성이 제한 시간을 초과했습니다 (timed out).');
 }
 
+/* 잔액 · 지출 한도 오류(2026-10-25): OpenAI는 크레딧이 바닥나거나 조직 · 프로젝트 지출 한도에 닿아도 «429»를 돌려준다
+   (code: credit_balance_exhausted · organization_spend_limit_exceeded · project_spend_limit_exceeded ·
+   organization_usage_limit_exceeded, type: insufficient_quota — OpenAI 공식 오류 코드 안내). 요청 몰림(429)과 상태 코드가 같아
+   예전에는 4번 다시 시도한 뒤 «AI가 잠시 바빠요»로 안내됐다. 다시 시도해도 풀리지 않으므로 바로 멈추고 크레딧 문제로 알린다. */
+const BILLING_CODE = /^(insufficient_quota|credit_balance_exhausted|(organization|project)_(spend|usage)_limit_exceeded|billing_hard_limit_reached)$/;
+function isBillingError(err) {
+  const codes = [err?.code, err?.type, err?.error?.code, err?.error?.type];
+  return codes.some((v) => typeof v === 'string' && BILLING_CODE.test(v)) || /billing|quota|hard limit/i.test(String(err?.message || ''));
+}
+
 async function editWithRetry(params, deadlineAt = Date.now() + GENERATE_BUDGET_MS) {
   const maxRetries = 4;
   for (let attempt = 0; ; attempt++) {
@@ -336,7 +407,7 @@ async function editWithRetry(params, deadlineAt = Date.now() + GENERATE_BUDGET_M
       return await getClient().images.edit(params, { timeout: Math.min(remaining, OPENAI_TIMEOUT_MS) });
     } catch (err) {
       const status = err?.status || err?.response?.status;
-      const retryable = status === 429 || (status >= 500 && status < 600);
+      const retryable = !isBillingError(err) && (status === 429 || (status >= 500 && status < 600));
       if (retryable && attempt < maxRetries) {
         const waitMs = Math.min(1000 * 2 ** attempt, 8000) + Math.floor(Math.random() * 600);
         // 기다렸다 재시도해봐야 예산 안에 끝낼 수 없으면, 플랫폼이 우리를 죽이기 전에
@@ -356,10 +427,7 @@ async function generateArt(filePath, mimetype, prompt, deadlineAt = Date.now() +
   const ext = /jpe?g/i.test(mime) ? 'jpg' : /webp/i.test(mime) ? 'webp' : 'png';
   const image = await toFile(fs.createReadStream(filePath), 'photo.' + ext, { type: mime });
   const baseParams = { model: MODEL, image, prompt, size: ART_SIZE, quality: QUALITY, n: VARIANTS };
-  const noQuality = { model: MODEL, image, prompt, size: ART_SIZE, n: VARIANTS };
-  const tries = [];
-  if (INPUT_FIDELITY === 'high') tries.push({ ...baseParams, input_fidelity: 'high' });
-  tries.push(baseParams, noQuality);
+  const tries = editAttempts(baseParams);
   let lastErr;
   // 요청마다 항상 가장 좋은 조합(얼굴보존 high)부터 새로 시도한다.
   // (server.js 원본은 이 시작 지점을 프로세스 전역에 기억해뒀는데, 동시 요청이 겹치면
@@ -745,10 +813,11 @@ async function checkPhotoGenerationLimit(req, res, next) {
 function mapGenerateError(err) {
   const status = err?.status || err?.response?.status;
   const raw = String(err?.message || '');
+  // 크레딧 · 지출 한도도 429로 오므로 몰림(429)보다 먼저 가른다(isBillingError 참고).
+  if (isBillingError(err))
+    return { status: 500, code: 'credit', message: 'OpenAI 크레딧 잔액이 부족합니다. platform.openai.com에서 크레딧을 충전해 주세요.' };
   if (status === 429)
     return { status: 429, code: 'openai_busy', message: '지금 요청이 몰려 잠시 대기가 필요합니다. 10~20초 후 다시 시도해 주세요.' };
-  if (/billing|quota|hard limit/i.test(raw))
-    return { status: 500, code: 'credit', message: 'OpenAI 크레딧 잔액이 부족합니다. platform.openai.com에서 크레딧을 충전해 주세요.' };
   if (status === 401 || /api key|incorrect key/i.test(raw))
     return { status: 500, code: 'key', message: 'API 키가 올바르지 않습니다. Firebase 시크릿(OPENAI_API_KEY)을 확인해 주세요.' };
   if (/moderation|safety|content policy/i.test(raw))
@@ -861,6 +930,8 @@ const ALLOWED_ORIGINS = [
 export {
   app,
   buildPrompt,
+  PROMPT_VERSION,
+  editAttempts,
   sanitizePromptField,
   parseMultipart,
   UPLOAD_DIR,
