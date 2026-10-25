@@ -6,11 +6,12 @@
    ──────────────────────────────────────────────────────────────────── */
 import { FEST, DATE, VENUE, EN } from './constants.js';
 import { state, type Meta } from './state.js';
+import FULL_CORE from './fullFontCore.json';
 
 /* ── 폰트 보장(캔버스는 폰트 로드 후 그려야 깨지지 않음) ── */
 export async function ensureFonts(){
   try{
-    await Promise.all([
+    await Promise.allSettled([
       document.fonts.load("900 120px 'Black Han Sans'"),
       document.fonts.load("900 120px 'Noto Serif KR'"),
       document.fonts.load("700 60px 'Noto Serif KR'"),
@@ -21,31 +22,89 @@ export async function ensureFonts(){
       document.fonts.load("700 80px 'Gaegu'"),
       document.fonts.load("400 80px 'Song Myung'"),
     ]);
+    await ensureFullFallback();
     await document.fonts.ready;
   }catch(e){ /* 폰트 못 받아도 기본글꼴로 진행 */ }
 }
+/* PretendardFull(핵심 조각)에 없는 글자만 골라낸다 — scripts/fonts/slice-full.py와 같은 정의다:
+   KS X 1001 상용 한글 2350자 + fullFontCore.json의 범위. 나머지는 PretendardFullRare의 구간 조각에 있다(2026-10-24).
+   글 전체를 넘기면 상용 음절이 구간마다 걸려 조각을 거의 다 받게 되므로, 드문 글자만 넘긴다. */
+const CORE_RANGES = FULL_CORE.ranges.map((r) => r.split('-').map((x) => parseInt(x, 16)));
+let commonSyllables: Set<number> | null = null;
+export function rareGlyphs(text: string){
+  if(!commonSyllables){
+    const bytes: number[] = [];
+    for(let lead = 0xb0; lead <= 0xc8; lead++) for(let trail = 0xa1; trail <= 0xfe; trail++) bytes.push(lead, trail);
+    commonSyllables = new Set([...new TextDecoder('euc-kr').decode(Uint8Array.from(bytes))].map((c) => c.codePointAt(0)!));
+  }
+  const out = new Set<string>();
+  for(const ch of text){
+    const cp = ch.codePointAt(0)!;
+    if(!commonSyllables.has(cp) && !CORE_RANGES.some(([a, b]) => a <= cp && cp <= b)) out.add(ch);
+  }
+  return [...out].join('');
+}
+const SANS_WEIGHTS = [400,500,600,700,800,900];
+
+/* 포스터 글꼴 조각(핵심 PretendardFull · 드문 PretendardFullRare)을 망 오류로 못 받은 굵기는, 조각을 잘라낸 원본 통글꼴
+   (public/fonts/Pretendard-*.woff2 — 그대로 둔다)을 같은 이름 'PretendardFull' · 같은 굵기로 더해 받는다. 같은 설명의 글꼴은
+   나중에 넣은 것이 앞서므로 그 굵기의 모든 글자를 원본에서 그리고, 조각은 원본에서 잘라낸 것이라 모양이 같다 — 대체 글꼴로
+   인쇄되지 않게 한다(2026-10-26). 정상일 때는 받지 않는다. 원본까지 세 번 못 받으면 예전과 같이 대체 글꼴로 그려진다. */
+const FULL_FILE: Record<number, string> = {400:'Regular',500:'Medium',600:'SemiBold',700:'Bold',800:'ExtraBold',900:'Black'};
+const fullFallback = new Map<number, Promise<boolean>>();
+async function loadFullFallback(w: number){
+  for(let attempt = 0; attempt < 3; attempt++){
+    // 문서 기준 상대 주소(로고 loadImg와 같다) — 하위 경로로 열어도 이 앱의 fonts/를 가리킨다
+    const face = new FontFace('PretendardFull', `url('fonts/Pretendard-${FULL_FILE[w]}.woff2') format('woff2')`, { weight: String(w), style: 'normal', display: 'block' });
+    try{ await face.load(); document.fonts.add(face); return true; }catch(e){ /* 다시 받는다 */ }
+  }
+  // 문구는 화면 글꼴 서브셋에 있는 글자로만 쓴다 — 글자 집합 추출기(scripts/fonts/charset.mjs)가 src의 문자열을 화면 문구로 센다
+  console.warn(`[포스터 글자] ${w} 원본 파일도 받지 못했다 — 다른 글자로 그려질 수 있다`);
+  return false;
+}
+export async function ensureFullFallback(){
+  const failed = new Set<number>();
+  try{
+    document.fonts.forEach((f) => {
+      const fam = f.family.replace(/["']/g, '');
+      if((fam === 'PretendardFull' || fam === 'PretendardFullRare') && f.status === 'error') failed.add(Number(f.weight));
+    });
+  }catch(e){ return; }
+  await Promise.all([...failed].filter((w) => FULL_FILE[w]).map((w) => {
+    if(!fullFallback.has(w)) fullFallback.set(w, loadFullFallback(w));
+    return fullFallback.get(w);
+  }));
+}
+
 /* 실제로 그릴 글자(제목·이름·문구 등)의 글꼴 조각을 미리 모두 로드.
    구글폰트 한글은 subset으로 쪼개 받아서, 안 받은 글자가 기본글꼴로 깨질 수 있음 → 텍스트 인자로 강제 로드 */
 export async function ensureGlyphs(meta: Meta){
   const txt = [meta.title, meta.name, meta.groupName, meta.members, meta.tagline, FEST, DATE, VENUE]
     .filter(Boolean).join(' ') + ' 주연감독출연';
   const jobs = [];
+  const rare = rareGlyphs(txt);
   for(const fam of ["Black Han Sans","Noto Serif KR","PretendardFull"]){
     /* 600(SemiBold)이 빠져 있었다 — templates의 클래식 판이 출연진 줄을 600으로
        그린다. 폰트 서브셋 전에는 화면 UI가 이미 Pretendard 600을 받아둔 덕에
        우연히 문제가 안 났는데, 캔버스를 별도 패밀리(PretendardFull)로 가르자
        **그 줄만 대체 글꼴로 그려졌다** — master에서 포스터 픽셀 대조 20건 중
        1건 불일치로 잡힌 것이다(2026-09-09). */
-    for(const w of [400,500,600,700,800,900]){
+    for(const w of SANS_WEIGHTS){
       try{ jobs.push(document.fonts.load(`${w} 80px '${fam}'`, txt)); }catch(e){}
     }
+  }
+  if(rare) for(const w of SANS_WEIGHTS){
+    try{ jobs.push(document.fonts.load(`${w} 80px 'PretendardFullRare'`, rare)); }catch(e){}
   }
   // 손글씨·세로 제목 글꼴은 굵기가 하나뿐이라 그 굵기로만 받는다(2026-10-14).
   for(const face of ["700 80px 'Gaegu'", "400 80px 'Song Myung'"]){
     try{ jobs.push(document.fonts.load(face, txt)); }catch(e){}
   }
   try{ jobs.push(document.fonts.load("400 60px 'Bebas Neue'", EN + ' 0123456789+')); }catch(e){}
-  try{ await Promise.all(jobs); await document.fonts.ready; }catch(e){}
+  // 하나가 실패해도 나머지를 다 기다린다(Promise.all은 첫 실패에서 끝나 아직 받는 글꼴 없이 그리기 시작했다) — 그 뒤 실패한 굵기는 원본으로
+  await Promise.allSettled(jobs);
+  await ensureFullFallback();
+  try{ await document.fonts.ready; }catch(e){}
 }
 
 /* ───────────────────── 그리기 공통 도구 ───────────────────── */
