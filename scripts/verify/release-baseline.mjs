@@ -9,6 +9,7 @@
    --block <주소 무늬,...>(2026-10-26): 그 파일들을 망에서 막는다 — 예: fonts/full 아래 «-r» 조각(드문 글자) 무늬로 못 받는 경우를 만들어
    결과가 막지 않은 때와 같은지(원본 통글꼴로 대신 받는지) 본다. 막힌 요청이 0건이면 실패다(무늬 오타를 통과시키지 않게).
    --expect <pixels.json>(2026-10-26): 지문이 그 파일과 장마다 같아야 통과 — 두 판 대조 · 막기 대조를 손으로 하지 않게.
+     저장소 기준 지문: snapshots/release-20261026-windows.json(기본 5×8) · release-20261026-rare-windows.json(--rare 4×8).
    이 선택들은 기준선 대조(라이브)와 같이 쓰지 않는다. */
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -267,7 +268,8 @@ try {
     console.log(JSON.stringify({case:c.name,posters:8,print:1,privacy:'pass',cameraStopped:true}));
   }
   assert.equal(pixels.length,cases.length*8);
-  const baseline='scripts/verify/snapshots/release-20261003-windows.json';
+  // 10/26: 10/03 기준(옛 디자인 · 판 이름 «필름스트립»)을 은퇴시키고 같은 5×8 범위의 지금 출력(라이브 81a07b4 = master 6ac7dc3 check-real 빌드)으로 바꿨다
+  const baseline='scripts/verify/snapshots/release-20261026-windows.json';
   if((liveURL || selfTest) && !rareCases && !extraBlocked.length){
     const expected=JSON.parse(await fs.readFile(baseline,'utf8'));
     if(selfTest)expected[0].지문='intentional-mismatch';

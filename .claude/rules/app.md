@@ -227,7 +227,8 @@
   조각을 못 받은 굵기는 원본 통글꼴(`public/fonts/Pretendard-*.woff2`)을 같은 이름으로 더해 받는다(`src/layout.ts` `ensureFullFallback`, 0.5 · 1초 간격 세 번, 실패를 기억하지 않아
   조판 때 다시 받는다) — **원본 6굵기를 지우지 않는다**(시험이 막는다). 로고도 못 받으면 조판 때 다시 받는다.
   `fullFontCore.json`을 고치면 `python scripts/fonts/slice-full.py`(fontTools 필요)를 다시 돌린다 — CSS 머리말의 범위 지문을 시험이 대조한다.
-  조각을 다시 만들면 화소 대조를 돌린다: `npx vite build --mode check-real` 빌드에서 `node scripts/verify/release-baseline.mjs [--rare] [--block <무늬>] --expect <기준 pixels.json>`
+  조각을 다시 만들면 화소 대조를 돌린다: `npx vite build --mode check-real` 빌드에서 `node scripts/verify/release-baseline.mjs [--rare] [--block <무늬>] --expect <기준 지문>`
+  (기준 지문 = `scripts/verify/snapshots/release-20261026-windows.json`(5×8) · `--rare`면 `release-20261026-rare-windows.json`(4×8) — 라이브 `81a07b4`와 같은 출력, 저장소 루트 기준 절대 경로로 준다)
   (10/26: master ↔ 후보 기본 40 · 드문 32 같음, 드문 조각 · 핵심 조각 · 조각 전부를 막아도 같음, master에서 통글꼴을 막으면 32/32 다름).
 - **장르 그림**은 `src/studio/genre/`(가져오기 → 해시 이름 · 1년 immutable). 판타지 · 뮤지컬은 무손실 WebP(화소 · 색 프로필 같음). **`public/studio`의 옛 파일 8장을 지우지 않는다**(이미 나간 옛 주소 200).
 - **느린 망 측정**: `node scripts/verify/serve-dist.mjs <저장소> <포트> --h2 <인증서 폴더> --replay <응답 JSON>`(라이브처럼 HTTP/2, 실제 응답 그림 재생 — 응답 파일은 저장소 밖)
@@ -275,6 +276,7 @@
 - **단계를 넘기면 맨 위에서 시작한다**(`StudioView.tsx`). 제목 초점이 화면을 끌어내리면 휴대폰에서 2단계 카메라·3단계 포스터가 위로 밀린 채 열렸다. 초점은 `preventScroll`로 옮긴다.
 - 확인: `node scripts/verify/mobile-layout-probe.mjs <dist> <out>`(360·390·430 × 3배, 샘플 모드 흐름 전부). 가로 넘침 · 화면 밖 요소 · 단추 겹침 · 40px 미만 단추 · 잘린 글자 ·
   맨 아래 단추가 끝에 붙음 · 단계 도착 스크롤을 재고 하나라도 걸리면 종료코드 1. 사람이 보는 화면은 `-view.png`다(전체 페이지 캡처에는 화면 위에 숨긴 바로가기 링크가 비쳐 보인다).
+- 🟠 **이 탐침은 CI에 넣지 않는다 — 화면(CSS · 배치)을 바꾼 커밋마다 손으로 돌린다**(2026-10-26 팀장 결정: GitHub 정지로 CI를 돌릴 수 없다). 종합감사 «반응형 자동 보호 없음»은 이 결정으로 닫는다.
   `--device iphone|galaxy`는 그 기기의 UA로 연다. `--url <주소>`는 로컬 빌드 대신 라이브를 연다 — AI 서버만 막고, 생성(/generate) 요청이 네트워크에
   하나라도 잡히면(막혔어도) 종료코드 2다(10/22 — 막힌 요청도 잡히는 것을 확인함). PC(`--desktop --real`)는 칸 안 «카메라 켜기»부터 누른다(두 단추 판은 아래 단추가 «샘플 포스터 보기»). `--real`의 휴대폰 흉내는 가짜 카메라가 **세로**(960×1280)다 — 휴대폰은 세로로 들면 요청한 가로 · 세로를 바꿔 주는데
   크롬 가짜 카메라는 요청대로 잘라 960×960 정사각형을 줬다(10/20 실측). 켜진 화면 · 찍은 뒤 화면의 «카메라 칸 띠(레터박스)» · «단추 줄 아래 빈 곳»도 잰다.
