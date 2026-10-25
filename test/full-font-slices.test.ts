@@ -184,3 +184,24 @@ test("로고를 하나라도 못 받으면 다음 부름(조판 때)에 다시 �
   await ensureLogo();
   expect(asked, "다 받은 뒤에는 다시 받지 않는다").toHaveLength(6);
 });
+
+test("로고를 다시 받을 때는 못 받은 것만 받고, 이미 받은 로고는 그대로 둔다", async () => {
+  const asked: string[] = [];
+  let failing = new Set(["logo-dark.png", "studio/inky-logo.png"]);
+  class FakeImage {
+    onload: (() => void) | null = null;
+    onerror: ((e: unknown) => void) | null = null;
+    set src(v: string) { asked.push(v); setTimeout(() => (failing.has(v) ? this.onerror?.(new Error("망 오류")) : this.onload?.()), 0); }
+  }
+  vi.stubGlobal("Image", FakeImage);
+  state.LOGO_LIGHT = state.LOGO_DARK = state.LOGO_FESTIVAL = null;
+  state.LOGO_TRIED = false;
+  await ensureLogo();
+  const light = state.LOGO_LIGHT;
+  expect([!!light, state.LOGO_DARK, state.LOGO_FESTIVAL], "첫 시도: 흰 로고만 받음").toEqual([true, null, null]);
+  failing = new Set(["logo-white.png"]);   // 다시 부를 때 흰 로고 주소가 실패해도 이미 받은 것은 남아야 한다
+  await ensureLogo();
+  expect(asked.slice(3), "두 번째 부름은 못 받은 두 장만 받는다").toEqual(["logo-dark.png", "studio/inky-logo.png"]);
+  expect(state.LOGO_LIGHT, "이미 받은 흰 로고는 같은 그림 그대로").toBe(light);
+  expect(state.LOGO_DARK && state.LOGO_FESTIVAL, "나머지 두 장이 받아진다").toBeTruthy();
+});

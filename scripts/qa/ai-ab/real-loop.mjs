@@ -50,6 +50,8 @@ process.env.OPENAI_API_KEY = dry ? 'dry-not-used' : 'qa-client-injected';   // �
 // 10/25 실행의 촬영본 한 장이 공용 임시 폴더에 남아 있었다). 그래서 이 실행만 쓰는 폴더를 OS 임시 폴더로 가리키게 하고 끝날 때 통째로 지운다.
 const runTmp = await fs.mkdtemp(path.join(os.tmpdir(), 'real-loop-run-'));
 process.env.TEMP = process.env.TMP = process.env.TMPDIR = runTmp;
+// Ctrl+C · 종료 신호로 끊기면 아래 finally를 지나지 않는다 — 그때도 이 폴더(촬영본이 잠깐 놓이는 곳)를 지우고 끝낸다(10/26 종합감사 재채점)
+for (const sig of ['SIGINT', 'SIGTERM']) process.once(sig, () => { try { fss.rmSync(runTmp, { recursive: true, force: true }); } finally { process.exit(sig === 'SIGINT' ? 130 : 143); } });
 const mod = await import(pathToFileURL(path.resolve(modulePath)).href);
 const counters = new Map();
 const counterImpl = async (collectionName, docId, max) => {

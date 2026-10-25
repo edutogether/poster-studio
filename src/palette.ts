@@ -158,20 +158,24 @@ export function archSet(c: ArtColors, t: ArtTone) {
 }
 
 /* ───── 그림에서 화소 받기(틀이 쓰는 입구) ───── */
-const cache = new WeakMap<object, ArtColors>();
-/** 그림(HTMLImageElement·캔버스)의 색을 잰다. 캔버스가 없거나 읽을 수 없는 환경(테스트의 가짜 캔버스)에서는 기본값. */
-export function artColors(art: CanvasImageSource & { width: number; height: number }): ArtColors {
-  if (cache.has(art)) return cache.get(art)!;
-  let out = DEFAULT;
+/** 그림을 48×72로 줄여 화소를 읽는다. 캔버스가 없거나 읽을 수 없는 환경(테스트의 가짜 캔버스)에서는 null — 색 · 밝기 재기가 같이 쓴다. */
+function samplePixels(art: CanvasImageSource & { width: number; height: number }): Uint8ClampedArray | null {
   try {
     const cv = typeof document !== 'undefined' ? document.createElement('canvas') : null;
     const cx = cv && typeof cv.getContext === 'function' ? cv.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings) : null;
-    if (cv && cx && typeof cx.getImageData === 'function') {
-      cv.width = 48; cv.height = 72;
-      cx.drawImage(art, 0, 0, 48, 72);
-      out = analyzePixels(cx.getImageData(0, 0, 48, 72).data);
-    }
-  } catch { out = DEFAULT; }
+    if (!cv || !cx || typeof cx.getImageData !== 'function') return null;
+    cv.width = 48; cv.height = 72;
+    cx.drawImage(art, 0, 0, 48, 72);
+    return cx.getImageData(0, 0, 48, 72).data;
+  } catch { return null; }
+}
+const cache = new WeakMap<object, ArtColors>();
+/** 그림(HTMLImageElement·캔버스)의 색을 잰다. 화소를 못 읽으면 기본값. */
+export function artColors(art: CanvasImageSource & { width: number; height: number }): ArtColors {
+  if (cache.has(art)) return cache.get(art)!;
+  let out = DEFAULT;
+  const data = samplePixels(art);
+  if (data) { try { out = analyzePixels(data); } catch { out = DEFAULT; } }
   cache.set(art, out);
   return out;
 }
@@ -191,14 +195,8 @@ export function toneOfPixels(data: ArrayLike<number>): ArtTone {
 export function artTone(art: CanvasImageSource & { width: number; height: number }): ArtTone {
   if (toneCache.has(art)) return toneCache.get(art)!;
   let out: ArtTone = { lum: 0.4, sat: 0.4 };
-  try {
-    const cv = typeof document !== 'undefined' ? document.createElement('canvas') : null;
-    const cx = cv && typeof cv.getContext === 'function' ? cv.getContext('2d', { willReadFrequently: true } as CanvasRenderingContext2DSettings) : null;
-    if (cv && cx && typeof cx.getImageData === 'function') {
-      cv.width = 48; cv.height = 72; cx.drawImage(art, 0, 0, 48, 72);
-      out = toneOfPixels(cx.getImageData(0, 0, 48, 72).data);
-    }
-  } catch { /* 기본값 */ }
+  const data = samplePixels(art);
+  if (data) { try { out = toneOfPixels(data); } catch { /* 기본값 */ } }
   toneCache.set(art, out);
   return out;
 }

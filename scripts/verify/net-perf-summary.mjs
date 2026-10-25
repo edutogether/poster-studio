@@ -7,7 +7,7 @@
    p50 · p95는 가까운 순위(nearest-rank) — 10회면 p95는 가장 큰 값이다. 표: 조건 · 횟수 · 1단계 쓸 수 있음 · 누른 때 → 포스터 ·
    응답 완료 → 포스터 · 받은 용량 · AI 대기 중(응답 완료 전에 시작한) 장면 가운데 영상이 재생된 장면 · 같은 파일 두 번 받기(합계).
    시간 안에 못 끝난 실행은 «실패»로 세고 백분위에서 가장 큰 값(∞)으로 둔다 — 빼면 실패가 있어도 p95가 작아진다(10/26 종합감사).
-   결과가 하나도 없거나, 결과 파일이 없는 실행 폴더 · 실패가 하나라도 있으면 종료코드 1. */
+   결과가 하나도 없거나, 결과 파일이 없는 실행 폴더 · 생성 기록이 빈 실행 · 실패가 하나라도 있으면 종료코드 1. */
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -18,12 +18,15 @@ if (!top) { console.error('사용: net-perf-summary.mjs <결과 상위 폴더> [
 const q = (xs, p) => { const s = xs.map((x) => (x == null ? Infinity : x)).sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.ceil(p * s.length) - 1)] : null; };
 const groups = new Map();
 const missing = [];
+const noGens = [];
 for (const d of fs.readdirSync(top)) {
   const f = path.join(top, d, 'net-perf.json');
   const m = d.match(/^(.+)-(\d+)$/); if (!m || !fs.statSync(path.join(top, d)).isDirectory()) continue;
   if (!fs.existsSync(f)) { missing.push(d); continue; }
   const j = JSON.parse(fs.readFileSync(f, 'utf8'));
-  for (const g of j.gens || []) {
+  // --real 없이 잰 실행은 생성 기록이 비어 있다 — 건너뛰면 횟수에도 실패에도 안 잡혀 조건마다 «10회»가 사실보다 적게 나간다(10/26 재채점)
+  if (!(j.gens || []).length) { noGens.push(d); continue; }
+  for (const g of j.gens) {
     const visit = g.label.startsWith('재방문') ? '재방문' : '첫 방문';
     const row = j.rows.find((r) => r.name === visit);
     const key = `${m[1]} · ${visit}`;
@@ -43,4 +46,8 @@ for (const a of rows) console.log(`| ${a.key} | ${a.n} | ${s(q(a.ready, 0.5))}/$
 if (jsonAt >= 0) fs.writeFileSync(args[jsonAt + 1], JSON.stringify(rows.map((a) => ({ ...a, p: { ready: [q(a.ready, 0.5), q(a.ready, 0.95)], shown: [q(a.shown, 0.5), q(a.shown, 0.95)], after: [q(a.after, 0.5), q(a.after, 0.95)], bytes: [q(a.bytes, 0.5), q(a.bytes, 0.95)] } })), null, 1));
 const failed = rows.reduce((n, a) => n + a.fail, 0);
 if (!rows.length) { console.error('❌ 결과가 하나도 없다 — «판-망-기기-번호» 폴더의 net-perf.json(--real로 잰 것)을 찾지 못했다'); process.exit(1); }
-if (missing.length || failed) { console.error(`❌ 결과 파일이 없는 실행 ${missing.length}건${missing.length ? ' (' + missing.slice(0, 5).join(', ') + ')' : ''} · 시간 안에 못 끝난 생성 ${failed}건`); process.exit(1); }
+if (missing.length || noGens.length || failed) {
+  const list = (xs) => (xs.length ? ' (' + xs.slice(0, 5).join(', ') + ')' : '');
+  console.error(`❌ 결과 파일이 없는 실행 ${missing.length}건${list(missing)} · 생성 기록이 빈 실행 ${noGens.length}건${list(noGens)} · 시간 안에 못 끝난 생성 ${failed}건`);
+  process.exit(1);
+}

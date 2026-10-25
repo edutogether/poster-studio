@@ -214,6 +214,10 @@ check('high가 있으면 summarize가 high>0을 보고한다', () => {
     fs.rmSync(path.join(top, 'after-slow4g-pc-02'), { recursive: true });
     put('after-slow4g-pc-03', null);
     check('net-perf-summary: 시간 안에 못 끝난 생성이 있으면 실패한다', () => assert.equal(run(), 1));
+    fs.rmSync(path.join(top, 'after-slow4g-pc-03'), { recursive: true });
+    fs.mkdirSync(path.join(top, 'after-slow4g-pc-04'));
+    fs.writeFileSync(path.join(top, 'after-slow4g-pc-04', 'net-perf.json'), JSON.stringify({ rows: [{ name: '첫 방문', ready: 6000 }], gens: [] }));
+    check('net-perf-summary: 생성 기록이 빈 실행(--real 없이 잰 것)이 섞이면 실패한다', () => assert.equal(run(), 1));
   } finally {
     fs.rmSync(top, { recursive: true, force: true });
   }

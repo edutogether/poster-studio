@@ -40,7 +40,7 @@ const handler = (req, res) => {
   try { p = decodeURIComponent(u.pathname); } catch { res.writeHead(400); res.end(); return; }
   let file = path.join(root, p);
   if (p.endsWith('/')) file = path.join(file, 'index.html');
-  if (!file.startsWith(root + path.sep) ||!fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
+  if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
   const h = { 'Content-Type': TYPE[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'max-age=3600', 'Accept-Ranges': 'bytes' };
   for (const r of rules) if (glob(r.source).test(p)) for (const x of r.headers) h[x.key] = x.value;
   let body = fs.readFileSync(file);

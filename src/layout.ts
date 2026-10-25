@@ -136,7 +136,8 @@ export function ensureLogo(): Promise<void> {
   if(state.LOGO_TRIED) return logoJob ?? Promise.resolve();
   state.LOGO_TRIED = true;
   const one = (src: string) => loadImg(src).catch(() => null);
-  logoJob = Promise.all([one('logo-white.png'), one('logo-dark.png'), one('studio/inky-logo.png')])
+  // 다시 받을 때는 못 받은 것만 받는다 — 이미 받은 로고를 새 시도의 실패로 덮어 지우지 않게(10/26 종합감사 재채점)
+  logoJob = Promise.all([state.LOGO_LIGHT ?? one('logo-white.png'), state.LOGO_DARK ?? one('logo-dark.png'), state.LOGO_FESTIVAL ?? one('studio/inky-logo.png')])
     .then(([light, dark, festival]) => {
       state.LOGO_LIGHT = light; state.LOGO_DARK = dark; state.LOGO_FESTIVAL = festival;
       // 하나라도 못 받았으면 다음 부름(조판 때)에 다시 받는다 — 미리 부른 첫 시도의 망 오류로 로고 없이 인쇄되지 않게(10/26 종합감사)
