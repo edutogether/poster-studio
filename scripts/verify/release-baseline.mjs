@@ -4,7 +4,10 @@
    네트워크 계층에서도 모든 외부 주소를 차단한다. 실제 과금·촬영·인쇄는 없다.
    로컬 실행에서 5개 입력 × 8개 디자인을 저장하고 라이브 실행은 저장 지문과 대조한다.
    ⚠ 촬영 흐름을 누르므로 **실제 모드 빌드**가 필요하다. 배포 빌드는 샘플 단추가 있는 판일 수 있으니(예전에는 .env.production의
-   VITE_SAMPLE_MODE) 로컬은 진짜 생성만인 판으로 빌드한 뒤 돌린다 — 10/20부터 `npx vite build --mode check-real`(스위치는 src/studioMode.ts). */
+   VITE_SAMPLE_MODE) 로컬은 진짜 생성만인 판으로 빌드한 뒤 돌린다 — 10/20부터 `npx vite build --mode check-real`(스위치는 src/studioMode.ts).
+   --rare(2026-10-26): 입력을 드문 음절 · 영문 · 숫자 · 기호 3종(24장)으로 바꾼다 — 포스터 글꼴 조각(핵심 · 드문 글자)을 두 판에서 견줄 때.
+   --block <주소 무늬,...>(2026-10-26): 그 파일들을 망에서 막는다 — 예: fonts/full 아래 «-r» 조각(드문 글자) 무늬로 못 받는 경우를 만들어
+   결과가 막지 않은 때와 같은지(원본 통글꼴로 대신 받는지) 본다. 두 선택은 기준선 대조(라이브)와 같이 쓰지 않는다. */
 import fs from "node:fs/promises";
 import path from "node:path";
 import http from "node:http";
@@ -14,7 +17,10 @@ import assert from "node:assert/strict";
 const root = process.cwd();
 const liveURL = process.argv.slice(2).find(arg => /^https?:/.test(arg));
 const selfTest = process.argv.includes("--selftest");
-const out = path.join(root, ".cache", liveURL ? "release-live" : "release-local");
+const rareCases = process.argv.includes("--rare");
+const blockAt = process.argv.indexOf("--block");
+const extraBlocked = blockAt > 0 ? process.argv[blockAt + 1].split(",") : [];
+const out = path.join(root, ".cache", liveURL ? "release-live" : `release-local${rareCases ? "-rare" : ""}${extraBlocked.length ? "-blocked" : ""}`);
 await fs.mkdir(out, { recursive: true });
 const headers = JSON.parse(await fs.readFile("firebase.json", "utf8")).hosting
   .headers[0].headers;
@@ -142,7 +148,7 @@ try {
   await send("Runtime.enable");
   await send("Network.enable");
   await send("Network.setBlockedURLs", {
-    urls: ["*://*.cloudfunctions.net/*", "*://*.run.app/*", "*://api.openai.com/*"],
+    urls: ["*://*.cloudfunctions.net/*", "*://*.run.app/*", "*://api.openai.com/*", ...extraBlocked],
   });
   await send("Page.addScriptToEvaluateOnNewDocument", {
     source: `
@@ -181,7 +187,12 @@ try {
     );
   };
 
-  const cases = [
+  const cases = rareCases ? [
+    {name:'드문 음절', mode:'solo', title:'똠방각하 뷁햏 쀍쉙', person:'갂꺆똘', genre:'sf'},
+    {name:'드문 기호', mode:'solo', title:'Ωmega™ ∞ ←→ ½', person:'햏님', genre:'fantasy'},
+    {name:'단체 드문', mode:'group', title:'꽥꽥 뜽뜽 쌰쌰', person:'뷁초 퓌퓌 동아리', genre:'mystery'},
+    {name:'숫자 · 문장부호', mode:'solo', title:'제2편: 3·1 영웅! (2026) #1 100%', person:'Kim & 이', genre:'hero'},
+  ] : [
     {name:'기본값', mode:'solo', title:'', person:'', genre:'sf'},
     {name:'개인 한글', mode:'solo', title:'우주를 달리는 인키', person:'김태범', genre:'animation'},
     {name:'영문', mode:'solo', title:'GALAXY RUNNER', person:'박하늘', genre:'sf'},
@@ -245,9 +256,9 @@ try {
     assert.equal(await evaluate("document.querySelectorAll('.style-option').length"),0);
     console.log(JSON.stringify({case:c.name,posters:8,print:1,privacy:'pass',cameraStopped:true}));
   }
-  assert.equal(pixels.length,40);
+  assert.equal(pixels.length,cases.length*8);
   const baseline='scripts/verify/snapshots/release-20261003-windows.json';
-  if(liveURL || selfTest){
+  if((liveURL || selfTest) && !rareCases && !extraBlocked.length){
     const expected=JSON.parse(await fs.readFile(baseline,'utf8'));
     if(selfTest)expected[0].지문='intentional-mismatch';
     assert.deepEqual(pixels,expected,'배포된 40종 픽셀은 승인 로컬 기준선과 일치');
@@ -255,7 +266,7 @@ try {
   await fs.writeFile(path.join(out,'pixels.json'),JSON.stringify(pixels,null,2)+'\n');
   assert.equal(errors.length,0,JSON.stringify(errors));
   assert.equal(network.filter(u=>/cloudfunctions\.net|run\.app|api\.openai/.test(u)).length,0);
-  console.log(JSON.stringify({posters:40,errors:0,actualApiRequests:0,liveCompared:!!liveURL}));
+  console.log(JSON.stringify({posters:pixels.length,errors:0,actualApiRequests:0,liveCompared:!!liveURL,rare:rareCases,blocked:extraBlocked}));
   await send('Browser.close');
 } finally {
   socket?.close();chrome.kill();for(const server of servers)server.close();

@@ -18,11 +18,14 @@ const args = process.argv.slice(2);
 const replayAt = args.indexOf('--replay');
 const replay = replayAt >= 0 ? fs.readFileSync(args[replayAt + 1]) : null;
 const h2At = args.indexOf('--h2');
-const [repo, port] = args.filter((a, i) => !a.startsWith('--') && i !== replayAt + 1 && i !== h2At + 1);
+// 선택의 값 자리만 뺀다 — 선택이 없으면 indexOf가 -1이라 «-1 + 1 = 0번째», 곧 저장소 폴더를 빼는 일이 없게
+const valueAt = new Set([replayAt, h2At].filter((i) => i >= 0).map((i) => i + 1));
+const [repo, port] = args.filter((a, i) => !a.startsWith('--') && !valueAt.has(i));
 if (!repo || !port || !fs.existsSync(path.join(repo, 'dist', 'index.html'))) { console.error('사용: serve-dist.mjs <저장소 폴더> <포트> [--replay <응답 JSON>]'); process.exit(2); }
 const root = path.resolve(repo, 'dist');
 const rules = JSON.parse(fs.readFileSync(path.join(repo, 'firebase.json'), 'utf8')).hosting.headers;
-const glob = (g) => new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*\/?/g, '\u0000').replace(/\*/g, '[^/]*').replace(/\u0000/g, '(?:.*/)?') + '$');
+// Hosting 글롭: «**/»는 앞 경로 아무것이나, 끝의 «**»는 그 아래 전부(«/assets/**»가 /assets/main-….js를 잡아야 한다 — 10/24판은 못 잡아 1시간 캐시로 서빙했다)
+const glob = (g) => new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*\//g, '\u0000').replace(/\*\*/g, '\u0001').replace(/\*/g, '[^/]*').replace(/\u0000/g, '(?:.*/)?').replace(/\u0001/g, '.*') + '$');
 const TYPE = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.woff2': 'font/woff2', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.txt': 'text/plain; charset=utf-8', '.ico': 'image/x-icon' };
 
 const handler = (req, res) => {
