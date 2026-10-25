@@ -6,7 +6,8 @@ import { afterEach, expect, test, vi } from "vitest";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { ensureGlyphs, rareGlyphs } from "../src/layout";
+import { ensureGlyphs, ensureLogo, rareGlyphs } from "../src/layout";
+import { state } from "../src/state";
 import type { Meta } from "../src/state";
 
 const ROOT = process.cwd();
@@ -125,4 +126,61 @@ test("글꼴 하나가 먼저 실패해도 나머지를 다 받을 때까지 기
     : new Promise((resolve) => setTimeout(() => { slowDone = true; resolve([]); }, 30)));
   await ensureGlyphs(META);
   expect(slowDone, "실패 하나로 기다림이 끝나면 아직 받는 글꼴 없이 그리게 된다").toBe(true);
+});
+
+/* 10/26 종합감사 보강: 원본 6굵기 · 범위 지문 · 실패를 기억하지 않기(글꼴 · 로고) */
+test("원본 통글꼴 6굵기가 모두 배포 폴더에 있다 — 조각을 못 받을 때 대신 받는 파일이라 지우면 안 된다", () => {
+  for (const w of ["Regular", "Medium", "SemiBold", "Bold", "ExtraBold", "Black"]) expect(fs.existsSync(path.join(FONTS, `Pretendard-${w}.woff2`)), w).toBe(true);
+});
+
+test("핵심 범위(src/fullFontCore.json)의 지문이 CSS에 적힌 것과 같다 — 범위를 고치고 slice-full.py를 다시 돌리지 않으면 막는다", () => {
+  const ranges = JSON.parse(fs.readFileSync(path.join(ROOT, "src", "fullFontCore.json"), "utf8")).ranges as string[];
+  const finger = crypto.createHash("sha256").update(ranges.join(","), "utf8").digest("hex").slice(0, 12);
+  expect(css).toContain(`src/fullFontCore.json의 범위(지문 ${finger})`);
+});
+
+test("원본을 세 번 못 받아도 실패를 기억하지 않는다 — 다음 부름(조판 때)에 다시 받는다", async () => {
+  vi.useFakeTimers();
+  try {
+    let fail = 3;
+    const added: unknown[] = [];
+    let made = 0;
+    class FlakyFontFace {
+      constructor(_family: string, _src: string, _desc: { weight: string }) { made++; }
+      load() { return fail-- > 0 ? Promise.reject(new Error("망 오류")) : Promise.resolve(this); }
+    }
+    vi.stubGlobal("FontFace", FlakyFontFace);
+    vi.stubGlobal("console", { ...console, warn: () => {} });
+    vi.stubGlobal("document", { fonts: { load: vi.fn(async () => []), ready: Promise.resolve(), forEach: (cb: (f: FakeFace) => void) => [{ family: "PretendardFullRare", weight: "800", status: "error" }].forEach(cb), add: (f: unknown) => added.push(f) } });
+    const first = ensureGlyphs(META);
+    await vi.advanceTimersByTimeAsync(5000);
+    await first;
+    expect([made, added.length], "첫 부름: 세 번 다 실패").toEqual([3, 0]);
+    const second = ensureGlyphs(META);
+    await vi.advanceTimersByTimeAsync(5000);
+    await second;
+    expect([made, added.length], "두 번째 부름에서 다시 받아 성공").toEqual([4, 1]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("로고를 하나라도 못 받으면 다음 부름(조판 때)에 다시 받는다 — 미리 부른 첫 시도의 망 오류로 로고 없이 인쇄되지 않게", async () => {
+  let fail = true;
+  const asked: string[] = [];
+  class FakeImage {
+    onload: (() => void) | null = null;
+    onerror: ((e: unknown) => void) | null = null;
+    set src(v: string) { asked.push(v); setTimeout(() => (fail ? this.onerror?.(new Error("망 오류")) : this.onload?.()), 0); }
+  }
+  vi.stubGlobal("Image", FakeImage);
+  state.LOGO_TRIED = false;
+  await ensureLogo();
+  expect(state.LOGO_LIGHT, "첫 시도는 실패").toBe(null);
+  fail = false;
+  await ensureLogo();
+  expect(asked, "두 번째 부름이 세 장을 다시 받는다").toHaveLength(6);
+  expect(state.LOGO_LIGHT && state.LOGO_DARK && state.LOGO_FESTIVAL, "두 번째에 받아진다").toBeTruthy();
+  await ensureLogo();
+  expect(asked, "다 받은 뒤에는 다시 받지 않는다").toHaveLength(6);
 });

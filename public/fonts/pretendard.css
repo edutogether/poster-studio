@@ -67,7 +67,7 @@
    쓰는 쪽은 늘 'PretendardFull', 'PretendardFullRare' 순서로 둘 다 적는다(templates.ts·화면 대체 글꼴).
    원본 전체 글꼴(Pretendard-*.woff2)은 이 폴더에 그대로 둔다 — 서브셋·조각을 만드는 원본이고, 배포 전에 열린 탭이 옛 CSS로 받을 수 있다. */
 /* ▼▼ scripts/fonts/slice-full.py가 쓴다 — 손으로 고치지 않는다(다시 만들려면 그 도구를 돌린다).
-   핵심 PretendardFull: KS X 1001 상용 음절 2350자(지문 a2ad322f6152) + src/fullFontCore.json의 범위
+   핵심 PretendardFull: KS X 1001 상용 음절 2350자(지문 a2ad322f6152) + src/fullFontCore.json의 범위(지문 f4de20e72878)
    나머지 PretendardFullRare: 코드 순서 연속 구간 16개 */
 @font-face{font-family:'PretendardFull';font-weight:400;font-style:normal;font-display:block;src:url('full/Pretendard-Regular-core.woff2?v=a978b6bbaa') format('woff2')}
 @font-face{font-family:'PretendardFull';font-weight:500;font-style:normal;font-display:block;src:url('full/Pretendard-Medium-core.woff2?v=b215772c77') format('woff2')}

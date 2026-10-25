@@ -49,11 +49,13 @@ const SANS_WEIGHTS = [400,500,600,700,800,900];
 /* 포스터 글꼴 조각(핵심 PretendardFull · 드문 PretendardFullRare)을 망 오류로 못 받은 굵기는, 조각을 잘라낸 원본 통글꼴
    (public/fonts/Pretendard-*.woff2 — 그대로 둔다)을 같은 이름 'PretendardFull' · 같은 굵기로 더해 받는다. 같은 설명의 글꼴은
    나중에 넣은 것이 앞서므로 그 굵기의 모든 글자를 원본에서 그리고, 조각은 원본에서 잘라낸 것이라 모양이 같다 — 대체 글꼴로
-   인쇄되지 않게 한다(2026-10-26). 정상일 때는 받지 않는다. 원본까지 세 번 못 받으면 예전과 같이 대체 글꼴로 그려진다. */
+   인쇄되지 않게 한다(2026-10-26). 정상일 때는 받지 않는다. 원본을 세 번(0.5초 · 1초 간격) 못 받으면 그 부름에서는 대체 글꼴로
+   그려질 수 있지만, 실패는 기억하지 않는다 — 생성 단추에서 미리 부른 첫 시도가 망 오류로 끝나도 조판 때 다시 부르면 새로 받는다(10/26 종합감사). */
 const FULL_FILE: Record<number, string> = {400:'Regular',500:'Medium',600:'SemiBold',700:'Bold',800:'ExtraBold',900:'Black'};
 const fullFallback = new Map<number, Promise<boolean>>();
 async function loadFullFallback(w: number){
   for(let attempt = 0; attempt < 3; attempt++){
+    if(attempt) await new Promise((r) => setTimeout(r, 500 * attempt));
     // 문서 기준 상대 주소(로고 loadImg와 같다) — 하위 경로로 열어도 이 앱의 fonts/를 가리킨다
     const face = new FontFace('PretendardFull', `url('fonts/Pretendard-${FULL_FILE[w]}.woff2') format('woff2')`, { weight: String(w), style: 'normal', display: 'block' });
     try{ await face.load(); document.fonts.add(face); return true; }catch(e){ /* 다시 받는다 */ }
@@ -71,7 +73,7 @@ export async function ensureFullFallback(){
     });
   }catch(e){ return; }
   await Promise.all([...failed].filter((w) => FULL_FILE[w]).map((w) => {
-    if(!fullFallback.has(w)) fullFallback.set(w, loadFullFallback(w));
+    if(!fullFallback.has(w)) fullFallback.set(w, loadFullFallback(w).then((ok) => { if(!ok) fullFallback.delete(w); return ok; }));
     return fullFallback.get(w);
   }));
 }
@@ -135,7 +137,11 @@ export function ensureLogo(): Promise<void> {
   state.LOGO_TRIED = true;
   const one = (src: string) => loadImg(src).catch(() => null);
   logoJob = Promise.all([one('logo-white.png'), one('logo-dark.png'), one('studio/inky-logo.png')])
-    .then(([light, dark, festival]) => { state.LOGO_LIGHT = light; state.LOGO_DARK = dark; state.LOGO_FESTIVAL = festival; });
+    .then(([light, dark, festival]) => {
+      state.LOGO_LIGHT = light; state.LOGO_DARK = dark; state.LOGO_FESTIVAL = festival;
+      // 하나라도 못 받았으면 다음 부름(조판 때)에 다시 받는다 — 미리 부른 첫 시도의 망 오류로 로고 없이 인쇄되지 않게(10/26 종합감사)
+      if(!light || !dark || !festival) state.LOGO_TRIED = false;
+    });
   return logoJob;
 }
 /* 로고를 (cx, cy) 중심에 높이 h로 그린다. variant: 'light'(흰글씨) | 'dark'(짙은글씨), 받침 없음 */

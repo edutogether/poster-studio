@@ -103,9 +103,12 @@ def main():
         print('%-10s 핵심 %5.0fKB(%d자) · 나머지 %d조각 %d~%dKB(%d자)'
               % (wname, size / 1024, len(core), SLICES, min(sizes) // 1024, max(sizes) // 1024, len(rest)))
     finger = hashlib.sha256(''.join(chr(c) for c in sorted(common)).encode('utf-8')).hexdigest()[:12]
+    # 범위 지문(2026-10-26): fullFontCore.json의 범위를 고치고 이 도구를 다시 돌리지 않으면 시험(full-font-slices)이 막는다
+    with io.open(CORE_JSON, encoding='utf-8') as f:
+        range_finger = hashlib.sha256(','.join(json.load(f)['ranges']).encode('utf-8')).hexdigest()[:12]
     block = '\n'.join([
         f'{START}가 쓴다 — 손으로 고치지 않는다(다시 만들려면 그 도구를 돌린다).',
-        f'   핵심 PretendardFull: KS X 1001 상용 음절 2350자(지문 {finger}) + src/fullFontCore.json의 범위',
+        f'   핵심 PretendardFull: KS X 1001 상용 음절 2350자(지문 {finger}) + src/fullFontCore.json의 범위(지문 {range_finger})',
         f'   나머지 PretendardFullRare: 코드 순서 연속 구간 {SLICES}개 */',
         *core_rules, *rare_rules, END])
     css = io.open(CSS, encoding='utf-8').read()

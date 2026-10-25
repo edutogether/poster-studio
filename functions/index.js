@@ -1025,7 +1025,8 @@ async function generateHandler(req, res) {
   // 기록에 남길 칸 · 판(개인정보 없음) — 16칸이 서로 다른 판이라 실패 · 안전 차단을 칸별로 가르려면 서버 기록에 있어야 한다(2026-10-26 종합감사).
   // 장르는 알려진 이름으로 바꿔 적는다(받은 글자를 그대로 기록에 넣지 않는다)
   const key = genreKey(genre);
-  const cell = `${key}/${mode} · 판=${PROMPT_VERSIONS[PROMPT_VARIANT_BY_CELL[key][mode]]}`;
+  // try 밖이라 던지지 않게 쓴다(표가 어긋나도 «?») — 여기서 던지면 임시 사진 삭제 · 카운터 되돌리기를 지나지 못한다(10/26 종합감사)
+  const cell = `${key}/${mode} · 판=${PROMPT_VERSIONS[PROMPT_VARIANT_BY_CELL[key]?.[mode]] ?? '?'}`;
 
   const t0 = Date.now();
   const deadlineAt = (req.startedAt ?? t0) + GENERATE_BUDGET_MS;
