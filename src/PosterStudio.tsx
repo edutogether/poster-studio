@@ -539,7 +539,7 @@ export default function PosterStudio() {
     const stopElapsed = startElapsed();
     const waited = new Promise((resolve) => setTimeout(resolve, SAMPLE_WAIT_SCENES * SCENE_MS));
     try {
-      const { default: sampleArt } = await import("./studio/design-sample.png");
+      const { default: sampleArt } = await import("./studio/design-sample.webp");
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
       const built = await buildPosters([sampleArt], meta);
@@ -563,7 +563,7 @@ export default function PosterStudio() {
     if (!POSTER_PREVIEW) return;
     let alive = true;
     (async () => {
-      const { default: sampleArt } = await import("./studio/design-sample.png");
+      const { default: sampleArt } = await import("./studio/design-sample.webp");
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
       const built = await buildPosters([sampleArt], meta);
