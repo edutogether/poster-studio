@@ -45,6 +45,8 @@ function acceptsInputFidelity(model) {
   return /^gpt-image-1(\.5)?(-|$)/.test(model);
 }
 /** 한 요청에서 차례로 시도할 파라미터 묶음 — 거절되면 다음 것(빠지는 순서: input_fidelity → quality). */
+// /health와 완료 기록에 적는 «실제로 보내는» 얼굴보존 값 — 받지 않는 모델이면 null(환경값을 그대로 적으면 보내지 않는 값을 보낸다고 읽힌다)
+const SENT_INPUT_FIDELITY = INPUT_FIDELITY === 'high' && acceptsInputFidelity(MODEL) ? INPUT_FIDELITY : null;
 function editAttempts(base, model = MODEL, fidelity = INPUT_FIDELITY) {
   const { quality: _quality, ...noQuality } = base;
   const tries = [];
@@ -457,7 +459,8 @@ const PROMPT_VARIANT_BY_CELL = {
   music: { solo: 'v1plus2', group: 'v1plus' }
 };
 const PROMPT_VERSIONS = { v1: 'v1', v1plus: 'v1plus-20261025', v1plus2: 'v1plus2-20261025', v2: 'v2-20261025' };
-const genreKey = (genre) => (genrePrompts[genre] ? genre : 'animation');
+// 자기 속성만 본다 — `constructor` · `__proto__` · `toString` 같은 기본 속성 이름도 «있는 장르»로 읽으면 선택표에 칸이 없어 예외가 난다(10/26 독립 리뷰)
+const genreKey = (genre) => (Object.hasOwn(genrePrompts, genre) ? genre : 'animation');
 function promptVariantFor(genre, mode, variant) {
   const key = genreKey(genre), cell = mode === 'group' ? 'group' : 'solo';
   const chosen = variant || PROMPT_VARIANT_BY_CELL[key][cell];
@@ -539,7 +542,10 @@ function budgetExhaustedError() {
 const BILLING_CODE = /^(insufficient_quota|credit_balance_exhausted|(organization|project)_(spend|usage)_limit_exceeded|billing_hard_limit_reached)$/;
 function isBillingError(err) {
   const codes = [err?.code, err?.type, err?.error?.code, err?.error?.type];
-  return codes.some((v) => typeof v === 'string' && BILLING_CODE.test(v)) || /billing|quota|hard limit/i.test(String(err?.message || ''));
+  if (codes.some((v) => typeof v === 'string' && BILLING_CODE.test(v))) return true;
+  // 속도 한도는 문구에 결제 안내 링크(…/account/billing)가 붙어 와도 잔액 문제가 아니다 — 몰림으로 보고 다시 시도한다(10/26 독립 리뷰)
+  if (codes.includes('rate_limit_exceeded')) return false;
+  return /billing|quota|hard limit/i.test(String(err?.message || ''));
 }
 
 async function editWithRetry(params, deadlineAt = Date.now() + GENERATE_BUDGET_MS) {
@@ -588,8 +594,10 @@ async function generateArt(filePath, mimetype, prompt, deadlineAt = Date.now() +
     } catch (err) {
       lastErr = err;
       const msg = String(err?.message || '');
+      // 안전 차단은 파라미터 거절이 아니다 — 문구에 «not allowed»가 들어 있어도 같은 사진 · 지시문을 다시 보내지 않는다(10/26 Bumm님 · 독립 리뷰)
+      const moderated = [err?.code, err?.error?.code].includes('moderation_blocked') || /moderation|safety|content policy/i.test(msg);
       const paramRejected =
-        err?.status === 400 && /unknown|unsupported|invalid|not (allowed|supported)|input_fidelity|quality/i.test(msg);
+        !moderated && err?.status === 400 && /unknown|unsupported|invalid|not (allowed|supported)|input_fidelity|quality/i.test(msg);
       // 파라미터 폴백 재시도도 남은 예산 안에서만 한다(위 editWithRetry와 같은 이유).
       if (paramRejected && i < tries.length - 1 && Date.now() < deadlineAt) continue;
       throw err;
@@ -633,7 +641,7 @@ app.get('/health', async (req, res) => {
     openaiReachable,
     model: MODEL,
     quality: QUALITY,
-    fidelity: INPUT_FIDELITY,
+    fidelity: SENT_INPUT_FIDELITY,
     size: ART_SIZE,
     variants: VARIANTS
   });
@@ -1007,15 +1015,16 @@ async function generateHandler(req, res) {
   const mode = req.body.mode === 'group' ? 'group' : 'solo';
   const title = sanitizePromptField(req.body.movieTitle, 60);
   const tagline = sanitizePromptField(req.body.tagline, 80);
-  const prompt = buildPrompt({ genre, mode, title, tagline });
 
   const t0 = Date.now();
   const deadlineAt = (req.startedAt ?? t0) + GENERATE_BUDGET_MS;
   let result;
   try {
+    // 지시문 만들기도 try 안에 둔다 — 여기서 던져도 아래 catch(사진 카운터 되돌리기)와 임시 사진 삭제를 지나서 응답한다
+    const prompt = buildPrompt({ genre, mode, title, tagline });
     const images = await generateArt(req.file.path, req.file.mimetype, prompt, deadlineAt);
     const sec = ((Date.now() - t0) / 1000).toFixed(1);
-    console.log(`[generate] 완료 ${sec}초  (모델=${MODEL} · 화질=${QUALITY} · 얼굴보존=${INPUT_FIDELITY})`);
+    console.log(`[generate] 완료 ${sec}초  (모델=${MODEL} · 화질=${QUALITY} · 얼굴보존=${SENT_INPUT_FIDELITY ?? '보내지 않음(모델 기본)'})`);
     result = { status: 200, body: { images, meta: { genre, mode, seconds: Number(sec) } } };
   } catch (err) {
     console.error('[generate]', err?.status || '', err?.message || err);

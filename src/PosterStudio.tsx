@@ -136,7 +136,8 @@ export default function PosterStudio() {
   const isGeneratingRef = useRef(false); // 이중 클릭 방지(중복 과금 차단)
   /* 안전 차단(safety)을 받은 «사진 · 입력» 묶음(2026-10-26 Bumm님) — 같은 사진 · 같은 제목 · 문구 · 장르 · 혼자/단체로는 다시 보내지 않고
      같은 안내를 다시 띄운다. 사진을 다시 찍거나 입력을 고치면 새 요청이 나간다. 안전 기준을 우회하는 자동 재시도 · 지시문 변경은 없다.
-     비어 있는 문구는 보낼 때마다 장르 예시에서 무작위로 골라지므로(getMeta) 입력칸 값 그대로 비교한다. */
+     비어 있는 문구는 보낼 때마다 장르 예시에서 무작위로 골라지므로(getMeta) 입력칸 값 그대로 비교한다.
+     사진을 버리는 세 자리(다시 찍기 · 새 사람 · 처음으로)에서 함께 비운다 — 버린 사진을 이 기록이 붙잡고 있지 않게(10/26 독립 리뷰). */
   // 꺾쇠 제네릭(useRef<…>)을 쓰지 않는다 — 글자 집합 추출기(scripts/fonts/charset.mjs)가 .tsx의 «>…<» 사이를 화면 문구로 읽어 위 주석까지 끌어간다
   const safetyBlockedRef = useRef(null as { photo: Blob; inputs: string } | null);
   const genCountRef = useRef(0);
@@ -333,6 +334,7 @@ export default function PosterStudio() {
 
   const onRetake = async () => {
     capturedBlobRef.current = null;
+    safetyBlockedRef.current = null;
     if (snapshotURLRef.current) URL.revokeObjectURL(snapshotURLRef.current);
     snapshotURLRef.current = null;
     setSnapshotURL(null);
@@ -596,6 +598,7 @@ export default function PosterStudio() {
     if (isGeneratingRef.current) return;
     stopCamera();
     capturedBlobRef.current = null;
+    safetyBlockedRef.current = null;
     if (snapshotURLRef.current) URL.revokeObjectURL(snapshotURLRef.current);
     snapshotURLRef.current = null;
     setSnapshotURL(null);
@@ -607,6 +610,7 @@ export default function PosterStudio() {
   const onHome = () => {
     stopCamera();
     capturedBlobRef.current = null;
+    safetyBlockedRef.current = null;
     if (snapshotURLRef.current) URL.revokeObjectURL(snapshotURLRef.current);
     snapshotURLRef.current = null;
     $("printArea")?.remove();

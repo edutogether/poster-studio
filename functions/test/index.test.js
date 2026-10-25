@@ -1920,3 +1920,99 @@ test('실패 code: 한도 · 토큰 · 시간창 · 사진 없음 · 업로드 �
     useSharedCounterImpl();
   }
 });
+
+// ── 출시 전 독립 리뷰 지적 고침(2026-10-26) ─────────────────────────────
+
+test('장르: 기본 속성 이름(constructor · __proto__ · toString · hasOwnProperty)은 모르는 장르 — animation 지시문으로 간다', () => {
+  for (const genre of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    for (const mode of ['solo', 'group']) {
+      const input = { mode, title: '제목', tagline: '문구' };
+      expect(buildPrompt({ ...input, genre }), `${genre}/${mode}`).toBe(buildPrompt({ ...input, genre: 'animation' }));
+      expect(promptVersionFor(genre, mode), `${genre}/${mode}`).toBe(promptVersionFor('animation', mode));
+    }
+  }
+});
+
+test('generateHandler: 장르가 기본 속성 이름이어도 animation으로 만들고, 응답 전에 임시 사진을 지운다', async () => {
+  for (const genre of ['constructor', '__proto__', 'toString']) {
+    const prompts = [];
+    _setClientForTesting(makeFakeClient(async (params) => { prompts.push(params.prompt); return { data: [{ b64_json: 'AAA' }] }; }));
+    const filePath = makeTempFile(Buffer.from([0xff, 0xd8, 0xff, ...crypto.randomBytes(8)]));
+    try {
+      const body = { genre, mode: 'group', movieTitle: '제목', tagline: '문구' };
+      const r = await runHandler({ file: { path: filePath, mimetype: 'image/jpeg' }, body, startedAt: Date.now() });
+      expect(r.code, genre).toBe(200);
+      expect(r.fileExistedAtResponse, `${genre}: 응답 순간에 사진이 이미 지워져 있어야 한다`).toBe(false);
+      expect(prompts, genre).toEqual([buildPrompt({ genre: 'animation', mode: 'group', title: '제목', tagline: '문구' })]);
+    } finally {
+      _setClientForTesting(null);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+  }
+});
+
+test('속도 한도 429: 문구에 결제 안내 링크가 붙어 와도 잔액 소진이 아니다 — 다시 시도하고 «몰림»으로 안내한다', async () => {
+  const rateLimited = () => {
+    const e = new Error('429 Rate limit reached for gpt-image-2 on images per minute. You can increase your rate limit by adding a payment method to your account at https://platform.openai.com/account/billing.');
+    e.status = 429;
+    e.code = 'rate_limit_exceeded';
+    e.type = 'requests';
+    return e;
+  };
+  expect(mapGenerateError(rateLimited()).code).toBe('openai_busy');
+  let calls = 0;
+  _setClientForTesting(makeFakeClient(async () => { calls++; throw rateLimited(); }));
+  _setSleepForTesting(async () => {});
+  try {
+    await expect(editWithRetry({})).rejects.toThrow(/Rate limit reached/);
+    expect(calls, '최초 1 + 재시도 4').toBe(5);
+  } finally {
+    _setClientForTesting(null);
+    _setSleepForTesting(null);
+  }
+});
+
+test('generateArt: 안전 차단은 문구에 «not allowed»가 있어도 파라미터 거절로 읽지 않는다 — OpenAI를 한 번만 부르고 safety로 끝난다', async () => {
+  for (const message of [
+    '400 Your request was rejected by the safety system. If you believe this is an error, contact us at help.openai.com.',
+    '400 Your request contains content that is not allowed by our safety system.'
+  ]) {
+    let calls = 0;
+    _setClientForTesting(
+      makeFakeClient(async () => {
+        calls++;
+        const e = new Error(message);
+        e.status = 400;
+        e.code = 'moderation_blocked';
+        e.type = 'image_generation_user_error';
+        throw e;
+      })
+    );
+    const filePath = makeTempFile(Buffer.from('fake-photo-bytes'));
+    try {
+      const err = await generateArt(filePath, 'image/png', 'a test prompt').catch((e) => e);
+      expect(mapGenerateError(err).code, message).toBe('safety');
+      expect(calls, `같은 사진 · 지시문을 다시 보내면 안 된다: ${message}`).toBe(1);
+    } finally {
+      _setClientForTesting(null);
+      fs.unlinkSync(filePath);
+    }
+  }
+});
+
+test('/health: gpt-image-2에는 보내지 않는 얼굴보존 값을 «high»로 적지 않는다', async () => {
+  _resetOpenAIHealthCacheForTesting();
+  _setClientForTesting(makeFakeClient(async () => ({ data: [] })));
+  const server = await startTestServer();
+  try {
+    const r = await fetch(`http://127.0.0.1:${server.address().port}/health`);
+    const body = await r.json();
+    expect(r.status).toBe(200);
+    expect(body.model).toBe('gpt-image-2');
+    expect(body.fidelity, '보내지 않는 값은 null').toBe(null);
+  } finally {
+    server.close();
+    _setClientForTesting(null);
+    _resetOpenAIHealthCacheForTesting();
+  }
+});
