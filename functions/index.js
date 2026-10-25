@@ -411,82 +411,61 @@ function v1Plus2Lines(key, group) {
   };
 }
 
-/* 손질판(v1plus3) — 2026-10-25 Bumm님 «마지막 국소 보정» 7칸만. 지금 가장 좋은 후보(from)를 그대로 두고 결함만 고친다.
-   대두(머리 과대)의 주원인은 애니메이션의 «사람까지 3D 캐릭터로» 문장이었다. 숫자 비율 지시(머리 = 키의 몇 분의 1)는 쓰지 않는다 —
-   자연스러운 신체 비율을 존중하고, 얼굴을 크게 보이려면 머리가 아니라 카메라 거리로, 단체는 모두 같은 크기로 강제하지 않는다(Bumm님 원칙 1~6).
-   칸: SF 단체(v1plus2) · 애니메이션 혼자(v1plus2) · 애니메이션 단체(v1plus) · 히어로 혼자(v1plus2) · 히어로 단체(v1) · 드라마 단체(v1) · 뮤지컬 혼자(v1plus2).
-   그 밖의 9칸은 v1plus3가 정의되지 않아 v1 그대로다(이번 회차에서 손대지 않는다). */
-const V1PLUS3_PROPORTION =
-  "Keep each person's natural body proportions from the photo — a natural head size relative to the shoulders and body, normal-length arms and legs and a natural build; if a face should look larger, bring the camera closer instead of enlarging the head, and never make anyone big-headed, short-limbed or stocky.";
-const V1PLUS3_ANIM_LOOK =
-  'Render the subject(s) — faces, hair, clothing and expressions — as charming 3D animated-feature characters in the same studio style as the scene (never a real photo pasted onto a cartoon background), with lively, expressive eyes, wearing new adventure outfits that belong to the animated world, each with their own look, while keeping each face recognizable through its own face shape, eye shape, nose, mouth, skin tone, hairstyle and glasses if worn.';
-const V1PLUS3_ANIM_BODY = 'Keep realistic, natural body proportions under the animated look — no chibi, bobblehead or oversized-head characters, no short stubby limbs.';
-const V1PLUS3_GROUP_STAGING =
-  'Arrange the group as a close, friendly team with natural perspective — everyone fully visible, no face cut at the left or right edge, nobody looming much larger in front like a close-up selfie — without forcing everyone to exactly the same size.';
-const V1PLUS3_HERO_COLOR =
-  'Give the scene heroic contrast — warm light on the people against a cooler evening sky — with no single color covering the whole image: not all blue, and not an overly yellow or golden haze.';
-const genrePromptsV1Plus3 = {
-  sf: { group: { from: 'v1plus2', staging: true, add: [V1PLUS3_PROPORTION] } },
-  animation: {
-    solo: { from: 'v1plus2', all: V1PLUS3_ANIM_LOOK, add: [V1PLUS3_ANIM_BODY, 'Keep the figure clearly lit and readable down to the knees rather than sinking into darkness.'] },
-    group: { from: 'v1plus', all: V1PLUS3_ANIM_LOOK, add: [V1PLUS3_ANIM_BODY], staging: true }
-  },
-  hero: {
-    solo: { from: 'v1plus2', add: [V1PLUS3_PROPORTION, V1PLUS3_HERO_COLOR] },
-    group: {
-      from: 'v1',
-      add: [
-        "Dress everyone in original superhero suits with short capes and no emblems, each person's suit in a different main color (for example red, blue, green, purple or silver) so no two look like copies, replacing their everyday clothes.",
-        V1PLUS3_HERO_COLOR,
-        V1PLUS3_PROPORTION
-      ],
-      staging: true,
-      light: true
-    }
-  },
-  director: {
-    group: {
-      from: 'v1',
-      add: [
-        'Show them as kids who love movies, large and brightly lit, sharing the film props naturally between them (a vintage movie camera, a clapperboard, a film reel) with warm, clear colors — never murky — so the scene feels warm and heartfelt.',
-        V1PLUS3_PROPORTION
-      ],
-      staging: true,
-      light: true
-    }
-  },
-  music: { solo: { from: 'v1plus2', add: [V1PLUS3_PROPORTION, 'Keep it a bright, festive concert-show poster.'] } }
-};
-/** v1plus3 문장 묶음 — 정의된 칸만, 출발 판(from)의 문장에서 고칠 것만 바꾼다(없는 칸은 빈 묶음 = v1). */
-function v1Plus3Lines(key, group) {
-  const cell = (genrePromptsV1Plus3[key] || {})[group ? 'group' : 'solo'];
-  if (!cell) return {};
-  const fromPlus = genrePromptsV1Plus[key];
-  const from = cell.from === 'v1plus2' ? v1Plus2Lines(key, group) : cell.from === 'v1plus' ? { base: fromPlus.base, all: fromPlus.all, cast: [group ? fromPlus.group : fromPlus.solo], bottom: fromPlus.bottom } : {};
-  return {
-    ...from,
-    all: cell.all ?? from.all,
-    // 단체 «모두 같은 크기로» 문장은 빼고 자연스러운 팀 원근으로(원칙 5)
-    cast: [...(from.cast || []).filter((l) => l && l !== V1PLUS2_STAGING), ...(cell.staging ? [V1PLUS3_GROUP_STAGING] : []), ...cell.add],
-    light: from.light || (cell.light ? V1PLUS2_LIGHT : undefined)
-  };
+/* 새것(v2) 히어로 단체 — 2026-10-25 Bumm님이 «마음에 드는 것» 1 · 2 · 3차 모두 히어로 단체 보통 · 어려움을 새것(v2)으로 고르셨다.
+   v2 지시문 전체는 10/25에 걷어냈지만(기존 기준 결정) 이 한 칸만 되살린다 — 6886bfc의 buildPrompt가 hero/group에 내던 문장과
+   글자 하나까지 같다(functions/test/fixtures/prompt-v2-hero-group-6886bfc.json으로 고정). 다른 칸에는 v2가 없다(고르면 오류). */
+function buildPromptV2HeroGroup({ title, tagline }) {
+  const identity = [
+    'IDENTITY (most important): the uploaded photo is the identity reference.',
+    'Keep every person recognizably the same individual:',
+    'same face shape, eyes, eyebrows, nose, mouth and jawline, same skin tone, same hairstyle and hair color, glasses if worn, and the same apparent age.',
+    'Do not beautify, slim, age up or make anyone look like a celebrity; keep natural, friendly expressions.',
+    'Stylize lighting and costume, not the faces.'
+  ].join(' ');
+  const count =
+    'PEOPLE COUNT: this is an ENSEMBLE CAST. Show exactly as many people as are in the photo — every one of them, each with their own distinct face; never drop, merge, duplicate or add anyone, and no extra background characters with visible faces.';
+  const layout = [
+    'LAYOUT (tall vertical 2:3 movie poster):',
+    'leave clear empty background above the highest head (about one tenth of the image height); never crop the top of a head;',
+    'gather everyone closely in the center, shoulder to shoulder, heads at similar heights, with all faces between about 10% and 35% of the image height from the top and fully inside the central 80% of the width — no face near or cut by the left or right edge;',
+    'bodies may continue downward into the scene;',
+    'keep the BOTTOM THIRD darker, calmer and uncluttered (ground, shadow, haze or soft background) with no faces, no hands and no important objects, so a title can be placed there later.'
+  ].join(' ');
+  const scene =
+    'SCENE: dynamic superhero blockbuster movie poster key art, cinematic realism; the friends as a team of young heroes in coordinated original suits with no emblems, standing side by side on a rooftop at dusk above a glittering city skyline, wind in the hair, dramatic backlight and soft lens flare, low-angle camera.';
+  const concept =
+    title || tagline
+      ? `STORY: This film is titled "${title || ''}"${tagline ? ` with the tagline "${tagline}"` : ''}. Express that idea only through the setting, props, color and mood — never as written words.`
+      : '';
+  const rules =
+    'RULES: Absolutely NO text, NO letters, NO numbers, NO logos, NO watermark, no signs, captions or writing on clothing or props anywhere in the image. Safe, wholesome, child-appropriate: no weapons, violence, horror or suggestive content; modest clothing. High detail, professional, keepsake quality.';
+  return [identity, count, layout, scene, concept, rules].filter(Boolean).join('\n');
 }
 
-/* 장르별 지시문 선택표 — Bumm님이 장르마다 기존(v1) · 기존+(v1plus) · 기존+ 2차(v1plus2)를 고르시면 이 표만 바꾼다.
-   기본은 전 장르 v1이고, v1은 라이브(7ad0ad5)와 글자 하나까지 같다(functions/test/fixtures/prompt-v1-7ad0ad5.json으로 고정). */
-const PROMPT_VARIANT_BY_GENRE = {
-  animation: 'v1',
-  fantasy: 'v1',
-  sf: 'v1',
-  hero: 'v1',
-  mystery: 'v1',
-  director: 'v1',
-  sports: 'v1',
-  music: 'v1'
+/* 장르 × 혼자/단체 지시문 선택표(동결본) — 2026-10-25 Bumm님 확정 16칸(«마음에 드는 것» 1 · 2 · 3차 선택과 손질 검증 뒤).
+     v1 = 기존(라이브 7ad0ad5와 글자 하나까지 같음 — fixtures/prompt-v1-7ad0ad5.json) · v1plus = 기존+ · v1plus2 = 기존+2 ·
+     v2 = 새것(히어로 단체 한 칸만 — buildPromptV2HeroGroup)
+   칸을 바꾸려면 이 표만 바꾼다. 표에 없는 판 이름이나 없는 칸의 v2는 오류로 막는다(조용히 v1로 떨어지지 않게). */
+const PROMPT_VARIANT_BY_CELL = {
+  sf: { solo: 'v1plus2', group: 'v1' },
+  fantasy: { solo: 'v1', group: 'v1' },
+  animation: { solo: 'v1plus2', group: 'v1plus' },
+  hero: { solo: 'v1plus2', group: 'v2' },
+  mystery: { solo: 'v1plus2', group: 'v1' },
+  director: { solo: 'v1plus2', group: 'v1plus' },
+  sports: { solo: 'v1plus', group: 'v1plus' },
+  music: { solo: 'v1plus2', group: 'v1plus' }
 };
-const PROMPT_VERSIONS = { v1: 'v1', v1plus: 'v1plus-20261025', v1plus2: 'v1plus2-20261025', v1plus3: 'v1plus3-20261025' };
-const promptVariantFor = (genre, variant) => variant || PROMPT_VARIANT_BY_GENRE[genrePrompts[genre] ? genre : 'animation'];
-const promptVersionFor = (genre, variant) => PROMPT_VERSIONS[promptVariantFor(genre, variant)];
+const PROMPT_VERSIONS = { v1: 'v1', v1plus: 'v1plus-20261025', v1plus2: 'v1plus2-20261025', v2: 'v2-20261025' };
+const genreKey = (genre) => (genrePrompts[genre] ? genre : 'animation');
+function promptVariantFor(genre, mode, variant) {
+  const key = genreKey(genre), cell = mode === 'group' ? 'group' : 'solo';
+  const chosen = variant || PROMPT_VARIANT_BY_CELL[key][cell];
+  if (!PROMPT_VERSIONS[chosen]) throw new Error(`알 수 없는 지시문 판: ${chosen}`);
+  if (chosen === 'v2' && !(key === 'hero' && cell === 'group')) throw new Error(`v2 지시문은 히어로 단체에만 있다: ${key}/${cell}`);
+  return chosen;
+}
+const promptVersionFor = (genre, mode, variant) => PROMPT_VERSIONS[promptVariantFor(genre, mode, variant)];
 
 /* 학생이 입력한 제목/문구는 프롬프트 문자열 안에 큰따옴표로 감싸 그대로 삽입된다
    (buildPrompt 참고). 줄바꿈이나 큰따옴표를 그대로 두면 그 따옴표 경계를 깨고
@@ -500,12 +479,12 @@ function sanitizePromptField(value, maxLen) {
     .slice(0, maxLen);
 }
 
-// variant는 QA가 갈래를 강제할 때만 넘긴다 — 운영 /generate는 넘기지 않아 위 선택표를 따른다.
+// variant는 QA가 판을 강제할 때만 넘긴다 — 운영 /generate는 넘기지 않아 위 선택표(장르 × 혼자/단체)를 따른다.
 function buildPrompt({ genre, mode, title, tagline, variant }) {
-  const key = genrePrompts[genre] ? genre : 'animation';
-  const chosen = promptVariantFor(key, variant);
-  const plus =
-    chosen === 'v1plus' ? genrePromptsV1Plus[key] : chosen === 'v1plus2' ? v1Plus2Lines(key, mode === 'group') : chosen === 'v1plus3' ? v1Plus3Lines(key, mode === 'group') : {};
+  const key = genreKey(genre);
+  const chosen = promptVariantFor(key, mode, variant);
+  if (chosen === 'v2') return buildPromptV2HeroGroup({ title, tagline });
+  const plus = chosen === 'v1plus' ? genrePromptsV1Plus[key] : chosen === 'v1plus2' ? v1Plus2Lines(key, mode === 'group') : {};
   const base = plus.base || genrePrompts[key];
   const ensemble =
     mode === 'group'
@@ -1098,7 +1077,7 @@ export {
   app,
   buildPrompt,
   PROMPT_VERSIONS,
-  PROMPT_VARIANT_BY_GENRE,
+  PROMPT_VARIANT_BY_CELL,
   promptVersionFor,
   editAttempts,
   sanitizePromptField,

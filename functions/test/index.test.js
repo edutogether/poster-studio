@@ -17,7 +17,7 @@ import {
   app,
   buildPrompt,
   PROMPT_VERSIONS,
-  PROMPT_VARIANT_BY_GENRE,
+  PROMPT_VARIANT_BY_CELL,
   promptVersionFor,
   editAttempts,
   sanitizePromptField,
@@ -181,16 +181,49 @@ test('buildPrompt: 제목/문구가 없으면 concept 문장 자체를 안 넣�
 const GENRE_KEYS = ['animation', 'fantasy', 'sf', 'hero', 'mystery', 'director', 'sports', 'music'];
 // 라이브(7ad0ad5) buildPrompt가 실제로 낸 문장 48건(장르 8 × 혼자/단체 × 제목 세 가지) — 후보의 v1은 이것과 글자 하나까지 같아야 한다.
 const V1_LIVE = JSON.parse(fs.readFileSync(new globalThis.URL('./fixtures/prompt-v1-7ad0ad5.json', import.meta.url), 'utf8'));
-test('buildPrompt v1: 기본 선택표는 전 장르 v1이고, 그 지시문이 라이브 7ad0ad5와 글자 하나까지 같다(48건)', () => {
-  expect(Object.keys(PROMPT_VARIANT_BY_GENRE).sort()).toEqual([...GENRE_KEYS].sort());
-  expect(Object.values(PROMPT_VARIANT_BY_GENRE).every((v) => v === 'v1')).toBe(true);
+// Bumm님 확정 16칸(2026-10-25) — 동결본의 기본 선택표. 칸을 바꾸면 이 시험도 함께 바꾼다.
+const FROZEN_CELLS = {
+  sf: { solo: 'v1plus2', group: 'v1' },
+  fantasy: { solo: 'v1', group: 'v1' },
+  animation: { solo: 'v1plus2', group: 'v1plus' },
+  hero: { solo: 'v1plus2', group: 'v2' },
+  mystery: { solo: 'v1plus2', group: 'v1' },
+  director: { solo: 'v1plus2', group: 'v1plus' },
+  sports: { solo: 'v1plus', group: 'v1plus' },
+  music: { solo: 'v1plus2', group: 'v1plus' }
+};
+test('선택표: 장르 × 혼자/단체 16칸이 Bumm님 확정값과 같고, 기본 지시문이 칸의 판과 같다', () => {
+  expect(PROMPT_VARIANT_BY_CELL).toEqual(FROZEN_CELLS);
+  for (const genre of GENRE_KEYS) {
+    for (const mode of ['solo', 'group']) {
+      const story = { genre, mode, title: '별을 찾는 아이', tagline: '우주 너머, 미지의 세계로' };
+      const variant = FROZEN_CELLS[genre][mode];
+      expect(buildPrompt(story), `${genre}/${mode}`).toBe(buildPrompt({ ...story, variant }));
+      expect(promptVersionFor(genre, mode)).toBe(PROMPT_VERSIONS[variant]);
+    }
+  }
+});
+
+test('buildPrompt v1: 판을 v1으로 고르면 라이브 7ad0ad5와 글자 하나까지 같다(48건) — 선택표에서 v1인 칸은 기본값으로도 같다', () => {
   expect(V1_LIVE.cases.length).toBe(48);
   for (const c of V1_LIVE.cases) {
     const input = { genre: c.genre, mode: c.mode, title: c.title, tagline: c.tagline };
-    expect(buildPrompt(input), `${c.genre}/${c.mode}/${c.title || '제목 없음'}`).toBe(c.prompt);
-    expect(buildPrompt({ ...input, variant: 'v1' })).toBe(c.prompt);
-    expect(promptVersionFor(c.genre)).toBe(PROMPT_VERSIONS.v1);
+    expect(buildPrompt({ ...input, variant: 'v1' }), `${c.genre}/${c.mode}/${c.title || '제목 없음'}`).toBe(c.prompt);
+    if (FROZEN_CELLS[c.genre][c.mode] === 'v1') expect(buildPrompt(input)).toBe(c.prompt);
   }
+});
+
+// 6886bfc(개선 지시문 v2)의 buildPrompt가 히어로 단체에 낸 문장 4건 — 되살린 v2 히어로 단체는 이것과 글자 하나까지 같아야 한다.
+const V2_HERO_GROUP = JSON.parse(fs.readFileSync(new globalThis.URL('./fixtures/prompt-v2-hero-group-6886bfc.json', import.meta.url), 'utf8'));
+test('buildPrompt v2(히어로 단체만): 6886bfc가 낸 문장과 글자 하나까지 같고, 다른 칸 · 없는 판은 오류로 막는다', () => {
+  expect(V2_HERO_GROUP.cases.length).toBe(4);
+  for (const c of V2_HERO_GROUP.cases) {
+    expect(buildPrompt({ genre: 'hero', mode: 'group', title: c.title, tagline: c.tagline }), c.title || '제목 없음').toBe(c.prompt);
+  }
+  expect(() => buildPrompt({ genre: 'hero', mode: 'solo', title: '', tagline: '', variant: 'v2' })).toThrow(/히어로 단체에만/);
+  expect(() => buildPrompt({ genre: 'sf', mode: 'group', title: '', tagline: '', variant: 'v2' })).toThrow(/히어로 단체에만/);
+  expect(() => buildPrompt({ genre: 'hero', mode: 'group', title: '', tagline: '', variant: 'v1plus3' })).toThrow(/알 수 없는 지시문 판/);
+  expect(() => promptVersionFor('hero', 'group', 'v9')).toThrow(/알 수 없는 지시문 판/);
 });
 
 test('buildPrompt v1plus: 판타지(와 SF 단체)는 v1 그대로, 나머지는 덧붙기만 하고 v1의 구도 · 금지 문장은 그대로 남는다', () => {
@@ -225,7 +258,7 @@ test('buildPrompt v1plus: 장르마다 채점에서 좋았던 것이 들어간�
   expect(p('music', 'group')).toMatch(/drums/);
   expect(p('music')).toMatch(/dimly lit stage floor/);
   expect(p('music')).not.toMatch(/keep the BOTTOM THIRD darker, calmer and uncluttered so a title/);
-  expect(promptVersionFor('hero', 'v1plus')).toBe(PROMPT_VERSIONS.v1plus);
+  expect(promptVersionFor('hero', 'solo', 'v1plus')).toBe(PROMPT_VERSIONS.v1plus);
 });
 
 test('buildPrompt v1plus2: 고르신 그림의 공통점 — 혼자는 소품 · 크게 · 비켜 선 자세, 단체는 사람마다 다른 색 · 나란히 전신, 모두 얼굴 키 라이트', () => {
@@ -263,45 +296,14 @@ test('buildPrompt v1plus2: 고르신 그림의 공통점 — 혼자는 소품 ·
   expect(p('animation')).toMatch(/stylized 3D animated character face/);
   expect(p('animation', 'group')).not.toMatch(/stylized 3D animated character face/);
   expect(p('mystery')).toMatch(/holding a magnifying glass/);
-  expect(promptVersionFor('sf', 'v1plus2')).toBe(PROMPT_VERSIONS.v1plus2);
+  expect(promptVersionFor('sf', 'solo', 'v1plus2')).toBe(PROMPT_VERSIONS.v1plus2);
 });
 
-test('buildPrompt v1plus3(손질판): 7칸만 출발 판에서 고치고, 나머지 9칸은 v1과 같다 — 숫자 비율 지시 없이 자연 비율 · 가까이 잡기', () => {
-  const CELLS = { 'sf/group': 'v1plus2', 'animation/solo': 'v1plus2', 'animation/group': 'v1plus', 'hero/solo': 'v1plus2', 'hero/group': 'v1', 'director/group': 'v1', 'music/solo': 'v1plus2' };
-  for (const genre of GENRE_KEYS) {
-    for (const mode of ['solo', 'group']) {
-      const story = { genre, mode, title: '별을 찾는 아이', tagline: '우주 너머, 미지의 세계로' };
-      const p = buildPrompt({ ...story, variant: 'v1plus3' });
-      const from = CELLS[`${genre}/${mode}`];
-      if (!from) { expect(p, `${genre}/${mode}는 손대지 않는다`).toBe(buildPrompt({ ...story, variant: 'v1' })); continue; }
-      expect(p, `${genre}/${mode}`).not.toBe(buildPrompt({ ...story, variant: from }));
-      for (const keep of ['never crop or cut off the top of the head', 'BOTTOM THIRD', 'NO text, NO letters', 'Safe, wholesome, child-appropriate', 'This film is titled']) expect(p, `${genre}/${mode}: ${keep}`).toContain(keep);
-      expect(p).toMatch(genre === 'animation' ? /no chibi, bobblehead or oversized-head/ : /never make anyone big-headed, short-limbed or stocky/);
-      // 숫자 비율 지시 · v2의 % 구도는 쓰지 않는다(Bumm님 원칙)
-      expect(p).not.toMatch(/one-sixth|one-fifth|\d+%|% of the image/);
-      if (mode === 'group') {
-        expect(p).toMatch(/natural perspective/);
-        expect(p).toMatch(/without forcing everyone to exactly the same size/);
-        expect(p).not.toMatch(/at the same size and the same distance/);   // v1plus2의 «모두 같은 크기로» 문장은 뺐다
-      }
-    }
-  }
-  const p = (genre, mode) => buildPrompt({ genre, mode, title: '', tagline: '', variant: 'v1plus3' });
-  expect(p('animation', 'group')).not.toMatch(/Redraw the subject\(s\) entirely/);   // 대두의 주원인 문장
-  expect(p('animation', 'group')).toMatch(/new adventure outfits/);
-  expect(p('hero', 'group')).toMatch(/each person's suit in a different main color/);
-  for (const mode of ['solo', 'group']) expect(p('hero', mode)).toMatch(/not all blue, and not an overly yellow or golden haze/);
-  expect(p('director', 'group')).toMatch(/sharing the film props naturally/);
-  expect(p('music', 'solo')).toMatch(/dimly lit stage floor/);
-  expect(promptVersionFor('hero', 'v1plus3')).toBe(PROMPT_VERSIONS.v1plus3);
-  expect(Object.values(PROMPT_VARIANT_BY_GENRE).every((v) => v === 'v1')).toBe(true);   // 기본 선택표는 그대로
-});
-
-test('buildPrompt: 이름 · 단체명 · 출연진은 넘겨도 지시문에 들어가지 않는다(화면 고지 약속) — v1 · v1plus · v1plus2 · v1plus3 모두', () => {
-  for (const variant of ['v1', 'v1plus', 'v1plus2', 'v1plus3']) {
-    const p = buildPrompt({ genre: 'music', mode: 'group', title: '우주 탐험', tagline: '', name: '홍길동', groupName: '별빛반', members: '김철수, 이영희', variant });
-    for (const pii of ['홍길동', '별빛반', '김철수', '이영희']) expect(p.includes(pii), `${variant}: ${pii}`).toBe(false);
-  }
+test('buildPrompt: 이름 · 단체명 · 출연진은 넘겨도 지시문에 들어가지 않는다(화면 고지 약속) — v1 · v1plus · v1plus2 · v2(히어로 단체) 모두', () => {
+  const pii = { name: '홍길동', groupName: '별빛반', members: '김철수, 이영희' };
+  const prompts = ['v1', 'v1plus', 'v1plus2'].map((variant) => [variant, buildPrompt({ genre: 'music', mode: 'group', title: '우주 탐험', tagline: '', ...pii, variant })]);
+  prompts.push(['v2', buildPrompt({ genre: 'hero', mode: 'group', title: '우주 탐험', tagline: '', ...pii })]);
+  for (const [variant, p] of prompts) for (const word of ['홍길동', '별빛반', '김철수', '이영희']) expect(p.includes(word), `${variant}: ${word}`).toBe(false);
 });
 
 // ── parseMultipart(실제 OpenAI 호출 없이 업로드 파싱만 검증) ──────────

@@ -204,7 +204,7 @@ async function runOne(c) {
   const cost = ctx.attempts.reduce((s, a) => s + (costOf(a.params.model, a.usage) || 0), 0);
   const r = { key, caseId: c.caseId, arm: c.arm, photoId: c.photoId, mode: c.mode, genre: c.genre, difficulty: c.difficulty, input: c.input, status, error, file,
     startedAt: new Date(t0).toISOString(), ms, model, quality: okAttempt?.params.quality ?? null,
-    promptVersion: mod.promptVersionFor ? mod.promptVersionFor(c.genre, c.variant) : mod.PROMPT_VERSION || 'v1', promptChars: prompt.length,
+    promptVersion: mod.promptVersionFor ? mod.promptVersionFor(c.genre, c.mode, c.variant) : mod.PROMPT_VERSION || 'v1', promptChars: prompt.length,
     rateLimitAttempts: ctx.attempts.filter((a) => a.rateLimit).length, attempts: ctx.attempts, cost: Number(cost.toFixed(5)), at: new Date().toISOString(), dry, tag };
   results.push(r);
   await withLock(() => fs.appendFile(ledger, JSON.stringify(r) + '\n'));
