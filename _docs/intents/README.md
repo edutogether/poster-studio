@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-10-26 | [slow-wifi-optimization](2026-10-26-slow-wifi-optimization/intent.md) | 2 | in-progress | 느린 와이파이 최적화 1~5번(미리 받기 · 글꼴 쪼개기 · 장르 그림 WebP · 샘플 원화 WebP · 측정 도구)을 지금 코드로 이식 — 결과물 화소 동일 · 옛 주소 유지 · 실제 응답 재생 측정 |
 | 2026-10-25 | [ai-prompt-freeze](2026-10-25-ai-prompt-freeze/intent.md) | 2 | in-progress | 장르 × 혼자/단체 16칸 지시문 동결(Bumm님 확정) · 안전 차단 창 · 독립 리뷰 · 실제 생성 3건 · 격리 리허설 — 배포 승인 대기. ⚠ 사후 기록 |
 | 2026-10-23 | [ratio-canvas](2026-10-23-ratio-canvas/intent.md) | 2 | in-progress | 갈래(PC 2560×1440 · 태블릿 1024×1366/1366×1024 · 휴대폰 390×844)마다 기준 화면 하나를 통째로 줄이고 키운다 — 설계안만, PC 글자 크기 결정 대기 |
 | 2026-10-16 | [camera-example-video](2026-10-16-camera-example-video/intent.md) | 2 | in-progress | 촬영 화면 «자리 잡는 영상» 2편을 앱에 연결하는 자리 — 승인 전에는 화면 변화 0, 숫자·말풍선은 앱이 얹음 |
