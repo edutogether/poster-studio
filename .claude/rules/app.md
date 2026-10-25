@@ -201,9 +201,9 @@
 - 🟠 **부스 코드는 쓰지 않는다**(10/23 Bumm님 확정 — 10/20의 «켤지 미정»을 닫음). 행사 날에도 링크만 있으면 누구나 진짜 생성을 할 수 있고, 막는 것은 서버 한도뿐이다
   (runbook §3 «부스 코드는 쓰지 않는다»). 결정 B(코드 창 문구 · «취소»)도 없어졌다. 장치(서버 `checkBoothCode` · 화면 코드 창 · 배포 단계)와 켜는 절차는 지우지 않고 남겨 둔다 —
   다시 켜면 거절을 받았을 때만 «부스 코드를 넣어 주세요» 창이 뜨고 «취소»는 탭을 닫거나 처음 화면으로 간다(10/17 결정).
-  ⚠ 스위치를 끈 빌드에도 샘플 원화 파일(약 2.6MB)은 `dist/assets`에 남는다(빌드 도구가 그림을 먼저 내보낸다). 앱은 부르지 않는다.
-- 🔴 **서브셋 글꼴에는 띄어쓰기(U+0020)가 있어야 한다.** 없으면 화면의 모든 띄어쓰기를 다음 글꼴(PretendardFull,
-  굵기당 약 780KB)에서 가져와 첫 방문마다 세 벌을 받고, 도착하는 순간 글자 폭이 바뀐다(2026-10-09 실측: 스플래시 제목
+  ⚠ 스위치를 끈 빌드에도 샘플 원화 파일(무손실 WebP 약 1.8MB — 10/26 전 PNG 2.6MB)은 `dist/assets`에 남는다(빌드 도구가 그림을 먼저 내보낸다). 앱은 부르지 않는다.
+- 🔴 **서브셋 글꼴에는 띄어쓰기(U+0020)가 있어야 한다.** 없으면 화면의 모든 띄어쓰기를 다음 글꼴(PretendardFull — 10/26부터 핵심 조각
+  굵기당 약 200KB, 그 전 통글꼴 약 780KB)에서 가져와 첫 방문마다 세 벌을 받고, 도착하는 순간 글자 폭이 바뀐다(2026-10-09 실측: 스플래시 제목
   331.8→334.2px). `charset.mjs`는 32 이상을 모으고, `fonts:check`가 빠진 띄어쓰기를 `U+0020(띄어쓰기)`로 잡는다.
   서브셋 주소(14곳)에는 내용 해시 판 `?v=`가 붙어 있고 `fonts:check`가 맞는지 본다(위 og 문구 절차 참고).
 - 🟠 **화면 글꼴 Studio는 `font-display: block` + 스플래시 두 굵기(400·800) 미리 받기다.** 예전 `optional`은 느린 회선
@@ -219,6 +219,20 @@
   막대 바탕선만 보였다가 흰 화면이 됐다(로컬 느린 회선 3조건 녹화, 2026-10-10에 옮김). 자리는 `test/boot-splash.test.ts`가 검사한다.
   `block`만으로는 느린 회선에서 글자 없는 반쪽 화면 → 글자 등장 + 줄 높이 차이로 로고·막대 들썩임이 남았다(라이브 녹화).
   스크립트가 안 돌면 클래스가 안 붙어 예전처럼 보인다 — **막히는 쪽으로 실패하지 않게** 유지한다.
+
+## 느린 와이파이 최적화 — 포스터 글꼴 조각 · 미리 받기 · 장르 그림 (2026-10-26 Bumm님 1~5번 승인, 가지 `perf-port-20261026`)
+- **미리 받기**: 생성 단추를 누르면 조판 글꼴 · 로고를 받기 시작한다(`PosterStudio.tsx` → `poster.ts` `preparePosterAssets`). 안전 차단으로 막힌 요청에서는 부르지 않는다.
+  🟠 느린 망(1.6Mbps) 첫 방문에서는 이 받기가 대기 화면 처음 두 장면의 영상과 망을 나눠 써 그 두 장면이 정지 그림으로 보인다(승인된 대체 동작) — 10/26 측정, Bumm님 판단 항목.
+- 🔴 **포스터 글꼴 PretendardFull = 핵심 조각(상용 2350자 + `src/fullFontCore.json` 범위, 굵기당 약 200KB) + 드문 글자 16구간 조각(PretendardFullRare)**.
+  조각을 못 받은 굵기는 원본 통글꼴(`public/fonts/Pretendard-*.woff2`)을 같은 이름으로 더해 받는다(`src/layout.ts` `ensureFullFallback`, 0.5 · 1초 간격 세 번, 실패를 기억하지 않아
+  조판 때 다시 받는다) — **원본 6굵기를 지우지 않는다**(시험이 막는다). 로고도 못 받으면 조판 때 다시 받는다.
+  `fullFontCore.json`을 고치면 `python scripts/fonts/slice-full.py`(fontTools 필요)를 다시 돌린다 — CSS 머리말의 범위 지문을 시험이 대조한다.
+  조각을 다시 만들면 화소 대조를 돌린다: `npx vite build --mode check-real` 빌드에서 `node scripts/verify/release-baseline.mjs [--rare] [--block <무늬>] --expect <기준 pixels.json>`
+  (10/26: master ↔ 후보 기본 40 · 드문 32 같음, 드문 조각 · 핵심 조각 · 조각 전부를 막아도 같음, master에서 통글꼴을 막으면 32/32 다름).
+- **장르 그림**은 `src/studio/genre/`(가져오기 → 해시 이름 · 1년 immutable). 판타지 · 뮤지컬은 무손실 WebP(화소 · 색 프로필 같음). **`public/studio`의 옛 파일 8장을 지우지 않는다**(이미 나간 옛 주소 200).
+- **느린 망 측정**: `node scripts/verify/serve-dist.mjs <저장소> <포트> --h2 <인증서 폴더> --replay <응답 JSON>`(라이브처럼 HTTP/2, 실제 응답 그림 재생 — 응답 파일은 저장소 밖)
+  → `node scripts/verify/net-perf.mjs https://127.0.0.1:<포트>/ <폴더-번호> --net slow4g|wifi --device pc|phone --real 30 --replay --repeat` → `node scripts/verify/net-perf-summary.mjs <상위 폴더>`(p50 · p95).
+  라이브 생성 · 유료 호출 0건. HTTP/1.1로 재면 주소당 연결 6개 때문에 영상이 줄을 서 라이브에 없는 정체가 생긴다 — `--h2`로 잰다.
 
 ## 대기 영상(로딩 화면 12편, 2026-10-12 장착 — Bumm님 결정, 팀장 전달)
 - 로딩 화면 장면마다 **정지 그림을 먼저 보이고, 그 편 영상이 실제로 재생되기 시작하면 영상으로 넘긴다**(`src/studio/WaitingArtwork.tsx`).
@@ -369,7 +383,7 @@
   배포 상태가 곧 행사 준비 상태이고, 11/14 전에 "배포한 줄 알았는데 안 됐다"가 나면 안 된다.
 
 ## 명령
-- 테스트: `cd functions && npm test`(114개) / 저장소 루트에서 `npm test`(400개) — 둘 다 vitest(2026-10-26)
+- 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(414개) — 둘 다 vitest(2026-10-26)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
 - 빌드: 루트에서 `npm run build` → `dist/`
