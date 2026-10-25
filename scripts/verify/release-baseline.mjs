@@ -189,7 +189,7 @@ try {
     {name:'단체', mode:'group', title:'사라진 급식의 비밀', person:'햇살초 영화동아리', genre:'mystery'},
   ];
   const pixels=[];
-  const expectedLabels=['시네마','에디토리얼','컬러 블록','아치 프레임','필름스트립','폴라로이드','타이포그래피','트립틱'];
+  const expectedLabels=['시네마','에디토리얼','컬러 블록','아치 프레임','필름 스트립','폴라로이드','타이포그래피','트립틱'];
   for (const c of cases) {
     await load(5557,1366,900);
     await evaluate(`(()=>{
