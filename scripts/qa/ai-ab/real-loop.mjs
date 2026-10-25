@@ -50,8 +50,22 @@ process.env.OPENAI_API_KEY = dry ? 'dry-not-used' : 'qa-client-injected';   // �
 // 10/25 실행의 촬영본 한 장이 공용 임시 폴더에 남아 있었다). 그래서 이 실행만 쓰는 폴더를 OS 임시 폴더로 가리키게 하고 끝날 때 통째로 지운다.
 const runTmp = await fs.mkdtemp(path.join(os.tmpdir(), 'real-loop-run-'));
 process.env.TEMP = process.env.TMP = process.env.TMPDIR = runTmp;
-// Ctrl+C · 종료 신호로 끊기면 아래 finally를 지나지 않는다 — 그때도 이 폴더(촬영본이 잠깐 놓이는 곳)를 지우고 끝낸다(10/26 종합감사 재채점)
-for (const sig of ['SIGINT', 'SIGTERM']) process.once(sig, () => { try { fss.rmSync(runTmp, { recursive: true, force: true }); } finally { process.exit(sig === 'SIGINT' ? 130 : 143); } });
+// Ctrl+C · 종료 신호로 끊기면 아래 finally를 지나지 않는다 — 그때도 촬영본이 놓이는 곳(uploads)과 가짜 카메라 영상(_tmp)을 지우고 끝낸다(10/26 종합감사 재채점).
+// 헤드리스 크롬 프로필도 runTmp 안이라, 크롬이 켜진 채면 폴더를 못 지운다(실측: 끊은 뒤 프로필 1,538개 파일이 남음) — 이 도구가 띄운 크롬만 트리째 먼저 끈다.
+const liveChromes = new Set();
+const signalCleanup = new Set([path.join(runTmp, 'uploads')]);
+for (const sig of ['SIGINT', 'SIGTERM']) process.once(sig, () => {
+  try {
+    for (const dir of signalCleanup) fss.rmSync(dir, { recursive: true, force: true });
+    for (const c of liveChromes) spawnSync('taskkill', ['/PID', String(c.pid), '/T', '/F'], { stdio: 'ignore' });
+    // 끈 크롬이 프로필 파일을 놓기까지 잠깐 걸린다 — 바로 지우면 EPERM(실측). Node 24 rmSync의 maxRetries는 이 경우 기다려 주지 않아 직접 0.25초씩 최대 5초 다시 시도한다
+    for (let i = 0; ; i++) {
+      try { fss.rmSync(runTmp, { recursive: true, force: true }); break; }
+      catch (e) { if (i >= 20) throw e; Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250); }
+    }
+  } catch (e) { console.error(`끊긴 실행의 임시 폴더를 다 지우지 못했다: ${runTmp} — ${e.message}`); }
+  finally { process.exit(sig === 'SIGINT' ? 130 : 143); }
+});
 const mod = await import(pathToFileURL(path.resolve(modulePath)).href);
 const counters = new Map();
 const counterImpl = async (collectionName, docId, max) => {
@@ -178,6 +192,7 @@ const base = `http://127.0.0.1:${PORT}/`;
 // ── 가짜 카메라: 시험 사진의 4:3 프레임(manifest 잘라내기)을 1280×960 영상으로 ─────────────
 const tmp = path.join(out, '_tmp');
 await fs.mkdir(tmp, { recursive: true });
+signalCleanup.add(tmp);
 async function makeY4m(id) {
   const p = manifest.photos.find((x) => x.id === id);
   if (!p) throw Error('사진 ' + id + '이 manifest에 없다');
@@ -197,6 +212,7 @@ async function scenario(name, id, mode, { regen, genre, title }) {
   const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--no-default-browser-check', '--mute-audio',
     '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`,
     `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
+  liveChromes.add(chrome);
   let socket, seq = 0; const pending = new Map();
   const log = (step, ok, extra = {}) => { const r = { scenario: name, photoId: id, mode, step, ok, at: new Date().toISOString(), ...extra }; steps.push(r); console.log(`${name} ${step} ${ok ? 'OK' : '실패'} ${extra.note || ''}`); return ok; };
   try {
@@ -284,7 +300,7 @@ async function scenario(name, id, mode, { regen, genre, title }) {
     }
   } catch (e) { log('오류', false, { note: String(e.message || e).slice(0, 200) }); } finally {
     try { socket?.close(); } catch {}
-    chrome.kill(); await sleep(500); await fs.rm(profile, { recursive: true, force: true }).catch(() => {});
+    chrome.kill(); liveChromes.delete(chrome); await sleep(500); await fs.rm(profile, { recursive: true, force: true }).catch(() => {});
   }
 }
 
