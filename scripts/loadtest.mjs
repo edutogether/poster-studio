@@ -6,7 +6,7 @@
    판정하기 위한 실측 자료를 만드는 게 목적이다.
 
    주의: --dry 없이 돌리면 실제 OpenAI 이미지 생성 비용이 나간다
-   (장당 약 $0.04). 처음엔 소규모(동시 1개 × 1~2회)로 스크립트 자체가
+   (장당 약 $0.05 — 2026-10-26 실측 $0.049~0.050). 처음엔 소규모(동시 1개 × 1~2회)로 스크립트 자체가
    제대로 동작하는지 먼저 확인한 뒤 본 테스트(동시성 1/2/3/5 × 5회,
    총 55건 ≈ $2.2)를 진행할 것.
 
@@ -69,6 +69,8 @@ function numArg(name, fallback) {
   }
   return v;
 }
+// 장당 실비용(gpt-image-2 medium · 지금 지시문, 2026-10-26 실측 $0.049~0.050) — 확인 전에 보여 주는 지갑 경고가 낮게 나오지 않게
+const COST_PER_IMAGE = 0.05;
 const SAMPLE_PHOTO_PATH = path.join(__dirname, 'sample-photo.jpg');
 const CONCURRENCY_LEVELS = [1, 2, 3, 5];
 const REPEATS_PER_LEVEL = 5;
@@ -303,7 +305,7 @@ async function sustainMain() {
       : `  10분당 상한: 없음(--rate 0)  ← IP 한도 ${SERVER_IP_RATE_LIMIT_MAX}를 넘겨 429를 대량으로 유발한다. 성능이 아니라 '거부가 제대로 도는가'를 보는 모드다`
   );
   console.log(`  최대 요청: ${maxRequests}건 (하드 상한 ${SUSTAIN_HARD_MAX_REQUESTS}건)`);
-  console.log(`  예상 실비용: 최대 약 $${(maxRequests * 0.04).toFixed(2)}`);
+  console.log(`  예상 실비용: 최대 약 $${(maxRequests * COST_PER_IMAGE).toFixed(2)}`);
   console.log(
     `  참고: 서버 전역 한도 ${SERVER_RATE_LIMIT_MAX}건/10분, IP별 ${SERVER_IP_RATE_LIMIT_MAX}건/10분. ` +
       `이 도구는 노트북 한 대(=공인 IP 하나)에서 돌므로 실제로 걸리는 상한은 IP별 쪽이다.`
@@ -334,7 +336,7 @@ async function sustainMain() {
   );
   console.log('\n10분 버킷별:');
   console.table(s.perBucket);
-  console.log(`\n실제 지출 추정: 약 $${(s.성공 * 0.04).toFixed(2)} (성공 건수 기준 — 429는 과금되지 않는다)`);
+  console.log(`\n실제 지출 추정: 약 $${(s.성공 * COST_PER_IMAGE).toFixed(2)} (성공 건수 기준 — 429는 과금되지 않는다)`);
 
   const outPath = path.join(__dirname, 'loadtest-sustained-result.json');
   await fs.writeFile(
@@ -380,7 +382,7 @@ async function main() {
 
   const totalRequests = CONCURRENCY_LEVELS.reduce((s, c) => s + c * REPEATS_PER_LEVEL, 0);
   console.log(
-    `\n⚠️ 계단식 부하테스트 — 동시성 ${CONCURRENCY_LEVELS.join('/')} × 반복 ${REPEATS_PER_LEVEL}회 = 총 ${totalRequests}건, 예상 실비용 약 $${(totalRequests * 0.04).toFixed(2)}`
+    `\n⚠️ 계단식 부하테스트 — 동시성 ${CONCURRENCY_LEVELS.join('/')} × 반복 ${REPEATS_PER_LEVEL}회 = 총 ${totalRequests}건, 예상 실비용 약 $${(totalRequests * COST_PER_IMAGE).toFixed(2)}`
   );
 
   /* 🔴 2026-09-11 추가: 이 모드도 `--confirm`을 받게 했다.

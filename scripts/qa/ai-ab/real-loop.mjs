@@ -46,6 +46,10 @@ const apiBase = (constantsSrc.match(/export const API_BASE = '([^']+)'/) || [])[
 if (!boothToken || !apiBase) { console.error('src/constants.ts에서 BOOTH_TOKEN · API_BASE를 못 읽었다'); process.exit(1); }
 process.env.BOOTH_TOKEN = boothToken;
 process.env.OPENAI_API_KEY = dry ? 'dry-not-used' : 'qa-client-injected';   // 실제 호출은 아래 주입한 클라이언트만 쓴다
+// 운영 함수 코드는 올린 사진을 OS 임시 폴더(os.tmpdir()/uploads)에 잠깐 쓴다 — 이 도구가 생성 도중에 끝나면 그 사진이 남았다(10/26 감사:
+// 10/25 실행의 촬영본 한 장이 공용 임시 폴더에 남아 있었다). 그래서 이 실행만 쓰는 폴더를 OS 임시 폴더로 가리키게 하고 끝날 때 통째로 지운다.
+const runTmp = await fs.mkdtemp(path.join(os.tmpdir(), 'real-loop-run-'));
+process.env.TEMP = process.env.TMP = process.env.TMPDIR = runTmp;
 const mod = await import(pathToFileURL(path.resolve(modulePath)).href);
 const counters = new Map();
 const counterImpl = async (collectionName, docId, max) => {
@@ -290,6 +294,7 @@ try {
 } finally {
   server.close();
   await fs.rm(tmp, { recursive: true, force: true });
+  await fs.rm(runTmp, { recursive: true, force: true });
 }
 const openaiCalls = calls.length, cost = calls.reduce((s, c) => s + c.cost, 0);
 // 지시문 판 확인: 생성마다 «맞는 판 = 선택표의 그 칸 하나»
