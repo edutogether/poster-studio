@@ -13,16 +13,26 @@ import { approvedCameraVideo } from "./cameraVideo.js";
 import { savePlatform, savePoster } from "../savePoster.js";
 import { designName } from "../designNames.js";
 import { deviceKind, pcCanvas } from "../deviceCanvas.js";
+// 장르 그림은 빌드가 이름에 해시를 붙여 내는 자산이다(1년 캐시). 원래 PNG 두 장(판타지 · 뮤지컬)은 무손실 WebP로 바꿨다 — 화소 그대로(10/24 와이파이 최적화).
+// public/studio의 옛 파일 8장(reference-*.* · parasite-en · director · rocky-title-edited)은 지우지 않는다 — 이미 나간 옛 주소가 200으로 남게(2026-10-26 Bumm님).
+import sfArt from "./genre/sf.jpg";
+import fantasyArt from "./genre/fantasy.webp";
+import animationArt from "./genre/animation.jpg";
+import heroArt from "./genre/hero.jpg";
+import mysteryArt from "./genre/mystery.webp";
+import directorArt from "./genre/director.webp";
+import sportsArt from "./genre/sports.webp";
+import musicArt from "./genre/music.webp";
 
 const choices = [
-  ["sf", "SF", "reference-sf.jpg"],
-  ["fantasy", "판타지", "reference-fantasy.png"],
-  ["animation", "애니메이션", "reference-animation.jpg"],
-  ["hero", "히어로", "reference-hero.jpg"],
-  ["mystery", "스릴러", "parasite-en.webp"],
-  ["director", "드라마", "director.webp"],
-  ["sports", "스포츠", "rocky-title-edited.webp"],
-  ["music", "뮤지컬", "reference-La-La-Land.png"],
+  ["sf", "SF", sfArt],
+  ["fantasy", "판타지", fantasyArt],
+  ["animation", "애니메이션", animationArt],
+  ["hero", "히어로", heroArt],
+  ["mystery", "스릴러", mysteryArt],
+  ["director", "드라마", directorArt],
+  ["sports", "스포츠", sportsArt],
+  ["music", "뮤지컬", musicArt],
 ];
 type Action = () => void | Promise<void>;
 /** 휴대폰 흐름(2026-10-17)을 켜는 기준 — studio.css의 @media (max-width: 760px)와 같은 값이다. */
@@ -618,7 +628,7 @@ export default function StudioView(p: StudioViewProps) {
                       aria-hidden="true"
                     >
                       <img
-                        src={"/studio/" + image}
+                        src={image}
                         alt=""
                         width="400"
                         height="600"
@@ -704,7 +714,7 @@ export default function StudioView(p: StudioViewProps) {
             </div>
             <div className="camera-film-heading"><h2>오늘 촬영할 <span className="camera-heading-accent">영화</span></h2></div>
             <div className="camera-film-card">
-              <div className="camera-film-scene"><div className="camera-film-poster"><img src={'/studio/' + selectedFilm[2]} alt={genreLabel + ' 선택 포스터'}/><span>{p.mode === "solo" ? "단독 주연" : "우리 같이"}</span></div></div>
+              <div className="camera-film-scene"><div className="camera-film-poster"><img src={selectedFilm[2]} alt={genreLabel + ' 선택 포스터'}/><span>{p.mode === "solo" ? "단독 주연" : "우리 같이"}</span></div></div>
               <div className="movie-ticket camera-ticket" data-mode={p.mode}><div><span className="ticket-label">{genreLabel} · 나의 첫 번째 영화</span><strong>{title}</strong><span className="camera-ticket-name">{p.mode === 'solo' ? '주연' : preview.group || (groupExample ? '별 보러 가요' : '단체 이름')}{cast && <span className="ticket-sep">{p.mode === 'solo' ? ' · ' : ' | '}</span>}<span className="ticket-cast">{cast}</span></span><dl className="ticket-info"><div><dt>상영일</dt><dd className="ticket-date">11.14 (토)</dd></div><div><dt>극장</dt><dd>CGV 인천</dd></div><div><dt>장르</dt><dd>{genreLabel}</dd></div><div><dt>관람</dt><dd>{p.mode === 'solo' ? '단독 주연' : '우리 같이'}</dd></div></dl></div><div className="ticket-admit"><span>11.14</span><small>CGV 인천</small></div><div className="ticket-stub" aria-hidden="true"><i className="ticket-barcode"/><small>NO. 2026-1114 · ADMIT ONE</small></div></div>
             </div>
           </aside>

@@ -195,7 +195,7 @@ describe('세 단계 화면 연결', () => {
     expect(ticket.textContent).toContain('우리의 별');
     expect(ticket.textContent).toContain('별빛 동아리 | 태범 · 서희');
     expect(ticket.textContent).toContain('판타지');
-    expect(document.querySelector<HTMLImageElement>('.camera-film-scene img')!.getAttribute('src')).toBe('/studio/reference-fantasy.png');
+    expect(document.querySelector<HTMLImageElement>('.camera-film-scene img')!.getAttribute('src')).toMatch(/genre\/fantasy[^/]*\.webp$/);
     fireEvent.click(view.getByRole('button', { name: '이전 단계로' }));
     fireEvent.click(view.getByRole('button', { name: '단독 주연' }));
     fireEvent.input(el('studentName'), { target: { value: '하늘' } });
