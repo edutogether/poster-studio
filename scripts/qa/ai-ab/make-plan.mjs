@@ -38,11 +38,14 @@ if (compact) {
 }
 // --plus(2026-10-25 저녁, Bumm님 눈 채점 뒤): 기존+(v1plus) 갈래 E만 · --plus2(Bumm님 «제일 마음에 드는 것» 뒤): 기존+2(v1plus2) 갈래 F만 —
 // A와 같은 48조건 · 같은 입력 · 같은 제목. 지시문만 바뀐다. 처음 두 건이 혼자 1 · 단체 1이 되게 혼자 · 단체를 번갈아 놓는다(시범 두 건으로 둘 다 본다).
-const PLUS = process.argv.includes('--plus2') ? { arm: 'F', variant: 'v1plus2' } : process.argv.includes('--plus') ? { arm: 'E', variant: 'v1plus' } : null;
+// --plus3(Bumm님 «마지막 국소 보정»): 손질판(v1plus3) 갈래 G — 손질하는 7칸(장르 × 혼자/단체)의 세 난이도만 = 21건.
+const PLUS3_CELLS = ['sf/group', 'animation/solo', 'animation/group', 'hero/solo', 'hero/group', 'director/group', 'music/solo'];
+const PLUS = process.argv.includes('--plus3') ? { arm: 'G', variant: 'v1plus3' } : process.argv.includes('--plus2') ? { arm: 'F', variant: 'v1plus2' } : process.argv.includes('--plus') ? { arm: 'E', variant: 'v1plus' } : null;
 if (PLUS) {
-  const a = cases.filter((c) => c.arm === 'A');
+  const a = cases.filter((c) => c.arm === 'A' && (PLUS.arm !== 'G' || PLUS3_CELLS.includes(`${c.genre}/${c.mode}`)));
   const solo = a.filter((c) => c.mode === 'solo'), group = a.filter((c) => c.mode === 'group');
-  const e = solo.flatMap((c, i) => [c, group[i]]).filter(Boolean).map((c) => ({ ...c, ...PLUS }));
+  // 혼자 · 단체 수가 다를 수 있다(손질 7칸은 혼자 9 · 단체 12) — 긴 쪽 끝까지 번갈아 놓는다
+  const e = Array.from({ length: Math.max(solo.length, group.length) }, (_, i) => [solo[i], group[i]]).flat().filter(Boolean).map((c) => ({ ...c, ...PLUS }));
   process.stdout.write(JSON.stringify(e, null, 1));
   process.exit(0);
 }

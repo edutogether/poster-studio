@@ -266,8 +266,39 @@ test('buildPrompt v1plus2: 고르신 그림의 공통점 — 혼자는 소품 ·
   expect(promptVersionFor('sf', 'v1plus2')).toBe(PROMPT_VERSIONS.v1plus2);
 });
 
-test('buildPrompt: 이름 · 단체명 · 출연진은 넘겨도 지시문에 들어가지 않는다(화면 고지 약속) — v1 · v1plus · v1plus2 모두', () => {
-  for (const variant of ['v1', 'v1plus', 'v1plus2']) {
+test('buildPrompt v1plus3(손질판): 7칸만 출발 판에서 고치고, 나머지 9칸은 v1과 같다 — 숫자 비율 지시 없이 자연 비율 · 가까이 잡기', () => {
+  const CELLS = { 'sf/group': 'v1plus2', 'animation/solo': 'v1plus2', 'animation/group': 'v1plus', 'hero/solo': 'v1plus2', 'hero/group': 'v1', 'director/group': 'v1', 'music/solo': 'v1plus2' };
+  for (const genre of GENRE_KEYS) {
+    for (const mode of ['solo', 'group']) {
+      const story = { genre, mode, title: '별을 찾는 아이', tagline: '우주 너머, 미지의 세계로' };
+      const p = buildPrompt({ ...story, variant: 'v1plus3' });
+      const from = CELLS[`${genre}/${mode}`];
+      if (!from) { expect(p, `${genre}/${mode}는 손대지 않는다`).toBe(buildPrompt({ ...story, variant: 'v1' })); continue; }
+      expect(p, `${genre}/${mode}`).not.toBe(buildPrompt({ ...story, variant: from }));
+      for (const keep of ['never crop or cut off the top of the head', 'BOTTOM THIRD', 'NO text, NO letters', 'Safe, wholesome, child-appropriate', 'This film is titled']) expect(p, `${genre}/${mode}: ${keep}`).toContain(keep);
+      expect(p).toMatch(genre === 'animation' ? /no chibi, bobblehead or oversized-head/ : /never make anyone big-headed, short-limbed or stocky/);
+      // 숫자 비율 지시 · v2의 % 구도는 쓰지 않는다(Bumm님 원칙)
+      expect(p).not.toMatch(/one-sixth|one-fifth|\d+%|% of the image/);
+      if (mode === 'group') {
+        expect(p).toMatch(/natural perspective/);
+        expect(p).toMatch(/without forcing everyone to exactly the same size/);
+        expect(p).not.toMatch(/at the same size and the same distance/);   // v1plus2의 «모두 같은 크기로» 문장은 뺐다
+      }
+    }
+  }
+  const p = (genre, mode) => buildPrompt({ genre, mode, title: '', tagline: '', variant: 'v1plus3' });
+  expect(p('animation', 'group')).not.toMatch(/Redraw the subject\(s\) entirely/);   // 대두의 주원인 문장
+  expect(p('animation', 'group')).toMatch(/new adventure outfits/);
+  expect(p('hero', 'group')).toMatch(/each person's suit in a different main color/);
+  for (const mode of ['solo', 'group']) expect(p('hero', mode)).toMatch(/not all blue, and not an overly yellow or golden haze/);
+  expect(p('director', 'group')).toMatch(/sharing the film props naturally/);
+  expect(p('music', 'solo')).toMatch(/dimly lit stage floor/);
+  expect(promptVersionFor('hero', 'v1plus3')).toBe(PROMPT_VERSIONS.v1plus3);
+  expect(Object.values(PROMPT_VARIANT_BY_GENRE).every((v) => v === 'v1')).toBe(true);   // 기본 선택표는 그대로
+});
+
+test('buildPrompt: 이름 · 단체명 · 출연진은 넘겨도 지시문에 들어가지 않는다(화면 고지 약속) — v1 · v1plus · v1plus2 · v1plus3 모두', () => {
+  for (const variant of ['v1', 'v1plus', 'v1plus2', 'v1plus3']) {
     const p = buildPrompt({ genre: 'music', mode: 'group', title: '우주 탐험', tagline: '', name: '홍길동', groupName: '별빛반', members: '김철수, 이영희', variant });
     for (const pii of ['홍길동', '별빛반', '김철수', '이영희']) expect(p.includes(pii), `${variant}: ${pii}`).toBe(false);
   }
