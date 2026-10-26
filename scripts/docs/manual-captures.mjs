@@ -74,7 +74,9 @@ try {
   await evaluate("document.getElementById('startBtn').click()");
   for (let i = 0; i < 50; i++) { if (await evaluate("document.getElementById('video').readyState >= 2")) break; await delay(100); }
   await delay(1600);
-  await shot('03-step2-live', "document.getElementById('video').readyState >= 2");
+  // 켠 직후 «카메라 준비 완료» 알림이 사라진 모습으로 찍는다 — 알림이 얼굴을 가린 그림이 설명서에 들어가지 않게(10/26, 04와 같은 까닭)
+  for (let i = 0; i < 80; i++) { if (await evaluate("!document.querySelector('.camera-ready-notice')")) break; await delay(100); }
+  await shot('03-step2-live', "document.getElementById('video').readyState >= 2 && !document.querySelector('.camera-ready-notice')");
   await evaluate("document.getElementById('shotBtn').click()"); await delay(3800);
   // 찍은 뒤 «촬영 완료» 알림(2.4초)이 사라진 모습으로 찍는다 — 알림이 얼굴을 가린 그림이 설명서에 들어가지 않게(10/21)
   for (let i = 0; i < 60; i++) { if (await evaluate("!document.querySelector('.camera-capture-notice, .captured-badge')")) break; await delay(100); }
