@@ -1,5 +1,17 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-27(화) 08:10 — 라이브: **Hosting = 가지 `download-20261027`(`836b1b9` + 첫 화면 «↓ 다운로드» · `/download` 연결) · 함수 `81a07b4`**
+
+- 🔴 **라이브 Hosting은 master에 없는 커밋이다.** Hosting = `download-20261027`(배포한 사본 `85a6a5c`, 판 `8bf7bafcabfd3329`), 함수 = `81a07b4` 그대로.
+  master `85b1a74`에는 단추와 `firebase.json` 리디렉션이 없다 — **이 가지를 master로 합치기(빨리감기 가능) 전에 master를 push하거나 master에서 배포하면 단추와 `/download`가 사라진다(404).**
+  다음 runbook §9 1번의 Hosting 기준은 이 가지 끝 커밋이다.
+- 설치 파일: `https://poster.edutogether.kr/download/PosterStudio-Setup.exe` → 302 → `gs://inky-poster-studio-download/PosterStudio-Setup.exe`
+  (서울 · 그 객체 하나만 공개 · SHA-256 `5e24eeff206ce1607b2d4bc4a1397ebef6fb911ffbf6e1e3e8de03d2f9b6bdf4`). 바꾸는 법 · 지켜야 할 것은 app.md «첫 화면 «↓ 다운로드» · 설치 파일 공개».
+- 되돌릴 곳: Hosting `rollback-20261027`(= `836b1b9`, 11/26까지). 되돌려도 Storage 파일은 남는다(단추만 사라짐).
+- 가지 `desktop-20261027`(설치판)의 다운로드 단추는 메뉴판(미배포)이다. 합칠 때는 이 가지의 단추(메뉴 없음 · `DownloadLink.tsx`)를 따르고
+  그쪽 `DownloadMenu.tsx` · `download-menu.css` · 메뉴 시험을 걷는다(그 가지 인계 문서에도 적었다).
+- OPEN(현장): ① 11/12 실제 포토프린터 출력 ② 교육청 노트북의 설치 권한 ③ 코드 서명이 없어 뜨는 Windows 보안 경고(SmartScreen). GitHub CI 정지는 그대로.
+
 ## 2026-10-26(월) 22:24 — 라이브: **Hosting `836b1b9`(release-20261026) · 함수 `81a07b4`** — 온라인판 출시 완료
 
 - 🔴 **라이브 커밋이 둘이다**: Hosting = `836b1b9`, 함수 = `81a07b4`(지문 `posterStudio 20a76909…` · `keepWarm` · `cleanupOldCountersSchedule` `ad325de2…`).

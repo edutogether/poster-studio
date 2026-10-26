@@ -14,7 +14,12 @@
      ② 세 주소 각각 헤드리스 첫 화면(PC 2560): 앱이 뜨고 단추가 하나 있다 · 세 주소의 본 번들이 같다
      ③ 대표 주소 PC 2560 · 휴대폰 3배: 접속 · 새로고침 · 2단계 갔다 오기까지 설치 파일 요청 0건 → 단추를 마우스(휴대폰은 손가락)로
         누르면 그때 내려받기가 시작돼 끝까지 받아진다 · 저장 이름 PosterStudio-Setup.exe · SHA-256 = 기대값 · 페이지는 그대로
-     ④ --compare: 대표 주소 전/후 첫 화면 화소 — 단추 상자 밖 차이 0(같은 판을 3번 열어 가장 가까운 짝) */
+     ④ --compare: 대표 주소 전/후 첫 화면 화소 — 단추 상자 밖 차이 0(같은 판을 3번 열어 가장 가까운 짝)
+        🟠 «전»은 배포 직후 같은 시각에 되돌림 채널(배포 전 판)을 --site로 찍은 것을 쓴다. 배포 전에 미리 찍은 것과는
+        큰 장르 그림 한 장을 줄여 그리는 결과가 시각에 따라 갈릴 수 있다(2026-10-27 실측: 같은 836b1b9 판끼리 PC 2560에서 «애니메이션» 그림
+        107,650화소 · 최대 61단계 — 같은 시각 되돌림 채널 대 새 라이브는 0).
+          node scripts/verify/download-live.mjs <채널 결과> --before --site <되돌림 채널 주소>
+          node scripts/verify/download-live.mjs <결과> --sha256 <해시> --compare <채널 결과> */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,10 +30,12 @@ import { loadImage, createCanvas } from '@napi-rs/canvas';
 
 const args = process.argv.slice(2);
 const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
-const out = args.find((a, i) => !a.startsWith('--') && !['--sha256', '--compare'].includes(args[i - 1]));
+const out = args.find((a, i) => !a.startsWith('--') && !['--sha256', '--compare', '--site'].includes(args[i - 1]));
 const before = args.includes('--before');
 const expectSha = opt('--sha256');
 const compareDir = opt('--compare');
+// --site <주소>: 첫 화면 캡처를 대표 주소 대신 이 주소에서 찍는다(파일 이름 site-<크기>.png) — 같은 시각에 되돌림 채널(배포 전 판)을 찍어 견줄 때
+const site = opt('--site');
 if (!out || (!before && !/^[0-9a-f]{64}$/.test(expectSha ?? ''))) {
   console.error('사용: download-live.mjs <결과 폴더> (--before | --sha256 <기대 해시> [--compare <전 결과 폴더>])');
   process.exit(2);
@@ -136,7 +143,7 @@ const shot = async (file) => { const r = await send('Page.captureScreenshot', { 
 const linkRect = () => evaluate(`(() => { const e = document.querySelector('.download-link'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, r: r.right, b: r.bottom, innerWidth }; })()`);
 const readPng = async (file) => { const img = await loadImage(file); const c = createCanvas(img.width, img.height); const x = c.getContext('2d'); x.drawImage(img, 0, 0); return { w: img.width, h: img.height, data: x.getImageData(0, 0, img.width, img.height).data }; };
 
-const main = HOSTS[0];
+const main = site ? { name: 'site', url: site.replace(/\/$/, '') } : HOSTS[0];
 for (const s of SIZES) {
   await setSize(s);
   const state = await open(main.url);
@@ -150,7 +157,9 @@ for (const s of SIZES) {
   if (state.links !== 1) continue;   // 단추가 없으면 화소 대조 · 누르기를 할 수 없다 — 위에서 이미 걸림으로 남겼다
   // ④ 전/후 화소 — 단추 상자(+2px) 밖 차이 0
   const m = await linkRect();
-  const pres = [`${main.name}-${s.name}.png`, ...Array.from({ length: TRIES - 1 }, (_, t) => `${main.name}-${s.name}-${t + 2}.png`)].map((n) => path.join(compareDir ?? '', n)).filter((p) => compareDir && fs.existsSync(p));
+  // 전 캡처: 배포 전에 대표 주소에서 찍은 것(<주소>-<크기>) 또는 --site로 되돌림 채널을 찍은 것(site-<크기>)
+  const pres = [main.name, 'site'].flatMap((n) => [`${n}-${s.name}.png`, ...Array.from({ length: TRIES - 1 }, (_, t) => `${n}-${s.name}-${t + 2}.png`)])
+    .map((n) => path.join(compareDir ?? '', n)).filter((p) => compareDir && fs.existsSync(p));
   if (compareDir) {
     const A = await Promise.all(pres.map(readPng));
     let best = null;
