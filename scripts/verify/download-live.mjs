@@ -92,9 +92,12 @@ const send = (method, params = {}) => new Promise((r) => { const i = ++id; wait.
 const evaluate = async (expression) => (await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })).result?.result?.value;
 
 // 기록: 요청 · 내려받기. AI 서버(함수 주소)만 이 도구가 받아 /health는 «정상»으로 답하고 나머지는 막는다.
-const log = { requests: [], begins: [], progress: new Map(), fn: [] };
+// 첫 화면이 안 뜨면 원인을 남긴다: 실패한 요청(오류 글) · 끝나지 않은 요청.
+const log = { requests: [], begins: [], progress: new Map(), fn: [], open: new Map(), failed: [] };
 handlers.push(async (m) => {
-  if (m.method === 'Network.requestWillBeSent') log.requests.push(m.params.request.url);
+  if (m.method === 'Network.requestWillBeSent') { log.requests.push(m.params.request.url); log.open.set(m.params.requestId, m.params.request.url); }
+  if (m.method === 'Network.loadingFinished') log.open.delete(m.params.requestId);
+  if (m.method === 'Network.loadingFailed') { log.failed.push({ url: log.open.get(m.params.requestId), error: m.params.errorText }); log.open.delete(m.params.requestId); }
   if (m.method === 'Page.downloadWillBegin' || m.method === 'Browser.downloadWillBegin') log.begins.push({ url: m.params.url, name: m.params.suggestedFilename, guid: m.params.guid });
   if (m.method === 'Page.downloadProgress' || m.method === 'Browser.downloadProgress') log.progress.set(m.params.guid, m.params);
   if (m.method === 'Fetch.requestPaused') {
@@ -116,6 +119,7 @@ const setSize = async (s) => {
   await send('Emulation.setTouchEmulationEnabled', { enabled: !!s.mobile, maxTouchPoints: s.mobile ? 5 : 0 });
 };
 const open = async (url) => {
+  log.open.clear(); log.failed.length = 0;
   await send('Page.navigate', { url: url + '/' });
   await evaluate(`new Promise((r) => { const t = setInterval(() => { if (document.body?.classList.contains('app-ready') && !document.getElementById('splash')) { clearInterval(t); r(); } }, 100); setTimeout(() => { clearInterval(t); r(); }, 20000); })`);
   await evaluate(`document.fonts.ready`);
@@ -124,7 +128,9 @@ const open = async (url) => {
   await sleep(700);
   await evaluate(`(document.getAnimations().forEach((a) => { a.pause(); a.currentTime = 0; }), new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))`);
   await sleep(300);
-  return evaluate(`({ ready: document.body.classList.contains('app-ready'), step: document.body.dataset.step, links: document.querySelectorAll('.download-link').length, privacy: !!document.querySelector('.privacy-link') })`);
+  const state = await evaluate(`({ ready: document.body.classList.contains('app-ready'), step: document.body.dataset.step, links: document.querySelectorAll('.download-link').length, privacy: !!document.querySelector('.privacy-link') })`);
+  if (!state.ready) Object.assign(state, { failed: log.failed.slice(0, 12), unfinished: [...log.open.values()].slice(0, 12) });
+  return state;
 };
 const shot = async (file) => { const r = await send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(path.join(out, file), Buffer.from(r.result.data, 'base64')); };
 const linkRect = () => evaluate(`(() => { const e = document.querySelector('.download-link'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, r: r.right, b: r.bottom, innerWidth }; })()`);
@@ -197,7 +203,8 @@ for (const s of SIZES) {
   const got = file && fs.existsSync(file) ? { bytes: fs.statSync(file).size, sha256: await sha256(file) } : null;
   const after = await evaluate(`({ step: document.body.dataset.step, path: location.pathname, host: location.host })`);
   report.browser[`${main.name}-${s.name}`].download = { steps, begin, state: done?.state ?? null, got, after, setupRequests: log.requests.filter((u) => SETUP.test(u)) };
-  check(`${main.name} ${s.name}: 단추를 누르면 내려받기가 시작돼 끝까지 받아진다(저장 이름 ${FILE})`, begin && begin.name === FILE && new URL(begin.url).pathname === PATH && done?.state === 'completed', { begin, state: done?.state });
+  // 브라우저는 302를 따라간 뒤의 주소(Storage 객체)를 내려받기 주소로 알린다
+  check(`${main.name} ${s.name}: 단추를 누르면 내려받기가 시작돼 끝까지 받아진다(저장 이름 ${FILE})`, begin && begin.name === FILE && begin.url === OBJECT && done?.state === 'completed', { begin, state: done?.state });
   check(`${main.name} ${s.name}: 받은 파일 SHA-256 = 기대값`, got && got.sha256 === expectSha, got);
   check(`${main.name} ${s.name}: 누른 뒤에도 첫 화면 그대로`, after.step === '1' && after.path === '/', after);
   if (file) fs.rmSync(file, { force: true });
