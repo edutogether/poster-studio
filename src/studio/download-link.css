@@ -1,22 +1,21 @@
-/* 첫 화면 «↓ 다운로드»(2026-10-27, DownloadLink.tsx). 개인정보처리방침 링크(compact.css .privacy-link)와 같은 줄 · 같은 글꼴 · 같은 색으로
+/* 첫 화면 다운로드 아이콘(2026-10-27, DownloadLink.tsx). 개인정보처리방침 링크(compact.css .privacy-link)와 같은 줄 · 같은 색으로
    그 바로 왼쪽에 둔다 — 방침 링크는 한 화소도 옮기지 않는다. 오른쪽 끝 = 방침 링크의 왼쪽 끝 − 14px.
-   방침 링크 폭은 «개인정보처리방침» 여덟 글자 = 6.92em(Studio 글꼴 실측: PC 12px → 83px · 휴대폰 11px → 76px)이라 글자 크기에 맞춰 em으로 잰다. */
+   방침 링크 폭은 «개인정보처리방침» 여덟 글자 = 6.92em(Studio 글꼴 실측: PC 12px → 83px · 휴대폰 11px → 76px)이라 글자 크기에 맞춰 em으로 잰다.
+   아이콘은 방침 글자와 같은 크기 감으로 1.15em 칸(그림 자체는 칸의 3/4 — 한글 글자 높이와 비슷)이고, 방침 글자 줄(20px)의 가운데에 놓는다.
+   10/27 Bumm님: 밑줄 없음(평소 · 마우스를 올렸을 때 모두), 마우스를 올리면 커서만 손가락 — 색 바뀜 · 그 밖의 효과 없음. */
 .download-link {
   position: absolute;
   top: calc(100% + 5px);
   right: calc(var(--content-right) + 6.92em + 14px);
   z-index: 7;
-  display: block;
+  display: flex;
+  align-items: center;
+  box-sizing: content-box;
+  height: 20px;
   font-size: 12px;
-  line-height: 20px;
   color: #666;
   text-decoration: none;
-  white-space: nowrap;
-}
-.download-link:hover {
-  color: #191919;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  cursor: pointer;
 }
 .download-link:focus-visible {
   outline: 2px solid #e11d2a;
@@ -28,35 +27,23 @@
   body[data-step="1"] .download-link {
     color: #eee;
   }
-  body[data-step="1"] .download-link:hover {
-    color: #fff;
-  }
 }
 
-/* 휴대폰: 방침 링크처럼 글자 11px, 어두운 영화관 띠 위라 밝은 색, 누르는 높이 44px(아래로만 넓힘) — compact.css · studio.css의 방침 링크 규칙과 같은 값 */
+/* 휴대폰: 방침 링크처럼 글자 11px · 어두운 영화관 띠 위라 밝은 색. 누르는 자리는 높이 44px(아래로만 넓힘)에
+   왼쪽으로 20px 넓힌다(아이콘만이라 폭이 좁다 — 오른쪽은 방침 링크와의 14px 간격이라 넓히지 않는다). compact.css · studio.css의 방침 링크 규칙과 같은 값 */
 @media (max-width: 760px) {
   .download-link {
     top: calc(100% + 12px);
     font-size: 11px;
-    padding-block: 4px 20px;
+    padding: 4px 0 20px 20px;
     margin-top: -4px;
     color: #eee;
   }
-  .download-link:hover {
-    color: #fff;
-  }
 }
 
-/* «↓» 화살표 — 글자 높이의 그림(서브셋에 없는 글자라 글리프 대신). 글자색을 따라간다. */
-.download-arrow {
-  display: inline-block;
-  width: 0.92em;
-  height: 0.92em;
-  margin-right: 0.3em;
-  vertical-align: -0.08em;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+/* Lucide download 아이콘 — 글자색을 따라간다. */
+.download-icon {
+  display: block;
+  width: 1.15em;
+  height: 1.15em;
 }

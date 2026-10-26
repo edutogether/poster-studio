@@ -1,4 +1,4 @@
-/* 웹 첫 화면 «↓ 다운로드» 확인(2026-10-27, _docs/intents/2026-10-27-download-button-deploy). 라이브 확인은 download-live.mjs.
+/* 웹 첫 화면 다운로드 아이콘 확인(2026-10-27, _docs/intents/2026-10-27-download-button-deploy). 라이브 확인은 download-live.mjs.
 
      node scripts/verify/download-button-probe.mjs <dist 폴더> <결과 폴더> --before                 바꾸기 전 판: 첫 화면만 찍는다
      node scripts/verify/download-button-probe.mjs <dist 폴더> <결과 폴더> --compare <전 결과 폴더>  바꾼 판: 찍고 · 재고 · 전과 대조한다
@@ -11,9 +11,10 @@
    --compare일 때 재는 것(하나라도 걸리면 종료코드 1):
      ① 전/후 첫 화면 화소 대조 — 다운로드 단추 상자 밖은 차이 0화소(단추 말고는 시각적 차이가 없어야 한다)
      ② 단추가 개인정보처리방침 링크와 같은 줄 · 바로 왼쪽(간격 14px) · 다른 요소와 안 겹침 · 화면 안 · 휴대폰은 누르는 높이 44px 이상
-     ③ 단추는 메뉴 없이 바로 받는 링크 하나(<a href download>, 10/27 Bumm님 A안 — 받는 것이 Poster Studio 설치판 하나뿐)
+     ③ 단추는 메뉴 없이 바로 받는 링크 하나(<a href download>, 10/27 Bumm님 A안 — 받는 것이 Poster Studio 설치판 하나뿐) ·
+        글자 없이 lucide download 아이콘 · 화면 읽기용 이름(aria-label) · 툴팁 없음 · PC에서 마우스를 올리면 커서만 손가락(색 · 밑줄 그대로)
      ④ 네트워크 기록(1920×1080에서): 접속 · 새로고침 · 2단계로 갔다 돌아오기까지 설치 파일 요청 0건,
-        «다운로드»를 누르면 그때 첫 요청 · 내려받기 시작
+        단추를 누르면 그때 첫 요청 · 내려받기 시작
      ⑤ 첫 화면에만 있다(2단계에는 없다) */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -149,13 +150,15 @@ for (const s of SIZES) {
       if (over(e.getBoundingClientRect())) hit.push(e.tagName + ' ' + (e.id || e.className));
     }
     return { innerWidth, link: a, text: at, privacyText: pt, gap: pt.x - at.r, sameLine: Math.abs((at.y + at.h / 2) - (pt.y + pt.h / 2)), font: [getComputedStyle(link).fontSize, getComputedStyle(privacy).fontSize], color: [getComputedStyle(link).color, getComputedStyle(privacy).color], hit, inView: a.x >= 0 && a.r <= innerWidth && a.y >= 0,
-      kind: { tag: link.tagName, href: link.getAttribute('href'), download: link.getAttribute('download'), text: link.textContent, menu: !!document.querySelector('[role="menu"]') || link.hasAttribute('aria-haspopup') } };
+      kind: { tag: link.tagName, href: link.getAttribute('href'), download: link.getAttribute('download'), text: link.textContent, label: link.getAttribute('aria-label'), icon: link.querySelectorAll('svg path').length,
+        title: link.hasAttribute('title') || !!link.querySelector('title'), menu: !!document.querySelector('[role="menu"]') || link.hasAttribute('aria-haspopup') } };
   })()`);
   report.sizes[s.name] = { measure: m };
   check(`${s.name}: 방침 링크 바로 왼쪽 · 같은 줄 · 같은 글자 크기 · 같은 색`, m && Math.abs(m.gap - 14) <= 1 && m.sameLine <= 1 && m.font[0] === m.font[1] && m.color[0] === m.color[1], m && { gap: Math.round(m.gap * 10) / 10, sameLine: m.sameLine, font: m.font, color: m.color });
   check(`${s.name}: 다른 요소와 안 겹침 · 화면 안`, m && m.hit.length === 0 && m.inView, m && { hit: m.hit, inView: m.inView });
   if (s.mobile) check(`${s.name}: 누르는 높이 44px 이상`, m && m.link.h >= 44, m && Math.round(m.link.h));
-  check(`${s.name}: 메뉴 없이 바로 받는 링크 하나(<a href download>)`, m && m.kind.tag === 'A' && m.kind.href === '/download/PosterStudio-Setup.exe' && m.kind.download === 'PosterStudio-Setup.exe' && m.kind.text === '다운로드' && !m.kind.menu, m && m.kind);
+  check(`${s.name}: 메뉴 없이 바로 받는 링크 하나(<a href download>) · 글자 없이 아이콘 · 화면 읽기용 이름 · 툴팁 없음`, m && m.kind.tag === 'A' && m.kind.href === '/download/PosterStudio-Setup.exe' && m.kind.download === 'PosterStudio-Setup.exe'
+    && m.kind.text === '' && m.kind.icon === 3 && m.kind.label === 'Poster Studio 설치 파일 다운로드' && !m.kind.title && !m.kind.menu, m && m.kind);
 
   // 전/후 화소 대조 — 단추 상자(단추 + 2px) 밖은 같아야 한다. 화면 화소 = CSS px × (캡처 폭 ÷ innerWidth) — 휴대폰은 기준 폭(390)을 실제 폭에 맞춰 줄이고 키운다.
   const pres = [`home-${s.name}.png`, ...Array.from({ length: TRIES - 1 }, (_, t) => `home-${s.name}-${t + 2}.png`)].map((n) => path.join(compareDir, n)).filter((p) => fs.existsSync(p));
@@ -181,6 +184,15 @@ for (const s of SIZES) {
     report.sizes[s.name].pixels = best;
     check(`${s.name}: 전/후 화소 — 단추 밖 차이 0`, best && best.outside === 0 && best.insideButton > 0, best);
   } else check(`${s.name}: 전 화면 캡처가 있다`, false, compareDir);
+  // 마우스를 올렸을 때(PC): 커서만 손가락 — 색 · 밑줄은 그대로, 툴팁 없음(10/27 Bumm님)
+  if (m && !s.mobile && !s.touch) {
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: m.link.x + m.link.w / 2, y: m.link.y + m.link.h / 2 });
+    await sleep(200);
+    const hv = await evaluate(`(() => { const l = document.querySelector('.download-link'); const cs = getComputedStyle(l); return { hover: l.matches(':hover'), color: cs.color, deco: cs.textDecorationLine, cursor: cs.cursor }; })()`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+    report.sizes[s.name].hover = hv;
+    check(`${s.name}: 마우스를 올리면 커서만 손가락(색 · 밑줄 그대로)`, hv.hover && hv.color === m.color[0] && hv.deco === 'none' && hv.cursor === 'pointer', hv);
+  }
 }
 
 if (!before) {
@@ -205,9 +217,9 @@ if (!before) {
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: r.x + r.w / 2, y: r.y + r.h / 2, button: 'left', clickCount: 1 });
   };
   await press('.download-link'); await sleep(2000);
-  const afterPs = count(); steps.push(['«다운로드» 누름', afterPs]);
+  const afterPs = count(); steps.push(['단추 누름', afterPs]);
   // 같은 주소 내려받기는 브라우저가 맡아 페이지 네트워크 기록에는 안 남는다 — 서버가 받은 요청과 «내려받기 시작» 알림으로 잰다
-  check('«다운로드»를 누르면 그때 요청 · 내려받기가 시작된다(메뉴 없이 한 번에)', afterPs.server === 1 && afterPs.downloads >= 1, afterPs);
+  check('단추를 누르면 그때 요청 · 내려받기가 시작된다(메뉴 없이 한 번에)', afterPs.server === 1 && afterPs.downloads >= 1, afterPs);
   check('누른 뒤에도 첫 화면 그대로(다른 페이지로 넘어가지 않음)', await evaluate(`document.body.dataset.step === '1' && location.pathname === '/'`));
   report.network = { steps, requests: log.requests.filter((u) => SETUP.test(u)), downloads: log.downloads, outside: log.outside };
   check('바깥 주소 요청은 AI 서버 확인뿐(이 도구가 대신 답함 — 실제로 나간 것 0)', log.outside.every((u) => /\/health$/.test(u)), log.outside);

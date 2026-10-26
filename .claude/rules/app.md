@@ -374,9 +374,12 @@
   **다시 받으면 같은 대조를 돌리고, 출력이 바뀌었으면 승인 없이 커밋하지 않는다.**
   외부 글꼴 도메인을 CSP·HTML에 다시 넣지 않는다(`test/csp.test.js`·`test/poster-fonts.test.js`).
 
-## 첫 화면 «↓ 다운로드» · 설치 파일 공개 (2026-10-27 Bumm님 A안, 팀장 전달)
-- **단추**: `src/studio/DownloadLink.tsx`. 1단계에만, 개인정보처리방침 링크 바로 왼쪽(같은 줄 · 같은 글자 크기와 색 · 간격 14px).
+## 첫 화면 다운로드 아이콘 · 설치 파일 공개 (2026-10-27 Bumm님 A안, 팀장 전달)
+- **단추**: `src/studio/DownloadLink.tsx`. 1단계에만, 개인정보처리방침 링크 바로 왼쪽(같은 줄 · 같은 색 · 간격 14px).
   메뉴 없이 `<a href="/download/PosterStudio-Setup.exe" download>` 하나다 — 받는 것이 Poster Studio 설치판 하나뿐이다(Voice Cinema는 넣지 않는다).
+  - 🟠 **글자 없이 lucide `download` 아이콘 하나**(10/27 Bumm님, 라이브를 보고 «↓ 다운로드» 글자를 뺌). 1.15em 칸(PC 13.8px · 휴대폰 12.7px), 색은 방침 글자와 같다.
+    **밑줄 없음 · 마우스를 올리면 커서만 손가락** — 색 바뀜 · 툴팁(`title`) 같은 효과를 넣지 않는다. 화면 읽기 프로그램용 이름은 `aria-label` «Poster Studio 설치 파일 다운로드».
+    휴대폰은 누르는 자리를 높이 44px · 왼쪽으로 20px 넓혔다(오른쪽은 방침 링크와의 간격이라 넓히지 않는다).
   🔴 **누르기 전에는 설치 파일 요청이 0건이어야 한다.** prefetch · preload · 서비스워커 미리 받기에 넣지 않는다(`test/download-link.test.tsx` · 확인 도구 둘).
 - **연결**: `firebase.json` `redirects` 302 → `https://storage.googleapis.com/inky-poster-studio-download/PosterStudio-Setup.exe`.
   주소를 바꾸면 `src/downloads.ts`와 리디렉션을 같이 고친다(시험이 둘을 맞춰 본다). 302인 까닭: 브라우저가 영구 기억하지 않아 파일 자리를 바꿀 수 있다.

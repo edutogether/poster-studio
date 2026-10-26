@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-/* 2026-10-27 — 웹 첫 화면 «↓ 다운로드»(_docs/intents/2026-10-27-download-button-deploy).
-   첫 화면(1단계)에만 있고, 메뉴 없이 누르면 바로 받는 링크 하나다. 누르기 전에는 설치 파일을 하나도 받지 않는다(fetch 0건 · 미리 받기 없음).
+/* 2026-10-27 — 웹 첫 화면 다운로드 아이콘(_docs/intents/2026-10-27-download-button-deploy).
+   첫 화면(1단계)에만 있고, 메뉴 없이 누르면 바로 받는 링크 하나다(글자 없이 lucide download 아이콘 + 화면 읽기용 이름). 누르기 전에는 설치 파일을 하나도 받지 않는다(fetch 0건 · 미리 받기 없음).
    주소는 firebase.json 리디렉션(302)이 Cloud Storage 공개 객체로 넘긴다 — 단추 주소와 리디렉션 출발 주소가 어긋나면 404가 나간다.
    실제 브라우저 확인은 scripts/verify/download-button-probe.mjs(dist) · download-live.mjs(라이브). */
 import fs from 'node:fs';
@@ -43,7 +43,7 @@ const renderApp = () => render(<PosterStudio />, { container: document.querySele
 const setupRequests = () => net.calls.filter((u) => /Setup\.exe/i.test(u));
 const STORAGE_OBJECT = 'https://storage.googleapis.com/inky-poster-studio-download/PosterStudio-Setup.exe';
 
-describe('웹 첫 화면 «↓ 다운로드»', () => {
+describe('웹 첫 화면 다운로드 아이콘', () => {
   test.each(['both', 'real', 'sample'] as const)('%s: 1단계에만 있고, 메뉴 없이 바로 받는 링크 하나다 — 누르기 전 요청 0건', async (mode) => {
     studioMode = mode;
     await act(async () => { renderApp(); });
@@ -51,7 +51,14 @@ describe('웹 첫 화면 «↓ 다운로드»', () => {
     expect(links).toHaveLength(1);
     const link = links[0];
     expect(link.tagName).toBe('A');
-    expect(link.textContent).toBe('다운로드');
+    // 10/27 Bumm님: 글자 없이 lucide download 아이콘 하나 · 툴팁 없음 · 화면 읽기 프로그램용 이름만
+    expect(link.textContent).toBe('');
+    expect(link.getAttribute('aria-label')).toBe('Poster Studio 설치 파일 다운로드');
+    expect(link.hasAttribute('title') || !!link.querySelector('title')).toBe(false);
+    const icon = link.querySelector('svg');
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+    expect([...link.querySelectorAll('svg path')].map((p) => p.getAttribute('d')))
+      .toEqual(['M12 15V3', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'm7 10 5 5 5-5']);   // Lucide 공식 download
     expect(link.getAttribute('href')).toBe(SETUP_DOWNLOAD.href);
     expect(link.getAttribute('download')).toBe('PosterStudio-Setup.exe');
     expect(link.hasAttribute('target')).toBe(false);   // 새 탭 없이 그 자리에서 받는다
