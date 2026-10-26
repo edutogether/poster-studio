@@ -81,6 +81,7 @@ const downloads = path.join(profile, 'downloads');
 fs.mkdirSync(downloads);
 const port = 9300 + Math.floor(Math.random() * 400);
 const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--no-default-browser-check', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore', windowsHide: true });
+process.on('exit', () => chrome.kill());   // 도중에 예외로 끝나도 이 도구가 띄운 헤드리스 크롬은 닫는다
 let target;
 for (let i = 0; i < 60 && !target; i++) { await sleep(200); try { target = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find((t) => t.type === 'page'); } catch { /* 아직 */ } }
 const ws = new globalThis.WebSocket(target.webSocketDebuggerUrl);
@@ -140,6 +141,7 @@ for (const s of SIZES) {
     continue;
   }
   check(`${main.name} ${s.name}: 앱이 뜨고 단추가 하나`, state.ready && state.step === '1' && state.links === 1 && state.privacy, state);
+  if (state.links !== 1) continue;   // 단추가 없으면 화소 대조 · 누르기를 할 수 없다 — 위에서 이미 걸림으로 남겼다
   // ④ 전/후 화소 — 단추 상자(+2px) 밖 차이 0
   const m = await linkRect();
   const pres = [`${main.name}-${s.name}.png`, ...Array.from({ length: TRIES - 1 }, (_, t) => `${main.name}-${s.name}-${t + 2}.png`)].map((n) => path.join(compareDir ?? '', n)).filter((p) => compareDir && fs.existsSync(p));
