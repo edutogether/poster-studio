@@ -114,6 +114,10 @@ try {
   const view = await main.evaluate(`({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio, step: document.body.dataset.step, desktop: 'desktop' in document.body.dataset, badge: document.querySelector('.desktop-badge')?.textContent ?? null, download: !!document.querySelector('.download-menu'), sampleButton: [...document.querySelectorAll('button')].some((b) => b.textContent.includes('샘플 포스터')) })`);
   check('1단계 · 설치판 표시', view.step === '1' && view.desktop && view.badge === '설치판 · AI 없이 사진 그대로', view);
   check('설치판에는 다운로드 단추 · 샘플 단추가 없다', !view.download && !view.sampleButton);
+  // 키 · 토큰을 설치판에 넣지 않는다 — 화면이 실제로 받은 스크립트에 부스 토큰 값이 없는지(값은 CI와 같은 방식으로 src/constants.ts에서 읽는다)
+  const token = fs.readFileSync(path.join(ROOT, 'src/constants.ts'), 'utf8').match(/const BOOTH_TOKEN = '([^']+)'/)?.[1];
+  const scripts = await main.evaluate(`Promise.all([...document.scripts].filter((s) => s.src).map((s) => fetch(s.src).then((r) => r.text()))).then((t) => ({ n: t.length, bytes: t.join('').length, text: t.join('') }))`);
+  check('설치판 화면 스크립트에 부스 토큰이 없다', token && scripts.n > 0 && scripts.bytes > 100000 && !scripts.text.includes(token), { scripts: scripts.n, bytes: scripts.bytes });
   // 화면 글꼴: 제목 · 본문이 실제로 앱 글꼴(Studio = Pretendard 서브셋)로 그려졌는지(맑은 고딕 대체가 아닌지)
   const { result: { root } } = await main.send('DOM.getDocument', { depth: 0 });
   const fontsOf = async (selector) => {

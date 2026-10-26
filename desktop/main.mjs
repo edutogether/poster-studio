@@ -32,6 +32,10 @@ const TYPE = {
 // 4×6 인치 인화지(마이크로미터) — 화면 인쇄 규격(src/studio.css @media print의 @page 4in 6in · 여백 0)과 같다.
 const PAGE_4X6 = { width: 101600, height: 152400 };
 
+// 앱 데이터(캐시 · 화면 저장소) 폴더를 설치기와 같은 이름으로 — 제거할 때 %APPDATA%PosterStudio를 지운다(electron-builder APP_FILENAME).
+// 그대로 두면 Electron이 화면 이름(«Poster Studio»)으로 폴더를 만들어 제거한 뒤에도 남는다(2026-10-27 설치 · 제거 확인에서 실측).
+app.setPath('userData', path.join(app.getPath('appData'), 'PosterStudio'));
+
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ]);
