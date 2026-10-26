@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 등급: 2
 작성자: Poster Studio 세션
 작성 시각: 2026-10-27

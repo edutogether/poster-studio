@@ -1,5 +1,13 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-27(화) — Windows 설치판 · 다운로드 단추(미배포) · 현장 PDF 완료 (가지 `desktop-20261027`, 라이브 Hosting `836b1b9` · 함수 `81a07b4` 그대로)
+
+- 가지 `desktop-20261027`(`836b1b9`에서, 로컬만 · push 없음 · master 그대로). 내용과 확인 숫자는 CHANGELOG 10/27.
+- 전달 폴더(저장소 밖): `C:\Users\817be\Documents\InKY-설치판-현장매뉴얼-20261027\` — `PosterStudio-Setup.exe` · PDF 2종 · `다운로드-단추\`(전/후 캡처 · 네트워크 기록).
+  확인 캡처 · 아이콘 수치 · PDF 원본은 `…-20261027-작업자료\poster-studio\`.
+- 🔴 다운로드 단추는 배포하지 않는다 — 설치 파일을 올릴 자리(Cloud Storage + `firebase.json` 리디렉션)가 승인 · 업로드된 뒤에 함께 낸다. 설치 파일은 저장소 · Hosting에 넣지 않는다.
+- 대기: Bumm님이 실제 구동 화면에서 손볼 곳 목록(팀장 전달 예정). OPEN: 실제 프린터 · 11/12 장비 시험 · 교육청 노트북 설치 권한 · SmartScreen.
+
 ## 2026-10-26(월) 밤 — 최종 출시 후보 `release-20261026` 완료 · 배포 승인 대기 (라이브는 Hosting · 함수 모두 `81a07b4` 그대로)
 
 - **출시 후보 `release-20261026`**(= `perf-port-20261026`): 7ab4be0 + 대기 영상 1-A + 종합감사 고침. 10개 항목 모두 10/10(이 트리 기준). 로컬만 · push 없음 · master `6ac7dc3` 그대로.
