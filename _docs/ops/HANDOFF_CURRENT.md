@@ -1,5 +1,16 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-26(월) 22:24 — 라이브: **Hosting `836b1b9`(release-20261026) · 함수 `81a07b4`** — 온라인판 출시 완료
+
+- 🔴 **라이브 커밋이 둘이다**: Hosting = `836b1b9`, 함수 = `81a07b4`(지문 `posterStudio 20a76909…` · `keepWarm` · `cleanupOldCountersSchedule` `ad325de2…`).
+  다음 runbook §9 1번의 함수 기준은 `81a07b4`다 — `git diff 81a07b4 master -- functions/`에 함수 3건(안전 차단 판정 통합 · 기록 칸 · body-parser 2.4.0)이 보여야 맞다.
+- 로컬 master = `836b1b9` + 기록 커밋들, push 없음(origin/master `a658d89`). 태그: `poster-studio-freeze-20261026-pre-deploy` · `poster-studio-freeze-20261026-audited-100`(둘 다 `836b1b9`).
+- 되돌릴 곳: Hosting `rollback-20261026`(= `81a07b4`, 11/25까지) · 그 전 `rollback-20261025-7`(`7ad0ad5`, 11/24까지). 둘 다 지우지 않는다.
+- 백업: `E:\poster-studio-backup-20261026`(출시 · 복원 검증) · `E:\poster-studio-backup-20261026-deployed`(배포 기록까지 · 복원 빌드 = 라이브). `-prep`도 그대로.
+- 운영자 전달: `C:\Users\817be\Documents\poster-studio-운영자-전달-20261026`(PDF 4종). 정식 주소 **poster.edutogether.kr**, 옛 주소 poster-studio.web.app도 같은 판.
+- 온라인판 소프트웨어 출시는 **완료**. 승인된 기능(1-A · 2-A · 처리방침 · 16칸 지시문 · 8종 · 인쇄)은 다시 고치지 않는다. 오프라인 비상판은 별도 과제.
+- OPEN 5건(담당 · 날짜)은 CHANGELOG 10/26 22:24 절.
+
 ## 2026-10-26(월) 밤 — 최종 출시 후보 `release-20261026` 완료 · 배포 승인 대기 (라이브는 Hosting · 함수 모두 `81a07b4` 그대로)
 
 - **출시 후보 `release-20261026`**(= `perf-port-20261026`): 7ab4be0 + 대기 영상 1-A + 종합감사 고침. 10개 항목 모두 10/10(이 트리 기준). 로컬만 · push 없음 · master `6ac7dc3` 그대로.
