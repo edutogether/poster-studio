@@ -1,5 +1,19 @@
 # CHANGELOG — Poster Studio
 
+## 2026-10-27(화) — 첫 화면 «↓ 다운로드» · 설치 파일 공개 — Hosting 로컬 배포(가지 `download-20261027`, **함수는 `81a07b4` 그대로**) (승인 Bumm 10/27 A안, 팀장 전달)
+
+- **설치 파일**: 검증을 마친 `PosterStudio-Setup.exe`(가지 `desktop-20261027`의 `28dc59d` 빌드 · 147,366,342바이트 · SHA-256 `5e24eeff206ce1607b2d4bc4a1397ebef6fb911ffbf6e1e3e8de03d2f9b6bdf4`)를 다시 빌드하지 않고 그대로 올렸다.
+  - 자리: 같은 프로젝트의 Cloud Storage 버킷 `inky-poster-studio-download`(서울, 새로 만듦). 객체별 권한이고 버킷 권한(IAM)에는 공개 항목이 없다 — **`PosterStudio-Setup.exe` 객체 하나에만 `allUsers` 읽기**.
+    익명으로 버킷 목록 403 · JSON 목록 401 · 없는 파일 403 · 객체 권한 정보 401(실측). Firebase Storage 기능(전용 API · 보안 규칙)은 켜지 않았다 — 켜면 규칙 배포가 따라와 «hosting만»을 넘는다.
+  - 파일 정보: `application/vnd.microsoft.portable-executable` · `attachment; filename="PosterStudio-Setup.exe"` · `no-cache`. 올린 객체의 MD5가 원본과 같다(`EYnZ4w7t…`).
+- **단추 · 연결**(`9d05fba`): 첫 화면 «개인정보처리방침» 바로 왼쪽 «↓ 다운로드» — 메뉴 없이 `<a href download>` 하나. `firebase.json` 리디렉션 302 → 위 객체.
+  - 836b1b9와의 소스 차이는 단추 · CSS · 리디렉션 · 시험 · 확인 도구뿐(문서 밖 8개 파일, 함수 0줄). master 문서 커밋(`85b1a74`) 위로 옮겼고 dist는 옮기기 전과 621개 바이트가 같다.
+  - dist 대조: 836b1b9 빌드와 621개 중 618개 같음 — 본 번들 JS · CSS와 `index.html`의 그 두 참조 줄만 다르다(CSS 차이는 `.download-link` · `.download-arrow` 규칙 추가뿐).
+  - CI 검사(LF 사본): 린트 · 타입 · `fonts:check` · 시험 435(+6) · `verify:selftest` · 빌드 · dist 점검, 함수 린트 · 시험 118 — 모두 종료코드 0.
+  - `download-button-probe.mjs`(dist, 7크기): 36건 통과 — 단추 밖 화소 차이 0 · 방침 링크와 같은 줄 간격 14px · 휴대폰 누르는 높이 44px · 누르기 전 0건 · 누르면 바로 받기 시작.
+- **배포 직전 기록**(팀장 지시: 따로 보내지 않고 여기 남긴 뒤 진행): 범위 `hosting:poster-studio`만 · 기준 = 라이브 `836b1b9` + 단추 · 연결 ·
+  되돌림 채널 `rollback-20261027`(11/26까지, 지금 라이브를 복제 — `836b1b9` LF 빌드와 621/621 바이트 같음) · 라이브 = `836b1b9` 빌드(두 주소 621/621).
+
 ## 2026-10-26(월) 22:24 — 라이브 배포 `836b1b9`(최종 출시 `release-20261026`, **Hosting만 — 함수는 `81a07b4` 그대로**) (Bumm님 승인, 팀장 전달)
 
 - **ONLINE RELEASE: SUCCESS.** runbook §9(GitHub 정지 중). master를 `836b1b9`로 빨리감기(병합 커밋 없음), push 안 함.

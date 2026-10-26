@@ -31,6 +31,7 @@
 - 포스터 글꼴 PretendardFull은 핵심 조각 + 드문 글자 조각(`public/fonts/full/`, `scripts/fonts/slice-full.py`)이고, 조각을 못 받으면 원본 통글꼴 `public/fonts/Pretendard-*.woff2`를 대신 받는다(`src/layout.ts` `ensureFullFallback`) — 원본 6굵기를 지우지 않는다. 장르 그림은 `src/studio/genre/`(해시 이름)로 쓰되 `public/studio`의 옛 파일 8장도 지우지 않는다(옛 주소 200).
 - CORS는 정식 주소 `https://poster.edutogether.kr`와 기존 주소 `https://poster-studio.web.app`을 유지하며 허용 출처 정규식의 앵커·점 이스케이프를 풀지 않는다.
 - `/generate`는 실제 비용·운영 카운터를 소모한다. 검사에 OpenAI·Firestore 실호출을 넣지 않고 가짜 응답으로 검증한다. `public/`의 파일은 배포로 공개된다.
+- 첫 화면 «↓ 다운로드»는 `/download/PosterStudio-Setup.exe` → `firebase.json` 리디렉션 302 → Cloud Storage 객체 하나(`gs://inky-poster-studio-download/PosterStudio-Setup.exe`, 그 객체만 `allUsers` 읽기)다. 버킷에 공개 권한을 주거나 «균일 접근»으로 바꾸지 않는다. 누르기 전 설치 파일 요청 0건(미리 받기 금지)을 유지한다. 이 단추와 연결은 가지 `download-20261027`에만 있어 그 가지를 합치기 전에 master를 push하면 사라진다 — app.md «첫 화면 «↓ 다운로드» · 설치 파일 공개».
 
 ## APPROVED 영역·회귀
 
