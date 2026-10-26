@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* 느린 망 첫 방문 · 재방문 재기(2026-10-24 Bumm님 «와이파이 환경에서 너무 느려서 제대로 사용하지 못할 정도», 팀장 전달) — 고치기 전과 뒤를 같은 자로 잰다.
 
-     node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>] [--replay] [--repeat]
+     node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>] [--replay] [--repeat] [--prewarm]
 
    창 없는 크롬(새 프로필 = 캐시 없음)으로 망을 흉내 내고(slow4g: 지연 150ms · 내려받기 1.6Mbps, fast3g: 562ms · 1.47Mbps, wifi: 40ms · 10Mbps):
      ① 첫 방문 — 첫 그림(FCP) · 큰 그림(LCP) · 1단계가 쓸 수 있게 된 때(스플래시가 걷히고 «주인공이 될 순간 만들러 가기»가 보임) ·
@@ -13,8 +13,13 @@
         · --replay(2026-10-26): 같은 출처의 /__replay/answer로 보내 scripts/verify/serve-dist.mjs --replay <응답 JSON>이 N초 뒤 그 응답을
           압축 없이(라이브 함수와 같다) 보낸다 — 실제 응답 그림(약 3.1MB)을 흉내 낸 망으로 받는 시간까지 잰다. 응답 완료 = 본문을 다 받은 때
         · --repeat(2026-10-26): 첫 방문 생성 뒤 같은 창(캐시 그대로)을 다시 열어 생성을 한 번 더 — 부스 노트북의 두 번째 아이
+        · --prewarm(2026-10-26): 첫 방문 뒤 생성 전에, 앱 번들에 적힌 대기 영상 · 정지 그림 주소를 전부 받아 둔다(같은 망 흉내로) —
+          행사 전에 노트북 캐시를 채워 둔 상태. 받은 것은 «미리 받기» 단계로 따로 센다
         생성마다: 누른 때 → 응답 완료 → 포스터가 보임, 받은 용량, 대기 영상 장면별 재생 여부(.generation-robot-video[data-active]),
         같은 파일을 망에서 두 번 이상 받은 것(영상의 구간 요청은 뺀다)
+        · 대기 영상 장면별 재생 기록(2026-10-26): 영상 요소의 미디어 이벤트를 받아 장면마다 영상 시작까지 걸린 시간 · 재생 중 멈춤
+          횟수(첫 playing 뒤의 waiting) · 멈춘 시간(waiting → 다음 playing, 장면이 끝나면 거기까지) · 끝까지 재생(ended)을 적는다.
+          «정상 재생» = 영상이 재생됐고 재생 중 멈춤이 0회. 같은 영상 파일을 망에서 끝까지 두 번 받은 것(영상 바이트가 파일 크기를 넘음)도 센다
    결과: 표준 출력 표 + <결과 폴더>/net-perf.json(요청 전부: 주소 · 종류 · 받은 바이트 · 캐시 여부 · 언제). 큰 파일 위 10개를 함께 적는다.
    생성(/generate)은 부르지 않는다 — 페이지가 진짜 생성 요청을 내면 종료코드 2. 라이브 /health(읽기 전용)는 페이지가 원래 부른다. */
 import { spawn } from 'node:child_process';
@@ -25,7 +30,7 @@ import path from 'node:path';
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
 const [url, outArg] = args.filter((a, i) => !a.startsWith('--') && !['--net', '--device', '--real'].includes(args[i - 1]));
-if (!url || !outArg) { console.error('사용법: node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>] [--replay] [--repeat]'); process.exit(2); }
+if (!url || !outArg) { console.error('사용법: node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>] [--replay] [--repeat] [--prewarm]'); process.exit(2); }
 const NETS = { slow4g: { latency: 150, down: 1.6e6, up: 750e3 }, fast3g: { latency: 562.5, down: 1.47e6, up: 675e3 }, wifi: { latency: 40, down: 10e6, up: 5e6 } };
 const netName = opt('--net', 'slow4g'); const net = NETS[netName]; if (!net) { console.error('망: ' + Object.keys(NETS).join(' · ')); process.exit(2); }
 const device = opt('--device', 'pc');
@@ -33,6 +38,7 @@ const FLOW = args.includes('--flow');
 const REAL = Number(opt('--real', 0));
 const REPLAY = args.includes('--replay');
 const REPEAT = args.includes('--repeat');
+const PREWARM = args.includes('--prewarm');
 if ((REPLAY || REPEAT) && !REAL) { console.error('--replay · --repeat는 --real <AI 초>와 같이 쓴다'); process.exit(2); }
 const out = path.resolve(outArg); await fs.mkdir(out, { recursive: true });
 const delay = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
@@ -58,7 +64,8 @@ ws.onmessage = (e) => {
     if (/cloudfunctions\.net.*\/generate|\/generate\?|\/generate$/.test(p.request.url)) generate++;
     reqs.set(p.requestId, { url: p.request.url, type: p.type, bytes: 0, cached: false, t0: p.timestamp, phase });
   }
-  if (m.method === 'Network.responseReceived') { const r = reqs.get(p.requestId); if (r) { r.mime = p.response.mimeType; r.status = p.response.status; if (p.response.fromDiskCache || p.response.fromMemoryCache || p.response.fromServiceWorker) r.cached = true; } }
+  if (m.method === 'Network.responseReceived') { const r = reqs.get(p.requestId); if (r) { r.mime = p.response.mimeType; r.status = p.response.status;
+    const hd = p.response.headers || {}; r.total = Number(String(hd['content-range'] ?? hd['Content-Range'] ?? '').split('/')[1]) || Number(hd['content-length'] ?? hd['Content-Length']) || 0; if (p.response.fromDiskCache || p.response.fromMemoryCache || p.response.fromServiceWorker) r.cached = true; } }
   if (m.method === 'Network.requestServedFromCache') { const r = reqs.get(p.requestId); if (r) r.cached = true; }
   // 받은 만큼 센다 — 끝까지 안 받고 끊긴 요청(장면이 넘어가 그만 받은 대기 영상 등)도 망을 쓴 것이다
   if (m.method === 'Network.dataReceived') { const r = reqs.get(p.requestId); if (r) r.bytes += p.encodedDataLength; }
@@ -126,21 +133,47 @@ async function realFlow(label) {
   await ev('document.getElementById("shotBtn").click(); true');
   await waitFor('!document.getElementById("generateBtn").hidden', 30000);
   // 대기 영상: 0.2초마다 «지금 장면(정지 그림 주소) · 영상이 보이는가»를 적는다
-  await ev(`(() => { window.__wait = []; window.__waitTimer = setInterval(() => { const s = document.querySelector('.generation-robot-still'); const v = document.querySelector('.generation-robot-video');
+  await ev(`(() => { window.__media = []; if (!window.__mediaHooked) { window.__mediaHooked = true;
+      for (const type of ['playing', 'waiting', 'stalled', 'ended', 'error']) document.addEventListener(type, (e) => { const v = e.target;
+        if (v instanceof HTMLVideoElement && v.classList.contains('generation-robot-video')) window.__media.push({ t: performance.now(), type, src: v.getAttribute('src') || '', ct: v.currentTime }); }, true); }
+    window.__wait = []; window.__waitTimer = setInterval(() => { const s = document.querySelector('.generation-robot-still'); const v = document.querySelector('.generation-robot-video');
     if (s) window.__wait.push({ t: performance.now(), scene: s.getAttribute('src'), video: !!v && v.dataset.active === 'true' }); }, 200);
     window.__clicked = performance.now(); document.getElementById('generateBtn').click(); return true; })()`);
   const shown = await waitFor('!document.getElementById("resultView").hidden && !!document.querySelector("#gallery img, .poster-slide img, .style-option")', 300000);
   const t = await ev(`(() => { clearInterval(window.__waitTimer); const scenes = [];
     for (const w of window.__wait) { let s = scenes[scenes.length - 1]; if (!s || s.scene !== w.scene) scenes.push(s = { scene: w.scene, start: w.t - window.__clicked, ms: 0, video: false, videoAt: null });
       s.ms += 200; if (w.video && !s.video) { s.video = true; s.videoAt = w.t - window.__clicked - s.start; } }
+    // 장면마다 그 장면 영상(같은 번호)의 이벤트만 본다 — 정지 그림 «NN.webp» ↔ 영상 «NN-해시.mp4»
+    const num = (u) => ((u || '').match(/\/(\d\d)(?:-[0-9a-f]+)?\.(?:webp|mp4)/) || [])[1];
+    for (const s of scenes) {
+      const from = window.__clicked + s.start, to = from + s.ms, id = num(s.scene);
+      const evs = window.__media.filter((m) => m.t >= from - 100 && m.t <= to && num(m.src) === id);
+      let first = null, rebuffers = 0, stallMs = 0, since = null, ended = false;
+      for (const m of evs) {
+        if (m.type === 'playing') { if (first === null) first = m.t; if (since !== null) { stallMs += m.t - since; since = null; } }
+        if ((m.type === 'waiting' || m.type === 'stalled') && first !== null && since === null && !ended) { rebuffers++; since = m.t; }
+        if (m.type === 'ended') { ended = true; if (since !== null) { stallMs += m.t - since; since = null; } }
+      }
+      if (since !== null) stallMs += to - since;
+      Object.assign(s, { id, startMs: first === null ? null : first - from, rebuffers, stallMs: Math.round(stallMs), ended, errors: evs.filter((m) => m.type === 'error').length });
+    }
     return { answered: window.__answered - window.__clicked, shown: performance.now() - window.__clicked, scenes }; })()`);
   await delay(2000);
   // 1초 넘게 보인 장면만(넘어가는 순간 한 번 잡힌 것은 뺀다). «AI 대기 중» = 응답 완료 전에 시작한 장면 — 응답 뒤 장면은 조판 중이라 따로 본다
   const scenes = (t.scenes || []).filter((s) => s.ms >= 1000);
   const waiting = scenes.filter((s) => s.start < t.answered);
+  // 같은 영상 파일을 망에서 파일 크기보다 많이 받았으면 두 번 받은 것이다(구간 요청 여러 번은 합이 파일 크기를 넘지 않는다).
+  // 파일 크기는 응답 머리글(Content-Range의 전체 · Content-Length)에서 — 크기를 재려고 따로 요청하지 않는다
+  const mediaBytes = new Map();
+  for (const r of reqs.values()) if (r.phase === label && !r.cached && /\.mp4(\?|$)/.test(r.url)) {
+    const m = mediaBytes.get(r.url) || { bytes: 0, size: 0 }; m.bytes += r.bytes; m.size = Math.max(m.size, r.total || 0); mediaBytes.set(r.url, m); }
+  const videoDuplicates = [...mediaBytes].filter(([, m]) => m.size && m.bytes > m.size * 1.05).map(([u, m]) => ({ url: u.replace(/^https?:\/\/[^/]+/, ''), ...m }));
+  const played = scenes.filter((s) => s.video);
   return { label, shownMs: shown === null ? null : t.shown, answeredMs: t.answered, afterAnswerMs: shown === null ? null : t.shown - t.answered,
-    scenes: scenes.length, videoScenes: scenes.filter((s) => s.video).length, waitScenes: waiting.length, waitVideoScenes: waiting.filter((s) => s.video).length,
-    sceneLog: scenes, duplicates: duplicates(label), ...sum(label) };
+    scenes: scenes.length, videoScenes: played.length, waitScenes: waiting.length, waitVideoScenes: waiting.filter((s) => s.video).length,
+    smoothScenes: played.filter((s) => s.rebuffers === 0).length, waitSmoothScenes: waiting.filter((s) => s.video && s.rebuffers === 0).length,
+    rebuffers: scenes.reduce((n, s) => n + s.rebuffers, 0), stallMs: scenes.reduce((n, s) => n + s.stallMs, 0),
+    sceneLog: scenes, duplicates: duplicates(label), videoDuplicates, ...sum(label) };
 }
 
 const rows = [];
@@ -161,7 +194,19 @@ if (FLOW) {
   await delay(3000);
   flow.push({ step: '샘플 → 로딩 → 3단계', ms: done, ...sum('로딩 → 3단계') });
 }
-if (REAL) gens.push(await realFlow('첫 방문 생성'));
+if (PREWARM) {
+  // 앱 번들(main-*.js)에서 대기 영상 · 정지 그림 주소를 모아 차례로 받는다 — 목록을 따로 들고 있지 않아 판이 바뀌어도 그 판의 것을 받는다
+  phase = '미리 받기';
+  const warmed = await ev(`(async () => { const main = [...document.querySelectorAll('script[src]')].map((x) => x.src).find((u) => /\\/assets\\/main-/.test(u));
+    const text = await (await fetch(main)).text(); const urls = [...new Set(text.match(/\\/studio\\/waiting-v\\d+\\/\\d\\d(?:-[0-9a-f]{12}\\.mp4|\\.webp)/g) || [])];
+    for (const u of urls) await (await fetch(u)).arrayBuffer(); return urls.length; })()`);
+  if (!(warmed >= 24)) {   // 크롬 · 임시 프로필을 남기지 않고 끝낸다
+    console.error(`❌ 미리 받을 대기 영상 · 정지 그림을 ${warmed}개만 찾았다(24개여야 한다)`);
+    ws.close(); chrome.kill(); await delay(300); await fs.rm(dir, { recursive: true, force: true }).catch(() => {}); process.exit(1);
+  }
+  flow.push({ step: `미리 받기(대기 영상 · 정지 그림 ${warmed}개)`, ms: 0, ...sum('미리 받기') });
+}
+if (REAL) gens.push(await realFlow(PREWARM ? '미리 받은 뒤 생성' : '첫 방문 생성'));
 rows.push(await visit('재방문'));
 if (REAL && REPEAT) gens.push(await realFlow('재방문 생성'));
 ws.close(); chrome.kill(); await delay(300); await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
@@ -173,7 +218,7 @@ console.log('| 방문 | 첫 그림 | 큰 그림 | 1단계 쓸 수 있음 | 그�
 console.log('|---|---|---|---|---|---|---|');
 for (const r of rows) console.log(`| ${r.name} | ${r.fcp ? (r.fcp / 1000).toFixed(1) + '초' : '—'} | ${r.lcp ? (r.lcp / 1000).toFixed(1) + '초' : '—'} | ${r.ready === null ? '3분 넘음' : (r.ready / 1000).toFixed(1) + '초'} | ${kb(r.first.bytes)} | ${r.first.req}(${r.first.net}/${r.first.cached}) | ${kb(r.after.bytes)} · ${r.after.req}개 |`);
 for (const f of flow) console.log(`· ${f.step}: ${f.ms === null ? '시간 넘음' : (f.ms / 1000).toFixed(1) + '초'} · ${kb(f.bytes)} · 요청 ${f.req}(망 ${f.net})`);
-for (const g of gens) console.log(`  └ ${g.label}: 응답 완료 ${(g.answeredMs / 1000).toFixed(1)}초 · AI 대기 중 영상 ${g.waitVideoScenes}/${g.waitScenes}장면 재생(전체 ${g.videoScenes}/${g.scenes}) · 같은 파일 두 번 받기 ${g.duplicates.length}건${g.duplicates.length ? ' ' + JSON.stringify(g.duplicates).slice(0, 200) : ''}`);
+for (const g of gens) console.log(`  └ ${g.label}: 응답 완료 ${(g.answeredMs / 1000).toFixed(1)}초 · AI 대기 중 영상 ${g.waitVideoScenes}/${g.waitScenes}장면 재생(전체 ${g.videoScenes}/${g.scenes}) · 정상 재생(멈춤 0회) ${g.smoothScenes}/${g.scenes} · 재생 중 멈춤 ${g.rebuffers}회 ${(g.stallMs / 1000).toFixed(1)}초 · 같은 파일 두 번 받기 ${g.duplicates.length}건${g.duplicates.length ? ' ' + JSON.stringify(g.duplicates).slice(0, 200) : ''} · 영상 두 번 받기 ${g.videoDuplicates.length}건`);
 const all = [...reqs.values()];
 const top = all.filter((r) => !r.cached).sort((a, b) => b.bytes - a.bytes).slice(0, 10);
 console.log('큰 파일 위 10개(첫 방문 · 흐름, 망에서 받은 것):');

@@ -13,6 +13,7 @@ import http2 from 'node:http2';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { hostingGlob } from './hosting-glob.mjs';
 
 const args = process.argv.slice(2);
 const replayAt = args.indexOf('--replay');
@@ -24,8 +25,6 @@ const [repo, port] = args.filter((a, i) => !a.startsWith('--') && !valueAt.has(i
 if (!repo || !port || !fs.existsSync(path.join(repo, 'dist', 'index.html'))) { console.error('사용: serve-dist.mjs <저장소 폴더> <포트> [--replay <응답 JSON>]'); process.exit(2); }
 const root = path.resolve(repo, 'dist');
 const rules = JSON.parse(fs.readFileSync(path.join(repo, 'firebase.json'), 'utf8')).hosting.headers;
-// Hosting 글롭: «**/»는 앞 경로 아무것이나, 끝의 «**»는 그 아래 전부(«/assets/**»가 /assets/main-….js를 잡아야 한다 — 10/24판은 못 잡아 1시간 캐시로 서빙했다)
-const glob = (g) => new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*\//g, '\u0000').replace(/\*\*/g, '\u0001').replace(/\*/g, '[^/]*').replace(/\u0000/g, '(?:.*/)?').replace(/\u0001/g, '.*') + '$');
 const TYPE = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.woff2': 'font/woff2', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.txt': 'text/plain; charset=utf-8', '.ico': 'image/x-icon' };
 
 const handler = (req, res) => {
@@ -42,7 +41,7 @@ const handler = (req, res) => {
   if (p.endsWith('/')) file = path.join(file, 'index.html');
   if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
   const h = { 'Content-Type': TYPE[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'max-age=3600', 'Accept-Ranges': 'bytes' };
-  for (const r of rules) if (glob(r.source).test(p)) for (const x of r.headers) h[x.key] = x.value;
+  for (const r of rules) if (hostingGlob(r.source).test(p)) for (const x of r.headers) h[x.key] = x.value;
   let body = fs.readFileSync(file);
   const range = req.headers.range && /bytes=(\d*)-(\d*)/.exec(req.headers.range);
   if (range) {
