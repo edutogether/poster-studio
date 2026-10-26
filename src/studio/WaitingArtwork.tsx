@@ -28,8 +28,9 @@ export default function WaitingArtwork({ image, theme, video, paused, reduced, o
   useEffect(() => {
     const element = player.current;
     if (enabled && element && video) {
-      // 개발 모드의 effect 재실행에서도 정리된 소스를 복구한다.
-      element.src = video;
+      // 개발 모드의 effect 재실행에서도 정리된 소스를 복구한다. 같은 주소가 이미 걸려 있으면 다시 넣지 않는다 — 다시 넣으면 받던 요청을
+      // 끊고 새로 받아, 캐시에 있던 영상을 망에서 또 받았다(2026-10-26 측정: 장면마다 영상 요청 두 번, 미리 받은 영상도 다시 받음).
+      if (element.getAttribute("src") !== video) element.src = video;
       setVisible(false); setBuffering(true);
     }
     return () => {

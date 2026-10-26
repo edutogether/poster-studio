@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { waitingSets } from "./waitingSets.js";
 import { approvedWaitingVideo } from "./waitingVideo.js";
-import { prefetchWaitingVideo, waitingVideosReady } from "./waitingNetwork.js";
+import { backgroundIdle, prefetchWaitingVideo, waitingVideosReady } from "./waitingNetwork.js";
 import WaitingArtwork from "./WaitingArtwork.js";
 import "./generation-wait.css";
 import "./waiting-art.css";
@@ -88,13 +88,13 @@ export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextR
   }, [sceneIndex, scenes]);
 
   // 망을 쓰는 차례(waitingNetwork.ts — 2026-10-26): 지금 장면 영상을 다 받은 뒤에 다음 장면 영상을 받고, 그것까지 받으면
-  // 생성 단추가 걸어 둔 조판 받기를 연다. 느린 망에서 지금 장면 영상이 다른 받기와 망을 나눠 멈추지 않게.
+  // 생성 단추가 걸어 둔 조판 받기를 연다. 조판 받기가 도는 동안에는 다음 장면 영상 받기를 미룬다. 느린 망에서 둘이 망을 나눠 멈추지 않게.
   // 정지 그림은 장면이 바뀌자마자 보여야 하므로 위에서 따로(예전처럼 장면 시작에) 받는다.
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const onSceneLoaded = () => {
     const video = reduced ? undefined : approvedWaitingVideo(scenes[(sceneIndex + 1) % scenes.length].id);
-    void (video ? prefetchWaitingVideo(video) : Promise.resolve()).then(() => { if (alive.current) waitingVideosReady(); });
+    void backgroundIdle().then(() => (video && alive.current ? prefetchWaitingVideo(video) : undefined)).then(() => { if (alive.current) waitingVideosReady(); });
   };
 
   return (
