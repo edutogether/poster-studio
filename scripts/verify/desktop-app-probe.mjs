@@ -43,7 +43,9 @@ for (const [dst, vf, extra] of [[y4m, 'scale=1280:960:force_original_aspect_rati
 
 const port = 9500 + Math.floor(Math.random() * 400);
 const exe = args.includes('--dev') ? path.join(ROOT, 'desktop/node_modules/electron/dist/electron.exe') : path.resolve(opt('--exe'));
-const exeArgs = [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${port}`, '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`, '--mute-audio'];
+const exeArgs = [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${port}`, '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`, '--mute-audio',
+  // 앱 창이 다른 창 뒤에서 열려도 그리기를 멈추지 않게(확인할 때만 — desktop-vs-web.mjs 머리말)
+  '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
 const env = { ...process.env, POSTER_STUDIO_TEST_SAVE_DIR: saveDir, POSTER_STUDIO_TEST_PRINT_PDF: printPdf };
 const started = Date.now();
 const app = spawn(exe, exeArgs, { env, stdio: 'ignore' });
