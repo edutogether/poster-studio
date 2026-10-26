@@ -1,5 +1,14 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-27(화) 08:10 — 다운로드 단추는 가지 `download-20261027`에서 메뉴 없이 배포됐다 (이 가지의 메뉴판 단추는 미배포 · 대체됨)
+
+- Bumm님 A안(팀장 전달): 설치 파일을 Cloud Storage 공개 객체 하나로 올리고, 첫 화면 «↓ 다운로드»를 **메뉴 없이 누르면 바로 받는 링크**로 Hosting만 배포했다.
+  라이브 Hosting = 가지 `download-20261027`(`836b1b9` + 단추 · `firebase.json` 리디렉션, 판 `8bf7bafcabfd3329`), 함수 `81a07b4` 그대로. 기록은 그 가지의 CHANGELOG · 인계 문서 10/27.
+- 올린 설치 파일은 이 가지 `28dc59d` 빌드 그대로다(SHA-256 `5e24eeff…bdf4`, 다시 빌드하지 않음).
+- 🟠 이 가지를 합칠 때: 다운로드 단추는 `download-20261027`의 것(`src/studio/DownloadLink.tsx` · `download-link.css` · `src/downloads.ts`의 `SETUP_DOWNLOAD` · `test/download-link.test.tsx`)을 따른다.
+  이 가지의 `DownloadMenu.tsx` · `download-menu.css` · `test/desktop-and-download.test.tsx`의 메뉴 시험 두 건은 걷고, `StudioView.tsx`는 `DESKTOP ? 설치판 표시 : step === 1 && <DownloadLink/>`로 맞춘다.
+  확인 도구 `download-button-probe.mjs`도 그 가지 판(메뉴 없음)을 쓴다. 이 가지 app.md · intent의 «미배포 · 메뉴» 문장은 그때 고친다.
+
 ## 2026-10-27(화) — Windows 설치판 · 다운로드 단추(미배포) · 현장 PDF 완료 (가지 `desktop-20261027`, 라이브 Hosting `836b1b9` · 함수 `81a07b4` 그대로)
 
 - 가지 `desktop-20261027`(`836b1b9`에서, 로컬만 · push 없음 · master 그대로). 내용과 확인 숫자는 CHANGELOG 10/27.
