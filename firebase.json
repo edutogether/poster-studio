@@ -18,6 +18,14 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "redirects": [
+      {
+        "//": "첫 화면 «↓ 다운로드»(2026-10-27 Bumm님 A안, src/downloads.ts). 설치 파일(147MB)은 저장소 · dist에 둘 수 없어 같은 프로젝트의 Cloud Storage 공개 객체 하나로 넘긴다 — 버킷은 객체별 권한이고 이 객체 하나에만 allUsers 읽기가 있다. 받는 이름 · 형식은 객체의 Content-Disposition(attachment) · Content-Type이 정한다. 302인 까닭: 브라우저가 영구 기억하지 않아 파일 자리를 바꿀 수 있다.",
+        "source": "/download/PosterStudio-Setup.exe",
+        "destination": "https://storage.googleapis.com/inky-poster-studio-download/PosterStudio-Setup.exe",
+        "type": 302
+      }
+    ],
     "headers": [
       {
         "source": "**",

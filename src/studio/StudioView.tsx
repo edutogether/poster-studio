@@ -13,6 +13,7 @@ import { approvedCameraVideo } from "./cameraVideo.js";
 import { savePlatform, savePoster } from "../savePoster.js";
 import { designName } from "../designNames.js";
 import { deviceKind, pcCanvas } from "../deviceCanvas.js";
+import DownloadLink from "./DownloadLink.js";
 // 장르 그림은 빌드가 이름에 해시를 붙여 내는 자산이다(1년 캐시). 원래 PNG 두 장(판타지 · 뮤지컬)은 무손실 WebP로 바꿨다 — 화소 그대로(10/24 와이파이 최적화).
 // public/studio의 옛 파일 8장(reference-*.* · parasite-en · director · rocky-title-edited)은 지우지 않는다 — 이미 나간 옛 주소가 200으로 남게(2026-10-26 Bumm님).
 import sfArt from "./genre/sf.jpg";
@@ -421,6 +422,8 @@ export default function StudioView(p: StudioViewProps) {
                 InKY <strong>Film Festival</strong>
               </span>
             </button>
+            {/* 첫 화면에만 «↓ 다운로드»(2026-10-27) — 누르면 설치 파일을 바로 받는다(메뉴 없음). */}
+            {step === 1 && <DownloadLink/>}
             {/* 10/20 저녁 Bumm님: «사진은 OpenAI(미국)로 전송돼요» 줄은 휴대폰 · PC 모두 뺀다 — 개인정보처리방침 링크만 예전 자리 그대로. */}
             <a
               className="privacy-link"
