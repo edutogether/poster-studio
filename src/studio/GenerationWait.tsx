@@ -87,14 +87,20 @@ export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextR
     next.src = scenes[(sceneIndex + 1) % scenes.length].image;
   }, [sceneIndex, scenes]);
 
-  // 망을 쓰는 차례(waitingNetwork.ts — 2026-10-26): 지금 장면 영상을 다 받은 뒤에 다음 장면 영상을 받고, 그것까지 받으면
-  // 생성 단추가 걸어 둔 조판 받기를 연다. 조판 받기가 도는 동안에는 다음 장면 영상 받기를 미룬다. 느린 망에서 둘이 망을 나눠 멈추지 않게.
+  // 망을 쓰는 차례(waitingNetwork.ts — 2026-10-26): 지금 장면 영상을 다 받은 뒤에 다음 장면 영상을 받는다. 생성 단추가 걸어 둔
+  // 조판 받기는 둘째 장면 영상까지 받아진 뒤에 연다 — 글꼴 조각은 우선순위가 높아, 장면이 시작하는 순간에 풀리면 캐시에 있던 영상
+  // 요청까지 4초 넘게 붙잡혀 정지 그림으로 내려앉았다(10/26 시범 측정). 조판 받기가 도는 동안에는 다음 장면 영상 받기를 미루고,
+  // 그사이 장면이 넘어갔으면 받지 않는다(넘어간 장면이 제 영상을 받은 뒤 그다음을 받는다 — 같은 파일을 둘이 받지 않게).
   // 정지 그림은 장면이 바뀌자마자 보여야 하므로 위에서 따로(예전처럼 장면 시작에) 받는다.
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const current = useRef(sceneIndex);
+  useEffect(() => { current.current = sceneIndex; }, [sceneIndex]);
   const onSceneLoaded = () => {
-    const video = reduced ? undefined : approvedWaitingVideo(scenes[(sceneIndex + 1) % scenes.length].id);
-    void backgroundIdle().then(() => (video && alive.current ? prefetchWaitingVideo(video) : undefined)).then(() => { if (alive.current) waitingVideosReady(); });
+    const at = sceneIndex;
+    const video = reduced ? undefined : approvedWaitingVideo(scenes[(at + 1) % scenes.length].id);
+    if (at > 0 || !video) waitingVideosReady();
+    void backgroundIdle().then(() => (video && alive.current && current.current === at ? prefetchWaitingVideo(video) : undefined));
   };
 
   return (

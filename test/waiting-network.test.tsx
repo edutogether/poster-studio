@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import WaitingArtwork from "../src/studio/WaitingArtwork";
 import GenerationWait from "../src/studio/GenerationWait";
-import { afterWaitingVideos, BACKGROUND_CAP_MS, backgroundIdle, prefetchWaitingVideo, waitingVideosReady } from "../src/studio/waitingNetwork";
+import { _resetWaitingNetworkForTesting, afterWaitingVideos, BACKGROUND_CAP_MS, backgroundIdle, prefetchWaitingVideo, waitingVideosReady } from "../src/studio/waitingNetwork";
 import { approvedWaitingVideo } from "../src/studio/waitingVideo";
 import { waitingSets } from "../src/studio/waitingSets";
 
@@ -11,11 +11,12 @@ import { waitingSets } from "../src/studio/waitingSets";
 const props = { image: "/studio/waiting-v3/11.webp", theme: "움직임에 생기를", video: "/test-only.mp4", paused: false, reduced: false };
 beforeEach(() => {
   vi.useFakeTimers();
+  _resetWaitingNetworkForTesting();
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
 });
-afterEach(() => { waitingVideosReady(); cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { _resetWaitingNetworkForTesting(); cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 /** jsdom의 영상 요소에는 받은 구간 · 길이가 없다 — 받은 끝(초)과 길이를 심는다 */
 const buffer = (video: HTMLVideoElement, end: number, duration = 8, readyState = 4) => {
@@ -118,32 +119,64 @@ test("받을 영상이 없거나(움직임 줄이기 · 승인 안 된 편) 영�
   expect(broken).toHaveBeenCalledTimes(1);
 });
 
-test("대기 화면: 지금 장면 영상을 다 받은 뒤에 다음 장면 영상을 받고, 그것까지 받으면 조판 받기를 연다 — 그동안 그다음 영상은 기다린다", async () => {
+/** 대기 화면을 열고 섞인 장면 순서(제목 줄 순서)를 번호로 돌려준다 */
+const openWait = (reduced = false) => {
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: reduced && query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} }));
+  render(<GenerationWait spinTextRef={{ current: null }}/>);
+  const dialog = document.querySelector<HTMLDialogElement>("#spinner")!;
+  const order = [...dialog.querySelectorAll(".generation-copy")].map((el) => waitingSets.find((set) => set.title === el.textContent)!.id);
+  const loadCurrent = async () => { const v = dialog.querySelector("video")!; buffer(v, 8); await act(async () => { fireEvent.progress(v); }); };
+  return { dialog, order, loadCurrent };
+};
+
+test("대기 화면: 첫 장면 영상을 다 받으면 둘째 장면 영상을 받고, 둘째 장면 영상이 받아진 뒤에 조판 받기를 연다 — 그동안 그다음 영상은 기다린다", async () => {
   const fetchMock = vi.fn().mockResolvedValue(new Response(new Uint8Array(4)));
   vi.stubGlobal("fetch", fetchMock);
   const fonts = deferredJob();
   afterWaitingVideos(fonts.job);
-  render(<GenerationWait spinTextRef={{ current: null }}/>);
-  const dialog = document.querySelector<HTMLDialogElement>("#spinner")!;
-  // 제목 줄은 섞인 장면 순서대로 놓인다 — 두 번째 줄이 다음 장면
-  const titles = [...dialog.querySelectorAll(".generation-copy")].map((el) => el.textContent);
-  const [current, next, third] = titles.slice(0, 3).map((title) => waitingSets.find((set) => set.title === title)!.id);
-  expect(Number(dialog.dataset.setId)).toBe(current);
+  const { dialog, order: [first, second, third], loadCurrent } = openWait();
+  expect(Number(dialog.dataset.setId)).toBe(first);
   await act(async () => {});
   expect(fetchMock).not.toHaveBeenCalled();
-  expect(fonts.job).not.toHaveBeenCalled();
-  buffer(dialog.querySelector("video")!, 8);
-  await act(async () => { fireEvent.progress(dialog.querySelector("video")!); });
-  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([approvedWaitingVideo(next)]);   // 지금 장면이 아니라 다음 장면 영상
-  expect(fonts.job).toHaveBeenCalledTimes(1);
-  // 다음 장면: 그 영상을 다 받아도 조판 받기가 도는 동안에는 그다음 영상을 받지 않는다
+  await loadCurrent();
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([approvedWaitingVideo(second)]);   // 지금 장면이 아니라 다음 장면 영상
+  expect(fonts.job).not.toHaveBeenCalled();   // 둘째 장면이 시작하는 순간에 글꼴이 몰리지 않게 — 아직 열지 않는다
   await act(async () => { vi.advanceTimersByTime(8_000); });
-  expect(Number(dialog.dataset.setId)).toBe(next);
-  buffer(dialog.querySelector("video")!, 8);
-  await act(async () => { fireEvent.progress(dialog.querySelector("video")!); });
-  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(Number(dialog.dataset.setId)).toBe(second);
+  await loadCurrent();
+  expect(fonts.job).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledTimes(1);   // 조판 받기가 도는 동안 셋째 장면 영상은 기다린다
   await act(async () => { fonts.finish(); });
-  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([approvedWaitingVideo(next), approvedWaitingVideo(third)]);
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([approvedWaitingVideo(second), approvedWaitingVideo(third)]);
+});
+
+test("대기 화면: 조판 받기가 끝나기 전에 장면이 넘어갔으면 지난 장면 몫의 영상은 받지 않는다(넘어간 장면이 제 영상을 받은 뒤 그다음을 받는다)", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response(new Uint8Array(4)));
+  vi.stubGlobal("fetch", fetchMock);
+  const fonts = deferredJob();
+  afterWaitingVideos(fonts.job);
+  const { order: [, second, third, fourth], loadCurrent } = openWait();
+  await act(async () => {});
+  await loadCurrent();
+  await act(async () => { vi.advanceTimersByTime(8_000); });
+  await loadCurrent();   // 둘째 장면: 조판 받기 시작, 셋째 장면 영상은 기다림
+  await act(async () => { vi.advanceTimersByTime(8_000); });   // 셋째 장면이 시작 — 그 영상은 <video>가 직접 받는다
+  await act(async () => { fonts.finish(); });
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([approvedWaitingVideo(second)]);
+  await loadCurrent();
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([approvedWaitingVideo(second), approvedWaitingVideo(fourth)]);
+  expect(third).not.toBe(fourth);
+});
+
+test("움직임 줄이기(영상 없음)면 첫 장면에서 곧바로 조판 받기를 연다 — 지킬 영상이 없다", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+  const job = vi.fn(async () => {});
+  afterWaitingVideos(job);
+  openWait(true);
+  await act(async () => {});
+  expect(job).toHaveBeenCalledTimes(1);
+  expect(fetchMock).not.toHaveBeenCalled();
 });
 
 test("장면을 열 때 영상 주소를 한 번만 건다 — 같은 주소를 다시 넣어 받던 요청을 끊고 새로 받지 않게(캐시에 있던 영상을 망에서 또 받았다)", () => {
