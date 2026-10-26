@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 등급: 2
 작성자: Poster Studio 세션(팀장 전달 지시)
 작성 시각: 2026-10-26 — ⚠ 작업 시작(10/24~25) 전에 쓰지 못했다. 지시 원문과 확정 결정을 옮겨 적은 사후 기록이다(intent-workflow 절대 규칙 4 위반을 그대로 적어 둔다)
