@@ -21,3 +21,6 @@ __pycache__/
 # dist/가 정식 배포 폴더가 된 뒤에도 산출물 자체는 커밋하지 않는다.
 .claude/worktrees/
 dist/
+# Windows 설치판(desktop/): 웹 빌드 사본(npm run build:desktop)과 설치 파일 산출물은 커밋하지 않는다 — 설치 파일은 100MB가 넘는다(GitHub 한도).
+desktop/web/
+desktop/out/

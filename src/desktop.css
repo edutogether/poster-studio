@@ -1,0 +1,102 @@
+/* Windows 설치판(src/desktop.ts)만 쓰는 화면 규칙(2026-10-27). main.tsx가 설치판 빌드에서만 붙인다 — 웹 번들에는 들어가지 않는다.
+   웹 화면 · 색 · 글꼴 · 배치는 그대로 두고, 설치판에만 있는 네 가지만 꾸민다:
+   «설치판 · AI 없이» 표시, 2단계 «사진 불러오기», 3단계 «PC에 저장», «인쇄 미리보기» 창. */
+
+/* 머리글 아래 개인정보처리방침 링크 바로 왼쪽(웹의 «↓ 다운로드» 자리 — download-menu.css와 같은 계산) — 모든 단계에 늘 보인다.
+   InKY 로고 노랑(#FFE700) 바탕이라 «AI 포스터가 아니다»가 한눈에 보인다. */
+.desktop-badge {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: calc(var(--content-right) + 6.92em + 14px);
+  z-index: 7;
+  font-size: 12px;
+  line-height: 20px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #ffe700;
+  color: #2b2300;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 2단계 «카메라 켜기» 옆 «사진 불러오기» — 같은 단추 모양, 나란히 */
+body[data-desktop] .camHint.camera-example-caption #loadPhotoBtn {
+  margin-left: 10px;
+}
+
+/* 3단계 «PC에 저장» — «이전»과 같은 회색 단추, 글자가 길어 줄바꿈 없이 */
+body[data-desktop] #resultView .result-actions #desktopSaveBtn {
+  flex: 0 0 auto;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* 인쇄 미리보기 — 4×6 인화지(세로 2:3)에 포스터가 여백 없이 놓인 모습. 인쇄 규격(studio.css @media print)과 같다. */
+.print-preview {
+  width: min(560px, 92vw);
+  max-height: 94vh;
+  padding: 26px 28px 24px;
+  border: 0;
+  border-radius: 16px;
+  background: #fff;
+  color: #191919;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+}
+.print-preview::backdrop {
+  background: rgba(10, 12, 16, 0.6);
+}
+.print-preview h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+.print-preview-size {
+  margin: 6px 0 16px;
+  font-size: 14px;
+  color: #555;
+}
+.print-preview-page {
+  height: min(54vh, 520px);
+  aspect-ratio: 2 / 3;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #d9dce3;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+.print-preview-page img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.print-preview-note {
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555;
+  text-align: center;
+}
+.print-preview-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+.print-preview-actions .back-button {
+  flex: 0 0 120px;
+  min-height: 52px;
+  border: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.print-preview-actions .primary-button {
+  flex: 1;
+  min-height: 52px;
+  border: 0;
+  font-size: 17px;
+  font-weight: 800;
+  gap: 10px;
+}
+.print-preview-actions .studio-icon {
+  width: 22px;
+  height: 22px;
+}

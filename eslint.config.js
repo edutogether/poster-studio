@@ -101,6 +101,28 @@ export default [
     }
   },
   {
+    /* Windows 설치판 껍데기(desktop/, 2026-10-27) — Electron 주 프로세스와 아이콘 · 설치 그림 생성기는 Node ESM이다. */
+    files: ['desktop/*.mjs', 'desktop/build/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: { console: 'readonly', process: 'readonly', Buffer: 'readonly', URL: 'readonly', Response: 'readonly' }
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
+      'no-undef': 'error'
+    }
+  },
+  {
+    // 설치판 프리로드 — 샌드박스 프리로드라 CommonJS다.
+    files: ['desktop/*.cjs'],
+    languageOptions: { ecmaVersion: 2023, sourceType: 'commonjs', globals: { require: 'readonly' } },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
+      'no-undef': 'error'
+    }
+  },
+  {
     /* 빌드 산출물과 워크트리는 검사 대상이 아니다.
 
        src 아래 .ts / .tsx 를 검사하지 않는 이유(2026-09-09, TS 전환 2·3단계):
@@ -122,6 +144,7 @@ export default [
     // 배경 분리 도구를 격리 설치한 파이썬 가상환경(.cache/tools/rembg-venv)도 외부 패키지 묶음이다(안에 urllib3의 JS가 있다).
     // 대기 영상 실화면 확인(scripts/verify/waiting-videos-live.mjs)이 띄운 크롬의 프로필 폴더에는 크롬이 받은 구성요소 JS가 쌓인다.
     // 포스터 다시 설계 작업 폴더(.cache/poster-redesign-20261014)도 같다 — 확인용 크롬 프로필과 일회용 실험 스크립트가 쌓인다(2026-10-14).
-    ignores: ['dist/**', '.cache/integration-baseline/dist/**', '.cache/blender-runtime/**', '.cache/tools/rembg-venv/**', '.cache/waiting-videos-live/**', '.cache/poster-redesign-20261014/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
+    // 설치판의 웹 빌드 사본(desktop/web)과 설치 파일 산출물(desktop/out — 안에 Electron 묶음 JS)도 빌드 산출물이다.
+    ignores: ['dist/**', 'desktop/web/**', 'desktop/out/**', '.cache/integration-baseline/dist/**', '.cache/blender-runtime/**', '.cache/tools/rembg-venv/**', '.cache/waiting-videos-live/**', '.cache/poster-redesign-20261014/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
   }
 ];

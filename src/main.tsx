@@ -16,11 +16,17 @@ import PosterStudio from './PosterStudio.js';
 import { captureBoothCode } from './boothCode.js';
 import { finishHomeRestart } from './restartHome.js';
 import { escapeKakaoInApp } from './kakaoEscape.js';
+import { DESKTOP } from './desktop.js';
 
 // 카카오톡 안 브라우저면 바깥 브라우저로 한 번 넘긴다(2026-10-20). 앱은 그대로 그린다 — 못 넘기면 여기서 계속 쓴다.
 escapeKakaoInApp();
 finishHomeRestart();
 captureBoothCode();
+// Windows 설치판만: 설치판 화면 규칙(src/desktop.css). 웹 빌드에서는 이 갈래가 통째로 빠진다 — 스플래시가 걷히기 전에 붙는다.
+if (DESKTOP) {
+  document.body.dataset.desktop = '';
+  void import('./desktop.css');
+}
 const container = document.querySelector('main.app');
 if (container) {
   createRoot(container).render(

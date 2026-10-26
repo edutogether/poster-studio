@@ -1,0 +1,88 @@
+{
+  "name": "poster-studio-desktop",
+  "productName": "Poster Studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "description": "Poster Studio 설치판 — 인터넷 없이 사진으로 영화 포스터 8종을 만들고 저장 · 인쇄한다",
+  "author": "InKY Poster Studio",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.17.0"
+  },
+  "build": {
+    "appId": "kr.edutogether.posterstudio",
+    "productName": "Poster Studio",
+    "executableName": "PosterStudio",
+    "copyright": "© 2026 InKY Poster Studio",
+    "directories": {
+      "output": "out",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.mjs",
+      "preload.cjs",
+      "package.json",
+      "web/**/*",
+      "!web/studio/waiting-v2/**",
+      "!web/studio/waiting-v3/**",
+      "!web/studio/waiting-approved-v1/**"
+    ],
+    "asar": true,
+    "electronLanguages": [
+      "ko",
+      "en-US"
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "PosterStudio-Setup.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Poster Studio",
+      "uninstallDisplayName": "Poster Studio",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": true,
+      "menuCategory": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "installerHeader": "build/installerHeader.bmp",
+      "include": "build/installer.nsh",
+      "language": "1042",
+      "installerLanguages": [
+        "ko_KR"
+      ],
+      "multiLanguageInstaller": false
+    }
+  }
+}

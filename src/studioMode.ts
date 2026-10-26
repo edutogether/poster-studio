@@ -15,4 +15,6 @@ export const LIVE_MODE: StudioMode = "both";
  *  배포 빌드(`npm run build`)는 모드가 production이라 언제나 LIVE_MODE다 — .env 파일로는 바꿀 수 없다. */
 const CHECK_BUILDS: Record<string, StudioMode> = { "check-both": "both", "check-sample": "sample", "check-real": "real" };
 
-export const STUDIO_MODE: StudioMode = CHECK_BUILDS[import.meta.env.MODE] ?? LIVE_MODE;
+/** Windows 설치판(`npm run build:desktop`, src/desktop.ts)은 «진짜 생성만» 자리에 AI 대신 로컬 합성을 쓴다. 샘플 흐름은 두지 않는다 —
+ *  샘플의 로딩 화면이 «AI가 당신의 영화를 그리고 있어요»라, AI가 없는 설치판에서는 거짓 표시가 된다(2026-10-27). */
+export const STUDIO_MODE: StudioMode = import.meta.env.MODE === "desktop" ? "real" : CHECK_BUILDS[import.meta.env.MODE] ?? LIVE_MODE;

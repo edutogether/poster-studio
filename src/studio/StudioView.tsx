@@ -13,6 +13,8 @@ import { approvedCameraVideo } from "./cameraVideo.js";
 import { savePlatform, savePoster } from "../savePoster.js";
 import { designName } from "../designNames.js";
 import { deviceKind, pcCanvas } from "../deviceCanvas.js";
+import { DESKTOP } from "../desktop.js";
+import DownloadMenu from "./DownloadMenu.js";
 // 장르 그림은 빌드가 이름에 해시를 붙여 내는 자산이다(1년 캐시). 원래 PNG 두 장(판타지 · 뮤지컬)은 무손실 WebP로 바꿨다 — 화소 그대로(10/24 와이파이 최적화).
 // public/studio의 옛 파일 8장(reference-*.* · parasite-en · director · rocky-title-edited)은 지우지 않는다 — 이미 나간 옛 주소가 200으로 남게(2026-10-26 Bumm님).
 import sfArt from "./genre/sf.jpg";
@@ -79,6 +81,8 @@ export interface StudioViewProps {
   onSample?: () => void;
   onRetake: Action;
   onGenerate: Action;
+  /** 설치판(src/desktop.ts)만: «사진 불러오기»로 고른 파일. 웹에서는 없다. */
+  onLoadPhoto?: (file: File) => void;
   onPrint: Action;
   onNewPerson: Action;
   onHome: Action;
@@ -329,6 +333,9 @@ export default function StudioView(p: StudioViewProps) {
     dialog.current?.showModal();
     if (isPhone()) requestAnimationFrame(() => showSelected("auto"));
   };
+  // 설치판: Electron에는 크롬의 인쇄 미리보기가 없어 4×6 인화지에 놓인 모습을 먼저 보이고, «인쇄하기»에서 Windows 인쇄 창을 연다.
+  const printPreview = useRef<HTMLDialogElement>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
   // 10/20 Bumm님: 아이폰은 공유 창으로 사진첩에 넣는다(웹에서 사진 앱으로 가는 유일한 길) — 누를 때 무엇을 눌러야 하는지 한 줄로 알린다.
   const [saveHint, setSaveHint] = useState(false);
   const saveHintTimer = useRef(0);
@@ -421,6 +428,8 @@ export default function StudioView(p: StudioViewProps) {
                 InKY <strong>Film Festival</strong>
               </span>
             </button>
+            {/* 첫 화면에만 «↓ 다운로드»(2026-10-27) — 설치판에서는 그 자리에 «설치판 · AI 없이» 표시를 늘 둔다(웹의 AI 포스터와 헷갈리지 않게). */}
+            {DESKTOP ? <span className="desktop-badge">설치판 · AI 없이 사진 그대로</span> : step === 1 && <DownloadMenu/>}
             {/* 10/20 저녁 Bumm님: «사진은 OpenAI(미국)로 전송돼요» 줄은 휴대폰 · PC 모두 뺀다 — 개인정보처리방침 링크만 예전 자리 그대로. */}
             <a
               className="privacy-link"
@@ -684,6 +693,11 @@ export default function StudioView(p: StudioViewProps) {
             <div id="camHint" className={p.phase === "idle" ? "camHint camera-example-caption" : "camHint hidden"}>
               <span className="camera-example-label">{p.mode === "group" ? "이렇게, 모두의 얼굴이 보이게" : "이렇게, 얼굴과 어깨가 보이게"}</span>
               {!p.sampleMode && <button type="button" id="startBtn" className="camera-start-button" onClick={p.onStart} disabled={locked}>카메라 켜기 <StudioIcon name="camera"/></button>}
+              {DESKTOP && <>
+                <button type="button" id="loadPhotoBtn" className="camera-start-button" onClick={() => photoInput.current?.click()} disabled={locked}>사진 불러오기 <StudioIcon name="download"/></button>
+                <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden
+                  onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) p.onLoadPhoto?.(file); }}/>
+              </>}
             </div>
             {p.phase === "live" && <>
               <span className="camera-live-indicator"><i aria-hidden="true"/>실시간 미리보기</span>
@@ -858,7 +872,9 @@ export default function StudioView(p: StudioViewProps) {
           </aside>
           <div className="action-dock result-actions">
             <button type="button" className="back-button" onClick={() => go(2)} disabled={locked}><span aria-hidden="true">←</span> <span className="label-pc">이전</span><span className="label-phone">다시 찍기</span></button>
-            <button id="printBtn" type="button" className="primary-button" onClick={p.onPrint}><StudioIcon name="print"/>이 포스터로 출력하기</button>
+            {/* 설치판: PC에 저장(저장 위치를 묻는 창이 뜬다 — desktop/main.mjs) */}
+            {DESKTOP && <button id="desktopSaveBtn" type="button" className="back-button" onClick={onSave} disabled={locked || !p.posters[p.selected]}><StudioIcon name="download"/>PC에 저장</button>}
+            <button id="printBtn" type="button" className="primary-button" onClick={DESKTOP ? () => printPreview.current?.showModal() : p.onPrint}><StudioIcon name="print"/>이 포스터로 출력하기</button>
             {/* ⑪ 휴대폰: 인쇄 대신 내 휴대폰에 저장(파일 공유 → 안 되면 PNG 내려받기). PC에서는 숨김. */}
             <button id="saveBtn" type="button" className="primary-button" onClick={onSave} disabled={!p.posters[p.selected]}><StudioIcon name="download"/>내 휴대폰에 저장</button>
           </div>
@@ -880,6 +896,16 @@ export default function StudioView(p: StudioViewProps) {
       {!p.spinning && <GenerateFailureDialog failure={p.failure} online={p.online}
         onRetry={p.onRetryFailure} onRetake={p.onRetakeFailure} onEditInputs={() => { void p.onDismissFailure(); go(1); }} onHome={() => void p.onHome()} />}
       <BoothCodeDialog open={p.boothOpen && !p.spinning} verify={p.verifyBooth} onSaved={p.onBoothCodeSaved} onClose={() => void p.onBoothCodeClose()} />
+      {DESKTOP && <dialog ref={printPreview} className="print-preview" aria-labelledby="printPreviewTitle">
+        <h2 id="printPreviewTitle">인쇄 미리보기</h2>
+        <p className="print-preview-size">4 × 6 인화지(10 × 15cm)에 이렇게 나와요.</p>
+        <div className="print-preview-page">{p.posters[p.selected] && <img src={posterURLs[p.selected]} alt="인쇄될 포스터"/>}</div>
+        <p className="print-preview-note">‘인쇄하기’를 누르면 Windows 인쇄 창이 열려요. 포토프린터와 4 × 6 용지를 고르세요.</p>
+        <div className="print-preview-actions">
+          <button type="button" className="back-button" onClick={() => printPreview.current?.close()}>닫기</button>
+          <button type="button" className="primary-button" autoFocus onClick={() => { printPreview.current?.close(); p.onPrint(); }}><StudioIcon name="print"/>인쇄하기</button>
+        </div>
+      </dialog>}
       <dialog
         ref={dialog}
         className="poster-dialog"

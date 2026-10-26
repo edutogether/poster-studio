@@ -22,6 +22,7 @@ import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
 import { restartAtHome } from "./restartHome.js";
 import { STUDIO_MODE } from "./studioMode.js";
+import { DESKTOP, desktopBridge } from "./desktop.js";
 
 /* 한 장의 사진으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만 허용한다
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
@@ -33,6 +34,13 @@ const MAX_GENERATIONS_PER_PHOTO = 2;
    다시 해 볼 만한 실패(시간 초과·연결 불안정·혼잡 등)가 같은 사진으로 이만큼 쌓이면 «다시 찍기»로 안내한다 — 원인이
    고쳐지지 않은 채 줄이 계속 멈추지 않게. 인터넷 끊김·부스 코드는 세지 않는다(사진을 바꿔도 낫지 않는다). */
 const MAX_FAILURES_PER_PHOTO = 3;
+
+/* 설치판(src/desktop.ts)은 사진을 AI에 보내지 않고 그대로 포스터(1200×1800)에 넣는다 — 찍거나 불러온 사진의 긴 변을 이만큼까지 남긴다. */
+const DESKTOP_PHOTO_MAX = 1920;
+
+/* 부스 토큰은 웹만 싣는다 — 설치판 빌드에서는 DESKTOP이 참으로 접혀 토큰 값이 번들에서 빠진다(2026-10-27 «키 · 토큰을 설치판에 넣지 않는다»).
+   토큰 줄(src/constants.ts)은 CI 배포 단계(deploy.yml)와 확인 스크립트가 그 모양 그대로 읽으므로 그 줄은 건드리지 않는다. */
+const boothToken = DESKTOP ? "" : BOOTH_TOKEN;
 
 /* 샘플 흐름(2026-10-09 Bumm님 «샘플 포스터를 보더라도 로딩 화면 이후 포스터 고르는 화면으로»).
    «샘플 포스터 보기»는 촬영 · AI 없이 같은 원화로 흐름 전체를 보여 준다 — 진짜 생성과 같은 로딩 화면을 장면 SAMPLE_WAIT_SCENES개 동안
@@ -190,9 +198,9 @@ export default function PosterStudio() {
 
   /* AI 서버 연결 상태를 미리 확인한다. 촬영·정보입력을 다 마친 뒤에야 실패를 알게
      되는 것보다, 페이지를 여는 순간 문제를 아는 게 낫다. 실패해도 촬영은 막지
-     않는다(연결이 잠깐 불안정했을 수도 있으므로 fail-open). */
+     않는다(연결이 잠깐 불안정했을 수도 있으므로 fail-open). 설치판은 AI가 없어 서버에 묻지 않는다. */
   useEffect(() => {
-    if (sampleMode || PREVIEW) return;
+    if (sampleMode || PREVIEW || DESKTOP) return;
     let alive = true;
     (async () => {
       try {
@@ -298,7 +306,8 @@ export default function PosterStudio() {
         setStatus("카메라가 아직 준비 중이에요. 1~2초 후 다시 촬영해 주세요.");
         return;
       }
-      const MAXW = 1024; // 전송용 축소(AI가 스타일을 새로 그리므로 화질 손해 없음)
+      // 전송용 축소(AI가 스타일을 새로 그리므로 화질 손해 없음). 설치판은 사진이 그대로 인쇄되므로 카메라 화질을 남긴다.
+      const MAXW = DESKTOP ? DESKTOP_PHOTO_MAX : 1024;
       const scale = Math.min(1, MAXW / video.videoWidth);
       const cap = document.createElement("canvas");
       cap.width = Math.round(video.videoWidth * scale);
@@ -308,29 +317,59 @@ export default function PosterStudio() {
       c.scale(-1, 1); // 거울 모드(셀카 느낌)
       c.drawImage(video, 0, 0, cap.width, cap.height);
       const blob = await new Promise<Blob | null>((resolve) =>
-        cap.toBlob(resolve, "image/jpeg", 0.85),
+        cap.toBlob(resolve, "image/jpeg", DESKTOP ? 0.92 : 0.85),
       );
       if (!videoRef.current) return;
       if (!blob) {
         setStatus("촬영에 실패했어요. 다시 시도해 주세요.");
         return;
       }
-      capturedBlobRef.current = blob;
-      if (snapshotURLRef.current) URL.revokeObjectURL(snapshotURLRef.current); // 장시간 운영 대비
-      const url = URL.createObjectURL(blob);
-      snapshotURLRef.current = url;
-      setSnapshotURL(url);
-      setPhase("shot");
-      // 촬영이 끝나면 스트림을 실제로 끈다(6차 감사).
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      if (videoRef.current) videoRef.current.srcObject = null;
-      setStatus("");
-      genCountRef.current = 0;
+      keepPhoto(blob);
     } finally {
       shootingRef.current = false;
       setCapturing(false);
     }
+  };
+
+  /* 찍은(설치판은 불러온 것도) 사진 한 장을 이번 사진으로 둔다. */
+  const keepPhoto = (blob: Blob) => {
+    capturedBlobRef.current = blob;
+    if (snapshotURLRef.current) URL.revokeObjectURL(snapshotURLRef.current); // 장시간 운영 대비
+    const url = URL.createObjectURL(blob);
+    snapshotURLRef.current = url;
+    setSnapshotURL(url);
+    setPhase("shot");
+    // 촬영이 끝나면 스트림을 실제로 끈다(6차 감사).
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setStatus("");
+    genCountRef.current = 0;
+  };
+
+  /* 설치판 «사진 불러오기»: 노트북에 있는 사진 한 장을 이번 사진으로 쓴다(거울 뒤집기 없음). 사진은 이 PC 밖으로 나가지 않는다.
+     긴 변을 DESKTOP_PHOTO_MAX로 줄여 JPEG로 다시 담는다 — 휴대폰 원본(4000px 넘음)을 8종 조판에 그대로 쓰면 메모리만 먹는다. */
+  const onLoadPhoto = async (file: File) => {
+    if (!DESKTOP || shootingRef.current || isGeneratingRef.current) return;
+    let blob: Blob | null = null;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, DESKTOP_PHOTO_MAX / Math.max(bitmap.width, bitmap.height));
+      const cap = document.createElement("canvas");
+      cap.width = Math.round(bitmap.width * scale);
+      cap.height = Math.round(bitmap.height * scale);
+      cap.getContext("2d")!.drawImage(bitmap, 0, 0, cap.width, cap.height);
+      bitmap.close();
+      blob = await new Promise<Blob | null>((resolve) => cap.toBlob(resolve, "image/jpeg", 0.92));
+    } catch (e) {
+      console.error("[사진 불러오기 실패]", e);
+    }
+    if (!blob) {
+      setStatus("이 파일은 사진으로 열 수 없어요. JPG · PNG 사진을 다시 선택해 주세요.");
+      return;
+    }
+    stopCamera();
+    keepPhoto(blob);
   };
 
   const onRetake = async () => {
@@ -442,7 +481,7 @@ export default function PosterStudio() {
     try {
       const res = await fetch(`${API_BASE}/generate`, {
         method: "POST",
-        headers: { "x-booth-token": BOOTH_TOKEN, ...boothCodeHeaders() },
+        headers: { "x-booth-token": boothToken, ...boothCodeHeaders() },
         body: form,
         signal: ctrl.signal,
       });
@@ -525,7 +564,7 @@ export default function PosterStudio() {
     setBoothOpen(false);
     void onGenerate();
   };
-  const verifyBooth = (code: string) => verifyBoothCode(code, { apiBase: API_BASE, boothToken: BOOTH_TOKEN });
+  const verifyBooth = (code: string) => verifyBoothCode(code, { apiBase: API_BASE, boothToken });
 
   /* 샘플 모드: 촬영 대신 같은 원화 한 장으로 8개 틀을 만든다. 진짜 생성과 같은 로딩 화면을 장면 5개 동안
      보인 뒤 결과로 간다. 조판은 로딩 화면 뒤에서 같이 돌린다 — 진짜 생성도 응답을 받은 뒤 로딩 화면이 떠 있는
@@ -587,8 +626,38 @@ export default function PosterStudio() {
     area.appendChild(img);
     document.body.appendChild(area);
     img.onload = () => {
-      window.print();
+      // 설치판: 크로뮴 인쇄 미리보기가 없는 Electron이라 미리보기는 화면(StudioView «인쇄 미리보기»)이 먼저 보이고,
+      // 여기서는 4×6 · 여백 없음으로 Windows 인쇄 창을 연다(desktop/main.mjs). 인쇄 창이 닫히면 인쇄용 노드를 걷는다.
+      const bridge = desktopBridge();
+      if (DESKTOP && bridge) void bridge.print().finally(() => $("printArea")?.remove());
+      else window.print();
     };
+  };
+
+  /* 설치판 «이 사진으로 포스터 만들기»: AI 없이 찍거나 불러온 사진을 그대로 8종 틀에 넣는다(로컬 합성 — 서버 요청 0건).
+     틀 · 글꼴 · 로고 · 인쇄 규격은 웹과 같은 buildPosters다. 비용이 없으니 횟수 제한도 없다. */
+  const onCompose = async () => {
+    if (!DESKTOP || isGeneratingRef.current) return;
+    const photoURL = snapshotURLRef.current;
+    if (!capturedBlobRef.current || !photoURL) {
+      setStatus("먼저 사진을 찍거나 불러와 주세요.");
+      return;
+    }
+    isGeneratingRef.current = true;
+    setGenerating(true);
+    setStatus("포스터를 만들고 있어요…");
+    try {
+      const built = await buildPosters([photoURL], getMeta(mode));
+      applyPosters(built);
+      setStatus("");
+      setCompletionId(value => value + 1);
+    } catch (e) {
+      console.error("[포스터 만들기 실패] 로컬 합성", e);
+      setStatus("포스터를 만들지 못했어요. 다시 눌러 주세요.");
+    } finally {
+      isGeneratingRef.current = false;
+      setGenerating(false);
+    }
   };
 
   const stopCamera = () => {
@@ -666,7 +735,8 @@ export default function PosterStudio() {
       onSample={onSample}
       onShot={sampleMode ? onSample : onShot}
       onRetake={onRetake}
-      onGenerate={sampleMode ? onSample : onGenerate}
+      onGenerate={DESKTOP ? onCompose : sampleMode ? onSample : onGenerate}
+      onLoadPhoto={DESKTOP ? onLoadPhoto : undefined}
       onPrint={onPrint}
       onNewPerson={onNewPerson}
       onHome={onHome}
