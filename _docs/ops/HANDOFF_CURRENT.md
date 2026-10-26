@@ -3,7 +3,7 @@
 ## 2026-10-26(월) 밤 — 최종 출시 후보 `release-20261026` 완료 · 배포 승인 대기 (라이브는 Hosting · 함수 모두 `81a07b4` 그대로)
 
 - **출시 후보 `release-20261026`**(= `perf-port-20261026`): 7ab4be0 + 대기 영상 1-A + 종합감사 고침. 10개 항목 모두 10/10(이 트리 기준). 로컬만 · push 없음 · master `6ac7dc3` 그대로.
-  동결 태그 `poster-studio-freeze-20261026-pre-deploy`가 이 기록 커밋에 붙는다(되돌릴 큰 작업 = 배포 직전). E: 백업 `E:poster-studio-backup-20261026`(복원 검증은 그 폴더 `restore-check.txt`).
+  동결 태그 `poster-studio-freeze-20261026-pre-deploy`가 이 기록 커밋에 붙는다(되돌릴 큰 작업 = 배포 직전). E: 백업 `E:\poster-studio-backup-20261026`(복원 검증은 그 폴더 `restore-check.txt`).
 - 🔴 **배포 범위 = Hosting만**(함수 3건은 필요 없다고 판단 — CHANGELOG 10/26 밤). 배포한 뒤에는 이 문서 맨 위에 **Hosting = 출시 커밋, 함수 = `81a07b4`를 따로** 적는다 —
   한 커밋으로만 적으면 다음 runbook §9 1번의 `git diff <라이브 커밋> -- functions/`가 비어 보여 함수 3건이 모르는 사이 영영 안 나간다.
 - 배포 절차: «배포 직전 한 줄»(범위 · 되돌림 채널)을 팀장에게 → Bumm님 재승인 → master를 출시 커밋으로 앞으로 옮김(로컬) → runbook §9(LF 사본 · 되돌림 채널 · hosting만 · 두 주소 바이트 대조 · 스모크 · 대기 영상 · 함수 지문 그대로 확인).
