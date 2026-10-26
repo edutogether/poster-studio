@@ -1,6 +1,17 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
-## 2026-10-26(월) 밤 — Bumm님 최종 결정 반영: 대기 영상 1-A 채택 · 2-A · 처리방침 그대로 (라이브 `81a07b4` 그대로)
+## 2026-10-26(월) 밤 — 최종 출시 후보 `release-20261026` 완료 · 배포 승인 대기 (라이브는 Hosting · 함수 모두 `81a07b4` 그대로)
+
+- **출시 후보 `release-20261026`**(= `perf-port-20261026`): 7ab4be0 + 대기 영상 1-A + 종합감사 고침. 10개 항목 모두 10/10(이 트리 기준). 로컬만 · push 없음 · master `6ac7dc3` 그대로.
+  동결 태그 `poster-studio-freeze-20261026-pre-deploy`가 이 기록 커밋에 붙는다(되돌릴 큰 작업 = 배포 직전). E: 백업 `E:poster-studio-backup-20261026`(복원 검증은 그 폴더 `restore-check.txt`).
+- 🔴 **배포 범위 = Hosting만**(함수 3건은 필요 없다고 판단 — CHANGELOG 10/26 밤). 배포한 뒤에는 이 문서 맨 위에 **Hosting = 출시 커밋, 함수 = `81a07b4`를 따로** 적는다 —
+  한 커밋으로만 적으면 다음 runbook §9 1번의 `git diff <라이브 커밋> -- functions/`가 비어 보여 함수 3건이 모르는 사이 영영 안 나간다.
+- 배포 절차: «배포 직전 한 줄»(범위 · 되돌림 채널)을 팀장에게 → Bumm님 재승인 → master를 출시 커밋으로 앞으로 옮김(로컬) → runbook §9(LF 사본 · 되돌림 채널 · hosting만 · 두 주소 바이트 대조 · 스모크 · 대기 영상 · 함수 지문 그대로 확인).
+- 라이브 함수 지문(10/26 21시): `posterStudio 20a76909…` · `keepWarm` · `cleanupOldCountersSchedule` `ad325de2…`. 라이브 Hosting 487개 파일 = `81a07b4` 빌드(E: 백업과 바이트 같음).
+- 설명서 최종본 · 운영자 전달: `C:\Users\817be\Documents\poster-studio-운영자-전달-20261026`(PDF 4개).
+- OPEN: ① GitHub CI 미실행 ② 11/12 현장 장비 시험. OpenAI 행사 전 $100 수동 충전은 계획 그대로(지금 안 함).
+
+### 같은 날 앞선 기록 — Bumm님 최종 결정 반영: 대기 영상 1-A 채택 · 2-A · 처리방침 그대로
 
 - 후보 가지 `perf-port-20261026` = `7ab4be0` + 대기 영상 1-A(`wait-video-20261026` 끝 `b5dcadc`까지 앞으로 옮김). 로컬만 · push 없음 · master `6ac7dc3` 그대로.
 - 2-A: 부스 코드 · 운영 시간창은 꺼진 채다(라이브 사진 없는 요청 `400 no_photo`로 확인). 켜는 변경은 만들지 않는다.

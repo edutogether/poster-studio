@@ -402,7 +402,7 @@
   배포 상태가 곧 행사 준비 상태이고, 11/14 전에 "배포한 줄 알았는데 안 됐다"가 나면 안 된다.
 
 ## 명령
-- 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(428개) — 둘 다 vitest(2026-10-26)
+- 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(429개) — 둘 다 vitest(2026-10-26)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
 - 빌드: 루트에서 `npm run build` → `dist/`
@@ -566,6 +566,7 @@
   동안 옛 화면이 보였다(실제로 "안 바뀐다"는 지적을 받았다). 지금은 Vite가 `dist/assets/`에
   해시 붙인 이름을 내므로 **`/assets/**`는 1년 immutable**이다 — 내용이 바뀌면 이름이 바뀐다.
   **한시적이던 js·css `no-cache` 규칙은 머지와 함께 제거했다.**
-  ⚠ 해시가 붙는 것은 `/assets/**`와 대기 영상(`/studio/waiting-v*/NN-<해시>.mp4` — 2026-10-26, 인코딩 도구가 내용 해시를 이름에 넣는다)뿐이다.
+  ⚠ 1년 immutable은 이름에 내용 해시가 붙은 `/assets/**`와 대기 영상(`/studio/waiting-v*/NN-<해시>.mp4` — 2026-10-26, 인코딩 도구가 내용 해시를 이름에 넣는다)에만 건다
+  (촬영 예시 영상 `camera-v1/*-<해시>.mp4`도 해시 이름이지만 기본 1시간이다).
   그 밖에 `public/`에서 복사되는 것들(`boot-splash.js`, 폰트, 이미지, 대기 정지 그림 `NN.webp`)은 **이름이 고정**이라 여기에 긴 캐시를 걸면 갇힌다. 폰트만 30일로 잡아 뒀고
   `immutable`은 일부러 안 쓴다. HTML과 `/`는 계속 `no-cache`다.

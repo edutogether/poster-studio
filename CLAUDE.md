@@ -28,7 +28,7 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
   **`https://poster-studio.web.app`도 계속 살아 있다** — 이미 나간 링크가 죽으면 안 되므로 없애지 않는다.
   두 주소는 같은 것을 서빙하고, CI가 배포마다 둘 다 확인한다(app.md «앱»). 🟢
 - **배포처**: Firebase Hosting + Cloud Functions `posterStudio`(asia-northeast3). Firebase 프로젝트는 `inky-poster-studio` 하나뿐이다.
-- 🟢 **상태**: **실운영 모드**(아래 섹션). 최근 종합감사는 **2026-10-17**(출시 후보 `release-20261018` 트리 기준) —
+- 🟢 **상태**: **실운영 모드**(아래 섹션). 최근 종합감사는 **2026-10-26**(최종 출시 후보 `release-20261026` 트리 기준) —
   항목별 점수·고친 것·남은 것은 `_docs/CHANGELOG.md`가 원장이다. 큰 변경을 시작하기 전에는 새 freeze 태그를 먼저 찍는다.
   - 🟠 **점수는 `10/10`으로만 적고 언제 트리의 점수인지 붙인다** — `10/10 (날짜 트리 기준, 이후 커밋 N건)`. N은 이 파일에 박지 않고
     보고할 때 센다(`git rev-list --count <감사 태그>..master`). `100`·`만점` 표기는 쓰지 않는다(예외는 이미 박힌 태그 이름 `…-audited-100`).
@@ -40,7 +40,7 @@ cd functions && npm ci && npm test    # vitest 118개(2026-10-26)
 cd functions && npm run lint          # eslint
 cd functions && npm run format        # prettier (functions에만 있음)
 
-npm ci && npm test                    # vitest 428개(2026-10-26) (저장소 루트 = 프론트엔드 루트)
+npm ci && npm test                    # vitest 429개(2026-10-26) (저장소 루트 = 프론트엔드 루트)
 npm run lint                          # eslint
 npm run typecheck                     # TS strict — src와 test/*.ts(x)
 npm run build                         # -> dist/ (배포되는 것)
@@ -65,7 +65,7 @@ src/          프론트엔드 소스(TypeScript + React 19)
 public/       정적 자산. Vite가 dist/ 루트로 그대로 복사한다
               splash-font-gate.js(스플래시 글꼴 게이트) boot-splash.js fonts/ studio/ logo-*.png favicon-inky.png
 dist/         빌드 산출물 = 배포 폴더(firebase.json의 public). 커밋하지 않는다
-test/         vitest 428개(2026-10-26) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
+test/         vitest 429개(2026-10-26) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/    Cloud Functions — index.js 하나에 전부(미들웨어 체인·프롬프트·OpenAI·Firestore 카운터·스케줄러)
 scripts/      verify/(확인·대조 도구) ci/(배포 단계 도구) media/(대기·예시 영상) fonts/(서브셋) docs/(설명서) loadtest.mjs
 _docs/        저장소 문서(배포 대상 아님) — ops/ intents/ CHANGELOG.md
