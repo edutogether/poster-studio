@@ -70,7 +70,9 @@ ws.onmessage = (e) => {
   const p = m.params;
   if (m.method === 'Network.requestWillBeSent') {
     if (/cloudfunctions\.net.*\/generate|\/generate\?|\/generate$/.test(p.request.url)) generate++;
-    reqs.set(p.requestId, { url: p.request.url, type: p.type, bytes: 0, cached: false, t0: p.timestamp, phase });
+    // data: 주소(포스터 그림 수 MB)는 앞머리와 길이만 적는다 — 그대로 두면 실행 한 번 기록이 77MB가 됐다(10/26)
+    const url = p.request.url.startsWith('data:') ? p.request.url.slice(0, 40) + '…(' + p.request.url.length + '자)' : p.request.url;
+    reqs.set(p.requestId, { url, type: p.type, bytes: 0, cached: false, t0: p.timestamp, phase });
   }
   if (m.method === 'Network.responseReceived') { const r = reqs.get(p.requestId); if (r) { r.mime = p.response.mimeType; r.status = p.response.status;
     const hd = p.response.headers || {}; r.total = Number(String(hd['content-range'] ?? hd['Content-Range'] ?? '').split('/')[1]) || Number(hd['content-length'] ?? hd['Content-Length']) || 0; if (p.response.fromDiskCache || p.response.fromMemoryCache || p.response.fromServiceWorker) r.cached = true; } }
@@ -101,10 +103,10 @@ await call('Page.addScriptToEvaluateOnNewDocument', { source: `(() => { window._
 const READY = '!!document.getElementById("prepareNextBtn") && !document.getElementById("splash") && !document.getElementById("bootSplash") && getComputedStyle(document.getElementById("prepareNextBtn")).visibility !== "hidden" && document.fonts.status === "loaded"';
 const sum = (ph) => { const l = [...reqs.values()].filter((r) => r.phase === ph); return { req: l.length, net: l.filter((r) => !r.cached).length, cached: l.filter((r) => r.cached).length, bytes: l.reduce((a, r) => a + (r.cached ? 0 : r.bytes), 0) }; };
 const kb = (b) => (b / 1024).toFixed(0) + 'KB';
-// 같은 파일을 망에서 두 번 이상 받은 것 — 영상(구간 요청으로 여러 번 받는 것이 정상)과 생성 응답은 뺀다
+// 같은 파일을 망에서 두 번 이상 받은 것 — 영상(구간 요청으로 여러 번 받는 것이 정상) · 생성 응답 · data: 그림(망을 안 쓰고, 주소를 줄여 적어 겹칠 수 있다)은 뺀다
 const duplicates = (ph) => {
   const n = new Map();
-  for (const r of reqs.values()) if (r.phase === ph && !r.cached && !r.failed && r.type !== 'Media' && !/\/__replay\//.test(r.url)) n.set(r.url, (n.get(r.url) || 0) + 1);
+  for (const r of reqs.values()) if (r.phase === ph && !r.cached && !r.failed && r.type !== 'Media' && !/\/__replay\//.test(r.url) && !r.url.startsWith('data:')) n.set(r.url, (n.get(r.url) || 0) + 1);
   return [...n].filter(([, c]) => c > 1).map(([u, c]) => ({ url: u.replace(/^https?:\/\/[^/]+/, ''), times: c }));
 };
 
