@@ -432,7 +432,7 @@ export default function PosterStudio() {
     form.append("mode", meta.mode);
 
     // 조판 글꼴·로고는 AI를 기다리는 동안 받아 둔다 — 응답 뒤에 받기 시작하면 느린 와이파이에서 그만큼 더 기다린다(2026-10-24).
-    // 다만 대기 화면의 지금 · 다음 장면 영상을 먼저 받은 뒤에 받는다(늦어도 10초 뒤) — 함께 받으면 느린 망에서 영상이 멈췄다(2026-10-26)
+    // 다만 대기 화면의 지금 · 다음 장면 영상을 먼저 받은 뒤에 받는다(늦어도 20초 뒤) — 함께 받으면 느린 망에서 영상이 멈췄다(2026-10-26)
     void afterWaitingVideos().then(() => preparePosterAssets(meta));
 
     const stopElapsed = startElapsed();
