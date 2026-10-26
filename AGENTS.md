@@ -70,7 +70,9 @@ npm --prefix functions run lint
 Windows 설치판(`desktop/`, 2026-10-27)은 AI가 없는 비상판이다. 웹과 같은 프론트를 `npm run build:desktop`(--mode desktop)으로 `desktop/web`에 빌드하고,
 `desktop`에서 `npm ci` → `node node_modules/electron/install.js`(npm 12는 설치 스크립트를 막는다) → `npx electron-builder --win nsis --x64 --publish never`로 `desktop/out/PosterStudio-Setup.exe`를 만든다.
 확인은 `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(가짜 카메라로 전체 흐름 · 바깥 요청 0 · 토큰 0) ·
-`scripts/verify/desktop-installer-probe.ps1`(설치 · 제거 창) · `node scripts/verify/download-button-probe.mjs <dist> <결과> --compare <전>`(첫 화면 다운로드 단추 — 전/후 화소 · 누르기 전 요청 0)다.
+`scripts/verify/desktop-installer-probe.ps1 -Mode user|all -Via startmenu|settings`(설치 · 제거 창 · 남은 것 0, «모든 사용자»는 관리자 권한으로) ·
+`node scripts/verify/desktop-vs-web.mjs <결과> --exe <exe> --web-dist <웹 빌드>`(첫 화면 화소 대조) · `node scripts/verify/download-button-probe.mjs <dist> <결과> --compare <전>`(첫 화면 다운로드 단추 — 전/후 화소 · 누르기 전 요청 0)다.
+설치 위치 · 바로가기 · 아이콘(앱에만 «PS») 모양은 Bumm님 기준이라 바꾸지 않는다(app.md «Windows 설치판»).
 설치판 갈래는 `src/desktop.ts`의 `DESKTOP`으로 웹 번들에서 빠진다. `src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양은 CI가 정규식으로 읽으므로 바꾸지 않는다. 설치 파일은 저장소 · Hosting에 넣지 않는다(app.md «Windows 설치판»).
 
 ## 공용 절차·보고·도구 인계

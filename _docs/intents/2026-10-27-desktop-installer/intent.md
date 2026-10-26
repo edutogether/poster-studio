@@ -19,13 +19,17 @@ status: in-progress
 ## 원하는 결과
 
 1. **설치판**: `PosterStudio-Setup.exe`를 더블클릭하면 Windows 10·11에 설치된다.
-   - 관리자 권한 없이 사용자별로 설치된다. 설치 위치를 고를 수 있다.
-   - 시작 메뉴와 바탕화면에 바로가기가 생기고, 설치가 끝나면 바로 실행된다. 일반 프로그램처럼 제거된다.
+   - «나만 / 모든 사용자»를 고르고 위치를 바꿀 수 있다(10/27 Bumm님 기준 정정, 팀장 전달 — 처음 «관리자 권한 없이 사용자별로만»에서 바뀜).
+     모든 사용자 `C:\Program Files\InKY Film Festival\Poster Studio`, 나만 `%LOCALAPPDATA%\Programs\InKY Film Festival\Poster Studio`.
+   - 바탕화면 `Poster Studio`, 시작 메뉴 `InKY Film Festival` 폴더에 `Poster Studio` · `Uninstall Poster Studio`. 설치가 끝나면 바로 실행된다.
+   - «설정 › 앱 › 설치된 앱»과 시작 메뉴 두 방법으로 지워지고, 바로가기 · 폴더가 남지 않는다.
    - 인터넷이 없어도 다음 흐름이 끝까지 된다: 사진 찍기 또는 불러오기 → 포스터 8종 조판 → PC에 저장 → 인쇄 미리보기 → 인쇄.
 2. **다운로드 단추**: 웹 첫 화면 «개인정보처리방침» 바로 옆에 «↓ 다운로드»가 생긴다.
-   - 누르면 작은 메뉴에 «Poster Studio 설치» / «Voice Cinema 설치»가 나온다.
+   - 누르면 작은 메뉴에 «Poster Studio 설치» 하나가 나온다(Voice Cinema는 완성 전이라 설치판을 만들지 않는다 — 10/27 정정).
    - 누르기 전에는 설치 파일 요청이 0건이다. 배포하지 않는다.
 3. **현장 PDF 2종**: `InKY_진행요원_교사용_매뉴얼.pdf`(A4 4쪽 이내), `InKY_아이들용_양면안내.pdf`(A4 정확히 2쪽).
+   - Poster Studio만 다룬다(Bumm님 A안 — Voice Cinema는 소개 한 줄도 넣지 않는다).
+   - 매뉴얼의 설치 설명은 현장 교사가 따라 할 만큼만 쓴다: 더블클릭 → SmartScreen 넘기기 → 실행 → 바탕화면 아이콘.
 
 ## 정한 것(근거)
 
@@ -50,15 +54,16 @@ status: in-progress
   - 웹 빌드에서는 이 갈래가 통째로 빠진다. 웹 번들은 다운로드 단추 말고는 바뀌지 않아야 한다(바이트 대조로 확인).
 - **다운로드 단추는 웹의 1단계(첫 화면)에만 둔다.** 설치판에서는 숨긴다.
   - 단순 링크라 누르기 전에는 아무것도 받지 않는다. prefetch · preload · 서비스워커는 쓰지 않는다.
-- **아이콘**: `_shared/favicons/inky-camera-512.png`(노란 InKY 로고 원본)를 그대로 쓰고 오른쪽 아래에 «PS» 배지만 얹는다.
-  - 크기 · 위치 수치는 작업자료 폴더에 남겨 Voice Cinema(«VC»)와 맞춘다.
+- **아이콘**: `_shared/favicons/inky-camera-512.png`(노란 InKY 로고 원본)를 그대로 쓰고 오른쪽 아래에 «PS» 표시만 얹는다.
+  - 표시는 검은 둥근 사각 · 흰 글자, Voice Cinema 시안과 모양 · 위치 · 비율이 같고 크기는 더 작다(Bumm님 «너무 커서 화질 떨어지는 게 보인다»).
+  - 크기마다 따로 그리고 작은 크기는 점 글자로 그린다. 글자는 앱 아이콘에만 두고 설치기 화면에는 넣지 않는다.
 
 ## 영향받는 사용자·시스템
 
 - **웹**: 첫 화면에 단추 하나가 생긴다. 배포하지 않으므로 지금 라이브 사용자에게는 변화가 없다.
 - **설치판 사용자**: 행사장 진행요원이 노트북에 미리 설치한다. 저장소에는 `desktop/`(Electron 껍데기)과 `src/`의 설치판 갈래가 더해진다.
 - **서버 함수 · AI 지시문 · Firestore**: 바꾸지 않는다.
-- **Voice Cinema**: 다운로드 메뉴 항목 주소만 가리킨다. 그 저장소는 건드리지 않는다.
+- **Voice Cinema**: 이번 작업에 넣지 않는다(10/27 정정). 그 저장소는 건드리지 않는다.
 
 ## 제약
 
@@ -74,8 +79,7 @@ status: in-progress
 - 그래서 제안하는 자리:
   - 파일은 Cloud Storage(`inky-poster-studio` 프로젝트)의 공개 객체 하나에 둔다.
   - 주소는 `firebase.json` 리디렉션으로 `https://poster.edutogether.kr/download/PosterStudio-Setup.exe`에 고정한다.
-- Voice Cinema 파일도 같은 방식으로 `https://voice.edutogether.kr/download/VoiceCinema-Setup.exe`에 두는 것을 제안한다(그 세션 몫).
-- 단추의 두 주소는 이 제안을 따른다(`src/downloads.ts`).
+- 단추의 주소는 이 제안을 따른다(`src/downloads.ts`).
 
 ## 미결 질문
 

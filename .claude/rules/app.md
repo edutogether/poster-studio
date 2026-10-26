@@ -418,22 +418,37 @@
   4. `npx electron-builder --win nsis --x64 --publish never`
   - 판: electron 44.7.0 · electron-builder 26.17.0.
   - 서명은 없다. 그래서 인터넷에서 받은 설치 파일은 Windows SmartScreen이 «PC 보호» 창을 띄운다(«추가 정보» → «실행»).
+- 🟠 **설치 모양은 Bumm님 기준이다**(10/27 정정, 팀장 전달 — 바꾸지 않는다):
+  - «나만 / 모든 사용자» 고르는 화면과 위치 바꾸기 화면을 둔다. 기본은 «모든 사용자»다(`selectPerMachineByDefault`).
+  - 모든 사용자: `C:\Program Files\InKY Film Festival\Poster Studio`(관리자 승인 창이 한 번 뜬다).
+    나만: `%LOCALAPPDATA%\Programs\InKY Film Festival\Poster Studio` — electron-builder는 이 범위에 `menuCategory`를 붙이지 않아 `desktop/build/installer.nsh`가 기본 위치를 적어 준다.
+  - 실행 파일은 `Poster Studio.exe`, 바탕화면 `Poster Studio`, 시작 메뉴 `InKY Film Festival` 폴더에 `Poster Studio`와 `Uninstall Poster Studio`.
+  - «설정 › 앱 › 설치된 앱»(제어판 프로그램 추가/제거)에 `Poster Studio`로 나오고 거기서 지워진다. 시작 메뉴 `Uninstall Poster Studio`로도 지워진다.
+  - 지우면 설치 폴더 · 바로가기 · 시작 메뉴 폴더 · 비게 된 `InKY Film Festival` 폴더 · 앱 데이터(`%APPDATA%\Poster Studio`)가 남지 않는다.
 - 🟠 설치기 함정(10/27 실측):
   - `multiLanguageInstaller: false`는 언어 목록을 무시하고 영어로 고정한다. 그 줄을 두지 않는다(한국어 하나만).
-  - 제거기는 `%APPDATA%\PosterStudio`를 지운다. 그래서 `main.mjs`가 앱 데이터 폴더를 그 이름으로 맞춘다. 화면 이름(«Poster Studio») 폴더를 쓰면 제거 뒤에 남는다.
-  - 고른 설치 위치 아래에 `PosterStudio` 폴더가 하나 더 생긴다(일반 프로그램과 같다).
+  - 제거기는 `%APPDATA%\<앱 폴더 이름>`(electron-builder `APP_FILENAME` = «Poster Studio»)을 지운다. 그래서 `main.mjs`가 앱 데이터 폴더를 같은 이름으로 맞춘다. 어긋나면 제거 뒤에 남는다.
+  - `installer.nsh`는 설치기 머리에 먼저 들어간다. LogicLib · 등록 키 이름을 그 파일에서 직접 불러야 하고(`!include LogicLib.nsh`, `!define /ifndef`), 경고가 곧 빌드 실패다.
+    그 파일의 함수 안에서 `${isUpdated}`를 쓰면 StdUtils 플러그인을 못 찾아 빌드가 깨진다(매크로 `customUnInstall` 안은 된다).
+  - 제거 단계(`customUnInstallSection`)를 더하면 «구성 요소 선택» 화면이 끼어 제거 흐름이 돈다. 빈 상위 폴더는 `un.onUninstSuccess`에서 지운다.
+  - `$LOCALAPPDATA`는 `SetShellVarContext`를 따른다. «모든 사용자»가 기본인 화면에서 읽으면 `C:\ProgramData`가 나온다(«나만» 설치가 거기 깔렸다). 잠깐 `current`로 바꿔 읽는다.
+  - «나만» 기본 위치는 설치 범위 화면이 열릴 때 적는다. 설치기 시작에서 적으면 첫 설치인데 «이미 사용자별 설치가 있습니다»가 뜬다. 끝까지 «나만»으로 설치하지 않으면 창이 닫힐 때 지운다.
   - 리액트 `autoFocus`는 HTML 속성으로 나가지 않는다. `<dialog>.showModal()`이 첫 단추에 초점을 주므로, 열고 나서 직접 `focus()`한다.
 - **확인**(전부 실제 실행):
   - `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(또는 `--dev`): 가짜 카메라로 한글 입력 → 촬영 → 8종 → PC 저장 → 인쇄 미리보기 → 4×6 PDF → 사진 불러오기 → 로고 → 종료.
-  - `powershell -File scripts/verify/desktop-installer-probe.ps1 -Step install|uninstall …`: 설치 창을 화면마다 찍으며 단추 누름 메시지로 넘긴다. 키보드 흉내는 없다.
-- **아이콘**: `desktop/build/make-assets.mjs`가 InKY 로고 원본에 빨간 «PS» 배지를 얹는다(16~32px는 화소 글자).
-  - 같은 입력이면 같은 파일이 나온다. 수치는 `icon-spec.json`에 있고 Voice Cinema «VC»와 맞춘다.
-- **첫 화면 «↓ 다운로드»**(`src/studio/DownloadMenu.tsx`): 1단계에만 있고, 설치판에서는 숨긴다.
+  - `powershell -File scripts/verify/desktop-installer-probe.ps1 -Step install|uninstall -Mode user|all -Via startmenu|settings …`: 설치 창을 화면마다 찍으며 단추 누름 메시지로 넘긴다. 키보드 흉내는 없다.
+    «모든 사용자»는 설치기가 관리자 권한으로 다시 뜨므로 이 도구도 관리자 권한으로 돌린다(권한이 낮은 창의 단추 누름 메시지는 Windows가 막는다).
+  - `node scripts/verify/desktop-vs-web.mjs <결과> --exe <설치한 exe> --web-dist <웹 빌드>`: 첫 화면을 같은 엔진으로 찍어 «설치판» 표시 밖 화소 차이 0인지 본다.
+    그림자 진 글자 한 줄이 실행마다 조금씩 달라(같은 설치판 두 번 = 7,249화소) 크기마다 3번 찍어 짝을 찾는다.
+- **아이콘**: `desktop/build/make-assets.mjs`가 InKY 로고 원본 오른쪽 아래에 검은 둥근 사각 · 흰 «PS»를 얹는다(Voice Cinema 시안 모양 · 비율, 더 작게).
+  - 크기(16 · 20 · 24 · 32 · 40 · 48 · 64 · 128 · 256)마다 따로 그린다. 16~32px는 점을 하나씩 찍은 글자다(«P8»처럼 뭉개지지 않게). 수치는 `icon-spec.json`.
+  - «PS»는 앱 아이콘(실행 파일 · 바로가기 · 작업 표시줄 · 창)에만 둔다. 설치기 화면(`installer.ico` · 머리 · 옆 그림)은 로고 원본뿐이다.
+- **첫 화면 «↓ 다운로드»**(`src/studio/DownloadMenu.tsx`): 1단계에만 있고, 설치판에서는 숨긴다. 메뉴는 «Poster Studio 설치» 하나다(Voice Cinema는 설치판을 만들지 않는다 — 10/27 정정).
   - 방침 링크 바로 왼쪽에 같은 글자 · 색으로 둔다. 방침 링크는 1화소도 옮기지 않는다.
   - 평범한 링크라 누르기 전 설치 파일 요청은 0건이다. prefetch · preload · 서비스워커를 쓰지 않는다.
   - `scripts/verify/download-button-probe.mjs`가 전/후 화소(단추 밖 0)와 네트워크 기록을 잰다.
   - 🔴 **설치 파일을 Hosting(`public/` · `dist/`)에 넣지 않는다.** 다음 CI 배포가 지우고, 100MB가 넘어 저장소에도 못 넣는다.
-  - 올릴 자리(제안 · 별도 승인)는 intent «올릴 자리»에 있다. 주소는 `src/downloads.ts` 두 줄이다.
+  - 올릴 자리(제안 · 별도 승인)는 intent «올릴 자리»에 있다. 주소는 `src/downloads.ts` 한 줄이다.
 
 ## 명령
 - 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(437개) — 둘 다 vitest(2026-10-27)
