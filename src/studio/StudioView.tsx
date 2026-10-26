@@ -335,6 +335,9 @@ export default function StudioView(p: StudioViewProps) {
   };
   // 설치판: Electron에는 크롬의 인쇄 미리보기가 없어 4×6 인화지에 놓인 모습을 먼저 보이고, «인쇄하기»에서 Windows 인쇄 창을 연다.
   const printPreview = useRef<HTMLDialogElement>(null);
+  const printNow = useRef<HTMLButtonElement>(null);
+  // 창을 연 뒤 초점은 «인쇄하기»로 — 리액트의 autoFocus는 HTML 속성으로 나가지 않아 showModal이 첫 단추(«닫기»)를 고른다
+  const openPrintPreview = () => { printPreview.current?.showModal(); printNow.current?.focus(); };
   const photoInput = useRef<HTMLInputElement>(null);
   // 10/20 Bumm님: 아이폰은 공유 창으로 사진첩에 넣는다(웹에서 사진 앱으로 가는 유일한 길) — 누를 때 무엇을 눌러야 하는지 한 줄로 알린다.
   const [saveHint, setSaveHint] = useState(false);
@@ -874,7 +877,7 @@ export default function StudioView(p: StudioViewProps) {
             <button type="button" className="back-button" onClick={() => go(2)} disabled={locked}><span aria-hidden="true">←</span> <span className="label-pc">이전</span><span className="label-phone">다시 찍기</span></button>
             {/* 설치판: PC에 저장(저장 위치를 묻는 창이 뜬다 — desktop/main.mjs) */}
             {DESKTOP && <button id="desktopSaveBtn" type="button" className="back-button" onClick={onSave} disabled={locked || !p.posters[p.selected]}><StudioIcon name="download"/>PC에 저장</button>}
-            <button id="printBtn" type="button" className="primary-button" onClick={DESKTOP ? () => printPreview.current?.showModal() : p.onPrint}><StudioIcon name="print"/>이 포스터로 출력하기</button>
+            <button id="printBtn" type="button" className="primary-button" onClick={DESKTOP ? openPrintPreview : p.onPrint}><StudioIcon name="print"/>이 포스터로 출력하기</button>
             {/* ⑪ 휴대폰: 인쇄 대신 내 휴대폰에 저장(파일 공유 → 안 되면 PNG 내려받기). PC에서는 숨김. */}
             <button id="saveBtn" type="button" className="primary-button" onClick={onSave} disabled={!p.posters[p.selected]}><StudioIcon name="download"/>내 휴대폰에 저장</button>
           </div>
@@ -903,7 +906,7 @@ export default function StudioView(p: StudioViewProps) {
         <p className="print-preview-note">‘인쇄하기’를 누르면 Windows 인쇄 창이 열려요. 포토프린터와 4 × 6 용지를 고르세요.</p>
         <div className="print-preview-actions">
           <button type="button" className="back-button" onClick={() => printPreview.current?.close()}>닫기</button>
-          <button type="button" className="primary-button" autoFocus onClick={() => { printPreview.current?.close(); p.onPrint(); }}><StudioIcon name="print"/>인쇄하기</button>
+          <button type="button" ref={printNow} className="primary-button" onClick={() => { printPreview.current?.close(); p.onPrint(); }}><StudioIcon name="print"/>인쇄하기</button>
         </div>
       </dialog>}
       <dialog

@@ -179,6 +179,7 @@ try {
   // 인쇄 미리보기 → 인쇄하기
   await click('#printBtn');
   check('인쇄 미리보기 창이 열린다', await waitFor(`document.querySelector('.print-preview')?.open === true && document.querySelector('.print-preview-page img')?.naturalWidth === 1200`));
+  check('미리보기 창의 초점은 «인쇄하기»', await main.evaluate(`document.activeElement?.textContent?.includes('인쇄하기') === true`));
   await sleep(500);
   await shot('인쇄-미리보기');
   await main.evaluate(`[...document.querySelectorAll('.print-preview-actions button')].find((b) => b.textContent.includes('인쇄하기')).click()`);
@@ -211,6 +212,12 @@ try {
   check('불러온 사진으로 8종', await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 20000));
   await sleep(1200);
   await shot('3단계-불러온사진');
+
+  // 머리글 로고 → 처음으로(문서를 새로 연다 — 사진 · 포스터를 남김없이 버린다). 설치판(app://)에서도 같은지
+  await main.evaluate(`document.querySelector('.brand.header-home').click()`);
+  await sleep(2500);
+  const home = await main.evaluate(`new Promise((r) => { const t = setInterval(() => { if (document.body.classList.contains('app-ready')) { clearInterval(t); r({ url: location.href, step: document.body.dataset.step, snapshot: !document.getElementById('snapshot')?.classList.contains('hidden'), thumbs: document.querySelectorAll('#resultView .style-option.thumb').length }); } }, 100); setTimeout(() => { clearInterval(t); r(null); }, 8000); })`);
+  check('머리글 로고 → 처음 화면(사진 · 포스터 없음)', home && home.url === 'app://studio/' && home.step === '1' && !home.snapshot && home.thumbs === 0, home);
 
   // 바깥 인터넷: 앱이 보낸 요청은 전부 앱 안 · 바깥 주소는 막힌다
   const outside = report.requests.filter((u) => !/^(app:\/\/studio\/|blob:|data:)/.test(u));

@@ -192,6 +192,7 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     expect(preview.hasAttribute('open')).toBe(true);
     expect(document.getElementById('printArea')).toBeNull();
     const printNow = [...preview.querySelectorAll('button')].find((b) => b.textContent?.includes('인쇄하기'))!;
+    expect(document.activeElement).toBe(printNow);   // 창이 열리면 초점은 «인쇄하기»(«닫기»가 아니라)
     await act(async () => { printNow.click(); });
     expect(preview.hasAttribute('open')).toBe(false);
     const img = document.querySelector('#printArea img') as HTMLImageElement;
