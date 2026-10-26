@@ -67,6 +67,12 @@ npm --prefix functions run lint
 
 문구 변경은 폰트 서브셋을 검사한다. 새 글자는 `npm run fonts:charset` → `python scripts/fonts/subset.py` → `npm run fonts:check` 순서로 반영한다. 현행 8종 포스터는 `node scripts/verify/release-baseline.mjs`로 Windows에서 5개 입력 × 8종 지문을 수집하고 `npm run verify:pixels -- <전.json> <후.json>`로 대조한다. 배포 뒤 `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`로 저장된 출시 기준선과 실제 운영 출력을 대조한다(촬영 흐름을 누르므로 실제 모드 라이브에서만 된다. 샘플 모드 라이브는 `node scripts/verify/waiting-videos-live.mjs <결과 폴더> --url https://poster.edutogether.kr`로 본다). 이전 `poster-pixels-ui.js`·`studio-flow.mjs`는 구 4종 UI의 역사 검증용이다. 승인 범위 밖 출력 차이를 통과시키려고 기준을 갱신하지 않는다. 부하테스트는 별도 승인 없이 실행하지 않는다.
 
+Windows 설치판(`desktop/`, 2026-10-27)은 AI가 없는 비상판이다. 웹과 같은 프론트를 `npm run build:desktop`(--mode desktop)으로 `desktop/web`에 빌드하고,
+`desktop`에서 `npm ci` → `node node_modules/electron/install.js`(npm 12는 설치 스크립트를 막는다) → `npx electron-builder --win nsis --x64 --publish never`로 `desktop/out/PosterStudio-Setup.exe`를 만든다.
+확인은 `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(가짜 카메라로 전체 흐름 · 바깥 요청 0 · 토큰 0) ·
+`scripts/verify/desktop-installer-probe.ps1`(설치 · 제거 창) · `node scripts/verify/download-button-probe.mjs <dist> <결과> --compare <전>`(첫 화면 다운로드 단추 — 전/후 화소 · 누르기 전 요청 0)다.
+설치판 갈래는 `src/desktop.ts`의 `DESKTOP`으로 웹 번들에서 빠진다. `src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양은 CI가 정규식으로 읽으므로 바꾸지 않는다. 설치 파일은 저장소 · Hosting에 넣지 않는다(app.md «Windows 설치판»).
+
 ## 공용 절차·보고·도구 인계
 
 - 공용 마무리·윈도 기준선·감사 주기·점수/기준 커밋·보고/승인·비밀값 규칙은 `D:\Projects\AGENTS.md`의 «SHARED WORKFLOW REFERENCES»와 그 절의 원문 경로를 확인한다. Codex도 `.claude/rules/app.md`를 작업 전에 직접 읽는다.

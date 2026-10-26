@@ -401,8 +401,42 @@
   바뀐 파일 0개는 전부 배포다. **배포를 조용히 건너뛰는 것이 이 앱에서는 더 위험하다** —
   배포 상태가 곧 행사 준비 상태이고, 11/14 전에 "배포한 줄 알았는데 안 됐다"가 나면 안 된다.
 
+## Windows 설치판 · 첫 화면 다운로드 단추 (2026-10-27 Bumm님, 팀장 전달 — `_docs/intents/2026-10-27-desktop-installer`)
+- 🔴 **설치판에는 AI가 없다.** 찍거나 불러온 사진을 그대로 8종 틀에 넣는다(로컬 합성 — `buildPosters` 그대로).
+  - 부스 토큰 0 · 서버 요청 0이다. 화면 정책은 `connect-src 'self'`이고, `desktop/main.mjs`가 http · https · ws를 전부 끊는다.
+  - 머리글에 «설치판 · AI 없이 사진 그대로»를 늘 띄운다.
+  - 샘플 흐름 · 로딩 영상은 싣지 않는다. 샘플 로딩 화면이 «AI가 당신의 영화를 그리고 있어요»라, 설치판에서는 거짓 표시가 된다.
+- 설치판 갈래는 `src/desktop.ts`의 `DESKTOP`(`--mode desktop`)으로 가른다. 웹 빌드에서는 거짓으로 접혀 번들에서 빠진다.
+  - 웹 번들에 설치판 문구 0건, 설치판 번들에 토큰 0건이어야 한다. `desktop-app-probe.mjs`가 화면이 받은 스크립트를 직접 본다.
+- 🔴 **`src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양을 바꾸지 않는다.** CI 배포 단계(`deploy.yml`)와 스크립트가 그 줄을 정규식으로 읽는다.
+  - 10/27에 삼항식으로 바꿨더니 `test/smoke-step.test.js` 8건이 잡았다.
+  - 설치판에서 토큰을 빼는 일은 쓰는 쪽(`PosterStudio.tsx`의 `boothToken`)에서 한다.
+- **빌드**: 아래 순서로 하면 `desktop/out/PosterStudio-Setup.exe`가 나온다(약 147MB · 커밋하지 않음).
+  1. 루트에서 `npm run build:desktop` → `desktop/web`
+  2. `cd desktop && npm ci`
+  3. `node node_modules/electron/install.js` — npm 12는 설치 스크립트를 막아 Electron 실행 파일이 안 받아진다.
+  4. `npx electron-builder --win nsis --x64 --publish never`
+  - 판: electron 44.7.0 · electron-builder 26.17.0.
+  - 서명은 없다. 그래서 인터넷에서 받은 설치 파일은 Windows SmartScreen이 «PC 보호» 창을 띄운다(«추가 정보» → «실행»).
+- 🟠 설치기 함정(10/27 실측):
+  - `multiLanguageInstaller: false`는 언어 목록을 무시하고 영어로 고정한다. 그 줄을 두지 않는다(한국어 하나만).
+  - 제거기는 `%APPDATA%\PosterStudio`를 지운다. 그래서 `main.mjs`가 앱 데이터 폴더를 그 이름으로 맞춘다. 화면 이름(«Poster Studio») 폴더를 쓰면 제거 뒤에 남는다.
+  - 고른 설치 위치 아래에 `PosterStudio` 폴더가 하나 더 생긴다(일반 프로그램과 같다).
+  - 리액트 `autoFocus`는 HTML 속성으로 나가지 않는다. `<dialog>.showModal()`이 첫 단추에 초점을 주므로, 열고 나서 직접 `focus()`한다.
+- **확인**(전부 실제 실행):
+  - `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(또는 `--dev`): 가짜 카메라로 한글 입력 → 촬영 → 8종 → PC 저장 → 인쇄 미리보기 → 4×6 PDF → 사진 불러오기 → 로고 → 종료.
+  - `powershell -File scripts/verify/desktop-installer-probe.ps1 -Step install|uninstall …`: 설치 창을 화면마다 찍으며 단추 누름 메시지로 넘긴다. 키보드 흉내는 없다.
+- **아이콘**: `desktop/build/make-assets.mjs`가 InKY 로고 원본에 빨간 «PS» 배지를 얹는다(16~32px는 화소 글자).
+  - 같은 입력이면 같은 파일이 나온다. 수치는 `icon-spec.json`에 있고 Voice Cinema «VC»와 맞춘다.
+- **첫 화면 «↓ 다운로드»**(`src/studio/DownloadMenu.tsx`): 1단계에만 있고, 설치판에서는 숨긴다.
+  - 방침 링크 바로 왼쪽에 같은 글자 · 색으로 둔다. 방침 링크는 1화소도 옮기지 않는다.
+  - 평범한 링크라 누르기 전 설치 파일 요청은 0건이다. prefetch · preload · 서비스워커를 쓰지 않는다.
+  - `scripts/verify/download-button-probe.mjs`가 전/후 화소(단추 밖 0)와 네트워크 기록을 잰다.
+  - 🔴 **설치 파일을 Hosting(`public/` · `dist/`)에 넣지 않는다.** 다음 CI 배포가 지우고, 100MB가 넘어 저장소에도 못 넣는다.
+  - 올릴 자리(제안 · 별도 승인)는 intent «올릴 자리»에 있다. 주소는 `src/downloads.ts` 두 줄이다.
+
 ## 명령
-- 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(429개) — 둘 다 vitest(2026-10-26)
+- 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(437개) — 둘 다 vitest(2026-10-27)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
 - 빌드: 루트에서 `npm run build` → `dist/`
