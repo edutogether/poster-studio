@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 등급: 2
 작성자: Poster Studio 세션(팀장 전달 지시 — 지시 자체가 승인, Bumm 10/26)
 작성 시각: 2026-10-26 (코드 변경 전)
