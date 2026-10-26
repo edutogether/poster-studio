@@ -1,6 +1,7 @@
 // 설명 줄의 \n은 휴대폰에서만 줄을 바꾸는 자리(2026-10-20 Bumm님이 검토 페이지에서 고른 자리 · 7번은 팀장 판단) — PC는 띄어쓰기로 보인다(generation-wait.css).
 // Bumm님 확정본 2026-10-01. 원화·영상 프롬프트: _docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/
-// 그림은 2026-10-12부터 대기 영상 첫 프레임(public/studio/waiting-v2, scripts/media/encode-waiting-videos.py) — 정지 그림 → 영상이 튀지 않게.
+// 그림은 2026-10-12부터 대기 영상 첫 프레임(scripts/media/encode-waiting-videos.py) — 정지 그림 → 영상이 튀지 않게.
+// 2026-10-26 느린 와이파이용으로 다시 인코딩한 판(public/studio/waiting-v3, CRF 22)의 첫 프레임이다. 10/12 승인본은 waiting-v2에 그대로 있다.
 export const waitingSets = [
   {
     "id": 1,
@@ -11,7 +12,7 @@ export const waitingSets = [
       "body": "애니메이션의 조명은 빛의 색과 밝기로 감정을 전해요.",
       "source": "https://www.disneyanimation.com/process/lighting/"
     },
-    "image": "/studio/waiting-v2/01.webp"
+    "image": "/studio/waiting-v3/01.webp"
   },
   {
     "id": 2,
@@ -22,7 +23,7 @@ export const waitingSets = [
       "body": "‘스토리보드’는 장면을 만화처럼 그려\n이야기의 흐름을 살펴보는 그림이에요.",
       "source": "https://www.disneyanimation.com/process/story/"
     },
-    "image": "/studio/waiting-v2/02.webp"
+    "image": "/studio/waiting-v3/02.webp"
   },
   {
     "id": 3,
@@ -33,7 +34,7 @@ export const waitingSets = [
       "body": "컴퓨터 속 카메라로 인물의 자리와 화면 구도를 잡아요.",
       "source": "https://www.disneyanimation.com/process/layout/"
     },
-    "image": "/studio/waiting-v2/03.webp"
+    "image": "/studio/waiting-v3/03.webp"
   },
   {
     "id": 4,
@@ -44,7 +45,7 @@ export const waitingSets = [
       "body": "1995년, 세계 최초의 장편\n컴퓨터 애니메이션으로 탄생했어요.",
       "source": "https://www.oscars.org/collection-highlights/toy-story"
     },
-    "image": "/studio/waiting-v2/04.webp"
+    "image": "/studio/waiting-v3/04.webp"
   },
   {
     "id": 5,
@@ -55,7 +56,7 @@ export const waitingSets = [
       "body": "화면에 맞춰 걷고 녹음하는 소리 작업을\n‘폴리’라고 해요.",
       "source": "https://www.oscars.org/sites/oscars/files/complete_sound_and_music_activities_guide.pdf"
     },
-    "image": "/studio/waiting-v2/05.webp"
+    "image": "/studio/waiting-v3/05.webp"
   },
   {
     "id": 6,
@@ -66,7 +67,7 @@ export const waitingSets = [
       "body": "조금씩 움직이며 찍은 사진을 이으면 ‘스톱모션’이 돼요.",
       "source": "https://www.oscars.org/sites/oscars/files/complete_animation_activities_guide.pdf"
     },
-    "image": "/studio/waiting-v2/06.webp"
+    "image": "/studio/waiting-v3/06.webp"
   },
   {
     "id": 7,
@@ -77,7 +78,7 @@ export const waitingSets = [
       "body": "인물이나 상황을 떠올리게 하는 반복 선율을\n‘라이트모티프’라고 해요.",
       "source": "https://www.liverpoolphil.com/media/232761/leitmotif-work-sheet.pdf"
     },
-    "image": "/studio/waiting-v2/07.webp"
+    "image": "/studio/waiting-v3/07.webp"
   },
   {
     "id": 8,
@@ -88,7 +89,7 @@ export const waitingSets = [
       "body": "‘렛 잇 고’ 공식 영상에는 25개 언어의\n엘사 목소리가 이어져요.",
       "source": "https://www.youtube.com/watch?v=f7kw-zurg_M"
     },
-    "image": "/studio/waiting-v2/08.webp"
+    "image": "/studio/waiting-v3/08.webp"
   },
   {
     "id": 9,
@@ -99,7 +100,7 @@ export const waitingSets = [
       "body": "〈쥬라기 공원〉의 포효에는\n아기 코끼리의 울음도 숨어 있어요.",
       "source": "https://www.wskg.org/npr-culture/2013-04-13/jurassic-bark-how-sound-design-changed-our-imaginations"
     },
-    "image": "/studio/waiting-v2/09.webp"
+    "image": "/studio/waiting-v3/09.webp"
   },
   {
     "id": 10,
@@ -110,7 +111,7 @@ export const waitingSets = [
       "body": "〈라따뚜이〉 제작진은 직접 요리를 배우고\n조리 과정을 사진에 담았어요.",
       "source": "https://www.animationartconservation.com/ratatouille.html"
     },
-    "image": "/studio/waiting-v2/10.webp"
+    "image": "/studio/waiting-v3/10.webp"
   },
   {
     "id": 11,
@@ -121,7 +122,7 @@ export const waitingSets = [
       "body": "〈밤비〉 제작진은 진짜 아기 사슴을 관찰하며\n자연스러운 걸음을 그렸어요.",
       "source": "https://d23.com/the-lots-own-animal-kingdom/walt-disney-at-the-disney-studio/"
     },
-    "image": "/studio/waiting-v2/11.webp"
+    "image": "/studio/waiting-v3/11.webp"
   },
   {
     "id": 12,
@@ -132,6 +133,6 @@ export const waitingSets = [
       "body": "〈러빙 빈센트〉는 화가 125명이 그린\n유화 약 6만 5천 장을 이은 영화예요.",
       "source": "https://lovingvincent.com/the-movie%2C3%2Cpl.html"
     },
-    "image": "/studio/waiting-v2/12.webp"
+    "image": "/studio/waiting-v3/12.webp"
   }
 ];

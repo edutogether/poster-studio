@@ -7,7 +7,7 @@ import { approvedWaitingVideo } from "../src/studio/waitingVideo";
 import manifest from "../src/studio/waiting-videos.json";
 
 // 2026-10-07 장착 가지의 재생 부품 시험을 옮겼다(숨은 탭·시작 세트 지정은 옮기지 않은 기능이라 뺐다).
-const props = { image: "/studio/waiting-v2/11.webp", theme: "움직임에 생기를", video: "/test-only.mp4", paused: false, reduced: false };
+const props = { image: "/studio/waiting-v3/11.webp", theme: "움직임에 생기를", video: "/test-only.mp4", paused: false, reduced: false };
 beforeEach(() => {
   vi.useFakeTimers();
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();

@@ -90,7 +90,7 @@ describe("포스터 생성 대기", () => {
     expect(dots.children.length).toBe(3);
     expect(dots.previousElementSibling?.id).toBe('generationTitle');
     expect(dots.nextElementSibling?.className).toBe('movie-fact');
-    expect(firstImage).toContain('/studio/waiting-v2/');
+    expect(firstImage).toContain('/studio/waiting-v3/');
     const seen=new Set<number>();
     for(let i=0;i<12;i++){
       const id=Number(document.getElementById('spinner')?.dataset.setId);
@@ -129,7 +129,7 @@ describe("포스터 생성 대기", () => {
     vi.stubGlobal('matchMedia',()=>({matches:true}));
     render(<GenerationWait spinTextRef={createRef()}/>);const first=headline();
     act(()=>vi.advanceTimersByTime(24_000));expect(headline()).toBe(first);
-    expect(activeImage().src).toContain('/studio/waiting-v2/');
+    expect(activeImage().src).toContain('/studio/waiting-v3/');
     expect(document.querySelector('video')).toBeNull();
     expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
   });

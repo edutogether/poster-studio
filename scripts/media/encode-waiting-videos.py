@@ -14,10 +14,12 @@
 바탕: Seedance 바탕은 흰 화면(#fff)보다 조금 어둡고 영상 중간에 더 어두워진다(242~254). --white면 프레임마다 위 두 모서리 바탕의
 중앙값을 재고 앞뒤 ±SMOOTH프레임으로 고르게 한 뒤 255로 올리는 채널별 곱(1.00~1.08)을 건다 — 바탕은 내내 255, 밝은 곳은 255에서 잘린다.
 
-출력: <출력 폴더>/NN-<sha256 앞 12자리>.mp4(H.264 High·yuv420p·BT.709 표기·CRF 18·소리 없음·faststart, 24fps 192프레임)와
+출력: <출력 폴더>/NN-<sha256 앞 12자리>.mp4(H.264 High·yuv420p·BT.709 표기·CRF(기본 18)·소리 없음·faststart, 24fps 192프레임)와
       <정지 그림 폴더>/NN.webp(그 mp4의 첫 프레임을 무손실 WebP로), 그리고 목록 JSON을 표준 출력으로.
-사용: python scripts/media/encode-waiting-videos.py <원본 목록.json> <출력 폴더> <정지 그림 폴더> [--white]
-      앱에 넣을 때는 출력·정지 그림 폴더 모두 public/studio/waiting-v2 (목록의 src·still이 그 주소다)
+사용: python scripts/media/encode-waiting-videos.py <원본 목록.json> <출력 폴더> <정지 그림 폴더> [--white] [--crf N] [--preset P] [--tune T]
+      앱에 넣을 때는 출력·정지 그림 폴더 모두 public/studio/<폴더> — 목록의 src·still 주소는 그 폴더 이름(/studio/<폴더>/)으로 적는다
+      --crf · --preset · --tune: x264 설정. 기본은 10/12 승인본(waiting-v2)의 CRF 18 · slow · 없음 — 기본값으로 다시 만들면 승인본과 바이트가 같다(10/26 확인)
+      2026-10-26 느린 와이파이용 판(waiting-v3): --white --crf 22 --preset veryslow (팀장 지시 1번 — 코덱·설정 14가지 비교는 CHANGELOG 10/26)
       원본 목록.json = {"01": "경로/01-fast.mp4", ...} 12개(Bumm님이 통과시킨 Seedance 원본)
 종료: 0 · 1 검사 실패(프레임 수·정지 그림 대 첫 프레임) · 2 입력 오류
 """
@@ -48,8 +50,15 @@ def white(frames):
 def main(argv):
     use_white = '--white' in argv
     args = [a for a in argv if a != '--white']
+    opts = {'--crf': '18', '--preset': 'slow', '--tune': None}
+    for name in list(opts):
+        if name in args:
+            i = args.index(name)
+            if i + 1 >= len(args): print(f'{name} 뒤에 값이 없다'); return 2
+            opts[name] = args[i + 1]; del args[i:i + 2]
     if len(args) != 3: print(__doc__); return 2
     listing, out, still_dir = args
+    src_url = '/studio/' + os.path.basename(os.path.normpath(out)); still_url = '/studio/' + os.path.basename(os.path.normpath(still_dir))
     src = json.load(open(listing, encoding='utf-8'))
     if sorted(src) != [f'{i:02d}' for i in range(1, 13)]: print('목록은 01~12 열두 편이어야 한다'); return 2
     os.makedirs(out, exist_ok=True); os.makedirs(still_dir, exist_ok=True)
@@ -65,7 +74,8 @@ def main(argv):
         tmp = os.path.join(out, f'{nn}.tmp.mp4')
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{SIZE}x{SIZE}', '-r', str(FPS), '-i', '-',
                         '-an', '-vf', 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p', '-frames:v', str(FRAMES),
-                        '-c:v', 'libx264', '-profile:v', 'high', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p',
+                        '-c:v', 'libx264', '-profile:v', 'high', '-preset', opts['--preset'], '-crf', opts['--crf'],
+                        *(['-tune', opts['--tune']] if opts['--tune'] else []), '-pix_fmt', 'yuv420p',
                         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv',
                         '-movflags', '+faststart', tmp], input=frames.tobytes(), check=True)
         data = open(tmp, 'rb').read(); sha = hashlib.sha256(data).hexdigest()
@@ -87,8 +97,8 @@ def main(argv):
               f' · 4초 바탕 {corner.astype(int).tolist()}' + (f' · 곱 {np.round(gain.min(0), 3).tolist()}~{np.round(gain.max(0), 3).tolist()}' if use_white else ''),
               file=sys.stderr)
         still_sha = hashlib.sha256(open(os.path.join(still_dir, f'{nn}.webp'), 'rb').read()).hexdigest()
-        manifest.append({'id': int(nn), 'status': 'approved', 'src': f'/studio/waiting-v2/{name}', 'sha256': sha, 'bytes': len(data),
-                         'still': f'/studio/waiting-v2/{nn}.webp', 'stillSha256': still_sha})
+        manifest.append({'id': int(nn), 'status': 'approved', 'src': f'{src_url}/{name}', 'sha256': sha, 'bytes': len(data),
+                         'still': f'{still_url}/{nn}.webp', 'stillSha256': still_sha})
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
     if bad: print('검사 실패: ' + ', '.join(bad), file=sys.stderr); return 1
     return 0
