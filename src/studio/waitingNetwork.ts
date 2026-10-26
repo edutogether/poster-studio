@@ -2,7 +2,7 @@
    느린 와이파이(1.6Mbps)에서 생성 단추를 누르자마자 조판 글꼴 · 로고(첫 방문 약 1.3MB)를 함께 받으면 첫 장면 영상이 4초 넘게
    멈춰 정지 그림으로 내려앉았다(10/26 측정: AI 대기 중 영상 69/90장면, 미리 받기 전 85/89).
    그래서 차례를 둔다: ① 첫 장면 영상 → ② 둘째 장면 영상(첫 장면 동안 미리) → ③ 조판 글꼴 · 로고(둘째 장면 영상이 받아진 뒤).
-   앞 차례를 끝까지 받으면 다음을 시작하므로 빠른 망에서는 1초 안에 다 풀리고, 느린 망에서는 영상이 먼저 간다.
+   ③은 둘째 장면이 화면에 올라와 그 영상을 다 받은 뒤에 풀린다 — 장면이 8초라 빠른 망에서도 약 8초 뒤다. 느린 망에서는 영상이 먼저 간다.
    받을 영상이 없거나(움직임 줄이기 · 승인 안 된 편) 받지 못하면 바로 넘긴다.
    ③이 도는 동안에는 그다음 장면 영상 받기를 미룬다 — 글꼴 조각 여러 개가 한꺼번에 망을 차지해, 함께 받으면 영상이 장면 시작에
    못 맞춰 <video>가 같은 파일을 따로 받았다(10/26 시범 측정).
@@ -42,11 +42,13 @@ export function backgroundIdle(): Promise<void> {
 const prefetched = new Map<string, Promise<void>>();
 
 /** 다음 장면 영상을 미리 받아 브라우저 캐시에 둔다 — 장면이 바뀌면 <video>가 망에 다시 나가지 않고 캐시에서 읽는다.
- *  같은 주소는 한 번만 받는다(받는 중이면 같은 약속). 실패해도 던지지 않고, 다음에 다시 받을 수 있게 기억에서 지운다. */
+ *  같은 주소는 한 번만 받는다(받는 중이면 같은 약속). 망 오류 · 서버 오류(404 · 503 등)로 못 받아도 던지지 않고, 다음에 다시 받을 수 있게 기억에서 지운다. */
 export function prefetchWaitingVideo(src: string): Promise<void> {
   let job = prefetched.get(src);
   if (!job) {
-    job = fetch(src).then((res) => (res.ok ? res.arrayBuffer() : null)).then(() => undefined, () => { prefetched.delete(src); });
+    job = fetch(src)
+      .then((res) => { if (!res.ok) throw new Error(`대기 영상 미리 받기 ${res.status}`); return res.arrayBuffer(); })
+      .then(() => undefined, () => { prefetched.delete(src); });
     prefetched.set(src, job);
   }
   return job;

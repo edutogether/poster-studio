@@ -199,7 +199,8 @@ check('high가 있으면 summarize가 high>0을 보고한다', () => {
 // 8) net-perf-summary.mjs(2026-10-26 종합감사): 결과 0건 · 결과 파일 없는 실행 · 시간 안에 못 끝난 생성은 실패, 멀쩡한 결과만 통과
 {
   const top = fs.mkdtempSync(path.join(os.tmpdir(), 'netperf-summary-selftest-'));
-  const run = () => spawnSync(process.execPath, [path.join(HERE, 'net-perf-summary.mjs'), top], { encoding: 'utf8' }).status;
+  const exec = (...extra) => spawnSync(process.execPath, [path.join(HERE, 'net-perf-summary.mjs'), top, ...extra], { encoding: 'utf8' });
+  const run = (...extra) => exec(...extra).status;
   const put = (name, shownMs) => {
     fs.mkdirSync(path.join(top, name), { recursive: true });
     fs.writeFileSync(path.join(top, name, 'net-perf.json'), JSON.stringify({ rows: [{ name: '첫 방문', ready: 6000 }],
@@ -218,6 +219,15 @@ check('high가 있으면 summarize가 high>0을 보고한다', () => {
     fs.mkdirSync(path.join(top, 'after-slow4g-pc-04'));
     fs.writeFileSync(path.join(top, 'after-slow4g-pc-04', 'net-perf.json'), JSON.stringify({ rows: [{ name: '첫 방문', ready: 6000 }], gens: [] }));
     check('net-perf-summary: 생성 기록이 빈 실행(--real 없이 잰 것)이 섞이면 실패한다', () => assert.equal(run(), 1));
+    fs.rmSync(path.join(top, 'after-slow4g-pc-04'), { recursive: true });
+    // 장면 기록이 있는 결과(10/26 net-perf) — 정상 재생 · 영상별 표가 실제로 계산되는지, --videos 철자 · 빈 값을 잡는지(10/26 밤 종합감사)
+    fs.mkdirSync(path.join(top, 'after-slow4g-phone-05'));
+    fs.writeFileSync(path.join(top, 'after-slow4g-phone-05', 'net-perf.json'), JSON.stringify({ rows: [{ name: '첫 방문', ready: 6000 }],
+      gens: [{ label: '첫 방문 생성', shownMs: 40000, answeredMs: 30000, afterAnswerMs: 10000, bytes: 1, scenes: 1, videoScenes: 1, waitScenes: 1, waitVideoScenes: 1, duplicates: [],
+        smoothScenes: 1, waitSmoothScenes: 1, rebuffers: 0, stallMs: 0, videoDuplicates: [], sceneLog: [{ id: '07', video: true, rebuffers: 0, stallMs: 0, ended: true, startMs: 500 }] }] }));
+    check('net-perf-summary: --videos는 장면 기록에서 영상별 표를 낸다', () => { const r = exec('--videos', 'slow4g'); assert.equal(r.status, 0); assert.match(r.stdout, /\| 07 \| 1 \| 1 \| 1 \| 0 · 0\.0 \| 0\.50 \| 1 \|/); });
+    check('net-perf-summary: --videos 망 이름이 틀려 0건이면 실패한다', () => assert.equal(run('--videos', 'slw4g'), 1));
+    check('net-perf-summary: --videos 값이 없으면 사용법으로 끝난다', () => assert.equal(run('--videos'), 2));
   } finally {
     fs.rmSync(top, { recursive: true, force: true });
   }

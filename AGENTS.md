@@ -35,7 +35,7 @@
 ## APPROVED 영역·회귀
 
 - 승인 로딩 기준은 `_docs/intents/2026-09-30-studio-design-integration/loading-approved-2026-10-01/README.md`다. 그림·제목·상식의 12세트 짝, 한 바퀴 내 중복 없는 무작위 순서, 8초 전환, 크기·간격을 유지한다. 로딩 난수는 출력 조판의 난수와 분리한다. 향후 영상 교체도 같은 세트·표시 기준을 따른다.
-- CSP의 `script-src 'self'`와 Vite의 `modulePreload.polyfill: false`를 유지한다. 인라인 script를 추가하지 않는다. HTML·`/`는 `no-cache`, immutable은 해시가 붙은 `/assets/`에만 적용한다. 고정 이름의 `public/` 자산에는 같은 캐시 전제를 적용하지 않는다.
+- CSP의 `script-src 'self'`와 Vite의 `modulePreload.polyfill: false`를 유지한다. 인라인 script를 추가하지 않는다. HTML·`/`는 `no-cache`, immutable은 이름에 내용 해시가 붙은 것에만 적용한다 — Vite의 `/assets/**`와 대기 영상 `/studio/waiting-v*/NN-<해시>.mp4`(인코딩 도구가 해시를 이름에 넣는다). 고정 이름의 `public/` 자산(대기 정지 그림 `NN.webp` 등)에는 같은 캐시 전제를 적용하지 않는다.
 - 글꼴은 전부 자체 호스팅이다(`font-src 'self'`). 포스터 글꼴 `public/fonts/poster/`는 `scripts/fonts/fetch-poster-fonts.mjs`가 받은 파일 그대로이며, 다시 받으면 40지문 대조로 출력이 같은지 확인한다. 외부 글꼴 도메인을 CSP·HTML에 다시 넣지 않는다.
 
 ## 함정 9건 — 이 저장소에서 실제로 겪은 것

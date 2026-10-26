@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* net-perf.mjs 결과 여러 벌을 조건마다 묶어 p50 · p95를 낸다(2026-10-26).
 
-     node scripts/verify/net-perf-summary.mjs <결과 상위 폴더> [--json <출력>]
+     node scripts/verify/net-perf-summary.mjs <결과 상위 폴더> [--json <출력>] [--videos <망>]
 
    상위 폴더 아래 폴더 이름이 «판-망-기기-번호»(예: before-slow4g-pc-03)인 net-perf.json을 모은다.
    p50 · p95는 가까운 순위(nearest-rank) — 10회면 p95는 가장 큰 값이다. 표: 조건 · 횟수 · 1단계 쓸 수 있음 · 누른 때 → 포스터 ·
@@ -19,7 +19,8 @@ const top = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--json' 
 const jsonAt = args.indexOf('--json');
 const videosAt = args.indexOf('--videos');
 const perVideo = new Map();   // «판 · 망 · 방문» → 번호 → 기록
-if (!top) { console.error('사용: net-perf-summary.mjs <결과 상위 폴더> [--json <출력>]'); process.exit(2); }
+const usage = '사용: net-perf-summary.mjs <결과 상위 폴더> [--json <출력>] [--videos <망 — 예: slow4g>]';
+if (!top || (videosAt >= 0 && !(args[videosAt + 1] && !args[videosAt + 1].startsWith('--')))) { console.error(usage); process.exit(2); }
 const q = (xs, p) => { const s = xs.map((x) => (x == null ? Infinity : x)).sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.ceil(p * s.length) - 1)] : null; };
 const groups = new Map();
 const missing = [];
@@ -64,13 +65,16 @@ console.log('|---|---|---|---|---|---|---|---|---|' + (logged ? '---|---|---|---
 for (const a of rows) console.log(`| ${a.key} | ${a.n} | ${s(q(a.ready, 0.5))}/${s(q(a.ready, 0.95))} | ${s(q(a.shown, 0.5))}/${s(q(a.shown, 0.95))} | ${s(q(a.after, 0.5))}/${s(q(a.after, 0.95))} | ${mb(q(a.bytes, 0.5))}/${mb(q(a.bytes, 0.95))} | ${a.waitVideoScenes}/${a.waitScenes} | ${a.dup} | ${a.fail} |`
   + (logged ? (a.logged === a.n ? ` ${a.waitSmooth}/${a.waitScenes} | ${a.smooth}/${a.scenes} | ${a.rebuffers} · ${(a.stallMs / 1000).toFixed(1)} | ${a.videoDup} |` : ' — | — | — | — |') : ''));
 const videoRows = [...perVideo].sort(([a], [b]) => a.localeCompare(b, 'ko')).map(([key, byId]) => ({ key, videos: [...byId.values()].sort((a, b) => a.id.localeCompare(b.id)).map((v) => ({ ...v, startP50: q(v.start, 0.5) })) }));
-if (videosAt >= 0) for (const g of videoRows.filter((r) => r.key.includes(args[videosAt + 1]))) {
+const pickedVideos = videosAt >= 0 ? videoRows.filter((r) => r.key.includes(args[videosAt + 1])) : [];
+for (const g of pickedVideos) {
   console.log(`\n${g.key} — 영상별(PC · 휴대폰 합침)\n| 영상 | 나온 장면 | 영상 재생 | 정상 재생 | 재생 중 멈춤(회 · 초) | 시작까지 p50(초) | 끝까지 재생 |\n|---|---|---|---|---|---|---|`);
   for (const v of g.videos) console.log(`| ${v.id} | ${v.shown} | ${v.played} | ${v.smooth} | ${v.rebuffers} · ${(v.stallMs / 1000).toFixed(1)} | ${v.startP50 == null ? '—' : (v.startP50 / 1000).toFixed(2)} | ${v.ended} |`);
 }
 if (jsonAt >= 0) fs.writeFileSync(args[jsonAt + 1], JSON.stringify({ conditions: rows.map((a) => ({ ...a, p: { ready: [q(a.ready, 0.5), q(a.ready, 0.95)], shown: [q(a.shown, 0.5), q(a.shown, 0.95)], after: [q(a.after, 0.5), q(a.after, 0.95)], bytes: [q(a.bytes, 0.5), q(a.bytes, 0.95)] } })), videos: videoRows }, null, 1));
 const failed = rows.reduce((n, a) => n + a.fail, 0);
 if (!rows.length) { console.error('❌ 결과가 하나도 없다 — «판-망-기기-번호» 폴더의 net-perf.json(--real로 잰 것)을 찾지 못했다'); process.exit(1); }
+// 철자가 틀린 망 이름이 «빈 표 + 성공»으로 끝나지 않게(10/26 밤 종합감사)
+if (videosAt >= 0 && !pickedVideos.length) { console.error(`❌ --videos «${args[videosAt + 1]}»에 맞는 영상별 기록이 없다 — 장면 기록이 있는 결과의 «판-망» 이름(예: slow4g)으로 고른다`); process.exit(1); }
 if (missing.length || noGens.length || failed) {
   const list = (xs) => (xs.length ? ' (' + xs.slice(0, 5).join(', ') + ')' : '');
   console.error(`❌ 결과 파일이 없는 실행 ${missing.length}건${list(missing)} · 생성 기록이 빈 실행 ${noGens.length}건${list(noGens)} · 시간 안에 못 끝난 생성 ${failed}건`);

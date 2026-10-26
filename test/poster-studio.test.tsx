@@ -23,6 +23,7 @@ import * as saveModule from '../src/savePoster.js';
 import { designName } from '../src/designNames.js';
 import { PHONE_QUERY, slideAt, useTap } from '../src/studio/StudioView.js';
 import { captureBoothCode } from '../src/boothCode.js';
+import { BACKGROUND_CAP_MS } from '../src/studio/waitingNetwork.js';
 
 /** 보관한 부스 코드와 메모리 값을 함께 지운다(#booth= 로 여는 것과 같다 — 저장소가 막힌 브라우저용 메모리 값이 다음 테스트로 새지 않게). */
 function forgetBoothCode() { history.replaceState(null, '', '/#booth='); captureBoothCode(); }
@@ -289,6 +290,25 @@ describe('세 단계 화면 연결', () => {
   });
 
   const okResponse = (url: string) => new Response(JSON.stringify(url.includes('/generate') ? { images: ['data:image/png;base64,FAKE'] } : { ok: true }), { status: 200 });
+
+  test('조판 글꼴 · 로고는 대기 영상 뒤에, 응답을 기다리는 동안 받기 시작한다(늦어도 20초, 2026-10-26)', async () => {
+    await act(async () => renderApp());
+    await shoot();
+    const prepare = vi.spyOn(posterModule, 'preparePosterAssets');
+    let answer!: () => void;
+    installFetch((url) => url.includes('/generate')
+      ? new Promise<Response>((resolve) => { answer = () => resolve(okResponse(url)); })
+      : okResponse(url));
+    vi.useFakeTimers();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    expect(prepare, '누르자마자 받으면 느린 망에서 대기 영상과 망을 나눠 쓴다').not.toHaveBeenCalled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(BACKGROUND_CAP_MS); });
+    expect(prepare, '응답을 기다리는 동안 조판 받기가 시작돼야 한다 — 응답 뒤에 받으면 그만큼 포스터가 늦다').toHaveBeenCalledTimes(1);
+    expect(prepare.mock.calls[0][0]).toMatchObject({ title: getMeta('solo').title, genre: getMeta('solo').genre });
+    vi.useRealTimers();
+    await act(async () => { answer(); });
+    await waitFor(() => expect(el('resultView').hidden).toBe(false));
+  });
 
   test('생성이 실패하면 «다시 만들기»로 같은 사진을 다시 보내고, 성공하면 결과로 간다(대체 그림 없음)', async () => {
     const view = await act(async () => renderApp());

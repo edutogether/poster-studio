@@ -72,15 +72,20 @@ test("조판 받기가 도는 동안에는 다음 장면 영상 받기가 기다
   expect(idle2()).toBe(true);
 });
 
-test("다음 장면 영상은 주소마다 한 번만 받고, 망 오류로 못 받으면 다음에 다시 받는다", async () => {
-  const fetchMock = vi.fn().mockRejectedValueOnce(new TypeError("offline")).mockResolvedValue(new Response(new Uint8Array(4)));
+test("다음 장면 영상은 주소마다 한 번만 받고, 망 오류 · 서버 오류로 못 받으면 다음에 다시 받는다", async () => {
+  const fetchMock = vi.fn()
+    .mockRejectedValueOnce(new TypeError("offline"))
+    .mockResolvedValueOnce(new Response(null, { status: 503 }))
+    .mockImplementation(async () => new Response(new Uint8Array(4)));
   vi.stubGlobal("fetch", fetchMock);
+  await prefetchWaitingVideo("/studio/waiting-v3/01-aaaaaaaaaaaa.mp4");
   await prefetchWaitingVideo("/studio/waiting-v3/01-aaaaaaaaaaaa.mp4");
   await prefetchWaitingVideo("/studio/waiting-v3/01-aaaaaaaaaaaa.mp4");
   await prefetchWaitingVideo("/studio/waiting-v3/01-aaaaaaaaaaaa.mp4");
   await Promise.all([prefetchWaitingVideo("/studio/waiting-v3/02-bbbbbbbbbbbb.mp4"), prefetchWaitingVideo("/studio/waiting-v3/02-bbbbbbbbbbbb.mp4")]);
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-    "/studio/waiting-v3/01-aaaaaaaaaaaa.mp4", "/studio/waiting-v3/01-aaaaaaaaaaaa.mp4", "/studio/waiting-v3/02-bbbbbbbbbbbb.mp4",
+    "/studio/waiting-v3/01-aaaaaaaaaaaa.mp4", "/studio/waiting-v3/01-aaaaaaaaaaaa.mp4", "/studio/waiting-v3/01-aaaaaaaaaaaa.mp4",
+    "/studio/waiting-v3/02-bbbbbbbbbbbb.mp4",
   ]);
 });
 
