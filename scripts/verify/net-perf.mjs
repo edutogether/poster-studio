@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* 느린 망 첫 방문 · 재방문 재기(2026-10-24 Bumm님 «와이파이 환경에서 너무 느려서 제대로 사용하지 못할 정도», 팀장 전달) — 고치기 전과 뒤를 같은 자로 잰다.
 
-     node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>] [--replay] [--repeat] [--prewarm]
+     node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>] [--replay] [--repeat] [--prewarm] [--cert <cert.pem>]
 
    창 없는 크롬(새 프로필 = 캐시 없음)으로 망을 흉내 내고(slow4g: 지연 150ms · 내려받기 1.6Mbps, fast3g: 562ms · 1.47Mbps, wifi: 40ms · 10Mbps):
      ① 첫 방문 — 첫 그림(FCP) · 큰 그림(LCP) · 1단계가 쓸 수 있게 된 때(스플래시가 걷히고 «주인공이 될 순간 만들러 가기»가 보임) ·
@@ -15,22 +15,27 @@
         · --repeat(2026-10-26): 첫 방문 생성 뒤 같은 창(캐시 그대로)을 다시 열어 생성을 한 번 더 — 부스 노트북의 두 번째 아이
         · --prewarm(2026-10-26): 첫 방문 뒤 생성 전에, 앱 번들에 적힌 대기 영상 · 정지 그림 주소를 전부 받아 둔다(같은 망 흉내로) —
           행사 전에 노트북 캐시를 채워 둔 상태. 받은 것은 «미리 받기» 단계로 따로 센다
+        · --cert <cert.pem>(2026-10-26): serve-dist.mjs --h2의 자체 서명 인증서를 공개키 지문으로 «신뢰»한다. 이것 없이 «인증서 오류 무시»로
+          열면 크롬이 그 사이트 응답을 디스크 캐시에 넣지 않아, 재방문 · 미리 받기가 라이브(정식 인증서)와 달리 매번 망에서 다시 받는다
+          (10/26 실측: 오류 무시 — 두 번째 받기 · 영상 모두 망, 지문 신뢰 — 둘 다 디스크 캐시). 10/26 이전 측정은 이것 없이 쟀다
         생성마다: 누른 때 → 응답 완료 → 포스터가 보임, 받은 용량, 대기 영상 장면별 재생 여부(.generation-robot-video[data-active]),
         같은 파일을 망에서 두 번 이상 받은 것(영상의 구간 요청은 뺀다)
         · 대기 영상 장면별 재생 기록(2026-10-26): 영상 요소의 미디어 이벤트를 받아 장면마다 영상 시작까지 걸린 시간 · 재생 중 멈춤
           횟수(첫 playing 뒤의 waiting) · 멈춘 시간(waiting → 다음 playing, 장면이 끝나면 거기까지) · 끝까지 재생(ended)을 적는다.
-          «정상 재생» = 영상이 재생됐고 재생 중 멈춤이 0회. 같은 영상 파일을 망에서 끝까지 두 번 받은 것(영상 바이트가 파일 크기를 넘음)도 센다
+          «정상 재생» = 영상이 재생됐고 재생 중 멈춤이 0회. 멈춤은 재생이 실제로 멈추는 waiting만 센다 — stalled는 «받기가 잠시 멈춤»이라
+          버퍼가 남아 재생이 이어져도 오므로 따로 센다(stalled) 같은 영상 파일을 망에서 끝까지 두 번 받은 것(영상 바이트가 파일 크기를 넘음)도 센다
    결과: 표준 출력 표 + <결과 폴더>/net-perf.json(요청 전부: 주소 · 종류 · 받은 바이트 · 캐시 여부 · 언제). 큰 파일 위 10개를 함께 적는다.
    생성(/generate)은 부르지 않는다 — 페이지가 진짜 생성 요청을 내면 종료코드 2. 라이브 /health(읽기 전용)는 페이지가 원래 부른다. */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { X509Certificate, createHash } from 'node:crypto';
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
-const [url, outArg] = args.filter((a, i) => !a.startsWith('--') && !['--net', '--device', '--real'].includes(args[i - 1]));
-if (!url || !outArg) { console.error('사용법: node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>] [--replay] [--repeat] [--prewarm]'); process.exit(2); }
+const [url, outArg] = args.filter((a, i) => !a.startsWith('--') && !['--net', '--device', '--real', '--cert'].includes(args[i - 1]));
+if (!url || !outArg) { console.error('사용법: node scripts/verify/net-perf.mjs <주소> <결과 폴더> [--net slow4g|fast3g|wifi] [--device pc|phone] [--flow] [--real <AI 초>] [--replay] [--repeat] [--prewarm] [--cert <cert.pem>]'); process.exit(2); }
 const NETS = { slow4g: { latency: 150, down: 1.6e6, up: 750e3 }, fast3g: { latency: 562.5, down: 1.47e6, up: 675e3 }, wifi: { latency: 40, down: 10e6, up: 5e6 } };
 const netName = opt('--net', 'slow4g'); const net = NETS[netName]; if (!net) { console.error('망: ' + Object.keys(NETS).join(' · ')); process.exit(2); }
 const device = opt('--device', 'pc');
@@ -39,12 +44,15 @@ const REAL = Number(opt('--real', 0));
 const REPLAY = args.includes('--replay');
 const REPEAT = args.includes('--repeat');
 const PREWARM = args.includes('--prewarm');
+const CERT = opt('--cert', null);
 if ((REPLAY || REPEAT) && !REAL) { console.error('--replay · --repeat는 --real <AI 초>와 같이 쓴다'); process.exit(2); }
 const out = path.resolve(outArg); await fs.mkdir(out, { recursive: true });
 const delay = (ms) => new Promise((r) => globalThis.setTimeout(r, ms));
 
 const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'netperf-'));
-const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--mute-audio', '--autoplay-policy=no-user-gesture-required', '--ignore-certificate-errors',
+// 인증서: --cert면 그 공개키 지문만 «신뢰»(캐시가 라이브처럼 쓰인다), 없으면 예전처럼 «오류 무시»(캐시 안 씀 — 위 설명)
+const certFlag = CERT ? '--ignore-certificate-errors-spki-list=' + createHash('sha256').update(new X509Certificate(await fs.readFile(CERT)).publicKey.export({ type: 'spki', format: 'der' })).digest('base64') : '--ignore-certificate-errors';
+const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--mute-audio', '--autoplay-policy=no-user-gesture-required', certFlag,
   '--remote-debugging-port=0', `--user-data-dir=${dir}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
 let port;
 for (let i = 0; i < 100 && !port; i++) { try { port = (await fs.readFile(path.join(dir, 'DevToolsActivePort'), 'utf8')).split('\n')[0]; } catch { await delay(100); } }
@@ -144,18 +152,20 @@ async function realFlow(label) {
     for (const w of window.__wait) { let s = scenes[scenes.length - 1]; if (!s || s.scene !== w.scene) scenes.push(s = { scene: w.scene, start: w.t - window.__clicked, ms: 0, video: false, videoAt: null });
       s.ms += 200; if (w.video && !s.video) { s.video = true; s.videoAt = w.t - window.__clicked - s.start; } }
     // 장면마다 그 장면 영상(같은 번호)의 이벤트만 본다 — 정지 그림 «NN.webp» ↔ 영상 «NN-해시.mp4»
-    const num = (u) => ((u || '').match(/\/(\d\d)(?:-[0-9a-f]+)?\.(?:webp|mp4)/) || [])[1];
+    // 파일 이름 앞 두 글자가 번호다(NN.webp · NN-해시.mp4) — 이 줄은 페이지 안 템플릿이라 정규식 역슬래시가 사라지므로 정규식을 쓰지 않는다
+    const num = (u) => ((u || '').split('/').pop() || '').slice(0, 2);
     for (const s of scenes) {
       const from = window.__clicked + s.start, to = from + s.ms, id = num(s.scene);
       const evs = window.__media.filter((m) => m.t >= from - 100 && m.t <= to && num(m.src) === id);
-      let first = null, rebuffers = 0, stallMs = 0, since = null, ended = false;
+      let first = null, rebuffers = 0, stallMs = 0, since = null, ended = false, stalled = 0;
       for (const m of evs) {
         if (m.type === 'playing') { if (first === null) first = m.t; if (since !== null) { stallMs += m.t - since; since = null; } }
-        if ((m.type === 'waiting' || m.type === 'stalled') && first !== null && since === null && !ended) { rebuffers++; since = m.t; }
+        if (m.type === 'stalled') stalled++;
+        if (m.type === 'waiting' && first !== null && since === null && !ended) { rebuffers++; since = m.t; }
         if (m.type === 'ended') { ended = true; if (since !== null) { stallMs += m.t - since; since = null; } }
       }
       if (since !== null) stallMs += to - since;
-      Object.assign(s, { id, startMs: first === null ? null : first - from, rebuffers, stallMs: Math.round(stallMs), ended, errors: evs.filter((m) => m.type === 'error').length });
+      Object.assign(s, { id, startMs: first === null ? null : first - from, rebuffers, stallMs: Math.round(stallMs), stalled, ended, errors: evs.filter((m) => m.type === 'error').length });
     }
     return { answered: window.__answered - window.__clicked, shown: performance.now() - window.__clicked, scenes }; })()`);
   await delay(2000);
