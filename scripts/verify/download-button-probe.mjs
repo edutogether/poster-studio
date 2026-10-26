@@ -5,15 +5,15 @@
 
    dist를 127.0.0.1의 작은 서버로 열고(설치 파일 자리 /download/PosterStudio-Setup.exe는 이 서버가 1KB 가짜 파일로 답한다 — 시험 전용),
    크롬을 헤드리스로 띄워 PC 3크기(1366×768 · 1920×1080 · 2560×1440, 1배) · 세로 태블릿(1024×1366, 2배) · 휴대폰 3크기(360×780 · 390×844 · 430×932, 3배)의
-   첫 화면을 원본 해상도로 따로 찍는다(<결과 폴더>/home-<크기>.png). 바깥 주소는 하나도 나가지 않는다 — AI 서버 확인(/health)은 «정상»으로,
-   Voice Cinema 설치 파일 주소는 1KB 가짜 파일로 이 도구가 대신 답한다(실제 서버 요청 0건 · 생성 · 과금 없음).
+   첫 화면을 원본 해상도로 따로 찍는다(<결과 폴더>/home-<크기>.png). 바깥 주소는 하나도 나가지 않는다 — AI 서버 확인(/health)은 이 도구가
+   «정상»으로 대신 답하고, 그 밖의 https는 막는다(실제 서버 요청 0건 · 생성 · 과금 없음).
 
    --compare일 때 재는 것(하나라도 걸리면 종료코드 1):
      ① 전/후 첫 화면 화소 대조 — 다운로드 단추 상자 밖은 차이 0화소(단추 말고는 시각적 차이가 없어야 한다)
      ② 단추가 개인정보처리방침 링크와 같은 줄 · 바로 왼쪽(간격 14px) · 다른 요소와 안 겹침 · 화면 안 · 휴대폰은 누르는 높이 44px 이상
-     ③ 메뉴: 두 항목(«Poster Studio 설치» · «Voice Cinema 설치») · 화면 안 · 항목 높이(PC 40 · 휴대폰 44px 이상) — 열린 화면도 찍는다
+     ③ 메뉴: 항목 «Poster Studio 설치» 하나(Voice Cinema 항목 없음 — 10/27 정정) · 화면 안 · 항목 높이(PC 40 · 휴대폰 44px 이상) — 열린 화면도 찍는다
      ④ 네트워크 기록(1920×1080에서): 접속 · 새로고침 · 2단계로 갔다 돌아오기 · 메뉴 열고 닫기까지 설치 파일 요청 0건,
-        «Poster Studio 설치»를 누르면 그때 첫 요청 · 내려받기 시작, «Voice Cinema 설치»도 같다
+        «Poster Studio 설치»를 누르면 그때 첫 요청 · 내려받기 시작
      ⑤ 첫 화면에만 있다(2단계에는 없다) */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -73,7 +73,7 @@ ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.id &
 const send = (method, params = {}) => new Promise((r) => { const i = ++id; wait.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
 const evaluate = async (expression) => (await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })).result?.result?.value;
 
-// 기록: 요청 · 내려받기 시작. 바깥 주소는 이 도구가 대신 답한다(AI 서버 확인은 «정상», Voice Cinema 설치 파일은 가짜 1KB).
+// 기록: 요청 · 내려받기 시작. 바깥 주소는 이 도구가 받는다 — AI 서버 확인은 «정상»으로 대신 답하고, 나머지는 막되 기록한다(바깥 설치 파일 요청도 센다).
 const log = { requests: [], downloads: [], outside: [] };
 handlers.push(async (m) => {
   if (m.method === 'Network.requestWillBeSent') log.requests.push(m.params.request.url);
@@ -84,8 +84,6 @@ handlers.push(async (m) => {
     if (/\/health$/.test(url)) {
       const body = Buffer.from(JSON.stringify({ ok: true, openaiReachable: true })).toString('base64');
       await send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: 200, responseHeaders: [{ name: 'content-type', value: 'application/json' }, { name: 'access-control-allow-origin', value: '*' }], body });
-    } else if (SETUP.test(url)) {
-      await send('Fetch.fulfillRequest', { requestId: m.params.requestId, responseCode: 200, responseHeaders: [{ name: 'content-type', value: 'application/octet-stream' }, { name: 'content-disposition', value: 'attachment; filename="VoiceCinema-Setup.exe"' }], body: fakeExe.toString('base64') });
     } else {
       await send('Fetch.failRequest', { requestId: m.params.requestId, errorReason: 'BlockedByClient' });
     }
@@ -162,7 +160,7 @@ for (const s of SIZES) {
   const menu = await evaluate(`(() => { const l = document.querySelector('.download-menu-list'); if (!l) return null; const r = l.getBoundingClientRect(); const items = [...l.querySelectorAll('a')].map((a) => ({ t: a.textContent.trim(), h: a.getBoundingClientRect().height, href: a.getAttribute('href') })); return { x: r.x, r: r.right, b: r.bottom, items, expanded: document.querySelector('.download-link').getAttribute('aria-expanded') }; })()`);
   report.sizes[s.name].menu = menu;
   const minH = s.mobile ? 44 : 40;
-  check(`${s.name}: 메뉴 두 항목 · 화면 안 · 항목 높이 ${minH}px 이상`, menu && menu.items.map((i) => i.t).join('|') === 'Poster Studio 설치|Voice Cinema 설치' && menu.x >= 0 && menu.r <= s.w && menu.b <= s.h && menu.items.every((i) => i.h >= minH) && menu.expanded === 'true', menu);
+  check(`${s.name}: 메뉴 «Poster Studio 설치» 하나 · 화면 안 · 항목 높이 ${minH}px 이상`, menu && menu.items.map((i) => i.t).join('|') === 'Poster Studio 설치' &&menu.x >= 0 && menu.r <= s.w && menu.b <= s.h && menu.items.every((i) => i.h >= minH) && menu.expanded === 'true', menu);
   await shot(`menu-${s.name}.png`);
   await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
   await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
@@ -224,12 +222,8 @@ if (!before) {
   // 같은 주소 내려받기는 브라우저가 맡아 페이지 네트워크 기록에는 안 남는다 — 서버가 받은 요청과 «내려받기 시작» 알림으로 잰다
   check('«Poster Studio 설치»를 누르면 그때 요청 · 내려받기가 시작된다', afterPs.server === 1 && afterPs.downloads >= 1, afterPs);
   check('누른 뒤 메뉴가 닫힌다', await evaluate(`!document.querySelector('.download-menu-list')`));
-  await press('.download-link'); await sleep(300);
-  await press('.download-menu-list a[href$="VoiceCinema-Setup.exe"]'); await sleep(2000);
-  const afterVc = count(); steps.push(['«Voice Cinema 설치» 누름', afterVc]);
-  check('«Voice Cinema 설치»를 누르면 그때 요청이 시작된다(바깥 주소 — 이 도구가 가짜로 답함)', afterVc.outsideSetup === 1 && afterVc.downloads >= 2, afterVc);
   report.network = { steps, requests: log.requests.filter((u) => SETUP.test(u)), downloads: log.downloads, outside: log.outside };
-  check('바깥 주소 요청은 AI 서버 확인 · Voice Cinema 가짜 파일뿐(실제로 나간 것 0)', log.outside.every((u) => /\/health$/.test(u) || SETUP.test(u)), log.outside);
+  check('바깥 주소 요청은 AI 서버 확인뿐(이 도구가 대신 답함 — 실제로 나간 것 0)', log.outside.every((u) => /\/health$/.test(u)), log.outside);
 }
 
 ws.close(); chrome.kill(); server.close();

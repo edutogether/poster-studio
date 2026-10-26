@@ -57,7 +57,7 @@ const renderApp = () => render(<PosterStudio />, { container: document.querySele
 const setupRequests = () => net.calls.filter((u) => /Setup\.exe/i.test(u));
 
 describe('웹 첫 화면 «↓ 다운로드»', () => {
-  test('1단계에만 있고, 메뉴에 두 설치 파일 링크가 있다 — 열고 닫는 동안 요청 0건', async () => {
+  test('1단계에만 있고, 메뉴에 «Poster Studio 설치» 하나만 있다 — 열고 닫는 동안 요청 0건', async () => {
     await act(async () => { renderApp(); });
     const link = document.querySelector('.download-link') as HTMLButtonElement;
     expect(link.textContent).toBe('다운로드');
@@ -65,9 +65,9 @@ describe('웹 첫 화면 «↓ 다운로드»', () => {
     expect(document.querySelector('.download-menu-list')).toBeNull();   // 누르기 전에는 링크도 문서에 없다
     await act(async () => { link.click(); });
     const items = [...document.querySelectorAll<HTMLAnchorElement>('.download-menu-list a')];
-    expect(items.map((a) => a.textContent)).toEqual(['Poster Studio 설치', 'Voice Cinema 설치']);
+    expect(items.map((a) => a.textContent)).toEqual(['Poster Studio 설치']);   // Voice Cinema 항목은 두지 않는다(10/27 정정)
     expect(items.map((a) => a.getAttribute('href'))).toEqual(DOWNLOADS.map((d) => d.href));
-    expect(items.map((a) => a.getAttribute('download'))).toEqual(['PosterStudio-Setup.exe', 'VoiceCinema-Setup.exe']);
+    expect(items.map((a) => a.getAttribute('download'))).toEqual(['PosterStudio-Setup.exe']);
     expect(link.getAttribute('aria-expanded')).toBe('true');
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(document.querySelector('.download-menu-list')).toBeNull();
