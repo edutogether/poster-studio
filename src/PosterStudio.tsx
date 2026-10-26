@@ -16,6 +16,7 @@ import { buildPosters, preparePosterAssets } from "./poster.js";
 import { boothCodeHeaders, saveBoothCode, verifyBoothCode } from "./boothCode.js";
 import { classifyGenerateFailure, type GenerateFailure } from "./generateFailure.js";
 import StudioView from "./studio/StudioView.js";
+import { afterWaitingVideos } from "./studio/waitingNetwork.js";
 import { SCENE_MS, type SceneEnd } from "./studio/GenerationWait.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
@@ -430,8 +431,9 @@ export default function PosterStudio() {
     form.append("genre", meta.genre);
     form.append("mode", meta.mode);
 
-    // 조판 글꼴·로고는 AI를 기다리는 동안 받아 둔다 — 응답 뒤에 받기 시작하면 느린 와이파이에서 그만큼 더 기다린다(2026-10-24)
-    void preparePosterAssets(meta);
+    // 조판 글꼴·로고는 AI를 기다리는 동안 받아 둔다 — 응답 뒤에 받기 시작하면 느린 와이파이에서 그만큼 더 기다린다(2026-10-24).
+    // 다만 대기 화면의 지금 · 다음 장면 영상을 먼저 받은 뒤에 받는다(늦어도 10초 뒤) — 함께 받으면 느린 망에서 영상이 멈췄다(2026-10-26)
+    void afterWaitingVideos().then(() => preparePosterAssets(meta));
 
     const stopElapsed = startElapsed();
     const ctrl = new AbortController(); // 요청 시간 제한(부스 무한 멈춤 방지)

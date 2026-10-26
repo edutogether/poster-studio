@@ -964,7 +964,10 @@ describe('샘플 모드',()=>{
     expect(document.querySelectorAll('.style-option')).toHaveLength(TEMPLATES.length);
     expect(document.querySelector('.completion-notice strong')!.textContent).toBe('완성 !');
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
-    expect(f.calls).toHaveLength(0);   // /health도 /generate도 없다
+    // 서버(함수)로 가는 요청은 0건 — /health도 /generate도 없다. 남는 것은 다음 장면 대기 영상을 같은 주소에서 미리 받는 GET뿐이고
+    // 본문이 없다(2026-10-26 waitingNetwork.ts — 브라우저가 <video>로 받던 것을 한 장면 먼저 받는 것)
+    expect(f.calls.filter(url=>!/^\/studio\/waiting-v\d+\/\d\d-[0-9a-f]{12}\.mp4$/.test(url))).toEqual([]);
+    expect(f.bodies).toHaveLength(0);
     expect(document.body.textContent).not.toContain('OpenAI');
   });
   test('스위치가 꺼져 있으면(0) 촬영 단추와 카메라 켜기를 그대로 둔다',async()=>{

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { waitingSets } from "./waitingSets.js";
 import { approvedWaitingVideo } from "./waitingVideo.js";
+import { prefetchWaitingVideo, waitingVideosReady } from "./waitingNetwork.js";
 import WaitingArtwork from "./WaitingArtwork.js";
 import "./generation-wait.css";
 import "./waiting-art.css";
@@ -86,11 +87,21 @@ export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextR
     next.src = scenes[(sceneIndex + 1) % scenes.length].image;
   }, [sceneIndex, scenes]);
 
+  // 망을 쓰는 차례(waitingNetwork.ts — 2026-10-26): 지금 장면 영상을 다 받은 뒤에 다음 장면 영상을 받고, 그것까지 받으면
+  // 생성 단추가 걸어 둔 조판 받기를 연다. 느린 망에서 지금 장면 영상이 다른 받기와 망을 나눠 멈추지 않게.
+  // 정지 그림은 장면이 바뀌자마자 보여야 하므로 위에서 따로(예전처럼 장면 시작에) 받는다.
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const onSceneLoaded = () => {
+    const video = reduced ? undefined : approvedWaitingVideo(scenes[(sceneIndex + 1) % scenes.length].id);
+    void (video ? prefetchWaitingVideo(video) : Promise.resolve()).then(() => { if (alive.current) waitingVideosReady(); });
+  };
+
   return (
     <dialog ref={dialog} id="spinner" className="generation-wait spinner" data-paused={still} data-scene={sceneIndex} data-set-id={scene.id} aria-labelledby="generationTitle" onCancel={event => event.preventDefault()}>
       <div className="generation-content">
         <div className="generation-film waiting-art-frame" data-art={scene.id}>
-          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} paused={still} reduced={reduced} />
+          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} paused={still} reduced={reduced} onLoaded={onSceneLoaded} />
         </div>
         <h1 ref={heading} tabIndex={-1} id="generationTitle" className="generation-copy-stack">
           {scenes.map(({ id, title }, index) => <span key={id} className="generation-copy" data-active={index === sceneIndex} aria-hidden={index !== sceneIndex}>{title}</span>)}
