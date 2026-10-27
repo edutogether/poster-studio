@@ -1,0 +1,36 @@
+﻿# 설치 창이 뜨면 그 창을 «맨 위»로 올리고(키보드 초점은 빼앗지 않음 — SWP_NOACTIVATE) 그 창 자리의 «실제 화면»(사람 눈에 보이는 합성 화면 — ffmpeg gdigrab)을
+# 초당 30장으로 녹화한다. 맨 위로 올리지 않으면 다른 창이 그 자리를 가려 설치 창이 안 찍힌다(10/27 1차). 관리자 권한 설치 창이라 이 스크립트도 관리자 권한으로 돌린다.
+#   사용: Start-Process powershell -Verb RunAs -ArgumentList '-File scripts/verify/installer-screen-record.ps1 -Out <폴더> -Seconds 60' → 그다음 desktop-installer-probe.ps1로 설치.
+#   녹화는 설치 창 자리만 찍는다. 창이 닫힌 뒤에는 그 자리에 다른 창이 찍히므로, 남길 때는 설치 완료 화면까지만 잘라 둔다.
+param([Parameter(Mandatory = $true)][string]$Out, [int]$Seconds = 60)
+$ErrorActionPreference = 'Stop'
+New-Item -ItemType Directory -Force $Out | Out-Null
+Add-Type @"
+using System; using System.Runtime.InteropServices; using System.Text;
+public static class FW {
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
+  public struct RECT { public int L, T, R, B; }
+  public static IntPtr Find(string title) { IntPtr f = IntPtr.Zero; EnumWindows((h, l) => { var s = new StringBuilder(256); GetWindowText(h, s, 256); RECT r; GetWindowRect(h, out r); if (IsWindowVisible(h) && s.ToString().StartsWith(title) && r.R - r.L > 300) { f = h; return false; } return true; }, IntPtr.Zero); return f; }
+}
+"@
+[FW]::SetProcessDPIAware() | Out-Null
+$h = [IntPtr]::Zero
+for ($i = 0; $i -lt 600 -and $h -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 100; $h = [FW]::Find('Poster Studio 설치') }
+if ($h -eq [IntPtr]::Zero) { 'no window' | Set-Content "$Out\watch.txt"; exit 1 }
+# HWND_TOPMOST(-1) · NOSIZE(1)|NOMOVE(2)|NOACTIVATE(0x10)|SHOWWINDOW(0x40)
+$topmost = [FW]::SetWindowPos($h, [IntPtr](-1), 0, 0, 0, 0, 0x53)
+$r = New-Object FW+RECT; [FW]::GetWindowRect($h, [ref]$r) | Out-Null
+$w = $r.R - $r.L; $hh = $r.B - $r.T
+if ($w % 2) { $w-- }; if ($hh % 2) { $hh-- }
+$started = Get-Date
+"rect $($r.L),$($r.T) ${w}x${hh} topmost $topmost start $($started.ToString('HH:mm:ss.fff'))" | Set-Content "$Out\watch.txt" -Encoding UTF8
+& ffmpeg -y -loglevel error -f gdigrab -framerate 30 -offset_x $r.L -offset_y $r.T -video_size "${w}x${hh}" -i desktop -t $Seconds -c:v ffv1 "$Out\screen.mkv"
+"ffmpeg exit $LASTEXITCODE" | Add-Content "$Out\watch.txt" -Encoding UTF8
+# 녹화가 끝나면 맨 위를 푼다(창이 남아 있으면 — HWND_NOTOPMOST(-2), NOSIZE|NOMOVE|NOACTIVATE)
+[FW]::SetWindowPos($h, [IntPtr](-2), 0, 0, 0, 0, 0x13) | Out-Null

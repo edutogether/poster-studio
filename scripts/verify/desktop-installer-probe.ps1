@@ -24,7 +24,9 @@ param(
   [ValidateSet('startmenu', 'settings')][string]$Via = 'startmenu',
   # -Replace: 같은 범위에 예전 판이 깔려 있는 PC에서 새 판으로 덮어쓰는 시험(10/27 — Bumm님이 «모든 사용자»로 옛 판을 깔아 두신 PC).
   #   설치 전 검사가 «설치가 없다» 대신 «예전 판이 있다»가 되고, 설치 뒤 앱 실행 파일이 새로 쓰였는지 본다.
-  [switch]$Replace
+  [switch]$Replace,
+  # -NoShots: 창을 하나도 찍지 않는다(PrintWindow 0회). 찍는 동작이 화면에 깜빡임을 만드는지 가를 때 쓴다(10/27 — 화면 녹화와 함께).
+  [switch]$NoShots
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force $Out | Out-Null
@@ -52,7 +54,9 @@ public static class Win {
   public static string Cls(IntPtr h) { var s = new StringBuilder(256); GetClassName(h, s, 256); return s.ToString(); }
   // 편집 칸 글자는 다른 프로세스면 GetWindowText로 안 읽혀 WM_GETTEXT로 읽는다
   public static string EditText(IntPtr h) { var s = new StringBuilder(1024); SendMessage(h, 0x000D, (IntPtr)1024, s); return s.ToString(); }
+  public static bool Off;
   public static void Shot(IntPtr h, string file) {
+    if (Off) return;
     RECT r; GetWindowRect(h, out r);
     if (r.R - r.L <= 0 || r.B - r.T <= 0) return; // 창이 잠깐 숨은 순간(관리자 권한으로 다시 뜰 때 등)
     using (var bmp = new Bitmap(r.R - r.L, r.B - r.T)) {
@@ -75,9 +79,11 @@ public static class Win {
   // 화면이 다 그려진 뒤에 찍는다 — 설치 창이 한가해진 뒤 0.3초 간격 두 장이 같아질 때까지(최대 약 8초).
   //   10/27 실측: 새로 설치할 때 첫 화면 · 위치 화면을 글자가 그려지기 전에 찍었다(빈 화면 · 설명 글 없는 위치 화면 — 단추 글은 읽혀 시험은 통과).
   //   강제로 다시 그리게(RedrawWindow) 하면 그리는 도중을 찍어 더 나빴다(쓰지 않는다).
-  //   ⚠ 이것도 보장은 아니다 — 그려지기 전 빈 화면이 0.3초 넘게 그대로면 «같음»으로 찍힌다(10/27 4차: 범위 · 완료 화면). 시험 판정은 창의 글을 읽어서 하므로
-  //   영향이 없지만, 보고 · 설명서에 쓰는 그림은 눈으로 보고 다 그려진 것을 고른다.
+  //   ⚠ 이것도 보장은 아니다 — 빈 화면이 0.3초 넘게 그대로면 «같음»으로 찍힌다(10/27 4차: 범위 · 완료 화면). 빈 화면은 PrintWindow로 찍는 동작이 만든다:
+  //   찍으며 설치하면 실제 화면에도 33ms 빈 화면이 10번, 찍지 않으면(-NoShots) 진행 중 0번이었다(화면 녹화 — installer-screen-record.ps1 · installer-blank-scan.mjs).
+  //   시험 판정은 창의 글을 읽어서 하므로 영향이 없고, 보고 · 설명서에 쓰는 그림은 눈으로 보고 다 그려진 것을 고른다.
   public static bool ShotStable(IntPtr h, string file) {
+    if (Off) return false;
     Idle(h); System.Threading.Thread.Sleep(300);
     byte[] prev = Grab(h);
     for (int i = 0; i < 13; i++) {
@@ -126,6 +132,7 @@ public static class Win {
 }
 "@
 [Win]::SetProcessDPIAware() | Out-Null
+[Win]::Off = [bool]$NoShots
 $BM_CLICK = 0x00F5
 $tag = "$Step-$Mode$(if ($Step -eq 'uninstall') { "-$Via" })"
 $report = [ordered]@{ step = $Step; mode = $Mode; via = $Via; elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator); startedAt = (Get-Date).ToString('o'); pages = @(); checks = @() }
