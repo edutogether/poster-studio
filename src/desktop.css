@@ -46,6 +46,54 @@ body[data-desktop] .camHint.camera-example-caption #loadPhotoBtn {
   }
 }
 
+/* 2단계 «오늘 촬영할 영화» — 창 높이 구간별 배치(10/27 Bumm님 «1366 768 / 1536 864는 왼쪽 포스터 · 오른쪽 패드에서 쓰던 세로형 티켓으로
+   위 «나답게»가 바짝 붙은 것에 여유를 · 3840 2160은 포스터와 세로형 티켓을 위아래로», 팀장 전달). 세로형 티켓은 새로 그리지 않고
+   태블릿 세로 배치(studio.css «시안 10/24 Bumm님»)의 승인된 규칙을 그대로 옮긴다 — test/desktop-and-download.test.tsx가 두 곳이 같은지 본다.
+   - 낮은 창(폭 1100 이상 · 높이 680~869 — 1366×768 화면에서 최대화한 앱 1366×697, 1536×864 → 1536×793, 1440×900 → 1440×829 등): 포스터 왼쪽 · 세로 티켓
+     오른쪽(태블릿과 같은 배치). 가로 티켓 한 줄과 그 위 간격이 빠진 높이만큼 «나답게 …» 제목 · 안내 1 · 2 · 3 사이를 넓힌다.
+     포스터 · 티켓 칸은 남는 높이를 채우되 반씩 나눈 폭의 2:3 높이를 넘지 않는다. 높이가 모자라면 포스터 · 티켓이 둘 다 2:3 그대로 줄고 가운데로 모인다
+     (폭만으로 높이를 정하면 1366×697 · 1280×640 등에서 단추가 화면 밖으로 밀렸고, 티켓만 넓게 두면 낮아진 티켓에서 제목이 잘렸다 — 10/27 측정).
+     높이 680 미만(1280×649 등)은 티켓 폭이 120px 아래로 줄어 제목이 잘리므로 위 규칙(가로 티켓) 그대로 둔다.
+   - 아주 높은 창(폭 1100 이상 · 높이 1760 이상 — 3840×2160 등): 포스터 위 · 세로 티켓 아래, 티켓도 포스터와 같은 세로 2:3이라 남는 높이를 채운다.
+   - 그 사이(높이 870~1759 — 1920×1080 · 2560×1369 · 2560×1440 · 2560×1600 등)는 위 규칙(가로 티켓) 그대로다.
+   경계 869 / 870은 두 배치의 포스터가 같아지는 높이(1536×864: 258 대 259)의 바로 위다 — 그보다 높으면 세로로 쌓은 쪽 포스터가 더 크다(1920×879: 273 대 259). 1760은 포스터 · 세로 티켓 두 칸(각 칸 폭 × 1.5)이 줄지 않고 들어가는 높이다(1700에서는 포스터가 30px 줄었다)
+   (scripts/verify/desktop-layout-sweep.mjs로 창 크기를 넓게 훑어 확인). */
+@media (min-width: 1100px) and (min-height: 680px) and (max-height: 869px), (min-width: 1100px) and (min-height: 1760px) {
+  body[data-desktop] #cameraWorkspace .camera-ticket { flex: 1 1 0; width: auto; min-height: 0; flex-direction: column; container-type: inline-size; border-top: 4px solid #f03429; border-radius: 10px;
+    mask: radial-gradient(circle at 0 calc(100% - var(--stub)), transparent 8px, #000 8.5px) left / 51% 100% no-repeat,
+          radial-gradient(circle at 100% calc(100% - var(--stub)), transparent 8px, #000 8.5px) right / 51% 100% no-repeat; --stub: 25%; }
+  body[data-desktop] #cameraWorkspace .camera-ticket > div:first-child { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; min-height: 0; padding: 7cqi 8cqi 5cqi; }
+  body[data-desktop] #cameraWorkspace .camera-ticket .ticket-label { font-size: clamp(10px, 6.4cqi, 13px); }
+  body[data-desktop] #cameraWorkspace .camera-ticket strong { font-size: clamp(17px, 11.5cqi, 26px); line-height: 1.2; margin: 1.5cqi 0; }
+  body[data-desktop] #cameraWorkspace .camera-ticket-name { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: clamp(10px, 6.4cqi, 13px); }
+  /* 단체(10/24 Bumm님 시안2 답 «단체일 때만 — 단체 이름 한 줄, 출연진 한 줄(넘치면 «…»)»): 구분 «|»는 빼고 두 줄로 */
+  body[data-desktop] #cameraWorkspace .camera-ticket[data-mode="group"] .camera-ticket-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body[data-desktop] #cameraWorkspace .camera-ticket[data-mode="group"] .ticket-sep { display: none; }
+  body[data-desktop] #cameraWorkspace .camera-ticket[data-mode="group"] .ticket-cast { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  body[data-desktop] #cameraWorkspace .camera-ticket .ticket-info { display: grid; grid-template-columns: 1fr 1fr; gap: 3.5cqi 4cqi; margin: 4cqi 0 0; padding-top: 4cqi; border-top: 1px solid #ececec; }
+  body[data-desktop] #cameraWorkspace .camera-ticket .ticket-info dt { font-size: clamp(9px, 5.6cqi, 12px); color: #8c8c8c; font-weight: 500; }
+  body[data-desktop] #cameraWorkspace .camera-ticket .ticket-info dd { margin: 0.5cqi 0 0; font-size: clamp(11px, 7.6cqi, 16px); font-weight: 800; color: #191919; white-space: nowrap; letter-spacing: -0.3px; }
+  body[data-desktop] #cameraWorkspace .camera-ticket .ticket-info .ticket-date { color: #e72a21; }
+  body[data-desktop] #cameraWorkspace .camera-ticket .ticket-admit { display: none; }
+  body[data-desktop] #cameraWorkspace .camera-ticket .ticket-stub { display: flex; flex: 0 0 var(--stub); flex-direction: column; justify-content: center; gap: 2.5cqi; padding: 0 8cqi; border-top: 1.5px dashed #c4c4c4; }
+  body[data-desktop] #cameraWorkspace .camera-ticket .ticket-barcode { display: block; height: 11cqi; background: repeating-linear-gradient(90deg, #1c1c1c 0 2px, transparent 2px 4px, #1c1c1c 4px 5px, transparent 5px 8px, #1c1c1c 8px 11px, transparent 11px 12px, #1c1c1c 12px 13px, transparent 13px 16px); }
+  body[data-desktop] #cameraWorkspace .camera-ticket .ticket-stub small { font-size: clamp(8px, 4.6cqi, 10px); letter-spacing: 0.08em; color: #6b6b6b; font-weight: 700; text-align: center; }
+}
+@media (min-width: 1100px) and (min-height: 680px) and (max-height: 869px) {
+  body[data-desktop] #cameraWorkspace .camera-guide { container-type: inline-size; }
+  body[data-desktop] #cameraWorkspace .camera-film-card { flex: 1 1 0; flex-direction: row; justify-content: center; gap: 16px; align-items: stretch; min-height: 140px; max-height: calc((100cqw - 16px) / 2 * 1.5); margin-bottom: auto; }
+  body[data-desktop] #cameraWorkspace .camera-film-scene { flex: 0 0 auto; width: auto; height: 100%; min-height: 0; max-height: none; aspect-ratio: 2 / 3; justify-content: stretch; contain: none; }
+  body[data-desktop] #cameraWorkspace .camera-film-poster { width: 100%; height: 100%; }
+  body[data-desktop] #cameraWorkspace .camera-film-poster > img { width: 100%; height: 100%; object-fit: cover; }
+  body[data-desktop] #cameraWorkspace .camera-ticket { flex: 0 0 auto; width: auto; height: 100%; aspect-ratio: 2 / 3; }
+  body[data-desktop] #cameraWorkspace .camera-film-heading { margin-top: auto; }
+  body[data-desktop] #cameraWorkspace .page-heading { margin-top: 14px; margin-bottom: 22px; }
+  body[data-desktop] #cameraView .camera-tips { gap: 16px; margin-bottom: 12px; }
+}
+@media (min-width: 1100px) and (min-height: 1760px) {
+  body[data-desktop] #cameraWorkspace .camera-ticket { flex: none; aspect-ratio: 2 / 3; }
+}
+
 /* 3단계 «PC에 저장» — «이전»과 같은 회색 단추, 글자가 길어 줄바꿈 없이 */
 body[data-desktop] #resultView .result-actions #desktopSaveBtn {
   flex: 0 0 auto;

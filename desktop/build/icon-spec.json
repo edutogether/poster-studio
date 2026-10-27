@@ -1,5 +1,7 @@
 {
-  "source": "_shared/favicons/inky-camera-512.png",
+  "source": "public/studio/clapperboard-apple.png",
+  "sourceSize": 160,
+  "resample": "lanczos3 (alpha premultiplied)",
   "sizes": [
     16,
     20,
@@ -11,130 +13,6 @@
     128,
     256
   ],
-  "badge": {
-    "text": "PS",
-    "fill": "rgb(18, 18, 18)",
-    "ink": "#ffffff",
-    "font": "Pretendard ExtraBold",
-    "sizes": {
-      "16": [
-        11,
-        7,
-        1,
-        "pixel5"
-      ],
-      "20": [
-        11,
-        7,
-        1,
-        "pixel5"
-      ],
-      "24": [
-        14,
-        9,
-        2,
-        "pixel7"
-      ],
-      "32": [
-        17,
-        11,
-        2,
-        "pixel9"
-      ],
-      "40": [
-        20,
-        13,
-        3,
-        8
-      ],
-      "48": [
-        23,
-        15,
-        3,
-        9
-      ],
-      "64": [
-        30,
-        19,
-        4,
-        11
-      ],
-      "128": [
-        46,
-        29,
-        7,
-        17
-      ],
-      "256": [
-        92,
-        58,
-        13,
-        33
-      ]
-    }
-  },
-  "glyphs": {
-    "pixel5": {
-      "P": [
-        "XXX.",
-        "X..X",
-        "XXX.",
-        "X...",
-        "X..."
-      ],
-      "S": [
-        ".XXX",
-        "X...",
-        ".XX.",
-        "...X",
-        "XXX."
-      ]
-    },
-    "pixel7": {
-      "P": [
-        "XXXX.",
-        "XX.XX",
-        "XX.XX",
-        "XXXX.",
-        "XX...",
-        "XX...",
-        "XX..."
-      ],
-      "S": [
-        ".XXXX",
-        "XX...",
-        "XX...",
-        ".XXX.",
-        "...XX",
-        "...XX",
-        "XXXX."
-      ]
-    },
-    "pixel9": {
-      "P": [
-        "XXXXX.",
-        "XXXXXX",
-        "XX..XX",
-        "XX..XX",
-        "XXXXXX",
-        "XXXXX.",
-        "XX....",
-        "XX....",
-        "XX...."
-      ],
-      "S": [
-        ".XXXXX",
-        "XXXXXX",
-        "XX....",
-        "XXXXX.",
-        ".XXXXX",
-        "....XX",
-        "....XX",
-        "XXXXXX",
-        "XXXXX."
-      ]
-    }
-  },
   "installerArt": {
     "scales": [
       100,

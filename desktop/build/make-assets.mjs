@@ -1,21 +1,19 @@
 /* 설치판 아이콘 · 설치 화면 그림 만들기(2026-10-27). 저장소 루트에서:  node desktop/build/make-assets.mjs [미리보기 폴더]
 
    만드는 것(desktop/build/ — 커밋한다, electron-builder가 읽는다):
-     icon.ico                아이콘(16 · 20 · 24 · 32 · 40 · 48 · 64 · 128 · 256) — InKY 로고 + 오른쪽 아래 «PS».
+     icon.ico                아이콘(16 · 20 · 24 · 32 · 40 · 48 · 64 · 128 · 256) — Poster Studio 슬레이트.
                              앱 실행 파일 · 바로가기 · 작업표시줄 · 앱 창 · «설치된 앱» 목록, 그리고 설치 파일 · 설치 창 · 제거 프로그램에 쓴다.
-     installer-art/header-<배율>.bmp   설치 화면 머리 로고(로고 + «PS») — 배율 100~300%마다 칸 크기(100%에서 175×53) 그대로
+     installer-art/header-<배율>.bmp   설치 화면 머리 로고(슬레이트) — 배율 100~300%마다 칸 크기(100%에서 175×53) 그대로
      installer-art/finish-<배율>.bmp   설치 완료 화면 왼쪽 그림(영화관 + 제목 글귀) — 배율마다 칸 크기(100%에서 191×290) 그대로
      installerHeader.bmp · installerSidebar.bmp   위 두 그림의 100% 판(electron-builder 설정의 기본 그림). 설치기는 칸에 맞는 판으로 바꾼다(installer.nsh)
-     uninstallerSidebar.bmp  제거 화면 왼쪽 그림(191×290) — 로고 + «PS» · 앱 이름
-     icon-spec.json          배지 · 설치 화면 그림 수치
+     uninstallerSidebar.bmp  제거 화면 왼쪽 그림(191×290) — 슬레이트 · 앱 이름
+     icon-spec.json          원본 · 크기 · 설치 화면 그림 수치
 
-   규칙(2026-10-27 Bumm님, 팀장 전달):
-   - 노란 InKY 로고 원본(_shared/favicons/inky-camera-512.png를 옮긴 desktop/build/inky-camera-512.png)을 다시 그리거나 색을 바꾸지 않고 그대로 줄여 깐다.
-   - 오른쪽 아래에 모서리 둥근 검은 이름표와 흰 «PS»만 더한다. Voice Cinema 시안과 같은 모양 · 위치 · 비율이다.
-     크기는 그 시안보다 작게(약 0.8배 — «너무 커서 화질 떨어지는 게 보인다»)다.
-   - «PS»는 설치 파일 아이콘 · 설치 화면 로고에도 넣는다(10/27 오전 Bumm님이 설치해 보고 기준을 바꿈 — 처음엔 앱 아이콘에만 넣었다).
-   - 크기마다 따로 그린다(큰 그림을 줄이지 않는다). 16~32px는 글꼴을 줄이면 «P8»처럼 뭉개져, 화소 하나하나를 정한 글자를 찍는다
-     (Voice Cinema 시안의 PIXEL_GLYPHS와 같은 모양). 40px 이상은 Pretendard ExtraBold로 쓴다. */
+   규칙(2026-10-27 Bumm님 «포스터 스튜디오 원래 아이콘 있잖아 ? 그 슬레이트 하자», 팀장 전달):
+   - 원본은 웹이 쓰는 Poster Studio 슬레이트 public/studio/clapperboard-apple.png(160×160 투명 PNG)다. 다시 그리거나 색을 바꾸지 않는다.
+   - InKY 로고와 «PS» 이름표는 넣지 않는다 — 슬레이트만으로 앱이 구분된다(그 전 판은 InKY 로고 + «PS»였다).
+   - 크기마다 원본에서 따로 다시 표본을 뜬다(Lanczos3, 알파를 곱한 값으로 — 투명한 가장자리에 검은 테가 끼지 않게). 16~128은 줄이고,
+     원본보다 큰 256만 같은 보간으로 키운다(원본이 160이라 확대가 불가피). 여백 · 비율은 원본 정사각 그대로다. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,104 +25,44 @@ const preview = process.argv[2];
 GlobalFonts.registerFromPath(path.join(ROOT, 'public/fonts/Pretendard-Black.woff2'), 'Pretendard Black');
 GlobalFonts.registerFromPath(path.join(ROOT, 'public/fonts/Pretendard-ExtraBold.woff2'), 'Pretendard ExtraBold');
 GlobalFonts.registerFromPath(path.join(ROOT, 'public/fonts/Pretendard-Bold.woff2'), 'Pretendard Bold');
-const logo = await loadImage(path.join(HERE, 'inky-camera-512.png'));
+const SLATE_SRC = 'public/studio/clapperboard-apple.png';
+const slate = await loadImage(path.join(ROOT, SLATE_SRC));
 
-export const BADGE = {
-  text: 'PS',
-  fill: 'rgb(18, 18, 18)', // 거의 검정 — Voice Cinema 시안과 같은 값
-  ink: '#ffffff',
-  font: 'Pretendard ExtraBold',
-  // 크기 → [이름표 너비, 높이, 모서리 반지름, 글자]. 이름표는 오른쪽 아래 모서리에 붙는다(x = 크기 − 너비, y = 크기 − 높이).
-  // 글자가 'pixel5' 등이면 화소 글자, 숫자면 Pretendard ExtraBold의 대문자 높이(px). 너비 ÷ 높이 ≈ 1.6, 대문자 ÷ 높이 ≈ 0.57(시안과 같음).
-  // Voice Cinema 시안(괄호)보다 작게: 16 (12×7) · 20 (14×9) · 24 (16×11) · 32 (20×13) · 40 (24×16) · 48 (28×18) · 64 (36×22) · 128 (56×35) · 256 (112×70).
-  // 16 · 20px의 11×7은 화소 글자 «PS»(4 + 1 + 4 = 9칸)에 좌우 1칸 · 위아래 1칸만 둔 가장 작은 이름표다.
-  sizes: {
-    16: [11, 7, 1, 'pixel5'],
-    20: [11, 7, 1, 'pixel5'],
-    24: [14, 9, 2, 'pixel7'],
-    32: [17, 11, 2, 'pixel9'],
-    40: [20, 13, 3, 8],
-    48: [23, 15, 3, 9],
-    64: [30, 19, 4, 11],
-    128: [46, 29, 7, 17],
-    256: [92, 58, 13, 33],
-  },
-};
-// Voice Cinema 시안(desktop/tools/make-icons.py PIXEL_GLYPHS)과 같은 화소 글자. X = 칠함, 글자 사이 1칸.
-const GLYPHS = {
-  pixel5: {
-    P: ['XXX.', 'X..X', 'XXX.', 'X...', 'X...'],
-    S: ['.XXX', 'X...', '.XX.', '...X', 'XXX.'],
-  },
-  pixel7: {
-    P: ['XXXX.', 'XX.XX', 'XX.XX', 'XXXX.', 'XX...', 'XX...', 'XX...'],
-    S: ['.XXXX', 'XX...', 'XX...', '.XXX.', '...XX', '...XX', 'XXXX.'],
-  },
-  pixel9: {
-    P: ['XXXXX.', 'XXXXXX', 'XX..XX', 'XX..XX', 'XXXXXX', 'XXXXX.', 'XX....', 'XX....', 'XX....'],
-    S: ['.XXXXX', 'XXXXXX', 'XX....', 'XXXXX.', '.XXXXX', '....XX', '....XX', 'XXXXXX', 'XXXXX.'],
-  },
-};
-
-function drawLogo(c, S) {
-  c.imageSmoothingEnabled = true;
-  c.imageSmoothingQuality = 'high';
-  c.drawImage(logo, 0, 0, S, S);
-}
-
-function roundRect(c, x, y, w, h, r) {
-  c.beginPath();
-  c.moveTo(x + r, y);
-  c.arcTo(x + w, y, x + w, y + h, r);
-  c.arcTo(x + w, y + h, x, y + h, r);
-  c.arcTo(x, y + h, x, y, r);
-  c.arcTo(x, y, x + w, y, r);
-  c.closePath();
-}
-
-/** 로고 + «PS»를 S×S 정사각에 그린다(아이콘 · 설치 화면 머리 로고 · 제거 화면 그림).
-    BADGE.sizes에 없는 크기(설치 화면 그림 안의 로고)는 256 기준 수치를 S/256배로 줄인다 — 40px 이상이라 글꼴 글자로 쓴다. */
-function iconPixels(S) {
+/** Lanczos3로 정사각 원본을 S×S로 다시 뜬다(가로 → 세로 두 번). 줄일 때는 창을 넓혀 원본 화소를 고르게 모은다. 알파를 곱한 값으로 계산해
+    투명한 곳의 색이 가장자리로 번지지 않게 하고, 넘친 값(링잉)은 0~255로 자른다. */
+function lanczos(src, S) {
+  const N = src.width;
+  const sc = createCanvas(N, N).getContext('2d');
+  sc.drawImage(src, 0, 0);
+  const s = sc.getImageData(0, 0, N, N).data;
+  const pm = new Float64Array(N * N * 4);
+  for (let i = 0; i < N * N; i++) { const a = s[i * 4 + 3] / 255; pm[i * 4] = s[i * 4] * a; pm[i * 4 + 1] = s[i * 4 + 1] * a; pm[i * 4 + 2] = s[i * 4 + 2] * a; pm[i * 4 + 3] = s[i * 4 + 3]; }
+  const A = 3, scale = S / N, stretch = Math.max(1, 1 / scale), radius = A * stretch;
+  const kernel = (x) => { if (x === 0) return 1; if (Math.abs(x) >= A) return 0; const p = Math.PI * x; return (A * Math.sin(p) * Math.sin(p / A)) / (p * p); };
+  const taps = Array.from({ length: S }, (_, o) => {
+    const center = (o + 0.5) / scale - 0.5, list = [];
+    let sum = 0;
+    for (let i = Math.floor(center - radius) + 1; i <= Math.floor(center + radius); i++) { const w = kernel((i - center) / stretch); if (w) { list.push([Math.min(N - 1, Math.max(0, i)), w]); sum += w; } }
+    return list.map(([i, w]) => [i, w / sum]);
+  });
+  const mid = new Float64Array(S * N * 4);   // 가로만 줄인 것(S × N)
+  for (let y = 0; y < N; y++) for (let x = 0; x < S; x++) for (const [i, w] of taps[x]) for (let k = 0; k < 4; k++) mid[(y * S + x) * 4 + k] += pm[(y * N + i) * 4 + k] * w;
   const cv = createCanvas(S, S);
   const c = cv.getContext('2d');
-  drawLogo(c, S);
-  const k = S / 256, [w256, h256, r256, cap256] = BADGE.sizes[256];
-  const [w, h, r, glyph] = BADGE.sizes[S] ?? [Math.round(w256 * k), Math.round(h256 * k), Math.max(2, Math.round(r256 * k)), Math.round(cap256 * k)];
-  const x0 = S - w, y0 = S - h;
-  if (typeof glyph === 'string') {
-    // 화소 이름표: 모서리 r화소를 계단으로 깎은 사각형(흐림 없이) + 화소 글자
-    const img = c.getImageData(0, 0, S, S);
-    const set = (x, y, [R, G, B]) => { const i = (y * S + x) * 4; img.data[i] = R; img.data[i + 1] = G; img.data[i + 2] = B; img.data[i + 3] = 255; };
-    const cut = (dx, dy) => dx + dy < r; // 모서리에서 맨해튼 거리 r 미만은 비운다(r=1: 모서리 1화소 · r=2: 3화소)
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const dx = Math.min(x, w - 1 - x), dy = Math.min(y, h - 1 - y);
-      if (cut(dx, dy)) continue;
-      set(x0 + x, y0 + y, [18, 18, 18]);
-    }
-    const glyphs = [...BADGE.text].map((ch) => GLYPHS[glyph][ch]);
-    const textW = glyphs.reduce((sum, g) => sum + g[0].length, 0) + (glyphs.length - 1);
-    let tx = x0 + Math.floor((w - textW) / 2);
-    const ty = y0 + Math.floor((h - glyphs[0].length) / 2);
-    for (const g of glyphs) {
-      g.forEach((row, yy) => [...row].forEach((cell, xx) => { if (cell === 'X') set(tx + xx, ty + yy, [255, 255, 255]); }));
-      tx += g[0].length + 1;
-    }
-    c.putImageData(img, 0, 0);
-  } else {
-    c.fillStyle = BADGE.fill;
-    roundRect(c, x0, y0, w, h, r);
-    c.fill();
-    // 대문자 높이 = 글꼴 크기 × 0.71(Pretendard) — 글줄 기준선을 화소에 맞춰 흐림을 줄인다
-    c.font = `${Math.round(glyph / 0.71)}px "${BADGE.font}"`;
-    c.textBaseline = 'alphabetic';
-    c.textAlign = 'left';
-    const m = c.measureText(BADGE.text);
-    const left = m.actualBoundingBoxLeft, width = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
-    c.fillStyle = BADGE.ink;
-    c.fillText(BADGE.text, Math.round(x0 + (w - width) / 2 + left), Math.round(y0 + (h + glyph) / 2));
+  const img = c.createImageData(S, S);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const v = [0, 0, 0, 0];
+    for (const [i, w] of taps[y]) for (let k = 0; k < 4; k++) v[k] += mid[(i * S + x) * 4 + k] * w;
+    const a = Math.min(255, Math.max(0, v[3])), o = (y * S + x) * 4;
+    for (let k = 0; k < 3; k++) img.data[o + k] = a > 0 ? Math.min(255, Math.max(0, Math.round((v[k] * 255) / a))) : 0;
+    img.data[o + 3] = Math.round(a);
   }
+  c.putImageData(img, 0, 0);
   return cv;
 }
+
+/** 슬레이트를 S×S 정사각으로(아이콘 · 설치 화면 머리 로고 · 제거 화면 그림). */
+const slateIcon = (S) => lanczos(slate, S);
 
 /** 32비트 BGRA 비트맵(DIB) 항목 — 작은 크기는 PNG보다 옛 프로그램(설치기 NSIS 포함)이 확실히 읽는다. 256은 PNG로 넣는다(Windows 규약). */
 function dibEntry(cv) {
@@ -190,18 +128,15 @@ const theater = await loadImage(path.join(ROOT, 'public/studio/theater.webp'));
 GlobalFonts.registerFromPath(path.join(ROOT, 'public/fonts/Pretendard-Regular.woff2'), 'Pretendard Regular');
 GlobalFonts.registerFromPath(path.join(ROOT, 'public/fonts/Pretendard-Medium.woff2'), 'Pretendard Medium');
 const at = (base, pct) => base.map((v) => Math.round((v * pct) / 100));
-// 로고 원본 512 정사각에서 그림이 있는 세로 범위는 97~410이고, «PS» 이름표는 정사각 아래 끝에 붙는다 — 이름표까지 보이는 높이 = 정사각의 (512 − 97)/512
-const BADGED_LOGO_TALL = (512 - 97) / 512;
-
-// 머리 로고: 흰 바탕 오른쪽에 로고 + «PS». 칸 위아래에 4px(100% 기준) 여백.
+// 머리 로고: 흰 바탕 오른쪽에 슬레이트(원본 정사각 그대로 — 원본의 투명 여백까지). 칸 위아래에 4px(100% 기준) 여백.
 function header(W, H) {
   const s = H / ART.header[1];
   const cv = createCanvas(W, H);
   const c = cv.getContext('2d');
   c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
   const m = Math.round(4 * s);
-  const S = Math.round((H - 2 * m) / BADGED_LOGO_TALL);
-  c.drawImage(iconPixels(S), W - S - Math.round(8 * s), H - m - S);
+  const S = H - 2 * m;
+  c.drawImage(slateIcon(S), W - S - Math.round(8 * s), m);
   return cv;
 }
 
@@ -255,7 +190,7 @@ function finish(W, H) {
   return cv;
 }
 
-// 제거 화면 왼쪽 그림(배율 하나 — 191×290): 흰 바탕 · 로고 + «PS» · 앱 이름 · 아래 InKY 노랑 띠
+// 제거 화면 왼쪽 그림(배율 하나 — 191×290): 흰 바탕 · 슬레이트 · 앱 이름 · 아래 InKY 노랑 띠
 function unSidebar() {
   const [W, H] = ART.finish;
   const cv = createCanvas(W, H);
@@ -263,7 +198,7 @@ function unSidebar() {
   c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
   c.fillStyle = '#ffe700'; c.fillRect(0, H - 20, W, 20);
   const L = 132;
-  c.drawImage(iconPixels(L), (W - L) / 2, 22);
+  c.drawImage(slateIcon(L), (W - L) / 2, 22);
   c.fillStyle = '#1d1d1f'; c.textAlign = 'center';
   c.font = '23px "Pretendard Black"'; c.fillText('Poster', W / 2, 184); c.fillText('Studio', W / 2, 210);
   c.fillStyle = '#6b6b70'; c.font = '11px "Pretendard Bold"'; c.fillText('InKY Film Festival', W / 2, 238);
@@ -271,7 +206,7 @@ function unSidebar() {
 }
 
 const SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256];
-const icons = SIZES.map((S) => iconPixels(S));
+const icons = SIZES.map((S) => slateIcon(S));
 writeIco(path.join(HERE, 'icon.ico'), icons);
 const ARTDIR = path.join(HERE, 'installer-art');
 fs.rmSync(ARTDIR, { recursive: true, force: true });
@@ -284,8 +219,8 @@ finishes.forEach(([pct, cv]) => writeBmp(path.join(ARTDIR, `finish-${pct}.bmp`),
 writeBmp(path.join(HERE, 'installerHeader.bmp'), headers[0][1]);
 writeBmp(path.join(HERE, 'installerSidebar.bmp'), finishes[0][1]);
 writeBmp(path.join(HERE, 'uninstallerSidebar.bmp'), unSidebar());
-fs.rmSync(path.join(HERE, 'installer.ico'), { force: true }); // 10/27: 설치 파일 아이콘도 «PS» 앱 아이콘(icon.ico)을 쓴다
-fs.writeFileSync(path.join(HERE, 'icon-spec.json'), JSON.stringify({ source: '_shared/favicons/inky-camera-512.png', sizes: SIZES, badge: BADGE, glyphs: GLYPHS, installerArt: ART }, null, 2) + '\n');
+fs.rmSync(path.join(HERE, 'installer.ico'), { force: true }); // 10/27: 설치 파일 아이콘도 앱 아이콘(icon.ico)을 쓴다
+fs.writeFileSync(path.join(HERE, 'icon-spec.json'), JSON.stringify({ source: SLATE_SRC, sourceSize: slate.width, resample: 'lanczos3 (alpha premultiplied)', sizes: SIZES, installerArt: ART }, null, 2) + '\n');
 console.log('만듦: icon.ico(' + SIZES.join(' · ') + ') · installer-art/header · finish(' + ART.scales.join(' · ') + '%) · installerHeader.bmp · installerSidebar.bmp · uninstallerSidebar.bmp · icon-spec.json');
 
 if (preview) {
