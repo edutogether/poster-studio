@@ -405,9 +405,10 @@
 - 🔴 **설치판에는 AI가 없다.** 찍거나 불러온 사진을 그대로 8종 틀에 넣는다(로컬 합성 — `buildPosters` 그대로).
   - 부스 토큰 0 · 서버 요청 0이다. 화면 정책은 `connect-src 'self'`이고, `desktop/main.mjs`가 http · https · ws를 전부 끊는다.
   - 머리글에 «설치판 · AI 없이 사진 그대로»를 늘 띄운다.
-  - 샘플 흐름 · 로딩 영상은 싣지 않는다. 샘플 로딩 화면이 «AI가 당신의 영화를 그리고 있어요»라, 설치판에서는 거짓 표시가 된다.
-  - «이 사진으로 포스터 만들기»는 로딩 화면을 무작위 장면 둘(16초, `DESKTOP_WAIT_SCENES`) 보인 뒤 3단계로 간다(10/27 Bumm님 «토스트 말고 로딩 화면 · 최소 두 바퀴»).
-    장면은 제목에 «AI»가 든 것을 빼고 고르며(`GenerationWait.tsx`의 `setsForBuild`) 영상 없이 정지 그림만 쓴다. 0으로 줄이면 `test/desktop-and-download.test.tsx` 3건이 잡는다.
+  - «샘플 포스터 보기» 흐름은 싣지 않는다.
+  - «이 사진으로 포스터 만들기»는 웹과 같은 로딩 화면을 무작위 장면 둘(16초, `DESKTOP_WAIT_SCENES`) 보인 뒤 3단계로 간다(10/27 Bumm님 «토스트 말고 로딩 화면 · 최소 두 바퀴»).
+    장면마다 웹과 같은 승인된 대기 영상(`waiting-v3`, 12편 11MB — 설치 파일에 넣는다)을 틀고, 재생 중인 영상은 끝까지 보여 준다(10/27 Bumm님 «승인된 영상과 디자인을 그대로»).
+    «AI가 당신의 영화를 그리고 있어요» 장면 하나만 뺀다(`GenerationWait.tsx`의 `setsForBuild` — AI가 없으니 거짓 표시). 영상을 빼거나 장면을 0으로 줄이면 `test/desktop-and-download.test.tsx` 3건이 잡는다.
 - 설치판 갈래는 `src/desktop.ts`의 `DESKTOP`(`--mode desktop`)으로 가른다. 웹 빌드에서는 거짓으로 접혀 번들에서 빠진다.
   - 웹 번들에 설치판 문구 0건, 설치판 번들에 토큰 0건이어야 한다. `desktop-app-probe.mjs`가 화면이 받은 스크립트를 직접 본다.
 - 🔴 **`src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양을 바꾸지 않는다.** CI 배포 단계(`deploy.yml`)와 스크립트가 그 줄을 정규식으로 읽는다.
@@ -421,7 +422,7 @@
   4. `npx electron-builder --win nsis --x64 --publish never`
   - 판: electron 44.7.0 · electron-builder 26.17.0.
   - 서명은 없다. 그래서 인터넷에서 받은 설치 파일은 Windows SmartScreen이 «PC 보호» 창을 띄운다(«추가 정보» → «실행»).
-    창은 받은 파일에 붙는 인터넷 표식(`Zone.Identifier`) 때문에 뜬다 — 파일 속성 «차단 해제»(`Unblock-File`) 뒤에는 바로 설치 창이 뜬다(10/27 이 PC 실측, runbook §4-2).
+    현장 주소는 poster.edutogether.kr 하나이고, USB 배포 · 파일 출처 표시를 지우는 방식은 쓰지 않는다(10/27 Bumm님 방침). 경고를 없애는 길은 팀장이 따로 조사한다.
 - 🟠 **설치 모양은 Bumm님 기준이다**(10/27 정정, 팀장 전달 — 바꾸지 않는다):
   - «나만 / 모든 사용자» 고르는 화면과 위치 바꾸기 화면을 둔다. 기본은 «모든 사용자»다(`selectPerMachineByDefault`).
   - 모든 사용자: `C:\Program Files\InKY Film Festival\Poster Studio`(관리자 승인 창이 한 번 뜬다).
@@ -454,6 +455,9 @@
     첫 화면 설명 한 줄은 `StudioCaption`(Medium · `font-display: optional`)이라 글꼴이 늦게 온 판은 Regular로 그린다(그 줄만 7,249화소 — 웹 · 설치판 같은 제품 동작).
     그래서 캐시를 지우지 않고 다시 열고(웹 쪽 작은 서버도 라이브처럼 글꼴에 30일 캐시를 준다), 크기마다 3번 찍어 «그린 글꼴이 같은 짝» 가운데서만 차이 0을 찾는다.
   - `node scripts/verify/desktop-print-shift.mjs <결과> --exe <설치한 exe>`: 창을 최대화하고 «인쇄하기»를 누른 뒤 12초를 0.15초마다 찍어(`win-capture.ps1`) 인쇄 전 3단계 화면과 화소로 견준다.
+    웹 쪽 같은 결함은 `node scripts/verify/web-print-shift.mjs <dist> <결과>`(샘플 흐름 → «이 포스터로 출력하기» 전후 문서 폭 · 길이 — 10/27 웹은 걸림: 2560 → 2545).
+  - `node scripts/verify/desktop-layout-sweep.mjs <desktop/web> <dist> <결과>`: 2단계 오른쪽 칸을 447개 창 크기에서 잰다 — 규칙 밖(폭 1100 미만 · 높이 820 이하)은 웹과 자리 같음,
+    규칙 안은 겹침 · 화면 밖 · 가로 넘침 · 보이는 포스터가 웹보다 작아짐 없음(포스터는 `object-fit: contain`이라 상자가 아니라 보이는 크기로 잰다). 규칙을 높이 700까지 걸면 9개 크기가 걸린다.
   - 설치기 탐침 `-Replace`: 같은 범위에 예전 판이 깔린 PC에서 덮어쓰기를 잰다. 설치 중에는 0.5초마다 진행 화면을 찍는다(`-진행-NN.png`).
 - 🟠 **인쇄 미리보기 · 인쇄 때 화면 밀림**(10/27 Bumm님 지시, `src/desktop.css`):
   - «인쇄하기»를 누르면 화면이 왼쪽으로 밀리던 원인: 인쇄용 그림(`#printArea`, 1200×1800)이 화면에도 그려져 세로 스크롤바가 생겼다. `@media screen`에서 숨긴다.

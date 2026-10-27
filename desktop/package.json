@@ -29,7 +29,6 @@
       "package.json",
       "web/**/*",
       "!web/studio/waiting-v2/**",
-      "!web/studio/waiting-v3/*.mp4",
       "!web/studio/waiting-approved-v1/**"
     ],
     "asar": true,

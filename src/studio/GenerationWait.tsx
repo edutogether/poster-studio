@@ -19,9 +19,10 @@ function shuffled(length: number) {
   const keys = crypto.getRandomValues(new Uint32Array(length));
   return Array.from({ length }, (_, i) => i).sort((a, b) => (keys[a] < keys[b] ? -1 : keys[a] > keys[b] ? 1 : 0));
 }
-// 설치판(AI 없이 사진 그대로)은 «AI가 …» 제목 장면을 빼고, 대기 영상 없이 정지 그림만 쓴다(영상은 설치 파일에 넣지 않는다 — desktop/package.json).
+// 설치판(AI 없이 사진 그대로)은 «AI가 …» 제목 장면만 뺀다 — AI가 없는데 그렇게 쓰면 거짓 표시다. 나머지 장면 · 승인된 대기 영상 · 디자인은 웹 그대로다
+// (10/27 Bumm님 «승인된 영상과 디자인을 그대로 · 로딩 품질을 떨어뜨리지 않는다»).
 const setsForBuild = () => (DESKTOP ? waitingSets.filter((set) => !set.title.includes("AI")) : waitingSets);
-const videoFor = (id: number) => (DESKTOP ? undefined : approvedWaitingVideo(id));
+const videoFor = approvedWaitingVideo;
 // 그림·제목·상식을 한 세트로 섞는다. 포스터 조판의 Math.random과 독립적이다.
 export function createWaitSequence() {
   let previous = lastOpeningId;

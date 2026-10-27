@@ -164,19 +164,34 @@ try {
   await shot('2단계-촬영완료');
 
   // 로컬 합성 — 로딩 화면이 무작위 장면 둘(8초씩) 동안 돈 뒤 결과로 간다(10/27 Bumm님 «최소 두 개 · 최소 두 바퀴»). AI 문구 장면은 없다.
+  // 장면마다 웹과 같은 승인된 대기 영상(/studio/waiting-v3/<장면 번호>-<해시>.mp4)이 실제로 재생돼야 한다(10/27 Bumm님 «승인된 영상과 디자인을 그대로»).
   await click('#generateBtn');
   const waitScenes = [];
   const waitStart = Date.now();
+  const shotScenes = [];
   for (let i = 0; i < 80; i++) {
-    const w = await main.evaluate(`(() => { const d = document.querySelector('.generation-wait'); return { step: document.body.dataset.step, open: !!d?.open, scene: d?.dataset.setId ?? null, ai: d ? /AI/.test(d.innerText) : false, img: !!d?.querySelector('.generation-film img'), video: !!d?.querySelector('video') }; })()`);
+    const w = await main.evaluate(`(() => { const d = document.querySelector('.generation-wait'); const v = d?.querySelector('video[data-active="true"]');
+      return { step: document.body.dataset.step, open: !!d?.open, scene: d?.dataset.setId ?? null, ai: d ? /AI/.test(d.innerText) : false, img: !!d?.querySelector('.generation-film img'),
+        video: v ? { src: v.currentSrc.replace(/^.*\\/studio\\//, '/studio/'), t: Math.round(v.currentTime * 10) / 10, paused: v.paused } : null }; })()`);
     waitScenes.push({ t: Date.now() - waitStart, ...w });
-    if (w.open && waitScenes.filter((x) => x.open).length === 1) await shot('2단계-로딩');
+    // 장면마다 영상이 3초쯤 돈 순간을 한 장씩 찍는다(첫 장면 · 둘째 장면)
+    if (w.open && w.video && w.video.t >= 3 && !shotScenes.includes(w.scene) && shotScenes.length < 2) {
+      shotScenes.push(w.scene);
+      await shot(shotScenes.length === 1 ? '2단계-로딩' : '2단계-로딩-둘째');
+    }
     if (w.step === '3') break;
     await sleep(500);
   }
   const seen = [...new Set(waitScenes.filter((w) => w.open).map((w) => w.scene))];
   const shown = waitScenes.filter((w) => w.open);
-  check('로딩 화면이 무작위 장면 둘 동안 돈다(AI 문구 · 영상 없이 정지 그림)', seen.length >= 2 && shown.every((w) => !w.ai && w.img && !w.video), { 장면: seen, 문구AI: shown.some((w) => w.ai) });
+  check('로딩 화면이 무작위 장면 둘 동안 돈다(AI 문구 장면 없음)', seen.length >= 2 && shown.every((w) => !w.ai && w.img), { 장면: seen, 문구AI: shown.some((w) => w.ai) });
+  // 장면마다 그 장면 번호의 승인된 영상이 3초 넘게 실제로 재생됐다(정지 그림으로 내려앉지 않음)
+  const played = seen.map((id) => {
+    const best = shown.filter((w) => w.scene === id && w.video).map((w) => w.video).sort((a, b) => b.t - a.t)[0];
+    return { 장면: id, 영상: best?.src ?? null, 최대재생초: best?.t ?? 0 };
+  });
+  const approvedFor = (id) => new RegExp('^/studio/waiting-v3/' + String(id).padStart(2, '0') + '-[a-f0-9]{12}\\.mp4$');
+  check('장면마다 승인된 대기 영상이 재생된다(웹과 같은 영상 · 3초 넘게)', played.length >= 2 && played.every((p) => approvedFor(p.장면).test(p.영상 ?? '') && p.최대재생초 >= 3), played);
   check('두 장면(16초)이 끝난 뒤 3단계로 간다(최소 두 바퀴)', (waitScenes.find((w) => w.step === '3')?.t ?? 0) >= 15500, { 넘어간때ms: waitScenes.find((w) => w.step === '3')?.t });
   check('AI 없이 8종이 만들어진다(3단계)', await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 20000));
   await sleep(1500);

@@ -104,15 +104,20 @@ describe('설치판(AI 없이 사진 그대로)', () => {
   beforeEach(() => { flags.desktop = true; studioMode = 'real'; });
 
   /* «이 사진으로 포스터 만들기»(10/27 Bumm님): 로딩 화면이 무작위 장면 둘(8초씩) 동안 돌고 나서 결과로 간다 — «최소 두 바퀴»(COMMON_STANDARDS §27).
-     설치판에는 AI가 없으니 «AI …» 문구 장면은 나오지 않고, 대기 영상 없이 정지 그림만 쓴다. */
+     설치판에는 AI가 없으니 «AI …» 문구 장면은 나오지 않는다. 그 밖은 웹 그대로 — 승인된 대기 영상을 튼다(10/27 Bumm님 «승인된 영상과 디자인을 그대로»). */
   const composeWithLoading = async () => {
+    const media = [
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(),
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {}),
+      vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {}),   // jsdom에는 load()가 없다
+    ];
     vi.useFakeTimers();
     await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
     await act(async () => { await vi.advanceTimersByTimeAsync(100); });
     const wait = document.getElementById('spinner') as HTMLDialogElement;
     expect(wait?.hasAttribute('open')).toBe(true);
     expect(wait.textContent).not.toMatch(/AI/);
-    expect(wait.querySelector('video')).toBeNull();
+    expect(wait.querySelector('video')?.getAttribute('src')).toMatch(/^\/studio\/waiting-v3\/\d{2}-[a-f0-9]{12}\.mp4$/);
     const first = wait.dataset.setId;
     await act(async () => { await vi.advanceTimersByTimeAsync(8000); });
     expect(document.getElementById('spinner')?.dataset.setId).not.toBe(first);   // 둘째 장면
@@ -121,6 +126,7 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     vi.useRealTimers();
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     expect(document.getElementById('spinner')).toBeNull();
+    media.forEach((spy) => spy.mockRestore());
   };
 
   test('서버에 아무것도 보내지 않는다 — 서버 확인 · 생성 요청 0건, 다운로드 단추 대신 설치판 표시', async () => {

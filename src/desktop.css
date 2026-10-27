@@ -55,7 +55,7 @@ body[data-desktop] #resultView .result-actions #desktopSaveBtn {
 
 /* 인쇄용 그림(#printArea — PosterStudio.tsx onPrint가 body 끝에 붙이는 1200×1800 포스터)은 화면에는 그리지 않는다.
    화면 규칙이 없어 문서 끝에 그대로 그려져 문서가 길어지고 세로 스크롤바가 생겼다 — 그만큼 화면 폭이 줄어 «인쇄하기»를 누르면
-   페이지 전체가 왼쪽으로 밀리고 줄어 보였다(10/27 Bumm님, scripts/verify/desktop-print-shift.mjs 재현: 2560 창에서 스크롤바 · 앱 화면 212만 화소 차이).
+   페이지 전체가 왼쪽으로 밀리고 줄어 보였다(10/27 Bumm님, scripts/verify/desktop-print-shift.mjs 재현: 2560 창에서 스크롤바 · 누른 뒤 31장 모두 앱 화면 47.9만 화소가 32단계 넘게 달라짐).
    인쇄 때는 studio.css @media print가 이 그림만 보이게 한다 — 그래서 화면(@media screen)에서만 숨긴다. */
 @media screen {
   #printArea {

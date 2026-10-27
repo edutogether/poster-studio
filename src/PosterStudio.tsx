@@ -645,9 +645,9 @@ export default function PosterStudio() {
       setStatus("먼저 사진을 찍거나 불러와 주세요.");
       return;
     }
-    // 로컬 합성은 1~2초면 끝나 예전에는 왼쪽 아래 «포스터를 만들고 있어요» 한 줄만 스쳤다(10/27 Bumm님 «성의 없다»). 웹과 같은 로딩 화면을
+    // 로컬 합성은 1~2초면 끝나 예전에는 왼쪽 아래 «포스터를 만들고 있어요» 한 줄만 스쳤다(10/27 Bumm님 «성의 없다»). 웹과 같은 로딩 화면(승인된 대기 영상)을
     // 무작위 장면 둘(DESKTOP_WAIT_SCENES × 8초) 동안 보인 뒤 결과로 간다 — 장면 넘김이 이 화면의 애니메이션이라 «최소 두 바퀴»(COMMON_STANDARDS §27)다.
-    // 조판은 로딩 화면 뒤에서 같이 돌린다(샘플 흐름과 같은 방식).
+    // 조판은 로딩 화면 뒤에서 같이 돌리고, 재생 중인 대기 영상은 끝까지 보여 준다(샘플 흐름과 같은 방식).
     isGeneratingRef.current = true;
     setGenerating(true);
     setStatus("");
@@ -657,6 +657,7 @@ export default function PosterStudio() {
     try {
       const built = await buildPosters([photoURL], getMeta(mode));
       await waited;
+      await sceneEndRef.current?.();   // 웹 · 샘플 흐름과 같이 재생 중인 대기 영상은 끝까지(10/20)
       applyPosters(built);
       setCompletionId(value => value + 1);
     } catch (e) {

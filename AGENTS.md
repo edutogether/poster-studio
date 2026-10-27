@@ -71,7 +71,7 @@ Windows 설치판(`desktop/`, 2026-10-27)은 AI가 없는 비상판이다. 웹�
 `desktop`에서 `npm ci` → `node node_modules/electron/install.js`(npm 12는 설치 스크립트를 막는다) → `npx electron-builder --win nsis --x64 --publish never`로 `desktop/out/Poster Studio Setup.exe`를 만든다(받는 주소 `/download/PosterStudio-Setup.exe`는 그대로).
 확인은 `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(가짜 카메라로 전체 흐름 · 바깥 요청 0 · 토큰 0) ·
 `scripts/verify/desktop-installer-probe.ps1 -Mode user|all -Via startmenu|settings`(설치 · 제거 창 · 남은 것 0, «모든 사용자»는 관리자 권한으로) ·
-`node scripts/verify/desktop-vs-web.mjs <결과> --exe <exe> --web-dist <웹 빌드>`(첫 화면 화소 대조) · `node scripts/verify/desktop-print-shift.mjs <결과> --exe <exe>`(«인쇄하기» 때 화면이 움직이지 않는지 — 진짜 인쇄 창 · 연속 캡처) · `node scripts/verify/download-button-probe.mjs <dist> <결과> --compare <전>`(첫 화면 다운로드 단추 — 전/후 화소 · 누르기 전 요청 0)다.
+`node scripts/verify/desktop-vs-web.mjs <결과> --exe <exe> --web-dist <웹 빌드>`(첫 화면 화소 대조) · `node scripts/verify/desktop-print-shift.mjs <결과> --exe <exe>`(«인쇄하기» 때 화면이 움직이지 않는지 — 진짜 인쇄 창 · 연속 캡처) · `node scripts/verify/desktop-layout-sweep.mjs <desktop/web> <dist> <결과>`(2단계 오른쪽 칸 447개 창 크기 — 규칙 밖은 웹과 같음 · 규칙 안은 겹침 · 넘침 없음) · `node scripts/verify/download-button-probe.mjs <dist> <결과> --compare <전>`(첫 화면 다운로드 단추 — 전/후 화소 · 누르기 전 요청 0)다.
 설치 위치 · 바로가기 · 아이콘(설치 파일 · 설치기에도 «PS») · 설치 화면 그림(배율마다 따로) 모양은 Bumm님 기준이라 바꾸지 않는다(app.md «Windows 설치판»).
 설치판 갈래는 `src/desktop.ts`의 `DESKTOP`으로 웹 번들에서 빠진다. `src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양은 CI가 정규식으로 읽으므로 바꾸지 않는다. 설치 파일은 저장소 · Hosting에 넣지 않는다(app.md «Windows 설치판»).
 
