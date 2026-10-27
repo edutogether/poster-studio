@@ -229,15 +229,18 @@ function Walk($prefix) {
       $h = $h2
     }
     $next = [Win]::GetDlgItem($h, 1)
-    # 설치가 도는 동안(«다음»이 꺼져 있는 동안)은 0.5초마다 그 화면을 찍는다 — 진행 중 글(설치 위치 · 항목)이 바뀌는지 본다
+    # 설치가 도는 동안(«다음»이 꺼져 있는 동안)은 0.5초마다 그 화면을 찍고, 진행 글(위 한 줄 · «자세히» 목록)은 0.1초마다 읽는다 —
+    # 마지막 단계가 0.5초 안에 끝나면 찍는 간격으로는 그 줄을 놓친다(10/27 «모든 사용자» 제거 실측)
     $progress = @()
-    for ($w = 0; $w -lt 300 -and -not [Win]::IsWindowEnabled($next) -and [Win]::IsWindow($h); $w++) {
-      if ($progress.Count -lt 40) {
-        $pf = Join-Path $Out ('{0}-{1:00}-진행-{2:00}.png' -f $prefix, $n, ($progress.Count + 1))
+    for ($w = 0; $w -lt 1500 -and -not [Win]::IsWindowEnabled($next) -and [Win]::IsWindow($h); $w++) {
+      if ($w % 5 -eq 0 -and @($progress | Where-Object { $_.shot }).Count -lt 40) {
+        $pf = Join-Path $Out ('{0}-{1:00}-진행-{2:00}.png' -f $prefix, $n, (@($progress | Where-Object { $_.shot }).Count + 1))
         [Win]::Shot($h, $pf)
         $progress += [ordered]@{ shot = (Split-Path $pf -Leaf); text = [Win]::AllText($h); details = @(DetailLines $h) }
+      } else {
+        $progress += [ordered]@{ text = [Win]::AllText($h); details = @(DetailLines $h) }
       }
-      Start-Sleep -Milliseconds 500
+      Start-Sleep -Milliseconds 100
     }
     if (-not [Win]::IsWindow($h)) { continue }
     Start-Sleep -Milliseconds 700

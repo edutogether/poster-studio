@@ -2,6 +2,7 @@
    빈 화면 = 머리글 띠(흰 바탕)가 없고 목록 자리가 단색 회색(#F0F0F0)이다. 좌표는 한국어 Windows 100% 설치 창(585×362) 기준.
      node scripts/verify/installer-blank-scan.mjs calib <png...>               확인 도구가 찍은 그림에 판정을 대 본다(빈 것 · 정상인 것)
      node scripts/verify/installer-blank-scan.mjs video <screen.mkv> <폭> <높이>   화면 녹화(installer-screen-record.ps1) 전 프레임을 판정한다
+     node scripts/verify/installer-blank-scan.mjs changes <screen.mkv> <폭> <높이> <폴더>   진행 문구 줄(진행 막대 위 한 줄)이 바뀌는 순간의 장면을 원본 해상도 PNG로 뽑는다
    10/27 결과: 확인 도구가 0.3~0.5초마다 PrintWindow로 찍는 동안에는 화면에도 33ms 빈 화면이 10번 나왔고, 찍지 않은(-NoShots) 설치는
    진행 중 0번 · «범위 → 위치» 화면이 넘어가는 순간 한 장뿐이었다 — 빈 진행 캡처는 찍는 동작이 만든 것이다. */
 import fs from 'node:fs';
@@ -25,6 +26,33 @@ if (mode === 'calib') {
     for (let i = 0, j = 0; i < d.length; i += 4, j += 3) { rgb[j] = d[i]; rgb[j + 1] = d[i + 1]; rgb[j + 2] = d[i + 2]; }
     console.log(JSON.stringify({ file: f.split(/[\\/]/).pop(), ...judge(rgb, img.width) }));
   }
+} else if (mode === 'changes') {
+  // 진행 문구 줄(창 기준 y 92~110 · x 20~560)의 화소가 바뀌고 0.2초(6장) 그대로 머문 장면만 — 글이 그려지는 도중이 아니라 다 그려진 뒤를 고른다
+  const [video, w, h, outDir] = [rest[0], Number(rest[1]), Number(rest[2]), rest[3]];
+  fs.mkdirSync(outDir, { recursive: true });
+  const size = w * h * 3, LINE = [20, 92, 560, 110];
+  const key = (px) => { let k = ''; for (let y = LINE[1]; y < LINE[3]; y += 2) for (let x = LINE[0]; x < LINE[2]; x += 3) { const i = (y * w + x) * 3; k += px[i] > 128 ? '1' : '0'; } return k; };
+  const ff = spawn('ffmpeg', ['-loglevel', 'error', '-i', video, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+  let buf = Buffer.alloc(0), n = 0, last = null, run = 0, saved = null; const picks = [];
+  ff.stdout.on('data', (chunk) => {
+    buf = Buffer.concat([buf, chunk]);
+    while (buf.length >= size) {
+      const px = buf.subarray(0, size), k = key(px);
+      run = k === last ? run + 1 : 0; last = k;
+      if (run === 6 && k !== saved && /1/.test(k) && /0/.test(k)) {   // 6장 그대로 · 이미 뽑은 문구가 아님 · 글자가 있음(전부 같은 색이 아님)
+        saved = k;
+        const c = createCanvas(w, h), x = c.getContext('2d'), img = x.createImageData(w, h);
+        for (let i = 0, j = 0; i < size; i += 3, j += 4) { img.data[j] = px[i]; img.data[j + 1] = px[i + 1]; img.data[j + 2] = px[i + 2]; img.data[j + 3] = 255; }
+        x.putImageData(img, 0, 0);
+        const file = `장면-${String(picks.length + 1).padStart(2, '0')}-${(n / 30).toFixed(2)}초.png`;
+        fs.writeFileSync(`${outDir}/${file}`, c.toBuffer('image/png'));
+        picks.push(file);
+      }
+      n++; buf = buf.subarray(size);
+    }
+  });
+  await new Promise((r) => ff.on('close', r));
+  console.log(JSON.stringify({ frames: n, scenes: picks }));
 } else {
   const [video, w, h] = [rest[0], Number(rest[1]), Number(rest[2])];
   const size = w * h * 3;
