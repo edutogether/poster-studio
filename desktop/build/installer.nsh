@@ -15,6 +15,178 @@
 !define /ifndef INSTALL_REGISTRY_KEY "Software\${APP_GUID}"
 !define /ifndef UNINSTALL_REGISTRY_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_APP_KEY}"
 
+; ── 설치 화면 그림: 칸 크기에 맞춘 판 고르기(10/27 Bumm님 «오른쪽 위 로고가 가로로 늘어나 깨져 보인다», 팀장 전달) ──
+; 그림 칸 크기는 한글 Windows 글꼴과 화면 배율로 정해진다 — 100%에서 머리 로고 칸 175×53, 완료 화면 왼쪽 칸 191×290(desktop-installer-probe.ps1로 잼).
+; electron-builder가 넣는 그림은 한 크기라 칸에 맞게 비율 없이 늘어났다(150×57 → 175×53: 가로 1.17배 · 세로 0.93배). make-assets.mjs가 배율
+; 100~300%마다 칸 크기 그대로 그려 둔 판(build/installer-art) 가운데 칸의 실제 너비에 가장 가까운 것을 끼운다 — 칸과 몇 화소 다르면 그만큼만 맞춰 늘인다.
+!define PS_HEADER_W 175
+!define PS_FINISH_W 191
+
+; $R9 = 칸 너비(화소) → $R8 = 고를 배율(100 · 125 · 150 · 175 · 200 · 225 · 250 · 300)
+!macro psPickScale BASE
+  IntOp $R8 $R9 * 100
+  IntOp $R8 $R8 / ${BASE}
+  ${If} $R8 < 113
+    StrCpy $R8 100
+  ${ElseIf} $R8 < 138
+    StrCpy $R8 125
+  ${ElseIf} $R8 < 163
+    StrCpy $R8 150
+  ${ElseIf} $R8 < 188
+    StrCpy $R8 175
+  ${ElseIf} $R8 < 213
+    StrCpy $R8 200
+  ${ElseIf} $R8 < 238
+    StrCpy $R8 225
+  ${ElseIf} $R8 < 275
+    StrCpy $R8 250
+  ${Else}
+    StrCpy $R8 300
+  ${EndIf}
+!macroend
+
+; 고른 배율($R8)의 판을 $PLUGINSDIR\ps-<NAME>.bmp로 푼다(설치기 안에는 여덟 판이 다 들어 있고, 고른 것 하나만 푼다)
+!macro psExtractArt NAME
+  ${If} $R8 == 100
+    File "/oname=$PLUGINSDIR\ps-${NAME}.bmp" "${BUILD_RESOURCES_DIR}\installer-art\${NAME}-100.bmp"
+  ${ElseIf} $R8 == 125
+    File "/oname=$PLUGINSDIR\ps-${NAME}.bmp" "${BUILD_RESOURCES_DIR}\installer-art\${NAME}-125.bmp"
+  ${ElseIf} $R8 == 150
+    File "/oname=$PLUGINSDIR\ps-${NAME}.bmp" "${BUILD_RESOURCES_DIR}\installer-art\${NAME}-150.bmp"
+  ${ElseIf} $R8 == 175
+    File "/oname=$PLUGINSDIR\ps-${NAME}.bmp" "${BUILD_RESOURCES_DIR}\installer-art\${NAME}-175.bmp"
+  ${ElseIf} $R8 == 200
+    File "/oname=$PLUGINSDIR\ps-${NAME}.bmp" "${BUILD_RESOURCES_DIR}\installer-art\${NAME}-200.bmp"
+  ${ElseIf} $R8 == 225
+    File "/oname=$PLUGINSDIR\ps-${NAME}.bmp" "${BUILD_RESOURCES_DIR}\installer-art\${NAME}-225.bmp"
+  ${ElseIf} $R8 == 250
+    File "/oname=$PLUGINSDIR\ps-${NAME}.bmp" "${BUILD_RESOURCES_DIR}\installer-art\${NAME}-250.bmp"
+  ${Else}
+    File "/oname=$PLUGINSDIR\ps-${NAME}.bmp" "${BUILD_RESOURCES_DIR}\installer-art\${NAME}-300.bmp"
+  ${EndIf}
+!macroend
+
+; 창(컨트롤) HWND의 안쪽 너비 → $R9
+!macro psClientWidth HWND
+  System::Call "*(i 0, i 0, i 0, i 0) p.R7"
+  System::Call "user32::GetClientRect(p ${HWND}, p R7)"
+  System::Call "*$R7(i, i, i .R9, i)"
+  System::Free $R7
+!macroend
+
+; 머리 로고(설치 · 제거 화면 공통 — 칸 1046): MUI가 기본 그림을 넣은 뒤(.onGUIInit 끝) 칸에 맞는 판으로 바꾼다
+!macro psHeaderArt
+  Push $R6
+  Push $R7
+  Push $R8
+  Push $R9
+  InitPluginsDir
+  GetDlgItem $R6 $HWNDPARENT 1046
+  !insertmacro psClientWidth $R6
+  ${If} $R9 > 0
+    !insertmacro psPickScale ${PS_HEADER_W}
+    !insertmacro psExtractArt header
+    SetBrandingImage /IMGID=1046 /RESIZETOFIT "$PLUGINSDIR\ps-header.bmp"
+  ${EndIf}
+  Pop $R9
+  Pop $R8
+  Pop $R7
+  Pop $R6
+!macroend
+; 함수 몸은 MUI가 화면(머리 그림 칸 포함)을 정의한 뒤에 컴파일돼야 한다 — 이 파일은 설치기 맨 앞에 들어가 여기서 정의하면
+; «no branding image found»로 빌드가 멈췄다(10/27). 그래서 이름만 여기서 정하고, 몸은 화면 정의 뒤에 끼는 자리
+; (설치기 customFinishPage · 제거기 customUninstallPage)에서 정의한다.
+!ifndef BUILD_UNINSTALLER
+  !define MUI_CUSTOMFUNCTION_GUIINIT psGuiInit
+!else
+  !define MUI_CUSTOMFUNCTION_UNGUIINIT un.psGuiInit
+  !macro customUninstallPage
+    Function un.psGuiInit
+      !insertmacro psHeaderArt
+    FunctionEnd
+  !macroend
+!endif
+
+; 완료 화면: electron-builder 기본 완료 화면(설치기 템플릿 assistedInstaller.nsh와 같은 «실행하기» 상자)에 왼쪽 그림 바꾸기만 더한다.
+; 왼쪽 그림 칸은 화면이 만들어질 때 생기므로 그 화면을 띄우기 직전(SHOW)에 칸을 재서 판을 고른다. 그림 손잡이는 MUI가 화면을 떠날 때 푼다.
+!ifndef BUILD_UNINSTALLER
+  !macro customFinishPage
+    Function psGuiInit
+      !insertmacro psHeaderArt
+    FunctionEnd
+
+    !ifndef HIDE_RUN_AFTER_FINISH
+      Function StartApp
+        ${if} ${isUpdated}
+          StrCpy $1 "--updated"
+        ${else}
+          StrCpy $1 ""
+        ${endif}
+        ${StdUtils.ExecShellAsUser} $0 "$launchLink" "open" "$1"
+      FunctionEnd
+
+      !define MUI_FINISHPAGE_RUN
+      !define MUI_FINISHPAGE_RUN_FUNCTION "StartApp"
+    !endif
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW psFinishShow
+    !insertmacro MUI_PAGE_FINISH
+
+    Function psFinishShow
+      Push $R7
+      Push $R8
+      Push $R9
+      !insertmacro psClientWidth $mui.FinishPage.Image
+      ${If} $R9 > 0
+        !insertmacro psPickScale ${PS_FINISH_W}
+        !insertmacro psExtractArt finish
+        ${NSD_FreeImage} $mui.FinishPage.Image.Bitmap
+        ${NSD_SetStretchedImage} $mui.FinishPage.Image "$PLUGINSDIR\ps-finish.bmp" $mui.FinishPage.Image.Bitmap
+      ${EndIf}
+      Pop $R9
+      Pop $R8
+      Pop $R7
+    FunctionEnd
+  !macroend
+!endif
+
+; ── 설치하는 동안 어디에 무엇을 까는지 보인다(10/27 Bumm님 «설치하는 동안 아무 글도 안 나온다», 팀장 전달) ──
+; electron-builder는 설치 단계를 시작하며 진행 글을 끄고(SetDetailsPrint none) 앱 파일을 7z 하나로 통째 푼다. 진행 글을 다시 켜는 자리는 둘이다 —
+; 둘 다 템플릿이 «여기 끼우면 기본 동작 대신 이것을 쓴다»고 열어 둔 공식 자리라, 기본 동작을 그대로 옮겨 적고 그 앞에 진행 글만 더한다.
+;   ① customCheckAppRunning: 설치 단계 맨 앞(앱이 켜져 있는지 PowerShell로 찾는 데 4초쯤 걸린다 — 10/27 실측, 그동안 글이 비어 있었다).
+;      «모든 사용자»는 관리자 권한으로 다시 뜬 설치기에서 이 단계를 건너뛴다(템플릿) — 그래서 ②에서도 켠다.
+;   ② customUnInstallCheck: 예전 판 지우기 결과를 보는 곳 = 앱 파일을 풀기 직전. 템플릿(installUtil.nsh)과 같은 검사를 먼저 한다.
+; 그 뒤 NSIS가 하는 일(대상 폴더 · 압축 해제 · 파일 복사 · 바로 가기 생성)은 NSIS가 스스로 한 줄씩 적는다.
+!ifndef BUILD_UNINSTALLER
+  Var psDetailsOn
+  !macro psDetailsOn
+    ${IfNot} ${Silent}
+    ${AndIf} $psDetailsOn != "1"
+      StrCpy $psDetailsOn "1"
+      SetDetailsPrint both
+      SetDetailsView show
+      DetailPrint "설치 위치: $INSTDIR"
+    ${EndIf}
+  !macroend
+  !macro customCheckAppRunning
+    !insertmacro psDetailsOn
+    DetailPrint "켜져 있는 ${PRODUCT_NAME}가 있는지 확인"
+    !insertmacro IS_POWERSHELL_AVAILABLE
+    !insertmacro _CHECK_APP_RUNNING
+  !macroend
+!endif
+!macro customUnInstallCheck
+  ${If} ${Errors}
+    DetailPrint `Uninstall was not successful. Not able to launch uninstaller!`
+  ${ElseIf} $R0 != 0
+    MessageBox MB_OK|MB_ICONEXCLAMATION "$(uninstallFailed): $R0"
+    DetailPrint `Uninstall was not successful. Uninstaller error code: $R0.`
+    SetErrorLevel 2
+    Quit
+  ${EndIf}
+  !insertmacro psDetailsOn
+  DetailPrint "앱 파일 풀기: ${APP_EXECUTABLE_FILENAME} · 화면 · 글꼴 · 그림 → $INSTDIR"
+!macroend
+
 !ifndef BUILD_UNINSTALLER
   Var psUserDefaultWritten
 
@@ -51,6 +223,8 @@
     DeleteRegValue HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
     DeleteRegKey /ifempty HKCU "${INSTALL_REGISTRY_KEY}"
   ${EndIf}
+  DetailPrint "«설치된 앱» 목록에 «${PRODUCT_NAME}» 등록"
+  DetailPrint "설치를 마쳤습니다: $INSTDIR"
 !macroend
 
 !macro customUnInstall

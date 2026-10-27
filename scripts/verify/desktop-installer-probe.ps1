@@ -1,6 +1,6 @@
 ﻿# Windows 설치판 설치 · 제거 확인(2026-10-27 Bumm님 기준, 팀장 전달 — _docs/intents/2026-10-27-desktop-installer).
 #
-#   설치:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify/desktop-installer-probe.ps1 -Step install -Mode user|all -Installer <PosterStudio-Setup.exe> -Out <결과 폴더>
+#   설치:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify/desktop-installer-probe.ps1 -Step install -Mode user|all -Installer <Poster Studio Setup.exe> -Out <결과 폴더> [-Replace]
 #   제거:  ... -Step uninstall -Mode user|all -Via startmenu|settings -Out <결과 폴더>
 #
 # 사람이 더블클릭한 것처럼 설치 창을 띄운다(조용한 설치 /S가 아니다). 화면마다 그 창만 따로 찍고(PrintWindow), 창의 단추에 누름 메시지를 보낸다.
@@ -21,7 +21,10 @@ param(
   [Parameter(Mandatory = $true)][ValidateSet('user', 'all')][string]$Mode,
   [Parameter(Mandatory = $true)][string]$Out,
   [string]$Installer,
-  [ValidateSet('startmenu', 'settings')][string]$Via = 'startmenu'
+  [ValidateSet('startmenu', 'settings')][string]$Via = 'startmenu',
+  # -Replace: 같은 범위에 예전 판이 깔려 있는 PC에서 새 판으로 덮어쓰는 시험(10/27 — Bumm님이 «모든 사용자»로 옛 판을 깔아 두신 PC).
+  #   설치 전 검사가 «설치가 없다» 대신 «예전 판이 있다»가 되고, 설치 뒤 앱 실행 파일이 새로 쓰였는지 본다.
+  [switch]$Replace
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force $Out | Out-Null
@@ -77,6 +80,15 @@ public static class Win {
     EnumChildWindows(p, (h, l) => { if (GetDlgCtrlID(h) == id && IsWindowVisible(h)) { found = h; return false; } return true; }, IntPtr.Zero);
     return found;
   }
+  [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int i);
+  [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
+  // 그림 칸(정적 컨트롤 SS_BITMAP)의 화소 크기 — 설치 화면 그림이 칸에 맞게 그려졌는지 재는 데 쓴다
+  public static string Bitmaps(IntPtr p) {
+    var sb = new StringBuilder();
+    EnumChildWindows(p, (h, l) => { if (IsWindowVisible(h) && Cls(h) == "Static" && (GetWindowLong(h, -16) & 0x1F) == 0x0E) { RECT r; GetClientRect(h, out r); sb.Append("[" + GetDlgCtrlID(h) + "]" + r.R + "x" + r.B + " | "); } return true; }, IntPtr.Zero);
+    return sb.ToString();
+  }
   public static IntPtr FindButton(IntPtr p, string contains) {
     IntPtr found = IntPtr.Zero;
     EnumChildWindows(p, (h, l) => { if (IsWindowVisible(h) && Cls(h) == "Button" && Text(h).Contains(contains)) { found = h; return false; } return true; }, IntPtr.Zero);
@@ -125,12 +137,22 @@ function Walk($prefix) {
       $h = $h2
     }
     $next = [Win]::GetDlgItem($h, 1)
-    for ($w = 0; $w -lt 300 -and -not [Win]::IsWindowEnabled($next) -and [Win]::IsWindow($h); $w++) { Start-Sleep -Milliseconds 500 }
+    # 설치가 도는 동안(«다음»이 꺼져 있는 동안)은 0.5초마다 그 화면을 찍는다 — 진행 중 글(설치 위치 · 항목)이 바뀌는지 본다
+    $progress = @()
+    for ($w = 0; $w -lt 300 -and -not [Win]::IsWindowEnabled($next) -and [Win]::IsWindow($h); $w++) {
+      if ($progress.Count -lt 40) {
+        $pf = Join-Path $Out ('{0}-{1:00}-진행-{2:00}.png' -f $prefix, $n, ($progress.Count + 1))
+        [Win]::Shot($h, $pf)
+        $progress += [ordered]@{ shot = (Split-Path $pf -Leaf); text = [Win]::AllText($h) }
+      }
+      Start-Sleep -Milliseconds 500
+    }
     if (-not [Win]::IsWindow($h)) { continue }
     Start-Sleep -Milliseconds 700
     $file = Join-Path $Out ('{0}-{1:00}.png' -f $prefix, $n)
     [Win]::Shot($h, $file)
-    $page = [ordered]@{ shot = (Split-Path $file -Leaf); text = [Win]::AllText($h) }
+    $page = [ordered]@{ shot = (Split-Path $file -Leaf); text = [Win]::AllText($h); bitmaps = [Win]::Bitmaps($h); dpi = [Win]::GetDpiForWindow($h) }
+    if ($progress.Count) { $page.progress = $progress }
     # 설치 범위 화면 — 기준 단추를 고른다
     $pick = if ($Mode -eq 'all') { [Win]::FindButton($h, '모든 사용자') } else { [Win]::FindButton($h, '전용') }
     if ($pick -ne [IntPtr]::Zero -and $page.text -match '모든 사용자') {
@@ -150,7 +172,12 @@ function Walk($prefix) {
 }
 
 if ($Step -eq 'install') {
-  Check '설치 전: 같은 이름의 설치가 없다(HKCU · HKLM)' ((-not (Entry 'HKCU')) -and (-not (Entry 'HKLM')) -and -not (Test-Path $exe)) $null
+  if ($Replace) {
+    $oldTime = if (Test-Path $exe) { (Get-Item $exe).LastWriteTimeUtc } else { $null }
+    Check "설치 전: 같은 범위($hive)에 예전 판이 깔려 있다(덮어쓰기 시험)" ($null -ne (Entry $hive) -and $null -ne $oldTime) $(if ($oldTime) { "$exe · $($oldTime.ToString('o'))" })
+  } else {
+    Check '설치 전: 같은 이름의 설치가 없다(HKCU · HKLM)' ((-not (Entry 'HKCU')) -and (-not (Entry 'HKLM')) -and -not (Test-Path $exe)) $null
+  }
   Start-Process -FilePath $Installer | Out-Null
   $walked = Walk "installer-$Mode"
   Check '설치 창이 뜨고 화면을 끝까지 넘긴다' $walked $report.title
@@ -158,6 +185,7 @@ if ($Step -eq 'install') {
   Check '설치 범위 화면(«me 전용» · «모든 사용자»)이 있고 기준 단추를 골랐다' (@($report.pages | Where-Object { $_.picked }).Count -eq 1) (@($report.pages | Where-Object { $_.picked }) | ForEach-Object { $_.picked })
   Check '위치 바꾸는 화면이 있고 기본 위치가 기준이다' ($report.defaultDir -eq $appDir) "$($report.defaultDir)"
   Check "기준 위치에 설치된다($appDir)" (Test-Path $exe) $exe
+  if ($Replace) { $newTime = (Get-Item $exe -ErrorAction SilentlyContinue).LastWriteTimeUtc; Check '덮어쓴 뒤 앱 실행 파일이 새 판으로 바뀌었다' ($newTime -and $oldTime -and $newTime -ne $oldTime) "$($oldTime.ToString('o')) → $(if ($newTime) { $newTime.ToString('o') })" }
   Check '설치 폴더에 제거 프로그램이 있다' (Test-Path $uninstaller) $uninstaller
   $entry = Entry $hive
   $props = if ($entry) { Get-ItemProperty $entry.PSPath } else { $null }

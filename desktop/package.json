@@ -29,7 +29,7 @@
       "package.json",
       "web/**/*",
       "!web/studio/waiting-v2/**",
-      "!web/studio/waiting-v3/**",
+      "!web/studio/waiting-v3/*.mp4",
       "!web/studio/waiting-approved-v1/**"
     ],
     "asar": true,
@@ -56,7 +56,7 @@
         }
       ],
       "icon": "build/icon.ico",
-      "artifactName": "PosterStudio-Setup.exe"
+      "artifactName": "Poster Studio Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -70,11 +70,11 @@
       "uninstallDisplayName": "Poster Studio",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": true,
-      "installerIcon": "build/installer.ico",
+      "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/installer.ico",
+      "installerHeaderIcon": "build/icon.ico",
       "installerSidebar": "build/installerSidebar.bmp",
-      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/uninstallerSidebar.bmp",
       "installerHeader": "build/installerHeader.bmp",
       "include": "build/installer.nsh",
       "language": "1042",

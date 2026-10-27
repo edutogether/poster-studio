@@ -6,7 +6,7 @@
 
    설치판을 원격 디버깅 포트와 가짜 카메라(그 사진)로 띄우고, 사람이 하는 순서대로 누른다:
      1단계(설치판 표시 · 다운로드 단추 없음 · 화면 글꼴 · 한글 입력) → 2단계(예시 영상 · 카메라 켜기 · 3초 뒤 찍기)
-     → «이 사진으로 포스터 만들기»(AI 없이 로컬 합성 8종) → PC에 저장(PNG 1200×1800) → 인쇄 미리보기 → 인쇄하기(4×6 PDF로 받음)
+     → «이 사진으로 포스터 만들기»(로딩 화면 장면 둘 → AI 없이 로컬 합성 8종) → PC에 저장(PNG 1200×1800) → 인쇄 미리보기 → 인쇄하기(4×6 PDF로 받음)
      → 다음 주인공 → «사진 불러오기» → 8종 → 개인정보처리방침 새 창 → 창 닫기로 종료.
    잰다: 앱이 보낸 요청이 전부 앱 안 주소(app://studio)·blob·data인지(바깥 인터넷 0건), 바깥 주소 fetch가 막히는지,
          콘솔 오류 · 못 받은 파일 0건, 화면마다 원본 해상도 캡처(<결과 폴더>/*.png), 결과 report.json.
@@ -163,10 +163,22 @@ try {
   await sleep(2600);
   await shot('2단계-촬영완료');
 
-  // 로컬 합성
+  // 로컬 합성 — 로딩 화면이 무작위 장면 둘(8초씩) 동안 돈 뒤 결과로 간다(10/27 Bumm님 «최소 두 개 · 최소 두 바퀴»). AI 문구 장면은 없다.
   await click('#generateBtn');
+  const waitScenes = [];
+  const waitStart = Date.now();
+  for (let i = 0; i < 80; i++) {
+    const w = await main.evaluate(`(() => { const d = document.querySelector('.generation-wait'); return { step: document.body.dataset.step, open: !!d?.open, scene: d?.dataset.setId ?? null, ai: d ? /AI/.test(d.innerText) : false, img: !!d?.querySelector('.generation-film img'), video: !!d?.querySelector('video') }; })()`);
+    waitScenes.push({ t: Date.now() - waitStart, ...w });
+    if (w.open && waitScenes.filter((x) => x.open).length === 1) await shot('2단계-로딩');
+    if (w.step === '3') break;
+    await sleep(500);
+  }
+  const seen = [...new Set(waitScenes.filter((w) => w.open).map((w) => w.scene))];
+  const shown = waitScenes.filter((w) => w.open);
+  check('로딩 화면이 무작위 장면 둘 동안 돈다(AI 문구 · 영상 없이 정지 그림)', seen.length >= 2 && shown.every((w) => !w.ai && w.img && !w.video), { 장면: seen, 문구AI: shown.some((w) => w.ai) });
+  check('두 장면(16초)이 끝난 뒤 3단계로 간다(최소 두 바퀴)', (waitScenes.find((w) => w.step === '3')?.t ?? 0) >= 15500, { 넘어간때ms: waitScenes.find((w) => w.step === '3')?.t });
   check('AI 없이 8종이 만들어진다(3단계)', await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 20000));
-  check('로딩 화면(AI 대기 화면)이 뜨지 않는다', await main.evaluate(`!document.querySelector('.generation-wait')`));
   await sleep(1500);
   await shot('3단계');
 
@@ -179,9 +191,13 @@ try {
   check('PC에 저장 → PNG 1200×1800', saved && size?.[0] === 1200 && size?.[1] === 1800, { saved, size });
 
   // 인쇄 미리보기 → 인쇄하기
-  await click('#printBtn');
+  const pb = await main.evaluate(`(() => { const r = document.getElementById('printBtn').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
+  for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await main.send('Input.dispatchMouseEvent', { type, x: pb[0], y: pb[1], button: 'left', clickCount: 1 });
   check('인쇄 미리보기 창이 열린다', await waitFor(`document.querySelector('.print-preview')?.open === true && document.querySelector('.print-preview-page img')?.naturalWidth === 1200`));
   check('미리보기 창의 초점은 «인쇄하기»', await main.evaluate(`document.activeElement?.textContent?.includes('인쇄하기') === true`));
+  const pv = await main.evaluate(`(() => { const a = document.activeElement, bs = [...document.querySelectorAll('.print-preview-actions button')].map((b) => Math.round(b.getBoundingClientRect().height)); return { outline: getComputedStyle(a).outlineStyle, heights: bs }; })()`);
+  check('마우스로 열면 «인쇄하기»에 초점 테두리(빨간 외곽선)가 없다', pv.outline === 'none', pv);
+  check('«닫기»와 «인쇄하기»의 높이가 같다(52px)', pv.heights.length === 2 && pv.heights.every((h) => h === 52), pv.heights);
   await sleep(500);
   await shot('인쇄-미리보기');
   await main.evaluate(`[...document.querySelectorAll('.print-preview-actions button')].find((b) => b.textContent.includes('인쇄하기')).click()`);
@@ -211,7 +227,7 @@ try {
   await sleep(500);
   await shot('2단계-사진불러오기');
   await click('#generateBtn');
-  check('불러온 사진으로 8종', await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 20000));
+  check('불러온 사진으로 8종', await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 40000));   // 로딩 화면 장면 둘(16초) 뒤
   await sleep(1200);
   await shot('3단계-불러온사진');
 

@@ -1,18 +1,19 @@
 /* 설치판 아이콘 · 설치 화면 그림 만들기(2026-10-27). 저장소 루트에서:  node desktop/build/make-assets.mjs [미리보기 폴더]
 
    만드는 것(desktop/build/ — 커밋한다, electron-builder가 읽는다):
-     icon.ico                앱 아이콘(16 · 20 · 24 · 32 · 40 · 48 · 64 · 128 · 256) — InKY 로고 + 오른쪽 아래 «PS».
-                             앱 실행 파일 · 바로가기 · 작업표시줄 · 앱 창 · «설치된 앱» 목록(제거 프로그램 아이콘)에 쓴다.
-     installer.ico           설치 프로그램 아이콘 — InKY 로고만(글자 없음). 설치 파일 · 설치 창에 쓴다.
-     installerSidebar.bmp    설치 · 제거 화면 왼쪽 그림(164×314 — NSIS 규격). 로고 원본 + 앱 이름, «PS» 없음
-     installerHeader.bmp     설치 화면 위쪽 띠 그림(150×57 — NSIS 규격). 로고 원본만
-     icon-spec.json          배지 수치
+     icon.ico                아이콘(16 · 20 · 24 · 32 · 40 · 48 · 64 · 128 · 256) — InKY 로고 + 오른쪽 아래 «PS».
+                             앱 실행 파일 · 바로가기 · 작업표시줄 · 앱 창 · «설치된 앱» 목록, 그리고 설치 파일 · 설치 창 · 제거 프로그램에 쓴다.
+     installer-art/header-<배율>.bmp   설치 화면 머리 로고(로고 + «PS») — 배율 100~300%마다 칸 크기(100%에서 175×53) 그대로
+     installer-art/finish-<배율>.bmp   설치 완료 화면 왼쪽 그림(영화관 + 제목 글귀) — 배율마다 칸 크기(100%에서 191×290) 그대로
+     installerHeader.bmp · installerSidebar.bmp   위 두 그림의 100% 판(electron-builder 설정의 기본 그림). 설치기는 칸에 맞는 판으로 바꾼다(installer.nsh)
+     uninstallerSidebar.bmp  제거 화면 왼쪽 그림(191×290) — 로고 + «PS» · 앱 이름
+     icon-spec.json          배지 · 설치 화면 그림 수치
 
    규칙(2026-10-27 Bumm님, 팀장 전달):
    - 노란 InKY 로고 원본(_shared/favicons/inky-camera-512.png를 옮긴 desktop/build/inky-camera-512.png)을 다시 그리거나 색을 바꾸지 않고 그대로 줄여 깐다.
    - 오른쪽 아래에 모서리 둥근 검은 이름표와 흰 «PS»만 더한다. Voice Cinema 시안과 같은 모양 · 위치 · 비율이다.
      크기는 그 시안보다 작게(약 0.8배 — «너무 커서 화질 떨어지는 게 보인다»)다.
-   - 글자는 앱 아이콘에만 넣는다. 설치 화면(머리 · 옆 그림, 설치 창 아이콘)에는 넣지 않는다.
+   - «PS»는 설치 파일 아이콘 · 설치 화면 로고에도 넣는다(10/27 오전 Bumm님이 설치해 보고 기준을 바꿈 — 처음엔 앱 아이콘에만 넣었다).
    - 크기마다 따로 그린다(큰 그림을 줄이지 않는다). 16~32px는 글꼴을 줄이면 «P8»처럼 뭉개져, 화소 하나하나를 정한 글자를 찍는다
      (Voice Cinema 시안의 PIXEL_GLYPHS와 같은 모양). 40px 이상은 Pretendard ExtraBold로 쓴다. */
 import fs from 'node:fs';
@@ -81,13 +82,14 @@ function roundRect(c, x, y, w, h, r) {
   c.closePath();
 }
 
-/** 로고만(설치 프로그램 아이콘) 또는 로고 + «PS»(앱 아이콘). */
-function iconPixels(S, withBadge = true) {
+/** 로고 + «PS»를 S×S 정사각에 그린다(아이콘 · 설치 화면 머리 로고 · 제거 화면 그림).
+    BADGE.sizes에 없는 크기(설치 화면 그림 안의 로고)는 256 기준 수치를 S/256배로 줄인다 — 40px 이상이라 글꼴 글자로 쓴다. */
+function iconPixels(S) {
   const cv = createCanvas(S, S);
   const c = cv.getContext('2d');
   drawLogo(c, S);
-  if (!withBadge) return cv;
-  const [w, h, r, glyph] = BADGE.sizes[S];
+  const k = S / 256, [w256, h256, r256, cap256] = BADGE.sizes[256];
+  const [w, h, r, glyph] = BADGE.sizes[S] ?? [Math.round(w256 * k), Math.round(h256 * k), Math.max(2, Math.round(r256 * k)), Math.round(cap256 * k)];
   const x0 = S - w, y0 = S - h;
   if (typeof glyph === 'string') {
     // 화소 이름표: 모서리 r화소를 계단으로 깎은 사각형(흐림 없이) + 화소 글자
@@ -174,41 +176,117 @@ function writeBmp(file, cv) {
   fs.writeFileSync(file, Buffer.concat([head, pixels]));
 }
 
-// 설치 화면 왼쪽 그림: 흰 바탕 · 로고 · 앱 이름 · 아래 InKY 노랑 띠
-function sidebar() {
-  const W = 164, H = 314;
+
+// ── 설치 화면 그림(2026-10-27 Bumm님 설치 확인 뒤 지시, 팀장 전달) ──────────────────────────────────────────────
+// NSIS 설치 화면의 그림 칸은 한글 Windows 글꼴로 정해진다 — 화면 배율 100%에서 머리 로고 칸 175×53, 완료 · 제거 화면 왼쪽 칸 191×290
+// (desktop-installer-probe.ps1이 잰 값, 10/27). NSIS 규격 크기(150×57 · 164×314)로 그리면 칸에 맞게 비율 없이 늘어나 «가로로 늘어나 깨져» 보였다.
+// 그래서 칸 크기 그대로, 화면 배율마다(SCALES) 따로 그려 둔다. 설치기는 칸의 실제 너비를 재서 가장 가까운 판을 고른다(installer.nsh).
+export const ART = {
+  scales: [100, 125, 150, 175, 200, 225, 250, 300],
+  header: [175, 53],
+  finish: [191, 290],
+};
+const theater = await loadImage(path.join(ROOT, 'public/studio/theater.webp'));
+GlobalFonts.registerFromPath(path.join(ROOT, 'public/fonts/Pretendard-Regular.woff2'), 'Pretendard Regular');
+GlobalFonts.registerFromPath(path.join(ROOT, 'public/fonts/Pretendard-Medium.woff2'), 'Pretendard Medium');
+const at = (base, pct) => base.map((v) => Math.round((v * pct) / 100));
+// 로고 원본 512 정사각에서 그림이 있는 세로 범위는 97~410이고, «PS» 이름표는 정사각 아래 끝에 붙는다 — 이름표까지 보이는 높이 = 정사각의 (512 − 97)/512
+const BADGED_LOGO_TALL = (512 - 97) / 512;
+
+// 머리 로고: 흰 바탕 오른쪽에 로고 + «PS». 칸 위아래에 4px(100% 기준) 여백.
+function header(W, H) {
+  const s = H / ART.header[1];
   const cv = createCanvas(W, H);
   const c = cv.getContext('2d');
   c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
-  c.fillStyle = '#ffe700'; c.fillRect(0, H - 22, W, 22);
-  const L = 116;
-  c.imageSmoothingQuality = 'high';
-  c.drawImage(logo, (W - L) / 2, 40, L, L);
-  c.fillStyle = '#1d1d1f'; c.textAlign = 'center';
-  c.font = '22px "Pretendard Black"'; c.fillText('Poster', W / 2, 196); c.fillText('Studio', W / 2, 222);
-  c.fillStyle = '#6b6b70'; c.font = '11px "Pretendard Bold"'; c.fillText('InKY Film Festival', W / 2, 252);
+  const m = Math.round(4 * s);
+  const S = Math.round((H - 2 * m) / BADGED_LOGO_TALL);
+  c.drawImage(iconPixels(S), W - S - Math.round(8 * s), H - m - S);
   return cv;
 }
-// 설치 화면 위쪽 띠 그림(오른쪽 끝): 흰 바탕 · 로고
-function header() {
-  const W = 150, H = 57;
+
+// 완료 화면 왼쪽 그림: 웹 첫 화면 왼쪽 영화관(public/studio/theater.webp · cinema.css의 그늘 · 글자 색)에 제목 글귀만 얹는다.
+// 왼쪽 위 «• Poster Studio · CGV 인천»과 아래 티켓은 넣지 않는다(10/27 Bumm님).
+function finish(W, H) {
+  const s = W / ART.finish[0];
+  const cv = createCanvas(W, H);
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+  const k = Math.max(W / theater.width, H / theater.height);
+  c.drawImage(theater, (W - theater.width * k) / 2, (H - theater.height * k) / 2, theater.width * k, theater.height * k);
+  const g = c.createLinearGradient(0, 0, 0, H);
+  [[0, '#1010103d'], [0.27, '#10101018'], [0.56, '#10101099'], [0.81, '#141414f0'], [1, '#141414']].forEach(([o, col]) => g.addColorStop(o, col));
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const pad = 14 * s, maxW = W - 2 * pad;
+  c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+  // 아래부터 쌓는다: 설명 두 줄 → 제목 두 줄 → 영화제 이름
+  const desc = { size: 9.5 * s, line: 9.5 * s * 1.6, font: 'Pretendard Regular', color: '#dedede' };
+  c.font = `${desc.size}px "${desc.font}"`; c.letterSpacing = '0px';
+  // 뜻 단위로 끊는다(«…극장에서 / 만나는 …»). 칸이 좁아 안 들어가는 줄만 낱말 단위로 다시 나눈다.
+  const lines = [];
+  for (const phrase of ['인천을 대표하는 극장에서', '만나는 나의 첫 번째 영화 포스터']) {
+    let cur = '';
+    for (const w of phrase.split(' ')) {
+      const next = cur ? `${cur} ${w}` : w;
+      if (cur && c.measureText(next).width > maxW) { lines.push(cur); cur = w; } else cur = next;
+    }
+    lines.push(cur);
+  }
+  let y = H - 16 * s - desc.line * (lines.length - 1);
+  c.fillStyle = desc.color;
+  lines.forEach((t, i) => c.fillText(t, pad, y + desc.line * i));
+  // 제목: 두 줄이 다 들어가는 가장 큰 크기(최대 26px · 100% 기준). 글자 사이는 웹과 같은 비율(−2.2/61em).
+  let size = 26 * s;
+  const fit = () => { c.font = `${size}px "Pretendard ExtraBold"`; c.letterSpacing = `${(-2.2 / 61) * size}px`; return Math.max(c.measureText('이번 영화의').width, c.measureText('주인공은, 나.').width); };
+  while (fit() > maxW) size -= 0.5 * s;
+  const titleLine = size * 1.16;
+  const t2 = y - desc.line - 6 * s;        // 둘째 줄 기준선
+  const t1 = t2 - titleLine;
+  c.fillStyle = '#ffffff';
+  c.fillText('이번 영화의', pad, t1);
+  const head = '주인공은, ';
+  c.fillText(head, pad, t2);
+  c.fillStyle = '#ff5148';
+  c.fillText('나.', pad + c.measureText(head).width, t2);
+  c.font = `${9.5 * s}px "Pretendard Medium"`; c.letterSpacing = `${-0.15 * s}px`;
+  c.fillStyle = '#dedede';
+  c.fillText('제4회 인천어린이청소년영화제', pad, t1 - size - 7 * s);
+  c.letterSpacing = '0px';
+  return cv;
+}
+
+// 제거 화면 왼쪽 그림(배율 하나 — 191×290): 흰 바탕 · 로고 + «PS» · 앱 이름 · 아래 InKY 노랑 띠
+function unSidebar() {
+  const [W, H] = ART.finish;
   const cv = createCanvas(W, H);
   const c = cv.getContext('2d');
   c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
-  const L = 64;
-  c.imageSmoothingQuality = 'high';
-  c.drawImage(logo, W - L - 6, (H - L) / 2, L, L);
+  c.fillStyle = '#ffe700'; c.fillRect(0, H - 20, W, 20);
+  const L = 132;
+  c.drawImage(iconPixels(L), (W - L) / 2, 22);
+  c.fillStyle = '#1d1d1f'; c.textAlign = 'center';
+  c.font = '23px "Pretendard Black"'; c.fillText('Poster', W / 2, 184); c.fillText('Studio', W / 2, 210);
+  c.fillStyle = '#6b6b70'; c.font = '11px "Pretendard Bold"'; c.fillText('InKY Film Festival', W / 2, 238);
   return cv;
 }
 
 const SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256];
-const icons = SIZES.map((S) => iconPixels(S, true));
+const icons = SIZES.map((S) => iconPixels(S));
 writeIco(path.join(HERE, 'icon.ico'), icons);
-writeIco(path.join(HERE, 'installer.ico'), SIZES.map((S) => iconPixels(S, false)));
-writeBmp(path.join(HERE, 'installerSidebar.bmp'), sidebar());
-writeBmp(path.join(HERE, 'installerHeader.bmp'), header());
-fs.writeFileSync(path.join(HERE, 'icon-spec.json'), JSON.stringify({ source: '_shared/favicons/inky-camera-512.png', sizes: SIZES, badge: BADGE, glyphs: GLYPHS }, null, 2) + '\n');
-console.log('만듦: icon.ico(' + SIZES.join(' · ') + ') · installer.ico · installerSidebar.bmp · installerHeader.bmp · icon-spec.json');
+const ARTDIR = path.join(HERE, 'installer-art');
+fs.rmSync(ARTDIR, { recursive: true, force: true });
+fs.mkdirSync(ARTDIR);
+const headers = ART.scales.map((pct) => [pct, header(...at(ART.header, pct))]);
+const finishes = ART.scales.map((pct) => [pct, finish(...at(ART.finish, pct))]);
+headers.forEach(([pct, cv]) => writeBmp(path.join(ARTDIR, `header-${pct}.bmp`), cv));
+finishes.forEach(([pct, cv]) => writeBmp(path.join(ARTDIR, `finish-${pct}.bmp`), cv));
+// electron-builder 설정의 기본 그림(설치기 안에 늘 들어가는 것) — 100% 판. 설치기는 시작할 때 칸에 맞는 판으로 바꾼다.
+writeBmp(path.join(HERE, 'installerHeader.bmp'), headers[0][1]);
+writeBmp(path.join(HERE, 'installerSidebar.bmp'), finishes[0][1]);
+writeBmp(path.join(HERE, 'uninstallerSidebar.bmp'), unSidebar());
+fs.rmSync(path.join(HERE, 'installer.ico'), { force: true }); // 10/27: 설치 파일 아이콘도 «PS» 앱 아이콘(icon.ico)을 쓴다
+fs.writeFileSync(path.join(HERE, 'icon-spec.json'), JSON.stringify({ source: '_shared/favicons/inky-camera-512.png', sizes: SIZES, badge: BADGE, glyphs: GLYPHS, installerArt: ART }, null, 2) + '\n');
+console.log('만듦: icon.ico(' + SIZES.join(' · ') + ') · installer-art/header · finish(' + ART.scales.join(' · ') + '%) · installerHeader.bmp · installerSidebar.bmp · uninstallerSidebar.bmp · icon-spec.json');
 
 if (preview) {
   fs.mkdirSync(preview, { recursive: true });
@@ -230,6 +308,7 @@ if (preview) {
     s.drawImage(cv, x, 120, cv.width, cv.width); s.drawImage(cv, x, 380, cv.width, cv.width); x += cv.width + 18;
   }
   fs.writeFileSync(path.join(preview, 'icon-sheet.png'), sheet.toBuffer('image/png'));
-  fs.writeFileSync(path.join(preview, 'installerSidebar.png'), sidebar().toBuffer('image/png'));
-  fs.writeFileSync(path.join(preview, 'installerHeader.png'), header().toBuffer('image/png'));
+  headers.forEach(([pct, cv]) => fs.writeFileSync(path.join(preview, `installer-header-${pct}.png`), cv.toBuffer('image/png')));
+  finishes.forEach(([pct, cv]) => fs.writeFileSync(path.join(preview, `installer-finish-${pct}.png`), cv.toBuffer('image/png')));
+  fs.writeFileSync(path.join(preview, 'uninstaller-sidebar.png'), unSidebar().toBuffer('image/png'));
 }

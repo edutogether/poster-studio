@@ -4,6 +4,7 @@ import { waitingSets } from "./waitingSets.js";
 import { approvedWaitingVideo } from "./waitingVideo.js";
 import { backgroundIdle, prefetchWaitingVideo, waitingVideosReady } from "./waitingNetwork.js";
 import WaitingArtwork from "./WaitingArtwork.js";
+import { DESKTOP } from "../desktop.js";
 import "./generation-wait.css";
 import "./waiting-art.css";
 
@@ -18,11 +19,15 @@ function shuffled(length: number) {
   const keys = crypto.getRandomValues(new Uint32Array(length));
   return Array.from({ length }, (_, i) => i).sort((a, b) => (keys[a] < keys[b] ? -1 : keys[a] > keys[b] ? 1 : 0));
 }
+// 설치판(AI 없이 사진 그대로)은 «AI가 …» 제목 장면을 빼고, 대기 영상 없이 정지 그림만 쓴다(영상은 설치 파일에 넣지 않는다 — desktop/package.json).
+const setsForBuild = () => (DESKTOP ? waitingSets.filter((set) => !set.title.includes("AI")) : waitingSets);
+const videoFor = (id: number) => (DESKTOP ? undefined : approvedWaitingVideo(id));
 // 그림·제목·상식을 한 세트로 섞는다. 포스터 조판의 Math.random과 독립적이다.
 export function createWaitSequence() {
   let previous = lastOpeningId;
   try { previous = Number(sessionStorage.getItem(OPENING_KEY) ?? previous); } catch { /* 저장소 차단 시 메모리 기록 사용 */ }
-  const sequence = shuffled(waitingSets.length).map(index => waitingSets[index]);
+  const sets = setsForBuild();
+  const sequence = shuffled(sets.length).map(index => sets[index]);
   if (sequence[0].id === previous) [sequence[0], sequence[1]] = [sequence[1], sequence[0]];
   lastOpeningId = sequence[0].id;
   try { sessionStorage.setItem(OPENING_KEY, String(lastOpeningId)); } catch { /* 세션 안에서는 메모리 기록 사용 */ }
@@ -98,7 +103,7 @@ export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextR
   useEffect(() => { current.current = sceneIndex; }, [sceneIndex]);
   const onSceneLoaded = () => {
     const at = sceneIndex;
-    const video = reduced ? undefined : approvedWaitingVideo(scenes[(at + 1) % scenes.length].id);
+    const video = reduced ? undefined : videoFor(scenes[(at + 1) % scenes.length].id);
     if (at > 0 || !video) waitingVideosReady();
     void backgroundIdle().then(() => (video && alive.current && current.current === at ? prefetchWaitingVideo(video) : undefined));
   };
@@ -107,7 +112,7 @@ export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextR
     <dialog ref={dialog} id="spinner" className="generation-wait spinner" data-paused={still} data-scene={sceneIndex} data-set-id={scene.id} aria-labelledby="generationTitle" onCancel={event => event.preventDefault()}>
       <div className="generation-content">
         <div className="generation-film waiting-art-frame" data-art={scene.id}>
-          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} paused={still} reduced={reduced} onLoaded={onSceneLoaded} />
+          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={videoFor(scene.id)} paused={still} reduced={reduced} onLoaded={onSceneLoaded} />
         </div>
         <h1 ref={heading} tabIndex={-1} id="generationTitle" className="generation-copy-stack">
           {scenes.map(({ id, title }, index) => <span key={id} className="generation-copy" data-active={index === sceneIndex} aria-hidden={index !== sceneIndex}>{title}</span>)}

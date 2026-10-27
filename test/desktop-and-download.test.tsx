@@ -5,6 +5,7 @@
    설치판(src/desktop.ts DESKTOP): AI 없이 찍거나 불러온 사진으로 8종을 만든다 — 서버 요청 0건(서버 확인 /health도 없다),
    «PC에 저장» · «인쇄 미리보기 → 인쇄하기»(설치판 창구의 print) · 다운로드 단추 대신 «설치판 · AI 없이» 표시.
    실제 브라우저 · 실제 설치판 확인은 scripts/verify/download-button-probe.mjs · desktop-app-probe.mjs. */
+import fs from 'node:fs';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, act, cleanup, fireEvent } from '@testing-library/react';
 import type { StudioMode } from '../src/studioMode.js';
@@ -102,6 +103,26 @@ describe('웹 첫 화면 «↓ 다운로드»', () => {
 describe('설치판(AI 없이 사진 그대로)', () => {
   beforeEach(() => { flags.desktop = true; studioMode = 'real'; });
 
+  /* «이 사진으로 포스터 만들기»(10/27 Bumm님): 로딩 화면이 무작위 장면 둘(8초씩) 동안 돌고 나서 결과로 간다 — «최소 두 바퀴»(COMMON_STANDARDS §27).
+     설치판에는 AI가 없으니 «AI …» 문구 장면은 나오지 않고, 대기 영상 없이 정지 그림만 쓴다. */
+  const composeWithLoading = async () => {
+    vi.useFakeTimers();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+    const wait = document.getElementById('spinner') as HTMLDialogElement;
+    expect(wait?.hasAttribute('open')).toBe(true);
+    expect(wait.textContent).not.toMatch(/AI/);
+    expect(wait.querySelector('video')).toBeNull();
+    const first = wait.dataset.setId;
+    await act(async () => { await vi.advanceTimersByTimeAsync(8000); });
+    expect(document.getElementById('spinner')?.dataset.setId).not.toBe(first);   // 둘째 장면
+    expect(document.body.dataset.step).toBe('2');                                  // 두 바퀴가 끝나기 전에는 넘어가지 않는다
+    await act(async () => { await vi.advanceTimersByTimeAsync(8000); });
+    vi.useRealTimers();
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(document.getElementById('spinner')).toBeNull();
+  };
+
   test('서버에 아무것도 보내지 않는다 — 서버 확인 · 생성 요청 0건, 다운로드 단추 대신 설치판 표시', async () => {
     await act(async () => { renderApp(); });
     await act(async () => { await Promise.resolve(); });
@@ -112,7 +133,7 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     expect(document.body.textContent).not.toContain('샘플 포스터 보기');
   });
 
-  test('찍은 사진으로 8종을 만든다(로딩 화면 없이) — 서버 요청 0건, 사진은 카메라 화질 그대로', async () => {
+  test('찍은 사진으로 8종을 만든다(로딩 화면 장면 둘 뒤) — 서버 요청 0건, 사진은 카메라 화질 그대로', async () => {
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
@@ -127,10 +148,8 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     await act(async () => { await Promise.resolve(); });
     expect(canvases[0].width).toBe(1280);   // 웹은 1024로 줄인다(AI 전송용) — 설치판은 인쇄되므로 그대로
     expect(cam.stopped).toEqual(['video']);
-    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
-    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    await composeWithLoading();
     expect(document.querySelectorAll('#resultView .style-option.thumb').length).toBe(8);
-    expect(document.getElementById('spinner')).toBeNull();
     expect(net.calls).toEqual([]);
   });
 
@@ -148,8 +167,7 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     expect([canvases[0].width, canvases[0].height]).toEqual([1920, 1440]);
     expect(el('snapshot').className).toBe('');
-    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
-    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    await composeWithLoading();
     expect(document.querySelectorAll('#resultView .style-option.thumb').length).toBe(8);
     expect(net.calls).toEqual([]);
   });
@@ -181,15 +199,17 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
     vi.useRealTimers();
     await act(async () => { await Promise.resolve(); });
-    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
-    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    await composeWithLoading();
     // PC에 저장
     await act(async () => { el<HTMLButtonElement>('desktopSaveBtn').click(); });
     expect(save).toHaveBeenCalledTimes(1);
-    // 출력 → 미리보기(아직 인쇄 안 함)
-    await act(async () => { el<HTMLButtonElement>('printBtn').click(); });
+    // 출력 → 미리보기(아직 인쇄 안 함). 마우스로 열면(누름 횟수 1) «인쇄하기» 초점 테두리를 숨기는 표시가 붙고, 창 안에서 키를 누르면 빠진다
+    await act(async () => { fireEvent.click(el<HTMLButtonElement>('printBtn'), { detail: 1 }); });
     const preview = document.querySelector('.print-preview') as HTMLDialogElement;
     expect(preview.hasAttribute('open')).toBe(true);
+    expect(preview.hasAttribute('data-pointer')).toBe(true);
+    fireEvent.keyDown(preview, { key: 'Tab' });
+    expect(preview.hasAttribute('data-pointer')).toBe(false);
     expect(document.getElementById('printArea')).toBeNull();
     const printNow = [...preview.querySelectorAll('button')].find((b) => b.textContent?.includes('인쇄하기'))!;
     expect(document.activeElement).toBe(printNow);   // 창이 열리면 초점은 «인쇄하기»(«닫기»가 아니라)
@@ -203,5 +223,16 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     await act(async () => { done({ ok: true }); await Promise.resolve(); });
     expect(document.getElementById('printArea')).toBeNull();
     expect(net.calls).toEqual([]);
+  });
+});
+
+describe('설치판 화면 규칙(src/desktop.css)', () => {
+  const css = fs.readFileSync('src/desktop.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  test('인쇄용 그림(#printArea)은 화면에서 자리를 차지하지 않는다 — 인쇄 때만(studio.css @media print) 보인다', () => {
+    // 이 규칙이 없으면 «인쇄하기»를 누르는 순간 문서가 길어져 세로 스크롤바가 생기고 화면이 왼쪽으로 밀린다(10/27 — desktop-print-shift.mjs)
+    expect(css).toMatch(/@media screen\s*\{\s*#printArea\s*\{\s*display:\s*none;\s*\}\s*\}/);
+  });
+  test('마우스로 연 인쇄 미리보기는 «인쇄하기» 초점 테두리를 그리지 않는다', () => {
+    expect(css).toMatch(/\.print-preview\[data-pointer\] \.primary-button:focus-visible\s*\{\s*outline:\s*none;/);
   });
 });

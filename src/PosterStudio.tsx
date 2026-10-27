@@ -48,6 +48,8 @@ const boothToken = DESKTOP ? "" : BOOTH_TOKEN;
    이 단추를 보일지는 src/studioMode.ts의 스위치가 정한다(«both» 두 단추 · «sample» 샘플만 · «real» 진짜 생성만). */
 // 10/20 저녁 Bumm님 «샘플 흐름의 로딩은 장면 5개 → 2개»(진짜 생성은 그대로 — 끝날 때까지)
 const SAMPLE_WAIT_SCENES = 2;
+// 설치판 «포스터 만들기»의 로딩도 장면 둘(10/27 Bumm님 «로딩 화면을 최소 두 개 무작위로 · 최소 두 바퀴»)
+const DESKTOP_WAIT_SCENES = 2;
 
 /* 포스터 고르기 화면만 바로 여는 로컬 미리보기(2026-10-14 Bumm님: «샘플 흐름을 처음부터 거치지 않고 그 화면이 곧장 열리게»).
    개발 서버(npm run dev)에서 주소 끝에 ?preview=posters를 붙이면 샘플 원화로 8개 디자인을 채운 3단계가 곧장 열린다.
@@ -402,7 +404,7 @@ export default function PosterStudio() {
     return () => {
       clearInterval(tick);
       if (spinTextRef.current)
-        spinTextRef.current.textContent = "AI가 그리는 중…";
+        spinTextRef.current.textContent = DESKTOP ? "포스터를 만드는 중…" : "AI가 그리는 중…";   // 설치판에는 AI가 없다
     };
   };
 
@@ -643,20 +645,28 @@ export default function PosterStudio() {
       setStatus("먼저 사진을 찍거나 불러와 주세요.");
       return;
     }
+    // 로컬 합성은 1~2초면 끝나 예전에는 왼쪽 아래 «포스터를 만들고 있어요» 한 줄만 스쳤다(10/27 Bumm님 «성의 없다»). 웹과 같은 로딩 화면을
+    // 무작위 장면 둘(DESKTOP_WAIT_SCENES × 8초) 동안 보인 뒤 결과로 간다 — 장면 넘김이 이 화면의 애니메이션이라 «최소 두 바퀴»(COMMON_STANDARDS §27)다.
+    // 조판은 로딩 화면 뒤에서 같이 돌린다(샘플 흐름과 같은 방식).
     isGeneratingRef.current = true;
     setGenerating(true);
-    setStatus("포스터를 만들고 있어요…");
+    setStatus("");
+    setSpinning(true);
+    const stopElapsed = startElapsed();
+    const waited = new Promise((resolve) => setTimeout(resolve, DESKTOP_WAIT_SCENES * SCENE_MS));
     try {
       const built = await buildPosters([photoURL], getMeta(mode));
+      await waited;
       applyPosters(built);
-      setStatus("");
       setCompletionId(value => value + 1);
     } catch (e) {
       console.error("[포스터 만들기 실패] 로컬 합성", e);
       setStatus("포스터를 만들지 못했어요. 다시 눌러 주세요.");
     } finally {
+      stopElapsed();
       isGeneratingRef.current = false;
       setGenerating(false);
+      setSpinning(false);
     }
   };
 

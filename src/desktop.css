@@ -24,11 +24,49 @@ body[data-desktop] .camHint.camera-example-caption #loadPhotoBtn {
   margin-left: 10px;
 }
 
+/* 2단계 오른쪽 «오늘 촬영할 영화»: 큰 창(2560×1440 등)에서 포스터 칸이 최대 520px에 막혀 포스터 · 티켓이 위로 몰리고 아래가 비었다
+   (10/27 Bumm님 «화면 높이에 맞춰 아래로 자연스럽게 퍼지도록»). 포스터 칸은 칸 폭 × 1.5(세로 2:3 — 폭 끝까지 찬 포스터)까지 커지고,
+   높이가 모자라면 웹과 같이 줄어든다(flex-shrink — 1920×1080 · 1366×768은 예전과 같은 크기). 그러고도 남는 높이는 «제목 · 포스터 · 티켓»
+   한 덩어리의 위(안내와 제목 사이)와 아래(티켓과 단추 사이)에 반씩 둔다 — 덩어리 안 간격은 그대로라 제목과 포스터가 떨어지지 않는다.
+   낮은 창(높이 820px 이하)은 웹 규칙이 오른쪽 칸을 내용보다 작아지지 않게 두고 포스터 칸을 따로 줄이므로 여기서 건드리지 않는다 —
+   이 규칙을 거기까지 걸면 1366×768에서 칸이 화면 밖으로 넘쳤다(10/27 실측). 그래서 폭 1100px 이상 · 높이 821px 이상 창에만 건다. */
+@media (min-width: 1100px) and (min-height: 821px) {
+  body[data-desktop] #cameraWorkspace .camera-film-heading {
+    margin-top: auto;
+  }
+  body[data-desktop] #cameraWorkspace .camera-film-card {
+    flex: 0 1 auto;
+    margin-bottom: auto;
+    container-type: inline-size;
+  }
+  body[data-desktop] #cameraWorkspace .camera-film-scene {
+    flex: 0 1 calc(100cqw * 1.5);
+    height: auto;
+    max-height: none;
+  }
+}
+
 /* 3단계 «PC에 저장» — «이전»과 같은 회색 단추, 글자가 길어 줄바꿈 없이 */
 body[data-desktop] #resultView .result-actions #desktopSaveBtn {
   flex: 0 0 auto;
   gap: 8px;
   white-space: nowrap;
+}
+
+/* 인쇄용 그림(#printArea — PosterStudio.tsx onPrint가 body 끝에 붙이는 1200×1800 포스터)은 화면에는 그리지 않는다.
+   화면 규칙이 없어 문서 끝에 그대로 그려져 문서가 길어지고 세로 스크롤바가 생겼다 — 그만큼 화면 폭이 줄어 «인쇄하기»를 누르면
+   페이지 전체가 왼쪽으로 밀리고 줄어 보였다(10/27 Bumm님, scripts/verify/desktop-print-shift.mjs 재현: 2560 창에서 스크롤바 · 앱 화면 212만 화소 차이).
+   인쇄 때는 studio.css @media print가 이 그림만 보이게 한다 — 그래서 화면(@media screen)에서만 숨긴다. */
+@media screen {
+  #printArea {
+    display: none;
+  }
+}
+
+/* 마우스로 연 미리보기에서는 «인쇄하기»의 초점 테두리(cinema.css button:focus-visible — 빨간 3px)를 그리지 않는다(10/27 Bumm님).
+   키보드로 열었거나 창 안에서 키를 누르면 data-pointer가 빠져 다시 보인다(StudioView.tsx openPrintPreview). */
+.print-preview[data-pointer] .primary-button:focus-visible {
+  outline: none;
 }
 
 /* 인쇄 미리보기 — 4×6 인화지(세로 2:3)에 포스터가 여백 없이 놓인 모습. 인쇄 규격(studio.css @media print)과 같다. */
@@ -81,16 +119,21 @@ body[data-desktop] #resultView .result-actions #desktopSaveBtn {
   gap: 12px;
   margin-top: 18px;
 }
+/* «닫기»는 «인쇄하기»와 같은 높이(52px)의 가벼운 보조 단추 — 공통 .back-button의 키(위아래 안쪽 여백 · 최소 높이)를 그대로 받아
+   72px로 «인쇄하기»보다 20px 높고 위로 삐져나와 두꺼워 보였다(10/27 Bumm님 «쓸데없이 두껍다»). */
 .print-preview-actions .back-button {
-  flex: 0 0 120px;
-  min-height: 52px;
+  flex: 0 0 auto;
+  height: 52px;
+  min-height: 0;
+  padding: 0 26px;
   border: 0;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
 }
 .print-preview-actions .primary-button {
   flex: 1;
-  min-height: 52px;
+  height: 52px;
+  min-height: 0;
   border: 0;
   font-size: 17px;
   font-weight: 800;

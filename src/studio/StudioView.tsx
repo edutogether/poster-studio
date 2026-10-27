@@ -336,8 +336,17 @@ export default function StudioView(p: StudioViewProps) {
   // 설치판: Electron에는 크롬의 인쇄 미리보기가 없어 4×6 인화지에 놓인 모습을 먼저 보이고, «인쇄하기»에서 Windows 인쇄 창을 연다.
   const printPreview = useRef<HTMLDialogElement>(null);
   const printNow = useRef<HTMLButtonElement>(null);
-  // 창을 연 뒤 초점은 «인쇄하기»로 — 리액트의 autoFocus는 HTML 속성으로 나가지 않아 showModal이 첫 단추(«닫기»)를 고른다
-  const openPrintPreview = () => { printPreview.current?.showModal(); printNow.current?.focus(); };
+  // 창을 연 뒤 초점은 «인쇄하기»로 — 리액트의 autoFocus는 HTML 속성으로 나가지 않아 showModal이 첫 단추(«닫기»)를 고른다.
+  // 그 초점 표시(빨간 테두리 — cinema.css button:focus-visible)는 마우스로 열었을 때는 숨긴다(10/27 Bumm님). 키보드로 열었거나(누름 횟수 0)
+  // 창 안에서 키를 누르면 다시 보인다 — 키보드로 쓰는 사람에게 초점 자리는 남긴다(desktop.css .print-preview[data-pointer]).
+  const openPrintPreview = (event: React.MouseEvent) => {
+    const dialog = printPreview.current;
+    if (!dialog) return;
+    if (event.detail > 0) dialog.dataset.pointer = "";
+    else delete dialog.dataset.pointer;
+    dialog.showModal();
+    printNow.current?.focus();
+  };
   const photoInput = useRef<HTMLInputElement>(null);
   // 10/20 Bumm님: 아이폰은 공유 창으로 사진첩에 넣는다(웹에서 사진 앱으로 가는 유일한 길) — 누를 때 무엇을 눌러야 하는지 한 줄로 알린다.
   const [saveHint, setSaveHint] = useState(false);
@@ -899,7 +908,8 @@ export default function StudioView(p: StudioViewProps) {
       {!p.spinning && <GenerateFailureDialog failure={p.failure} online={p.online}
         onRetry={p.onRetryFailure} onRetake={p.onRetakeFailure} onEditInputs={() => { void p.onDismissFailure(); go(1); }} onHome={() => void p.onHome()} />}
       <BoothCodeDialog open={p.boothOpen && !p.spinning} verify={p.verifyBooth} onSaved={p.onBoothCodeSaved} onClose={() => void p.onBoothCodeClose()} />
-      {DESKTOP && <dialog ref={printPreview} className="print-preview" aria-labelledby="printPreviewTitle">
+      {DESKTOP && <dialog ref={printPreview} className="print-preview" aria-labelledby="printPreviewTitle"
+        onKeyDown={() => { if (printPreview.current) delete printPreview.current.dataset.pointer; }}>
         <h2 id="printPreviewTitle">인쇄 미리보기</h2>
         <p className="print-preview-size">4 × 6 인화지(10 × 15cm)에 이렇게 나와요.</p>
         <div className="print-preview-page">{p.posters[p.selected] && <img src={posterURLs[p.selected]} alt="인쇄될 포스터"/>}</div>
