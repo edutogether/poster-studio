@@ -157,7 +157,7 @@
 ;      «모든 사용자»는 관리자 권한으로 다시 뜬 설치기에서 이 단계를 건너뛴다(템플릿) — 그래서 설치 위치는 ②에서도 한 번만 적는다(psWhere).
 ;   ② customUnInstallCheck — 예전 판 지우기를 마친 뒤 = 앱 파일을 풀기 직전: «프로그램 파일을 설치하는 중입니다 …»(가장 오래 걸리는 단계).
 ;   ③ customInstall — 파일 · 등록 · 바로가기를 마친 뒤: 한 일을 «…했습니다»로 적고 끝낸다. 파일 풀기와 바로가기 만들기 사이에는 끼울 자리가 없다(둘 다 1초가 안 걸린다).
-;   제거기: customUnInstall(제거 위치 · 지우는 중) → un.onUninstSuccess(마침).
+;   제거기: customCheckAppRunning(제거 위치 · 켜진 앱 확인) → customUnInstall(지우는 중). 끝나면 완료 화면이 «제거 완료»를 보인다.
 !macro psSay TEXT
   SetDetailsPrint both
   DetailPrint "${TEXT}"
@@ -173,20 +173,31 @@
       !insertmacro psSay "설치 위치: $INSTDIR"
     ${EndIf}
   !macroend
-  ; 템플릿(allowOnlyOneInstallerInstance.nsh)은 customCheckAppRunning이 있으면 기본 검사가 쓰는 getProcessInfo.nsh · $pid를 들이지 않는다 —
-  ; 기본 검사를 그대로 옮겨 쓰므로 여기서 들인다(빠뜨리면 «Invalid command: ${GetProcessInfo}»로 빌드가 멈춘다 — 10/27)
-  !include "getProcessInfo.nsh"
-  Var pid
-  !macro customCheckAppRunning
+!endif
+; 템플릿(allowOnlyOneInstallerInstance.nsh)은 customCheckAppRunning이 있으면 기본 검사가 쓰는 getProcessInfo.nsh · $pid를 들이지 않는다 —
+; 기본 검사를 그대로 옮겨 쓰므로 여기서 들인다(빠뜨리면 «Invalid command: ${GetProcessInfo}»로 빌드가 멈춘다 — 10/27). 제거기도 같은 검사를 쓴다.
+!include "getProcessInfo.nsh"
+Var pid
+; 켜진 앱 찾기(PowerShell, 4초쯤)는 설치 · 제거 단계 맨 앞에서 돈다 — 그 앞에 위치와 지금 하는 일을 적어 빈 화면으로 기다리지 않게 한다
+; (제거기는 이 자리가 없으면 처음 4초쯤 글 없이 막대만 움직였다 — 10/27 실측)
+!macro customCheckAppRunning
+  !ifdef BUILD_UNINSTALLER
+    ${IfNot} ${Silent}
+      SetDetailsView show
+      !insertmacro psSay "제거 위치: $INSTDIR"
+    ${EndIf}
+  !else
     !insertmacro psWhere
-    !insertmacro psSay "켜져 있는 ${PRODUCT_NAME}가 있는지 확인하는 중입니다 …"
-    !insertmacro IS_POWERSHELL_AVAILABLE
-    !insertmacro _CHECK_APP_RUNNING
+  !endif
+  !insertmacro psSay "켜져 있는 ${PRODUCT_NAME}가 있는지 확인하는 중입니다 …"
+  !insertmacro IS_POWERSHELL_AVAILABLE
+  !insertmacro _CHECK_APP_RUNNING
+  !ifndef BUILD_UNINSTALLER
     ${If} ${FileExists} "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
       !insertmacro psSay "이전에 설치한 ${PRODUCT_NAME}를 정리하는 중입니다 …"
     ${EndIf}
-  !macroend
-!endif
+  !endif
+!macroend
 ; 템플릿(installUtil.nsh handleUninstallResult)과 같은 검사 — 영어 기록 대신 쉬운 문장을 남긴다
 !macro customUnInstallCheck
   ${If} ${Errors}
@@ -249,8 +260,6 @@
 
 !macro customUnInstall
   SetDetailsPrint none
-  SetDetailsView show
-  !insertmacro psSay "제거 위치: $INSTDIR"
   !insertmacro psSay "프로그램 파일 · 바탕화면 바로가기 · 시작 메뉴를 지우는 중입니다 …"
   ${IfNot} ${isUpdated}
     Delete "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
@@ -261,7 +270,6 @@
 ; 제거 단계(섹션)를 하나 더 만들면 electron-builder가 «구성 요소 선택» 화면을 넣어 제거 흐름이 바뀐다(10/27 실측) — 그래서 제거 성공 콜백에서 한다.
 !ifdef BUILD_UNINSTALLER
   Function un.onUninstSuccess
-    !insertmacro psSay "제거를 마쳤습니다."
     ; 업데이트(--updated) 중이어도 괜찮다 — 비어서 지워진 상위 폴더는 새 판을 풀 때 설치기가 다시 만든다.
     ; 업데이트 여부 검사(isUpdated)는 쓰지 않는다: 이 파일은 플러그인 경로가 잡히기 전에 컴파일돼 그 검사가 쓰는 StdUtils를 못 찾는다(10/27 빌드 실패).
     StrCpy $R0 "$INSTDIR"

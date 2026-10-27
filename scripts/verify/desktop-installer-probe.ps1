@@ -124,6 +124,46 @@ public static class Win {
     EnumChildWindows(p, (h, l) => { if (IsWindowVisible(h) && Cls(h) == "Static" && (GetWindowLong(h, -16) & 0x1F) == 0x0E) { RECT r; GetClientRect(h, out r); sb.Append("[" + GetDlgCtrlID(h) + "]" + r.R + "x" + r.B + " | "); } return true; }, IntPtr.Zero);
     return sb.ToString();
   }
+  // 진행 화면 «자세히 보기» 목록(SysListView32)의 항목 글. 다른 프로세스의 목록이라 그 프로세스 메모리에 LVITEM을 두고 LVM_GETITEMTEXTW로 받는다.
+  // UI 자동화로는 이 목록의 항목이 하나도 안 나왔다(10/27 실측 — ListItem · DataItem 모두 0개). NSIS 설치기는 32비트 프로세스라 LVITEM도 32비트 모양으로 쓴다.
+  [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+  [DllImport("kernel32.dll")] static extern IntPtr VirtualAllocEx(IntPtr hp, IntPtr addr, IntPtr size, uint type, uint protect);
+  [DllImport("kernel32.dll")] static extern bool VirtualFreeEx(IntPtr hp, IntPtr addr, IntPtr size, uint type);
+  [DllImport("kernel32.dll")] static extern bool WriteProcessMemory(IntPtr hp, IntPtr addr, byte[] buf, IntPtr size, out IntPtr written);
+  [DllImport("kernel32.dll")] static extern bool ReadProcessMemory(IntPtr hp, IntPtr addr, byte[] buf, IntPtr size, out IntPtr read);
+  [DllImport("kernel32.dll")] static extern bool IsWow64Process(IntPtr hp, out bool wow);
+  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  public static string[] ListItems(IntPtr dlg) {
+    IntPtr lv = IntPtr.Zero;
+    EnumChildWindows(dlg, (h, l) => { if (Cls(h) == "SysListView32") { lv = h; return false; } return true; }, IntPtr.Zero);
+    var items = new System.Collections.Generic.List<string>();
+    if (lv == IntPtr.Zero) return items.ToArray();
+    int count = (int)SendMessage(lv, 0x1004, IntPtr.Zero, IntPtr.Zero); // LVM_GETITEMCOUNT
+    uint pid; GetWindowThreadProcessId(lv, out pid);
+    IntPtr hp = OpenProcess(0x0008 | 0x0010 | 0x0020 | 0x0400, false, pid);
+    if (hp == IntPtr.Zero) return items.ToArray();
+    bool wow; IsWow64Process(hp, out wow);
+    const int TEXT = 2048;
+    IntPtr remote = VirtualAllocEx(hp, IntPtr.Zero, (IntPtr)(256 + TEXT), 0x3000, 0x04);
+    try {
+      long text = remote.ToInt64() + 256;
+      for (int i = 0; i < count; i++) {
+        byte[] lvi = new byte[wow ? 60 : 88];
+        BitConverter.GetBytes(1).CopyTo(lvi, 0);                       // mask = LVIF_TEXT
+        BitConverter.GetBytes(i).CopyTo(lvi, 4);                       // iItem
+        if (wow) { BitConverter.GetBytes((int)text).CopyTo(lvi, 20); BitConverter.GetBytes(TEXT / 2).CopyTo(lvi, 24); }
+        else { BitConverter.GetBytes(text).CopyTo(lvi, 24); BitConverter.GetBytes(TEXT / 2).CopyTo(lvi, 32); }
+        IntPtr n;
+        WriteProcessMemory(hp, remote, lvi, (IntPtr)lvi.Length, out n);
+        int len = (int)SendMessage(lv, 0x1073, (IntPtr)i, remote);   // LVM_GETITEMTEXTW
+        byte[] buf = new byte[TEXT];
+        ReadProcessMemory(hp, (IntPtr)text, buf, (IntPtr)TEXT, out n);
+        items.Add(Encoding.Unicode.GetString(buf, 0, Math.Max(0, Math.Min(len, TEXT / 2)) * 2));
+      }
+    } finally { VirtualFreeEx(hp, remote, IntPtr.Zero, 0x8000); CloseHandle(hp); }
+    return items.ToArray();
+  }
   public static IntPtr FindButton(IntPtr p, string contains) {
     IntPtr found = IntPtr.Zero;
     EnumChildWindows(p, (h, l) => { if (IsWindowVisible(h) && Cls(h) == "Button" && Text(h).Contains(contains)) { found = h; return false; } return true; }, IntPtr.Zero);
@@ -133,15 +173,8 @@ public static class Win {
 "@
 [Win]::SetProcessDPIAware() | Out-Null
 [Win]::Off = [bool]$NoShots
-# 진행 화면 «자세히 보기» 목록의 항목 글(ListView — 다른 프로세스라 창 글로는 안 읽혀 UI 자동화로 읽는다)
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-function DetailLines($h) {
-  try {
-    $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
-    $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::ListItem)
-    return @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond) | ForEach-Object { $_.Current.Name })
-  } catch { return @() }
-}
+# 진행 화면 «자세히 보기» 목록의 항목 글 — [Win]::ListItems(창)이 목록에 직접 물어 받는다
+function DetailLines($h) { try { return @([Win]::ListItems($h)) } catch { return @() } }
 $BM_CLICK = 0x00F5
 $tag = "$Step-$Mode$(if ($Step -eq 'uninstall') { "-$Via" })"
 $report = [ordered]@{ step = $Step; mode = $Mode; via = $Via; elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator); startedAt = (Get-Date).ToString('o'); pages = @(); checks = @() }

@@ -441,7 +441,10 @@
   - 리액트 `autoFocus`는 HTML 속성으로 나가지 않는다. `<dialog>.showModal()`이 첫 단추에 초점을 주므로, 열고 나서 직접 `focus()`한다.
   - `SetBrandingImage`를 쓰는 함수는 MUI 화면 정의 뒤에 컴파일돼야 한다(앞이면 «no branding image found»). 그래서 `customFinishPage` · `customUninstallPage` 매크로 안에 둔다.
   - `customCheckAppRunning`을 직접 쓰면 템플릿이 빼 버리는 `getProcessInfo.nsh` · `Var pid`를 그 파일에서 들인다(빠뜨리면 «Invalid command: ${GetProcessInfo}»).
-  - 템플릿은 `SetDetailsPrint none` · `ShowInstDetails nevershow`라 진행 글이 안 보인다. `psDetailsOn`이 `SetDetailsPrint both` · `SetDetailsView show`로 켜고 «설치 위치»를 먼저 적는다.
+  - 🟠 **진행 화면에는 쉬운 문장만**(10/27 Bumm님 B안): NSIS 원래 기록(«압축 해제: …Temp
+sg….tmpapp-64.7z», 파일 삭제 …)은 꺼 두고(`SetDetailsPrint none` — 설치는 템플릿 기본, 제거는 `customUnInit`),
+    `psSay`가 문장 한 줄만 켰다 끈다(위 한 줄 · «자세히 보기» 목록 같음). 설치: 설치 위치 → 켜진 앱 확인 → 프로그램 파일 설치 중 → 바로가기 · 시작 메뉴 · «설치된 앱» 등록(끝난 뒤 «…했습니다») → 마침.
+    제거: 제거 위치 → 지우는 중 → 마침. 파일 풀기와 바로가기 사이에는 템플릿 자리가 없다. 확인 도구가 위 한 줄과 목록(UI 자동화)을 읽어 원래 기록 말투 · 임시 경로 · .7z · .dll이 없는지 본다.
 - 🟠 **설치기 그림은 화면 배율마다 따로 그린다**(10/27 Bumm님 «머리 로고가 가로로 늘어남 · 고화질»):
   - 한국어 Windows 100%에서 머리 칸은 175×53, 완료 · 첫 화면 옆 칸은 191×290이다(실측). 그 비율 그대로 100~300% 여덟 벌을 `desktop/build/installer-art/`에 굽는다.
   - 설치기가 뜰 때 칸 폭을 재어(`GetClientRect`) 가장 가까운 배율을 골라 넣는다(`installer.nsh`의 `psPickScale` · `psHeaderArt`). 칸과 그림 비율이 같아 늘어나지 않는다.
