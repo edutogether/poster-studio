@@ -375,7 +375,7 @@
   외부 글꼴 도메인을 CSP·HTML에 다시 넣지 않는다(`test/csp.test.js`·`test/poster-fonts.test.js`).
 
 ## 첫 화면 다운로드 아이콘 · 설치 파일 공개 (2026-10-27 Bumm님 A안, 팀장 전달)
-- **단추**: `src/studio/DownloadLink.tsx`. 1단계에만, 개인정보처리방침 링크 바로 왼쪽(같은 줄 · 같은 색 · 간격 14px).
+- **단추**: `src/studio/DownloadLink.tsx`. 1단계에만, 개인정보처리방침 링크 바로 왼쪽(같은 줄 · 같은 색 · 간격 8px — 10/27 Bumm님 «방침 쪽으로 조금 더», 14 → 8px).
   메뉴 없이 `<a href="/download/PosterStudio-Setup.exe" download>` 하나다 — 받는 것이 Poster Studio 설치판 하나뿐이다(Voice Cinema는 넣지 않는다).
   - 🟠 **글자 없이 lucide `download` 아이콘 하나**(10/27 Bumm님, 라이브를 보고 «↓ 다운로드» 글자를 뺌). 1.15em 칸(PC 13.8px · 휴대폰 12.7px), 색은 방침 글자와 같다.
     **밑줄 없음 · 마우스를 올리면 커서만 손가락** — 색 바뀜 · 툴팁(`title`) 같은 효과를 넣지 않는다. 화면 읽기 프로그램용 이름은 `aria-label` «Poster Studio 설치 파일 다운로드».
@@ -383,19 +383,21 @@
   🔴 **누르기 전에는 설치 파일 요청이 0건이어야 한다.** prefetch · preload · 서비스워커 미리 받기에 넣지 않는다(`test/download-link.test.tsx` · 확인 도구 둘).
 - **연결**: `firebase.json` `redirects` 302 → `https://storage.googleapis.com/inky-poster-studio-download/PosterStudio-Setup.exe`.
   주소를 바꾸면 `src/downloads.ts`와 리디렉션을 같이 고친다(시험이 둘을 맞춰 본다). 302인 까닭: 브라우저가 영구 기억하지 않아 파일 자리를 바꿀 수 있다.
-  설치 파일(147MB)은 Hosting(`dist/`)에 두지 않는다 — 저장소에 넣을 수 없고(100MB 넘음), 다음 배포가 `dist/`를 새로 만들며 지운다.
+  설치 파일(약 151MB)은 Hosting(`dist/`)에 두지 않는다 — 저장소에 넣을 수 없고(100MB 넘음), 다음 배포가 `dist/`를 새로 만들며 지운다.
 - 🔴 **공개 범위는 그 객체 하나다.** 버킷 `inky-poster-studio-download`(같은 프로젝트, 서울 `asia-northeast3`)는 객체별 권한(균일 접근 끔)이고,
   버킷 권한(IAM)에는 공개 항목이 없다. `PosterStudio-Setup.exe` 객체 하나에만 `allUsers` 읽기가 있다.
   버킷 목록 · 다른 객체 · 객체 권한 정보는 익명으로 거부된다(2026-10-27 실측 403 · 401).
   - 버킷에 `allUsers`를 주지 않는다 — 버킷 안 모든 파일이 공개된다.
   - 버킷을 «균일 접근»으로 바꾸지 않는다 — 객체 권한이 무시돼 설치 파일이 403이 된다.
-- **파일 정보**: `Content-Type: application/vnd.microsoft.portable-executable` · `Content-Disposition: attachment; filename="PosterStudio-Setup.exe"` · `Cache-Control: no-cache`.
+- **파일 정보**: `Content-Type: application/vnd.microsoft.portable-executable` · `Content-Disposition: attachment; filename="Poster Studio Setup.exe"` · `Cache-Control: no-cache`.
   다른 주소로 넘어가면 `<a download>`의 이름이 듣지 않아 받는 이름은 이 `Content-Disposition`이 정한다.
+  🟠 **받는 주소 · 객체 이름은 `PosterStudio-Setup.exe` 그대로, 저장되는 이름만 «Poster Studio Setup.exe»다**(10/27 Bumm님 — 주소는 승인된 것이라 두고 이름만 바꿈).
 - **파일을 바꿀 때**(같은 이름으로 덮는다):
-  `gcloud storage cp <새 exe> gs://inky-poster-studio-download/PosterStudio-Setup.exe --content-type=application/vnd.microsoft.portable-executable --content-disposition='attachment; filename="PosterStudio-Setup.exe"' --cache-control=no-cache --predefined-acl=publicRead --account <프로젝트 소유 계정>`
+  `gcloud storage cp <새 exe> gs://inky-poster-studio-download/PosterStudio-Setup.exe --content-type=application/vnd.microsoft.portable-executable --content-disposition='attachment; filename="Poster Studio Setup.exe"' --cache-control=no-cache --predefined-acl=publicRead --account <프로젝트 소유 계정>`
   - `--predefined-acl=publicRead`를 빼면 비공개로 덮여 403이 난다. 세 가지 파일 정보도 매번 같이 준다.
   - 이 PC의 gcloud 기본 계정은 이 프로젝트 권한이 없다. 기본 계정을 바꾸지 말고 `--account`로 Firebase CLI와 같은 소유 계정을 지정한다.
   - 올린 뒤 `node scripts/verify/download-live.mjs <결과 폴더> --sha256 <새 해시>`로 세 주소의 해시 · 머리글을 본다.
+  - 덮어쓴 옛 판은 버킷 기본 «소프트 삭제»로 7일 동안 비공개로 남았다가 지워진다(되살릴 수 있다). 공개 객체는 늘 하나다.
 - Firebase Storage 기능(전용 API · 보안 규칙)은 켜지 않았다 — 켜면 규칙 배포가 따라와 «hosting만»을 넘는다.
   그래서 파일은 Firebase 콘솔의 Storage 탭이 아니라 Google Cloud 콘솔의 Cloud Storage에서 보인다.
 - **비용**: 한 번 받을 때 약 0.15GB가 나간다(인터넷 송신 GB당 약 $0.12 → 한 번에 약 $0.02). 저장은 월 1센트 미만.
@@ -407,7 +409,7 @@
     배포 전에 미리 찍은 것과 견주면 큰 장르 그림 한 장(«애니메이션»)을 줄여 그린 결과가 시각에 따라 갈려 걸린다
     (2026-10-27 실측: 같은 `836b1b9` 판끼리 PC 2560에서 107,650화소 · 최대 61단계, 같은 시각 채널 대 새 라이브는 0). 소개 문장 한 줄(7,084화소)도 열 때마다 갈려 3번씩 찍어 짝을 찾는다.
   - 라이브 확인 한 번에 설치 파일을 5번 끝까지 받는다(세 주소 + 누르기 두 크기 — 약 0.74GB · 약 $0.09).
-- 설치판 자체(만들기 · 설치 · 제거 확인)는 가지 `desktop-20261027`에 있다. 배포한 설치 파일은 그 가지 `28dc59d` 빌드다(SHA-256 `5e24eeff…bdf4`).
+- 설치판 자체(만들기 · 설치 · 제거 확인)는 가지 `desktop-20261027`에 있다. 지금 공개한 설치 파일은 그 가지 `78c6a7f` 빌드다(150,992,890바이트 · SHA-256 `1ac178f7…f316`, 10/27 11:24 교체).
 
 ## GitHub 정지 중 로컬 배포 (2026-10-15 Bumm님 승인, 팀장 전달)
 - GitHub가 정지돼 push·CI가 안 될 때만, 매번 팀장을 거친 Bumm님 승인을 받고 이 컴퓨터에서 Firebase로 직접 배포한다.
