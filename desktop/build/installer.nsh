@@ -167,6 +167,10 @@
       DetailPrint "설치 위치: $INSTDIR"
     ${EndIf}
   !macroend
+  ; 템플릿(allowOnlyOneInstallerInstance.nsh)은 customCheckAppRunning이 있으면 기본 검사가 쓰는 getProcessInfo.nsh · $pid를 들이지 않는다 —
+  ; 기본 검사를 그대로 옮겨 쓰므로 여기서 들인다(빠뜨리면 «Invalid command: ${GetProcessInfo}»로 빌드가 멈춘다 — 10/27)
+  !include "getProcessInfo.nsh"
+  Var pid
   !macro customCheckAppRunning
     !insertmacro psDetailsOn
     DetailPrint "켜져 있는 ${PRODUCT_NAME}가 있는지 확인"
