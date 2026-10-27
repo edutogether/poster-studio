@@ -60,6 +60,33 @@ public static class Win {
       bmp.Save(file, ImageFormat.Png);
     }
   }
+  [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr h, uint msg, IntPtr w, IntPtr l, uint flags, uint ms, out IntPtr result);
+  // 설치 창의 화면 스레드가 쌓인 메시지를 다 처리할 때까지 기다린다(WM_NULL — 아무 일도 하지 않는 메시지가 돌아오면 그 앞의 일은 끝났다)
+  static void Idle(IntPtr h) { IntPtr res; SendMessageTimeout(h, 0x0000, IntPtr.Zero, IntPtr.Zero, 0x0000, 5000, out res); }
+  static byte[] Grab(IntPtr h) {
+    RECT r; GetWindowRect(h, out r);
+    if (r.R - r.L <= 0 || r.B - r.T <= 0) return null;
+    using (var bmp = new Bitmap(r.R - r.L, r.B - r.T)) {
+      using (var g = Graphics.FromImage(bmp)) { var hdc = g.GetHdc(); PrintWindow(h, hdc, 2); g.ReleaseHdc(hdc); }
+      using (var ms = new System.IO.MemoryStream()) { bmp.Save(ms, ImageFormat.Bmp); return ms.ToArray(); }
+    }
+  }
+  static bool Same(byte[] a, byte[] b) { if (a == null || b == null || a.Length != b.Length) return false; for (int i = 0; i < a.Length; i++) if (a[i] != b[i]) return false; return true; }
+  // 화면이 다 그려진 뒤에 찍는다 — 설치 창이 한가해진 뒤 0.3초 간격 두 장이 같아질 때까지(최대 약 8초).
+  //   10/27 실측: 새로 설치할 때 첫 화면 · 위치 화면을 글자가 그려지기 전에 찍었다(빈 화면 · 설명 글 없는 위치 화면 — 단추 글은 읽혀 시험은 통과).
+  //   강제로 다시 그리게(RedrawWindow) 하면 그리는 도중을 찍어 더 나빴다(쓰지 않는다).
+  public static bool ShotStable(IntPtr h, string file) {
+    Idle(h); System.Threading.Thread.Sleep(300);
+    byte[] prev = Grab(h);
+    for (int i = 0; i < 13; i++) {
+      System.Threading.Thread.Sleep(300); Idle(h);
+      byte[] cur = Grab(h);
+      if (Same(prev, cur)) { Shot(h, file); return true; }
+      prev = cur;
+    }
+    Shot(h, file);
+    return false;
+  }
   public static IntPtr FindDialog(string key) {
     IntPtr found = IntPtr.Zero;
     EnumWindows((h, l) => { if (IsWindowVisible(h) && Cls(h) == "#32770" && Text(h).Contains(key)) { found = h; return false; } return true; }, IntPtr.Zero);
@@ -150,8 +177,9 @@ function Walk($prefix) {
     if (-not [Win]::IsWindow($h)) { continue }
     Start-Sleep -Milliseconds 700
     $file = Join-Path $Out ('{0}-{1:00}.png' -f $prefix, $n)
-    [Win]::Shot($h, $file)
-    $page = [ordered]@{ shot = (Split-Path $file -Leaf); text = [Win]::AllText($h); bitmaps = [Win]::Bitmaps($h); dpi = [Win]::GetDpiForWindow($h) }
+    $stable = [Win]::ShotStable($h, $file)
+    if (-not [Win]::IsWindow($h)) { break } # «마침»을 누른 뒤 닫히는 창 — 화면이 아니다
+    $page = [ordered]@{ shot = (Split-Path $file -Leaf); stable = $stable; text = [Win]::AllText($h); bitmaps = [Win]::Bitmaps($h); dpi = [Win]::GetDpiForWindow($h) }
     if ($progress.Count) { $page.progress = $progress }
     # 설치 범위 화면 — 기준 단추를 고른다
     $pick = if ($Mode -eq 'all') { [Win]::FindButton($h, '모든 사용자') } else { [Win]::FindButton($h, '전용') }
@@ -159,7 +187,7 @@ function Walk($prefix) {
       [Win]::SendMessage($pick, $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
       Start-Sleep -Milliseconds 400
       $page.picked = [Win]::Text($pick)
-      [Win]::Shot($h, (Join-Path $Out ('{0}-{1:00}-범위.png' -f $prefix, $n)))
+      [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-범위.png' -f $prefix, $n))) | Out-Null
     }
     # 위치 화면 — 기본값을 읽어 둔다(바꾸지 않는다)
     $dir = [Win]::FindChildById($h, 1019)

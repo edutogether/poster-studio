@@ -34,8 +34,10 @@ if (!out || out.startsWith('--') || !webDist || !fs.existsSync(path.join(webDist
 }
 fs.mkdirSync(out, { recursive: true });
 const SIZES = [[1366, 768], [1920, 1080], [2560, 1440]];
-// 그림자 진 글자 한 줄(.exhibition-description)은 같은 앱을 다시 열어도 글자 다듬기가 갈린다(10/27 실측: 같은 설치판 두 번 = 7,249화소, 그 줄만).
-// 그래서 크기마다 TRIES번 열어 찍고, 표시 상자 밖 차이 0인 짝이 있는지 본다(가장 가까운 짝을 적는다 — download-button-probe와 같은 방식).
+// 첫 화면 설명 한 줄(.exhibition-description)은 StudioCaption(Medium · font-display: optional)으로 그린다. 글꼴이 늦게 오면 그 화면은 끝까지
+// Studio(Regular)로 그린다 — 열 때마다 굵기가 갈리는 것은 웹 · 설치판 같은 제품 동작이다(10/27 실측: 그 줄만 7,249화소, 설치판 Medium · 웹 Regular).
+// 그래서 ① 캐시를 지우지 않고 다시 열어(창이 처음 열 때 받은 글꼴을 캐시에서 쓴다) 글꼴이 제때 오게 하고 ② 크기마다 TRIES번 찍어, 그린 글꼴이 같은 짝 가운데서만
+// 표시 상자 밖 차이 0인 짝을 찾는다. 같은 글꼴 짝이 없으면 판정할 수 없으므로 걸림이다(시도마다 그린 글꼴은 report.json에 남긴다).
 const TRIES = 3;
 // 새 창이 다른 창 뒤에서 열리면 Windows가 가려진 창으로 보고 크로뮴이 그리기를 멈춘다(10/27 실측 — 찍기가 끝나지 않았다). 확인할 때만 끈다(제품 코드는 그대로).
 // 그래픽 카드로 그리면 흐린 글자 그림자(.exhibition-description text-shadow 12px)가 실행마다 조금씩 갈린다(10/27 실측 7,650 · 21,218화소) — 확인할 때만 소프트웨어로 그린다.
@@ -59,7 +61,7 @@ async function captureAll(child, port, urlPrefix, prefix) {
   const shots = {};
   for (const [w, h] of SIZES) for (let t = 1; t <= TRIES; t++) {
     await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
-    await send('Page.reload', { ignoreCache: true });
+    await send('Page.reload', { ignoreCache: false });
     await sleep(1000);
     await ev(`new Promise((r) => { const t = setInterval(() => { if (document.body.classList.contains('app-ready') && !document.getElementById('splash')) { clearInterval(t); r(); } }, 100); setTimeout(() => { clearInterval(t); r(); }, 10000); })`);
     await ev(`document.fonts.ready`);
@@ -118,7 +120,9 @@ const server = http.createServer((req, res) => {
   if (p.endsWith('/')) p += 'index.html';
   const f = path.join(root, p);
   if (!f.startsWith(root + path.sep) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; }
-  res.writeHead(200, { 'content-type': TYPE[path.extname(f)] ?? 'application/octet-stream' });
+  // 글꼴은 라이브 Hosting과 같은 캐시(firebase.json «**/*.woff2» 30일)로 준다 — 캐시 머리글이 없으면 다시 열 때마다 새로 받아 optional 글꼴이 늘 늦는다(10/27 실측: 웹만 9번 모두 Regular).
+  const cache = path.extname(f) === '.woff2' ? { 'cache-control': 'public, max-age=2592000' } : {};
+  res.writeHead(200, { 'content-type': TYPE[path.extname(f)] ?? 'application/octet-stream', ...cache });
   fs.createReadStream(f).pipe(res);
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -146,15 +150,16 @@ const report = { exe, webDist: root, sizes: [], checks: [] };
 for (const [w, h] of SIZES) {
   const key = `${w}x${h}`;
   const ds = desktop[key], wvs = web[key];
-  const d = ds[0], wv = wvs[0];
+  const d = ds[0];
   const box = d.badge ? [Math.floor(d.badge[0] - 2), Math.floor(d.badge[1] - 2), Math.ceil(d.badge[2] + 2), Math.ceil(d.badge[3] + 2)] : null;
   let same = null;
   for (const x of ds) for (const y of wvs) {
+    if (JSON.stringify(x.fonts) !== JSON.stringify(y.fonts)) continue;
     const c = compare(await readPng(y.file), await readPng(x.file), box);
     if (c && (!same || c.outside < same.outside)) same = { ...c, desktop: path.basename(x.file), web: path.basename(y.file) };
   }
   const B = await readPng(d.file);
-  const row = { size: key, hovered: [ds.map((x) => x.hovered), wvs.map((x) => x.hovered)], badgeBox: box, sameEngine: same, fonts: { desktop: d.fonts, web: wv.fonts } };
+  const row = { size: key, hovered: [ds.map((x) => x.hovered), wvs.map((x) => x.hovered)], badgeBox: box, sameEngine: same, fonts: { desktop: ds.map((x) => x.fonts), web: wvs.map((x) => x.fonts) } };
   if (chromeDir && fs.existsSync(path.join(chromeDir, `home-${key}.png`))) row.vsChrome = compare(await readPng(path.join(chromeDir, `home-${key}.png`)), B, box);
   report.sizes.push(row);
   const ok = ds.every((x) => x.hovered === 0) && wvs.every((x) => x.hovered === 0) && box && same && same.outside === 0 && same.inside > 0;

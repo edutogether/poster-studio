@@ -406,18 +406,22 @@
   - 부스 토큰 0 · 서버 요청 0이다. 화면 정책은 `connect-src 'self'`이고, `desktop/main.mjs`가 http · https · ws를 전부 끊는다.
   - 머리글에 «설치판 · AI 없이 사진 그대로»를 늘 띄운다.
   - 샘플 흐름 · 로딩 영상은 싣지 않는다. 샘플 로딩 화면이 «AI가 당신의 영화를 그리고 있어요»라, 설치판에서는 거짓 표시가 된다.
+  - «이 사진으로 포스터 만들기»는 로딩 화면을 무작위 장면 둘(16초, `DESKTOP_WAIT_SCENES`) 보인 뒤 3단계로 간다(10/27 Bumm님 «토스트 말고 로딩 화면 · 최소 두 바퀴»).
+    장면은 제목에 «AI»가 든 것을 빼고 고르며(`GenerationWait.tsx`의 `setsForBuild`) 영상 없이 정지 그림만 쓴다. 0으로 줄이면 `test/desktop-and-download.test.tsx` 3건이 잡는다.
 - 설치판 갈래는 `src/desktop.ts`의 `DESKTOP`(`--mode desktop`)으로 가른다. 웹 빌드에서는 거짓으로 접혀 번들에서 빠진다.
   - 웹 번들에 설치판 문구 0건, 설치판 번들에 토큰 0건이어야 한다. `desktop-app-probe.mjs`가 화면이 받은 스크립트를 직접 본다.
 - 🔴 **`src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양을 바꾸지 않는다.** CI 배포 단계(`deploy.yml`)와 스크립트가 그 줄을 정규식으로 읽는다.
   - 10/27에 삼항식으로 바꿨더니 `test/smoke-step.test.js` 8건이 잡았다.
   - 설치판에서 토큰을 빼는 일은 쓰는 쪽(`PosterStudio.tsx`의 `boothToken`)에서 한다.
-- **빌드**: 아래 순서로 하면 `desktop/out/PosterStudio-Setup.exe`가 나온다(약 147MB · 커밋하지 않음).
+- **빌드**: 아래 순서로 하면 `desktop/out/Poster Studio Setup.exe`가 나온다(약 151MB · 커밋하지 않음).
+  이름은 `desktop/package.json`의 `artifactName`이다(10/27 Bumm님 — 받는 파일 이름). 웹의 받는 주소 `/download/PosterStudio-Setup.exe`와 Storage 객체 이름은 그대로다.
   1. 루트에서 `npm run build:desktop` → `desktop/web`
   2. `cd desktop && npm ci`
   3. `node node_modules/electron/install.js` — npm 12는 설치 스크립트를 막아 Electron 실행 파일이 안 받아진다.
   4. `npx electron-builder --win nsis --x64 --publish never`
   - 판: electron 44.7.0 · electron-builder 26.17.0.
   - 서명은 없다. 그래서 인터넷에서 받은 설치 파일은 Windows SmartScreen이 «PC 보호» 창을 띄운다(«추가 정보» → «실행»).
+    창은 받은 파일에 붙는 인터넷 표식(`Zone.Identifier`) 때문에 뜬다 — 파일 속성 «차단 해제»(`Unblock-File`) 뒤에는 바로 설치 창이 뜬다(10/27 이 PC 실측, runbook §4-2).
 - 🟠 **설치 모양은 Bumm님 기준이다**(10/27 정정, 팀장 전달 — 바꾸지 않는다):
   - «나만 / 모든 사용자» 고르는 화면과 위치 바꾸기 화면을 둔다. 기본은 «모든 사용자»다(`selectPerMachineByDefault`).
   - 모든 사용자: `C:\Program Files\InKY Film Festival\Poster Studio`(관리자 승인 창이 한 번 뜬다).
@@ -434,15 +438,32 @@
   - `$LOCALAPPDATA`는 `SetShellVarContext`를 따른다. «모든 사용자»가 기본인 화면에서 읽으면 `C:\ProgramData`가 나온다(«나만» 설치가 거기 깔렸다). 잠깐 `current`로 바꿔 읽는다.
   - «나만» 기본 위치는 설치 범위 화면이 열릴 때 적는다. 설치기 시작에서 적으면 첫 설치인데 «이미 사용자별 설치가 있습니다»가 뜬다. 끝까지 «나만»으로 설치하지 않으면 창이 닫힐 때 지운다.
   - 리액트 `autoFocus`는 HTML 속성으로 나가지 않는다. `<dialog>.showModal()`이 첫 단추에 초점을 주므로, 열고 나서 직접 `focus()`한다.
+  - `SetBrandingImage`를 쓰는 함수는 MUI 화면 정의 뒤에 컴파일돼야 한다(앞이면 «no branding image found»). 그래서 `customFinishPage` · `customUninstallPage` 매크로 안에 둔다.
+  - `customCheckAppRunning`을 직접 쓰면 템플릿이 빼 버리는 `getProcessInfo.nsh` · `Var pid`를 그 파일에서 들인다(빠뜨리면 «Invalid command: ${GetProcessInfo}»).
+  - 템플릿은 `SetDetailsPrint none` · `ShowInstDetails nevershow`라 진행 글이 안 보인다. `psDetailsOn`이 `SetDetailsPrint both` · `SetDetailsView show`로 켜고 «설치 위치»를 먼저 적는다.
+- 🟠 **설치기 그림은 화면 배율마다 따로 그린다**(10/27 Bumm님 «머리 로고가 가로로 늘어남 · 고화질»):
+  - 한국어 Windows 100%에서 머리 칸은 175×53, 완료 · 첫 화면 옆 칸은 191×290이다(실측). 그 비율 그대로 100~300% 여덟 벌을 `desktop/build/installer-art/`에 굽는다.
+  - 설치기가 뜰 때 칸 폭을 재어(`GetClientRect`) 가장 가까운 배율을 골라 넣는다(`installer.nsh`의 `psPickScale` · `psHeaderArt`). 칸과 그림 비율이 같아 늘어나지 않는다.
+  - 완료 화면 그림은 웹 첫 화면의 극장 그림 · 제목(«이번 영화의 / 주인공은, 나.»)이다. 표 · «Poster Studio · CGV 인천» 줄은 넣지 않는다.
+  - 설치기 화면 · 설치 파일 아이콘에도 «PS»를 단다(10/27 Bumm님이 «설치기는 로고 원본뿐» 기준을 바꿨다).
 - **확인**(전부 실제 실행):
   - `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(또는 `--dev`): 가짜 카메라로 한글 입력 → 촬영 → 8종 → PC 저장 → 인쇄 미리보기 → 4×6 PDF → 사진 불러오기 → 로고 → 종료.
   - `powershell -File scripts/verify/desktop-installer-probe.ps1 -Step install|uninstall -Mode user|all -Via startmenu|settings …`: 설치 창을 화면마다 찍으며 단추 누름 메시지로 넘긴다. 키보드 흉내는 없다.
     «모든 사용자»는 설치기가 관리자 권한으로 다시 뜨므로 이 도구도 관리자 권한으로 돌린다(권한이 낮은 창의 단추 누름 메시지는 Windows가 막는다).
   - `node scripts/verify/desktop-vs-web.mjs <결과> --exe <설치한 exe> --web-dist <웹 빌드>`: 첫 화면을 같은 엔진으로 찍어 «설치판» 표시 밖 화소 차이 0인지 본다.
-    그림자 진 글자 한 줄이 실행마다 조금씩 달라(같은 설치판 두 번 = 7,249화소) 크기마다 3번 찍어 짝을 찾는다.
+    첫 화면 설명 한 줄은 `StudioCaption`(Medium · `font-display: optional`)이라 글꼴이 늦게 온 판은 Regular로 그린다(그 줄만 7,249화소 — 웹 · 설치판 같은 제품 동작).
+    그래서 캐시를 지우지 않고 다시 열고(웹 쪽 작은 서버도 라이브처럼 글꼴에 30일 캐시를 준다), 크기마다 3번 찍어 «그린 글꼴이 같은 짝» 가운데서만 차이 0을 찾는다.
+  - `node scripts/verify/desktop-print-shift.mjs <결과> --exe <설치한 exe>`: 창을 최대화하고 «인쇄하기»를 누른 뒤 12초를 0.15초마다 찍어(`win-capture.ps1`) 인쇄 전 3단계 화면과 화소로 견준다.
+  - 설치기 탐침 `-Replace`: 같은 범위에 예전 판이 깔린 PC에서 덮어쓰기를 잰다. 설치 중에는 0.5초마다 진행 화면을 찍는다(`-진행-NN.png`).
+- 🟠 **인쇄 미리보기 · 인쇄 때 화면 밀림**(10/27 Bumm님 지시, `src/desktop.css`):
+  - «인쇄하기»를 누르면 화면이 왼쪽으로 밀리던 원인: 인쇄용 그림(`#printArea`, 1200×1800)이 화면에도 그려져 세로 스크롤바가 생겼다. `@media screen`에서 숨긴다.
+    고치기 전에는 누른 뒤 모든 장면이 47만 화소 넘게 달랐고, 고친 뒤 0이다. ⚠ 웹에도 같은 결함이 있다(2560에서 문서 폭 2560 → 2545) — 웹에 넣을지는 Bumm님 결정이다.
+  - «닫기»가 두꺼워 보이던 원인: 대화 상자 공통 `dialog .primary-button { margin-top: 20px }`가 «인쇄하기»를 내려 «닫기»가 72px로 늘었다. 두 단추를 52px · 같은 줄로 둔다.
+  - 마우스로 열면 «인쇄하기» 초점 테두리를 숨기고(`data-pointer`), 키보드를 쓰면 다시 보인다.
+- 큰 창(1100×821 이상)의 2단계 오른쪽 칸은 «오늘 촬영할 영화» 제목 · 포스터 · 표를 위아래로 고르게 편다. 1366×768에서는 넘치므로 그 크기 아래는 웹 배치 그대로다.
 - **아이콘**: `desktop/build/make-assets.mjs`가 InKY 로고 원본 오른쪽 아래에 검은 둥근 사각 · 흰 «PS»를 얹는다(Voice Cinema 시안 모양 · 비율, 더 작게).
   - 크기(16 · 20 · 24 · 32 · 40 · 48 · 64 · 128 · 256)마다 따로 그린다. 16~32px는 점을 하나씩 찍은 글자다(«P8»처럼 뭉개지지 않게). 수치는 `icon-spec.json`.
-  - «PS»는 앱 아이콘(실행 파일 · 바로가기 · 작업 표시줄 · 창)에만 둔다. 설치기 화면(`installer.ico` · 머리 · 옆 그림)은 로고 원본뿐이다.
+  - 설치 파일 · 설치기 · 제거기 아이콘도 같은 `icon.ico`다(10/27 Bumm님 — 예전 «설치기는 로고 원본뿐»을 바꿨다). 표에 없는 크기는 256 수치를 비율로 줄인다.
 - **첫 화면 «↓ 다운로드»**(`src/studio/DownloadMenu.tsx`): 1단계에만 있고, 설치판에서는 숨긴다. 메뉴는 «Poster Studio 설치» 하나다(Voice Cinema는 설치판을 만들지 않는다 — 10/27 정정).
   - 방침 링크 바로 왼쪽에 같은 글자 · 색으로 둔다. 방침 링크는 1화소도 옮기지 않는다.
   - 평범한 링크라 누르기 전 설치 파일 요청은 0건이다. prefetch · preload · 서비스워커를 쓰지 않는다.
