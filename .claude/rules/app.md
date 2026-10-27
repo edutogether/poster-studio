@@ -414,7 +414,7 @@
 - 🔴 **`src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양을 바꾸지 않는다.** CI 배포 단계(`deploy.yml`)와 스크립트가 그 줄을 정규식으로 읽는다.
   - 10/27에 삼항식으로 바꿨더니 `test/smoke-step.test.js` 8건이 잡았다.
   - 설치판에서 토큰을 빼는 일은 쓰는 쪽(`PosterStudio.tsx`의 `boothToken`)에서 한다.
-- **빌드**: 아래 순서로 하면 `desktop/out/Poster Studio Setup.exe`가 나온다(약 151MB · 커밋하지 않음).
+- **빌드**: 아래 순서로 하면 `desktop/out/Poster Studio Setup.exe`가 나온다(약 159MB — 대기 영상 11MB 포함 · 커밋하지 않음).
   이름은 `desktop/package.json`의 `artifactName`이다(10/27 Bumm님 — 받는 파일 이름). 웹의 받는 주소 `/download/PosterStudio-Setup.exe`와 Storage 객체 이름은 그대로다.
   1. 루트에서 `npm run build:desktop` → `desktop/web`
   2. `cd desktop && npm ci`
@@ -459,6 +459,8 @@
   - `node scripts/verify/desktop-layout-sweep.mjs <desktop/web> <dist> <결과>`: 2단계 오른쪽 칸을 447개 창 크기에서 잰다 — 규칙 밖(폭 1100 미만 · 높이 820 이하)은 웹과 자리 같음,
     규칙 안은 겹침 · 화면 밖 · 가로 넘침 · 보이는 포스터가 웹보다 작아짐 없음(포스터는 `object-fit: contain`이라 상자가 아니라 보이는 크기로 잰다). 규칙을 높이 700까지 걸면 9개 크기가 걸린다.
   - 설치기 탐침 `-Replace`: 같은 범위에 예전 판이 깔린 PC에서 덮어쓰기를 잰다. 설치 중에는 0.5초마다 진행 화면을 찍는다(`-진행-NN.png`).
+    🟡 탐침의 창 캡처(PrintWindow)는 가끔 글자가 그려지기 전 화면을 준다(10/27 — 다시 그리기 강제 · 한가할 때까지 기다리기 · 두 장 같음 확인으로도 다 막지 못함).
+    판정은 창의 글을 읽어서 하므로 영향이 없다. 설명서 · 보고에 쓰는 설치 화면 그림은 눈으로 보고 다 그려진 것을 고른다.
 - 🟠 **인쇄 미리보기 · 인쇄 때 화면 밀림**(10/27 Bumm님 지시, `src/desktop.css`):
   - «인쇄하기»를 누르면 화면이 왼쪽으로 밀리던 원인: 인쇄용 그림(`#printArea`, 1200×1800)이 화면에도 그려져 세로 스크롤바가 생겼다. `@media screen`에서 숨긴다.
     고치기 전에는 누른 뒤 모든 장면이 47만 화소 넘게 달랐고, 고친 뒤 0이다. ⚠ 웹에도 같은 결함이 있다(2560에서 문서 폭 2560 → 2545) — 웹에 넣을지는 Bumm님 결정이다.
