@@ -133,12 +133,35 @@ public static class Win {
 "@
 [Win]::SetProcessDPIAware() | Out-Null
 [Win]::Off = [bool]$NoShots
+# 진행 화면 «자세히 보기» 목록의 항목 글(ListView — 다른 프로세스라 창 글로는 안 읽혀 UI 자동화로 읽는다)
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+function DetailLines($h) {
+  try {
+    $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
+    $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::ListItem)
+    return @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond) | ForEach-Object { $_.Current.Name })
+  } catch { return @() }
+}
 $BM_CLICK = 0x00F5
 $tag = "$Step-$Mode$(if ($Step -eq 'uninstall') { "-$Via" })"
 $report = [ordered]@{ step = $Step; mode = $Mode; via = $Via; elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator); startedAt = (Get-Date).ToString('o'); pages = @(); checks = @() }
 function Check($name, $ok, $detail) {
   $report.checks += [ordered]@{ name = $name; ok = [bool]$ok; detail = $detail }
   Write-Output ("{0}  {1}{2}" -f ($(if ($ok) { '통과' } else { '걸림' })), $name, $(if ($null -ne $detail -and "$detail" -ne '') { " — $detail" } else { '' }))
+}
+# 진행 화면 글(10/27 Bumm님 B안): 위 한 줄과 «자세히» 목록에 사람이 읽는 문장만 — 임시 폴더 경로 · .7z · .dll 같은 내부 이름과 NSIS 원래 기록 말투가 없어야 하고,
+# 위치 줄(실제 경로)과 그 단계의 문장이 있어야 하며, 진행에 따라 문구가 바뀌어야(서로 다른 줄 3개 이상) 한다.
+function ProgressChecks($kind, $whereLabel, $doing) {
+  $samples = @($report.pages | ForEach-Object { $_.progress } | Where-Object { $_ })
+  $statuses = @($samples | ForEach-Object { if ($_.text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } } | Where-Object { $_ } | Select-Object -Unique)
+  $lines = @($samples | ForEach-Object { $_.details } | Where-Object { $_ } | Select-Object -Unique)
+  $raw = '\\Temp\\|\.7z|\.dll|\.tmp|압축 해제|파일 복사|대상 폴더|폴더 생성|바로 가기 생성|파일 삭제|실행:|Extract|Output folder|Delete file|Uninstall was'
+  $bad = @(@($statuses) + @($lines) | Where-Object { $_ -match $raw } | Select-Object -Unique)
+  Check "$kind 진행 글에 원래 기록(임시 폴더 · .7z · .dll · 압축 해제 · 파일 삭제 …)이 없다" ($samples.Count -gt 0 -and $bad.Count -eq 0) $(if ($bad.Count) { $bad -join ' | ' } else { "표본 $($samples.Count)개" })
+  $where = "$($whereLabel): $appDir"
+  Check "$kind 진행 글이 쉬운 문장으로 바뀌어 간다(위치 줄 · «$doing» · 서로 다른 줄 3개 이상)" (($lines -contains $where) -and @($lines | Where-Object { $_ -like "*$doing*" }).Count -gt 0 -and $lines.Count -ge 3) ($lines -join ' → ')
+  $report.progressLines = $lines
+  $report.progressStatuses = $statuses
 }
 
 # 기준 위치 · 바로가기 자리
@@ -179,7 +202,7 @@ function Walk($prefix) {
       if ($progress.Count -lt 40) {
         $pf = Join-Path $Out ('{0}-{1:00}-진행-{2:00}.png' -f $prefix, $n, ($progress.Count + 1))
         [Win]::Shot($h, $pf)
-        $progress += [ordered]@{ shot = (Split-Path $pf -Leaf); text = [Win]::AllText($h) }
+        $progress += [ordered]@{ shot = (Split-Path $pf -Leaf); text = [Win]::AllText($h); details = @(DetailLines $h) }
       }
       Start-Sleep -Milliseconds 500
     }
@@ -218,6 +241,7 @@ if ($Step -eq 'install') {
   Start-Process -FilePath $Installer | Out-Null
   $walked = Walk "installer-$Mode"
   Check '설치 창이 뜨고 화면을 끝까지 넘긴다' $walked $report.title
+  ProgressChecks '설치' '설치 위치' '프로그램 파일을 설치하는 중'
   for ($i = 0; $i -lt 120 -and -not (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
   Check '설치 범위 화면(«me 전용» · «모든 사용자»)이 있고 기준 단추를 골랐다' (@($report.pages | Where-Object { $_.picked }).Count -eq 1) (@($report.pages | Where-Object { $_.picked }) | ForEach-Object { $_.picked })
   Check '위치 바꾸는 화면이 있고 기본 위치가 기준이다' ($report.defaultDir -eq $appDir) "$($report.defaultDir)"
@@ -261,6 +285,7 @@ if ($Step -eq 'install') {
   }
   $walked = Walk "uninstaller-$Mode-$Via"
   Check '제거 창이 뜨고 화면을 끝까지 넘긴다' $walked $report.title
+  ProgressChecks '제거' '제거 위치' '지우는 중'
   for ($i = 0; $i -lt 120 -and (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
   Start-Sleep -Seconds 3
   Check '설치 폴더가 지워진다' (-not (Test-Path $appDir)) $(if (Test-Path $appDir) { (Get-ChildItem $appDir -Recurse | Measure-Object).Count.ToString() + '개 남음' })
