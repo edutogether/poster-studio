@@ -55,6 +55,8 @@ const capture = (dir, seconds, cancelAfter = 2500) => new Promise((resolve) => {
   const ps = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts/verify/win-capture.ps1'), '-AppPid', String(app.pid), '-Out', dir, '-Seconds', String(seconds), '-IntervalMs', '150', '-CancelPrintAfterMs', String(cancelAfter)], { stdio: 'ignore' });
   ps.on('exit', () => resolve(JSON.parse(fs.readFileSync(path.join(dir, 'frames.json'), 'utf8').replace(/^﻿/, ''))));
 });
+// 화면 캡처(원본 해상도 — 최대화한 창의 앱 화면): 2단계 · 로딩 · 3단계 · 인쇄 미리보기. 인쇄 순간 비교와 따로 남기는 기록이다.
+const screen = async (name) => { const r = await send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(path.join(out, `화면-${name}.png`), Buffer.from(r.result.data, 'base64')); };
 const metrics = () => evaluate(`({ clientW: document.documentElement.clientWidth, innerW: innerWidth, scrollH: document.documentElement.scrollHeight, innerH: innerHeight, printArea: !!document.getElementById('printArea'), step: document.body.dataset.step })`);
 
 // 창 최대화(Bumm님 화면처럼 큰 창) — Electron은 CDP 창 크기 명령을 받지 않아 Windows API로 한다
@@ -63,20 +65,27 @@ await sleep(800);
 await waitFor(`document.body.classList.contains('app-ready') && !document.getElementById('splash')`);
 await click('#prepareNextBtn');
 await waitFor(`document.body.dataset.step === '2'`);
+await sleep(1500);
+await screen('2단계');
 await send('DOM.enable');
 const { result: { root } } = await send('DOM.getDocument', { depth: 0 });
 const { result: input } = await send('DOM.querySelector', { nodeId: root.nodeId, selector: '#loadPhotoBtn ~ input[type=file]' });
 await send('DOM.setFileInputFiles', { nodeId: input.nodeId, files: [photo] });
 await waitFor(`!document.getElementById('generateBtn').hidden`);
 await click('#generateBtn');
+await sleep(2500);
+await screen('로딩');
 check('3단계로 간다(포스터 8종)', await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 60000));
 await sleep(2500);
+await screen('3단계');
 const before = await metrics();
 const ref = await capture(path.join(out, 'reference'), 0.2);
 fs.copyFileSync(path.join(out, 'reference', ref.frames[0].shot), path.join(out, 'reference.png'));
-await click('#printBtn');
+const pb = await evaluate(`(() => { const r = document.getElementById('printBtn').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
+for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', { type, x: pb[0], y: pb[1], button: 'left', clickCount: 1 });   // 사람처럼 마우스로
 check('인쇄 미리보기 창이 열린다', await waitFor(`document.querySelector('.print-preview')?.open === true`));
 await sleep(800);
+await screen('인쇄-미리보기');
 // 미리보기가 열린 화면도 하나 찍어 둔다 — 캡처가 «인쇄하기»를 누르기 전에 시작되면 앞쪽 장면은 이 화면이다(누르기 전이라 뺀다)
 const pvShot = await capture(path.join(out, 'preview'), 0.2);
 fs.copyFileSync(path.join(out, 'preview', pvShot.frames[0].shot), path.join(out, 'preview.png'));

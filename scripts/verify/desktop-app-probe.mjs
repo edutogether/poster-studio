@@ -195,9 +195,9 @@ try {
   for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await main.send('Input.dispatchMouseEvent', { type, x: pb[0], y: pb[1], button: 'left', clickCount: 1 });
   check('인쇄 미리보기 창이 열린다', await waitFor(`document.querySelector('.print-preview')?.open === true && document.querySelector('.print-preview-page img')?.naturalWidth === 1200`));
   check('미리보기 창의 초점은 «인쇄하기»', await main.evaluate(`document.activeElement?.textContent?.includes('인쇄하기') === true`));
-  const pv = await main.evaluate(`(() => { const a = document.activeElement, bs = [...document.querySelectorAll('.print-preview-actions button')].map((b) => Math.round(b.getBoundingClientRect().height)); return { outline: getComputedStyle(a).outlineStyle, heights: bs }; })()`);
+  const pv = await main.evaluate(`(() => { const a = document.activeElement, bs = [...document.querySelectorAll('.print-preview-actions button')].map((b) => b.getBoundingClientRect()); return { outline: getComputedStyle(a).outlineStyle, heights: bs.map((r) => Math.round(r.height)), tops: bs.map((r) => Math.round(r.top)) }; })()`);
   check('마우스로 열면 «인쇄하기»에 초점 테두리(빨간 외곽선)가 없다', pv.outline === 'none', pv);
-  check('«닫기»와 «인쇄하기»의 높이가 같다(52px)', pv.heights.length === 2 && pv.heights.every((h) => h === 52), pv.heights);
+  check('«닫기»와 «인쇄하기»가 같은 높이(52px) · 같은 줄(위 끝이 같다)', pv.heights.length === 2 && pv.heights.every((h) => h === 52) && pv.tops[0] === pv.tops[1], { heights: pv.heights, tops: pv.tops });
   await sleep(500);
   await shot('인쇄-미리보기');
   await main.evaluate(`[...document.querySelectorAll('.print-preview-actions button')].find((b) => b.textContent.includes('인쇄하기')).click()`);

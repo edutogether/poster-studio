@@ -119,8 +119,9 @@ body[data-desktop] #resultView .result-actions #desktopSaveBtn {
   gap: 12px;
   margin-top: 18px;
 }
-/* «닫기»는 «인쇄하기»와 같은 높이(52px)의 가벼운 보조 단추 — 공통 .back-button의 키(위아래 안쪽 여백 · 최소 높이)를 그대로 받아
-   72px로 «인쇄하기»보다 20px 높고 위로 삐져나와 두꺼워 보였다(10/27 Bumm님 «쓸데없이 두껍다»). */
+/* «닫기»는 «인쇄하기»와 같은 높이(52px) · 같은 줄의 가벼운 보조 단추(10/27 Bumm님 «쓸데없이 두껍다»).
+   대화 상자 공통 규칙(style.css «dialog .primary-button» — 위 바깥 여백 20px)이 «인쇄하기»를 20px 내려 단추 줄이 72px가 됐고,
+   «닫기»가 그 높이로 늘어나 «인쇄하기»보다 두껍고 위로 삐져나와 보였다. 그 여백을 없애고 두 단추를 52px 한 줄에 맞춘다. */
 .print-preview-actions .back-button {
   flex: 0 0 auto;
   height: 52px;
@@ -134,6 +135,7 @@ body[data-desktop] #resultView .result-actions #desktopSaveBtn {
   flex: 1;
   height: 52px;
   min-height: 0;
+  margin-top: 0;
   border: 0;
   font-size: 17px;
   font-weight: 800;

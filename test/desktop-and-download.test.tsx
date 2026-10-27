@@ -236,3 +236,9 @@ describe('설치판 화면 규칙(src/desktop.css)', () => {
     expect(css).toMatch(/\.print-preview\[data-pointer\] \.primary-button:focus-visible\s*\{\s*outline:\s*none;/);
   });
 });
+
+test('인쇄 미리보기 «인쇄하기»는 대화 상자 공통 위 여백(20px)을 쓰지 않는다 — «닫기»와 한 줄(10/27)', () => {
+  const css = fs.readFileSync('src/desktop.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  expect(css).toMatch(/\.print-preview-actions \.primary-button\s*\{[^}]*margin-top:\s*0;/);
+  expect(css).toMatch(/\.print-preview-actions \.back-button\s*\{[^}]*height:\s*52px;/);
+});
