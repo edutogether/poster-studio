@@ -10,7 +10,7 @@
 
    --compare일 때 재는 것(하나라도 걸리면 종료코드 1):
      ① 전/후 첫 화면 화소 대조 — 다운로드 단추 상자 밖은 차이 0화소(단추 말고는 시각적 차이가 없어야 한다)
-     ② 단추가 개인정보처리방침 링크와 같은 줄 · 바로 왼쪽(간격 14px) · 다른 요소와 안 겹침 · 화면 안 · 휴대폰은 누르는 높이 44px 이상
+     ② 단추가 개인정보처리방침 링크와 같은 줄 · 바로 왼쪽(간격 8px) · 다른 요소와 안 겹침 · 화면 안 · 휴대폰은 누르는 높이 44px 이상
      ③ 단추는 메뉴 없이 바로 받는 링크 하나(<a href download>, 10/27 Bumm님 A안 — 받는 것이 Poster Studio 설치판 하나뿐) ·
         글자 없이 lucide download 아이콘 · 화면 읽기용 이름(aria-label) · 툴팁 없음 · PC에서 마우스를 올리면 커서만 손가락(색 · 밑줄 그대로)
      ④ 네트워크 기록(1920×1080에서): 접속 · 새로고침 · 2단계로 갔다 돌아오기까지 설치 파일 요청 0건,
@@ -47,7 +47,7 @@ const server = http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   if (p === '/download/PosterStudio-Setup.exe') {
     serverExeHits += 1;
-    res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-disposition': 'attachment; filename="PosterStudio-Setup.exe"', 'content-length': fakeExe.length });
+    res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-disposition': 'attachment; filename="Poster Studio Setup.exe"', 'content-length': fakeExe.length });
     res.end(fakeExe);
     return;
   }
@@ -154,10 +154,10 @@ for (const s of SIZES) {
         title: link.hasAttribute('title') || !!link.querySelector('title'), menu: !!document.querySelector('[role="menu"]') || link.hasAttribute('aria-haspopup') } };
   })()`);
   report.sizes[s.name] = { measure: m };
-  check(`${s.name}: 방침 링크 바로 왼쪽 · 같은 줄 · 같은 글자 크기 · 같은 색`, m && Math.abs(m.gap - 14) <= 1 && m.sameLine <= 1 && m.font[0] === m.font[1] && m.color[0] === m.color[1], m && { gap: Math.round(m.gap * 10) / 10, sameLine: m.sameLine, font: m.font, color: m.color });
+  check(`${s.name}: 방침 링크 바로 왼쪽 · 같은 줄 · 같은 글자 크기 · 같은 색`, m && Math.abs(m.gap - 8) <= 1 && m.sameLine <= 1 && m.font[0] === m.font[1] && m.color[0] === m.color[1], m && { gap: Math.round(m.gap * 10) / 10, sameLine: m.sameLine, font: m.font, color: m.color });
   check(`${s.name}: 다른 요소와 안 겹침 · 화면 안`, m && m.hit.length === 0 && m.inView, m && { hit: m.hit, inView: m.inView });
   if (s.mobile) check(`${s.name}: 누르는 높이 44px 이상`, m && m.link.h >= 44, m && Math.round(m.link.h));
-  check(`${s.name}: 메뉴 없이 바로 받는 링크 하나(<a href download>) · 글자 없이 아이콘 · 화면 읽기용 이름 · 툴팁 없음`, m && m.kind.tag === 'A' && m.kind.href === '/download/PosterStudio-Setup.exe' && m.kind.download === 'PosterStudio-Setup.exe'
+  check(`${s.name}: 메뉴 없이 바로 받는 링크 하나(<a href download>) · 글자 없이 아이콘 · 화면 읽기용 이름 · 툴팁 없음`, m && m.kind.tag === 'A' && m.kind.href === '/download/PosterStudio-Setup.exe' && m.kind.download === 'Poster Studio Setup.exe'
     && m.kind.text === '' && m.kind.icon === 3 && m.kind.label === 'Poster Studio 설치 파일 다운로드' && !m.kind.title && !m.kind.menu, m && m.kind);
 
   // 전/후 화소 대조 — 단추 상자(단추 + 2px) 밖은 같아야 한다. 화면 화소 = CSS px × (캡처 폭 ÷ innerWidth) — 휴대폰은 기준 폭(390)을 실제 폭에 맞춰 줄이고 키운다.

@@ -60,7 +60,7 @@ describe('웹 첫 화면 다운로드 아이콘', () => {
     expect([...link.querySelectorAll('svg path')].map((p) => p.getAttribute('d')))
       .toEqual(['M12 15V3', 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'm7 10 5 5 5-5']);   // Lucide 공식 download
     expect(link.getAttribute('href')).toBe(SETUP_DOWNLOAD.href);
-    expect(link.getAttribute('download')).toBe('PosterStudio-Setup.exe');
+    expect(link.getAttribute('download')).toBe('Poster Studio Setup.exe');
     expect(link.hasAttribute('target')).toBe(false);   // 새 탭 없이 그 자리에서 받는다
     expect(link.hasAttribute('aria-haspopup')).toBe(false);
     // 개인정보처리방침 링크 바로 앞(같은 줄 · 바로 왼쪽 자리)
@@ -81,8 +81,7 @@ describe('설치 파일 주소 연결(firebase.json)', () => {
     expect(hosting.redirects).toEqual([
       expect.objectContaining({ source: SETUP_DOWNLOAD.href, destination: STORAGE_OBJECT, type: 302 })
     ]);
-    // 받는 이름은 객체의 Content-Disposition이 정한다 — 객체 이름과 단추의 download 이름이 같아야 한다
-    expect(STORAGE_OBJECT.endsWith('/' + SETUP_DOWNLOAD.file)).toBe(true);
+    // 받는 이름(«Poster Studio Setup.exe»)은 객체의 Content-Disposition이 정한다 — 라이브 확인은 download-live.mjs
   });
 
   test('리디렉션보다 먼저 잡히는 것이 없다(dist에 같은 경로의 파일 · 다시 쓰기 규칙 없음)', () => {

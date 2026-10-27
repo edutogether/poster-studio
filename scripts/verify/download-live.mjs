@@ -10,10 +10,10 @@
 
    배포 후 재는 것(하나라도 걸리면 종료코드 1):
      ① 세 주소 각각: 첫 화면 200 · /download/PosterStudio-Setup.exe가 302로 Storage 객체를 가리킴 · 넘어간 곳 200 ·
-        Content-Type · Content-Disposition(attachment, 이름 PosterStudio-Setup.exe) · Content-Length = 받은 바이트 · 끝까지 받은 SHA-256 = 기대값
+        Content-Type · Content-Disposition(attachment, 이름 Poster Studio Setup.exe) · Content-Length = 받은 바이트 · 끝까지 받은 SHA-256 = 기대값
      ② 세 주소 각각 헤드리스 첫 화면(PC 2560): 앱이 뜨고 단추가 하나 있다 · 세 주소의 본 번들이 같다
      ③ 대표 주소 PC 2560 · 휴대폰 3배: 접속 · 새로고침 · 2단계 갔다 오기까지 설치 파일 요청 0건 → 단추를 마우스(휴대폰은 손가락)로
-        누르면 그때 내려받기가 시작돼 끝까지 받아진다 · 저장 이름 PosterStudio-Setup.exe · SHA-256 = 기대값 · 페이지는 그대로
+        누르면 그때 내려받기가 시작돼 끝까지 받아진다 · 저장 이름 Poster Studio Setup.exe · SHA-256 = 기대값 · 페이지는 그대로
      ④ --compare: 대표 주소 전/후 첫 화면 화소 — 단추 상자 밖 차이 0(같은 판을 3번 열어 가장 가까운 짝)
         🟠 «전»은 배포 직후 같은 시각에 되돌림 채널(배포 전 판)을 --site로 찍은 것을 쓴다. 배포 전에 미리 찍은 것과는
         큰 장르 그림 한 장을 줄여 그리는 결과가 시각에 따라 갈릴 수 있다(2026-10-27 실측: 같은 836b1b9 판끼리 PC 2560에서 «애니메이션» 그림
@@ -48,7 +48,7 @@ const HOSTS = [
 ];
 const PATH = '/download/PosterStudio-Setup.exe';
 const OBJECT = 'https://storage.googleapis.com/inky-poster-studio-download/PosterStudio-Setup.exe';
-const FILE = 'PosterStudio-Setup.exe';
+const FILE = 'Poster Studio Setup.exe';   // 받는 주소 · 객체 이름은 그대로, 저장되는 이름만(10/27)
 const SIZES = [{ name: 'pc-2560x1440', w: 2560, h: 1440, s: 1 }, { name: 'phone-390x844x3', w: 390, h: 844, s: 3, mobile: true }];
 const SETUP = /Setup\.exe/i;
 const TRIES = 3;
