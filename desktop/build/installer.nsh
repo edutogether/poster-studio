@@ -422,12 +422,32 @@
   ; 그래서 칸의 글을 줄(«\r\n»)마다 따로 된 칸으로 나눠 줄 사이를 글자 높이의 0.6배 띄운다(줄 간격 160%). 줄 칸은 원래 칸과 같은 부모 · 글꼴 · 왼쪽 · 폭이고
   ; 원래 칸은 숨긴다(글은 그대로 두어 템플릿이 바꾸면 다시 부른다). 한 줄이 폭보다 길면 그 칸 안에서 꺾고 그만큼 높인다(DrawText로 잰 높이).
   ; 스택: 칸 HWND → 줄 칸 ID 바탕(줄 칸 ID = 바탕 + 0~3, 이미 있으면 다시 쓴다). 줄은 넷까지.
+  ; 띄운 줄 전체가 부모(화면 칸) 아래를 넘으면 넘는 만큼 위에서 시작한다 — 설치 범위 아래 안내 «이미 '나만'으로 설치되어 있습니다. / (폴더) / 다시 설치합니다.»
+  ; 세 줄이 화면 밑(브랜드 줄)에 잘렸다(10/28 녹화). 그 칸은 단추(아래 끝 70u)보다 한참 아래(110u)라 올려도 단추에 닿지 않는다. 다른 칸(화면 맨 위 안내)은 넘지 않는다.
   Var psSpGap
   Var psSpN
   Var psSpI
   Var psSpLen
   Var psSpLine
   Var psSpH
+  Var psSpTotal
+  Var psSpText
+  ; $R8의 첫 줄을 $psSpLine에, 나머지를 $R8에 둔다(줄 끝 «\r\n»). $0을 쓴다.
+  Function ${PSF}psSpNext
+    StrLen $psSpLen $R8
+    StrCpy $psSpI 0
+    StrCpy $psSpLine $R8
+    ${DoWhile} $psSpI < $psSpLen
+      StrCpy $0 $R8 2 $psSpI
+      ${If} $0 == "$\r$\n"
+        StrCpy $psSpLine $R8 $psSpI
+        IntOp $psSpI $psSpI + 2
+        ${Break}
+      ${EndIf}
+      IntOp $psSpI $psSpI + 1
+    ${Loop}
+    StrCpy $R8 $R8 "" $psSpI
+  FunctionEnd
   Function ${PSF}psSpread
     Exch $R0
     Exch
@@ -458,22 +478,37 @@
     System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C00) i.r0"
     IntOp $psSpGap $0 * 6
     IntOp $psSpGap $psSpGap / 10
+    ; 띄운 줄 전체 높이 → 부모 아래를 넘으면 그만큼 위에서 시작
+    StrCpy $psSpText $R8
+    StrCpy $psSpN 0
+    StrCpy $psSpTotal 0
+    ${Do}
+      Call ${PSF}psSpNext
+      ${If} $psSpLine != ""
+        System::Call "*$R3(i 0, i 0, i R6, i 0)"
+        Push $psSpLine
+        System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C10) i.r0"
+        ${If} $psSpN > 0
+          IntOp $psSpTotal $psSpTotal + $psSpGap
+        ${EndIf}
+        IntOp $psSpTotal $psSpTotal + $0
+        IntOp $psSpN $psSpN + 1
+      ${EndIf}
+      ${If} $psSpN >= 4
+        ${Break}
+      ${EndIf}
+    ${LoopUntil} $R8 == ""
+    System::Call "user32::GetClientRect(p R2, p R3)"
+    System::Call "*$R3(i, i, i, i .r0)"
+    IntOp $0 $0 - $psSpTotal
+    ${If} $R5 > $0
+      StrCpy $R5 $0
+    ${EndIf}
+    StrCpy $R8 $psSpText
     StrCpy $psSpN 0
     ${Do}
       ; 다음 줄을 떼어 낸다
-      StrLen $psSpLen $R8
-      StrCpy $psSpI 0
-      StrCpy $psSpLine $R8
-      ${DoWhile} $psSpI < $psSpLen
-        StrCpy $0 $R8 2 $psSpI
-        ${If} $0 == "$\r$\n"
-          StrCpy $psSpLine $R8 $psSpI
-          IntOp $psSpI $psSpI + 2
-          ${Break}
-        ${EndIf}
-        IntOp $psSpI $psSpI + 1
-      ${Loop}
-      StrCpy $R8 $R8 "" $psSpI
+      Call ${PSF}psSpNext
       ${If} $psSpLine != ""
         ; 이 줄 높이(폭 안에서 꺾이면 그만큼)
         System::Call "*$R3(i 0, i 0, i R6, i 0)"
