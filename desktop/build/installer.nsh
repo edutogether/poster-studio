@@ -305,17 +305,12 @@
     ${EndIf}
   !macroend
 
-  ; 설치 단계 맨 앞(일반 권한 설치기는 customCheckAppRunning, 관리자 권한으로 다시 뜬 «모든 사용자» 설치기는 customUnInstallCheck가 처음이다):
-  ; 막대 ID를 맞바꾸고(③) 설치 위치를 적는다
+  ; 설치 단계 맨 앞(일반 권한 설치기는 customCheckAppRunning, 관리자 권한으로 다시 뜬 «모든 사용자» 설치기는 customUnInstallCheck가 처음이다): 설치 위치를 적는다.
+  ; 막대 ID는 맞바꾸지 않는다 — 예전 풀기(Nsis7z::Extract)가 ID 1004로 찾는 막대를 이 막대로 하려고 맞바꿨는데, 지금 풀기(ExtractWithCallback, ps-extract.nsh)도
+  ; 제 기준으로 그 막대를 움직여 이 파일의 몫과 엇갈려 막대가 뒤로 갔다(10/28 7a6ee97 — 842 → 760‰ 등). 이제 그 막대는 숨은 원래 막대다.
   !macro psInstallStart
     ${If} $psStarted != "1"
       StrCpy $psStarted "1"
-      ${If} $psBarOn == "1"
-        FindWindow $R0 "#32770" "" $HWNDPARENT
-        GetDlgItem $R1 $R0 1004
-        System::Call "user32::SetWindowLongW(p $R1, i -12, i 1999)"
-        System::Call "user32::SetWindowLongW(p $psBar, i -12, i 1004)"
-      ${EndIf}
       !insertmacro psLine "설치 위치" "$INSTDIR"
     ${EndIf}
   !macroend
@@ -638,13 +633,25 @@
       System::Call "user32::RedrawWindow(p $HWNDPARENT, p 0, p 0, i 0x585)"   ; INVALIDATE | ERASE | ALLCHILDREN | UPDATENOW | FRAME
       System::Call "user32::SetWindowLongW(p $HWNDPARENT, i -20, i r1)"
       ; 합성으로 그릴 때 머리(제목 · 부제 · 그림)와 아래 «Poster Studio 1.0.0» 줄은 그려지지 않는다(10/28 978973e 진행 화면 — 완료 화면까지 머리가 비었다).
-      ; 합성을 끈 뒤 그 칸들만 다시 그린다 — 화면 칸(새 화면)은 다시 칠하지 않는다
-      !insertmacro psRepaintItem 1034
-      !insertmacro psRepaintItem 1037
-      !insertmacro psRepaintItem 1038
-      !insertmacro psRepaintItem 1046
-      !insertmacro psRepaintItem 1028
-      !insertmacro psRepaintItem 1256
+      ; 합성을 끈 뒤 그 칸들만 다시 그린다 — 화면 칸(새 화면)은 다시 칠하지 않는다. 단 새 화면이 머리 자리를 덮으면(완료 화면 — 창 전체 화면) 그리지 않는다:
+      ; 밑에 깔린 머리 바탕을 다시 그리면 완료 화면 위에 흰 띠로 덧칠됐다(10/28 7a6ee97 — «설치 완료» 제목 · 그림 윗부분이 가려짐).
+      System::Call "*(i,i,i,i) p.r1"
+      System::Call "user32::GetWindowRect(p r0, p r1)"
+      System::Call "*$1(i, i .r2)"
+      System::Free $1
+      GetDlgItem $1 $HWNDPARENT 1034
+      System::Call "*(i,i,i,i) p.r0"
+      System::Call "user32::GetWindowRect(p r1, p r0)"
+      System::Call "*$0(i, i, i, i .r1)"
+      System::Free $0
+      ${If} $2 >= $1   ; 새 화면 윗변이 머리 아랫변 밑이다 — 머리가 보인다
+        !insertmacro psRepaintItem 1034
+        !insertmacro psRepaintItem 1037
+        !insertmacro psRepaintItem 1038
+        !insertmacro psRepaintItem 1046
+        !insertmacro psRepaintItem 1028
+        !insertmacro psRepaintItem 1256
+      ${EndIf}
       StrCpy $psFrozen ""
       Pop $2
       Pop $1
