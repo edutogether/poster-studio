@@ -7,13 +7,15 @@
 # 찍은 시각과 창 상태는 <폴더>/frames.json.
 # -Maximize: 앱 창이 뜰 때까지 기다려 검사용 아래 모니터로 옮겨 최대화하고 끝낸다(test-monitor.ps1 — 10/28 «자동 검사 창은 아래 작은 모니터에만»,
 #   그런 모니터가 없는 PC에서는 그 자리에서 최대화). 앱 창을 띄우는 확인 도구(desktop-app-probe · desktop-vs-web · desktop-print-shift)가 부른다.
+# -MoveTitle <글>: 그 프로세스의 크로뮴 창 중 제목에 <글>이 든 창(앱이 연 새 창 — 개인정보처리방침 등)을 크기 그대로 아래 모니터로 옮기고 끝낸다.
 param(
   [Parameter(Mandatory = $true)][int]$AppPid,
   [Parameter(Mandatory = $true)][string]$Out,
   [double]$Seconds = 8,
   [int]$IntervalMs = 150,
   [int]$CancelPrintAfterMs = 2500,
-  [switch]$Maximize
+  [switch]$Maximize,
+  [string]$MoveTitle
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force $Out | Out-Null
@@ -61,6 +63,11 @@ public static class Cap {
 "@
 [Cap]::SetProcessDPIAware() | Out-Null
 # -Maximize: 앱 창이 뜰 때까지 기다려 검사용 아래 모니터에서 최대화하고 끝낸다
+if ($MoveTitle) {
+  . (Join-Path $PSScriptRoot 'test-monitor.ps1')
+  for ($i = 0; $i -lt 80; $i++) { $m = [Cap]::Find([uint32]$AppPid, 'Chrome_WidgetWin_1', $MoveTitle); if ($m -ne [IntPtr]::Zero) { Move-ToTestMonitor $m | Out-Null; exit 0 }; Start-Sleep -Milliseconds 50 }
+  exit 1
+}
 if ($Maximize) {
   . (Join-Path $PSScriptRoot 'test-monitor.ps1')
   for ($i = 0; $i -lt 160; $i++) { $m = [Cap]::Find([uint32]$AppPid, 'Chrome_WidgetWin_1', 'Poster Studio'); if ($m -ne [IntPtr]::Zero) { if (-not (Move-ToTestMonitor $m -Maximize)) { [Cap]::ShowWindow($m, 3) | Out-Null }; exit 0 }; Start-Sleep -Milliseconds 125 }

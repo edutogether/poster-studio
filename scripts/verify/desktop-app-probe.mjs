@@ -281,6 +281,8 @@ try {
   await click('.privacy-link');
   const privacy = await waitTarget((t) => t.type === 'page' && t.url.startsWith('app://studio/privacy.html'), 8000);
   check('개인정보처리방침이 앱 안 새 창으로 열린다', !!privacy, privacy?.url);
+  // 새 창도 검사용 아래 모니터로(10/28 — 위 모니터에 2.5초 떴다)
+  if (privacy) spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts/verify/win-capture.ps1'), '-AppPid', String(app.pid), '-Out', os.tmpdir(), '-MoveTitle', '개인정보처리방침'], { stdio: 'ignore', windowsHide: true });
   if (privacy) { const pw = await connect(privacy); await sleep(1200); const r = await pw.send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(path.join(out, 'privacy.png'), Buffer.from(r.result.data, 'base64')); report.shots.push('privacy.png'); await pw.evaluate('window.close()').catch(() => {}); pw.ws.close(); }
 
   check('개인정보 창 뒤에도 콘솔 오류 0건', report.consoleErrors.length === 0 && report.failedRequests.length === 0, { console: report.consoleErrors, failed: report.failedRequests });
