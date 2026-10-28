@@ -9,6 +9,7 @@
 # 창 제목은 «Poster Studio»가 든 창과 콘솔 창만 적는다(그 밖의 창은 사람의 다른 일이라 «제목 적지 않음»).
 # 우리 창(Poster Studio 앱 · 설치기 · 제거기 · 시험용 electron)이 검사용 아래 모니터(test-monitor.json의 점) 밖에 보이면 «검사 모니터 밖» 줄로 따로 센다 —
 # 처음 보일 때와 0.1초마다(옮겨 간 것까지) 본다(10/28 팀장 «위 큰 모니터 두 대에는 한순간도 뜨지 않게»). 그 모니터가 없는 PC에서는 세지 않는다.
+# 밖에 뜬 우리 창은 그 자리에서 프로세스를 끈다(팀장 «잡히면 그 즉시 중단») — 관리자 권한 프로세스는 감시가 일반 권한이면 못 끄므로 탐침도 같은 판정으로 끈다(Stop-OffTestMonitor).
 if (-not ('WinWatch' -as [type])) {
   Add-Type @"
 using System; using System.Runtime.InteropServices; using System.Text; using System.Collections.Generic; using System.Diagnostics; using System.IO;
@@ -36,6 +37,20 @@ public static class WinWatch {
   static IntPtr testMon = IntPtr.Zero;
   static bool Ours(IntPtr h) { string p = Proc(h); p = p.Substring(0, p.IndexOf('#')); RECT r; GetWindowRect(h, out r); return (Array.IndexOf(OurProcs, p) >= 0 || Title(h).Contains("Poster Studio")) && r.R - r.L > 1 && r.B - r.T > 1; }
   static bool OffTest(IntPtr h) { return testMon != IntPtr.Zero && Ours(h) && MonitorFromWindow(h, 2) != testMon; }
+  // 검사 모니터 밖에 뜬 우리 창은 그 자리에서 프로세스를 끈다(10/28 팀장 «위 모니터에서 창이 하나라도 잡히면 그 즉시 중단»).
+  // 끄는 것은 이 이름들뿐이다 — 제목만 «Poster Studio»인 다른 프로그램(탐색기 등)이나 개발용 electron은 끄지 않는다.
+  static readonly string[] KillProcs = { "Poster Studio", "Poster Studio Setup", "Uninstall Poster Studio" };
+  static string OffLine(IntPtr h, Stopwatch sw) {
+    string d = Desc(h), done;
+    uint pid; GetWindowThreadProcessId(h, out pid);
+    try {
+      var p = Process.GetProcessById((int)pid);
+      string n = p.ProcessName;
+      if (Array.IndexOf(KillProcs, n) >= 0 || System.Text.RegularExpressions.Regex.IsMatch(n, "^Un_[A-Z]$")) { p.Kill(); done = " → 바로 끔"; }
+      else done = " → 끄지 않음(우리 이름 아님)";
+    } catch (Exception e) { done = " → 끄지 못함(" + e.Message + ")"; }
+    return string.Format("{0,8:0.000} 검사 모니터 밖 {1}{2}", sw.ElapsedMilliseconds / 1000.0, d, done);
+  }
   static readonly string[] ConsoleClasses = { "ConsoleWindowClass", "CASCADIA_HOSTING_WINDOW_CLASS" };
   static readonly string[] ConsoleProcs = { "powershell", "pwsh", "cmd", "conhost", "OpenConsole", "WindowsTerminal" };
   static string Cls(IntPtr h) { var c = new StringBuilder(128); GetClassName(h, c, 128); return c.ToString(); }
@@ -73,7 +88,7 @@ public static class WinWatch {
       bool con = IsConsole(h);
       if (con) consoles.Add(h.ToInt64());
       log.Add(string.Format("{0,8:0.000} 보임 {1}", sw.ElapsedMilliseconds / 1000.0, Desc(h)));
-      if (OffTest(h) && off.Add(h.ToInt64())) log.Add(string.Format("{0,8:0.000} 검사 모니터 밖 {1}", sw.ElapsedMilliseconds / 1000.0, Desc(h)));
+      if (OffTest(h) && off.Add(h.ToInt64())) log.Add(OffLine(h, sw));
     };
     IntPtr hook = SetWinEventHook(0x8002, 0x8002, IntPtr.Zero, proc, 0, 0, 0);   // EVENT_OBJECT_SHOW, 밖에서 받기
     long next = 0;
@@ -89,7 +104,7 @@ public static class WinWatch {
         }
         foreach (var k in prev.Keys) if (!cur.ContainsKey(k) && !start.ContainsKey(k)) log.Add(string.Format("{0,8:0.000} 사라짐 {1}", sw.ElapsedMilliseconds / 1000.0, prev[k]));
         prev = cur;
-        foreach (var k in cur.Keys) if (!start.ContainsKey(k) && OffTest((IntPtr)k) && off.Add(k)) log.Add(string.Format("{0,8:0.000} 검사 모니터 밖 {1}", sw.ElapsedMilliseconds / 1000.0, Desc((IntPtr)k)));
+        foreach (var k in cur.Keys) if (!start.ContainsKey(k) && OffTest((IntPtr)k) && off.Add(k)) log.Add(OffLine((IntPtr)k, sw));
       }
       System.Threading.Thread.Sleep(10);
     }

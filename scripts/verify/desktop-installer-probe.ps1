@@ -277,6 +277,9 @@ public static class Win {
   //   ① 한 칸 안에서 빈 줄 없이 바로 이어지는 두 줄 — 칸 안의 줄 간격은 글꼴 줄 높이 그대로라(굴림 9pt는 글자 높이와 같다) 걸린다(«\r\n\r\n»로 띄운 문단은 된다)
   //   ② 칸끼리 — 왼쪽이 같고(±2px) 바로 아래 줄로 이어지는 칸(꼭대기 차이 < 글자 높이 × 2)은 꼭대기 차이가 글자 높이(LOGFONT 높이)의 1.3배 이상
   //      (예전 위치 안내 1.0배 · «필요한 / 남은 디스크 공간» 1.33배 · 이 파일이 띄운 줄 1.6배). 글꼴을 못 읽으면 걸림.
+  //   ③ 칸이 부모(화면 칸) 아래로 넘치지 않는다 — 넘친 만큼은 브랜드 줄 · 단추 줄에 가려 안 보인다(10/28 녹화: «이미 '나만'으로 설치되어 있습니다 / (폴더) / 다시 설치합니다» 셋째 줄)
+  [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr h);
+  [DllImport("user32.dll")] static extern int MapWindowPoints(IntPtr from, IntPtr to, ref RECT r, int n);
   public static string[] Spacing(IntPtr p) {
     var bad = new System.Collections.Generic.List<string>();
     var boxes = new System.Collections.Generic.List<int[]>();
@@ -293,6 +296,8 @@ public static class Win {
         int fh = (f != IntPtr.Zero && GetObject(f, lf.Length, lf) != 0) ? Math.Abs(BitConverter.ToInt32(lf, 0)) : (f == IntPtr.Zero ? 16 : -1);
         if (fh <= 0) bad.Add("글꼴을 못 읽어 줄 간격을 못 잼[" + GetDlgCtrlID(h) + "]: " + lines[0]);
         RECT w; GetWindowRect(h, out w);
+        IntPtr par = GetParent(h); RECT pc; GetClientRect(par, out pc); RECT pw = pc; MapWindowPoints(par, IntPtr.Zero, ref pw, 2);
+        if (w.B > pw.B + 1) bad.Add("화면 칸 아래로 넘침 " + (w.B - pw.B) + "px[" + GetDlgCtrlID(h) + "]: " + lines[lines.Length - 1]);
         boxes.Add(new int[] { w.L, w.T, fh, GetDlgCtrlID(h) }); texts.Add(lines[0]);
       }
       return true; }, IntPtr.Zero);
@@ -320,6 +325,8 @@ function DetailLines($h) { try { return @([Win]::ListItems($h)) } catch { return
 $BM_CLICK = 0x00F5
 $tag = "$Step-$Mode$(if ($Step -ne 'install') { "-$Via" })"
 $report = [ordered]@{ step = $Step; mode = $Mode; via = $Via; beside = [bool]$Beside; elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator); startedAt = (Get-Date).ToString('o'); pages = @(); messageBoxes = @(); checks = @() }
+# 설치기 · 제거기 창은 모니터 지정을 따르지 않아(10/28 실측) 만들어지는 순간 검사 모니터로 옮긴다 — 이 도구가 관리자 권한이면 관리자 권한 창도 옮길 수 있다
+$report.placementHooked = Start-TestWindowPlacement
 function Check($name, $ok, $detail) {
   $report.checks += [ordered]@{ name = $name; ok = [bool]$ok; detail = $detail }
   Write-Output ("{0}  {1}{2}" -f ($(if ($ok) { '통과' } else { '걸림' })), $name, $(if ($null -ne $detail -and "$detail" -ne '') { " — $detail" } else { '' }))
@@ -377,7 +384,7 @@ function TextRules($rows) {
 function TextChecks() {
   $rows = @($report.pages | ForEach-Object { $_.textLines; $_.pickedTextLines; $_.otherTextLines }) + @($report.messageBoxes | ForEach-Object { $_.textLines }) | Where-Object { $_ }
   $bad = @($report.pages | ForEach-Object { $_.textProblems; $_.pickedTextProblems; $_.otherTextProblems }) + @($report.messageBoxes | ForEach-Object { $_.textProblems }) | Where-Object { $_ } | Select-Object -Unique
-  Check '화면 글: 문장마다 새 줄 · 줄이 칸 안에 든다(낱말 중간 꺾임 없음) · «(을)를» 같은 조사 표기 · «\n» 글자 없음 · 줄 간격(글자 높이 1.3배 이상)'($rows.Count -gt 0 -and $bad.Count -eq 0) $(if ($bad.Count) { $bad -join ' | ' } else { "글 줄 $($rows.Count)개 · 화면 $(@($report.pages).Count)개 · 알림 $(@($report.messageBoxes).Count)개" })
+  Check '화면 글: 문장마다 새 줄 · 줄이 칸 안에 든다(낱말 중간 꺾임 없음) · «(을)를» 같은 조사 표기 · «\n» 글자 없음 · 줄 간격(글자 높이 1.3배 이상) · 화면 칸 아래로 넘침 없음'($rows.Count -gt 0 -and $bad.Count -eq 0) $(if ($bad.Count) { $bad -join ' | ' } else { "글 줄 $($rows.Count)개 · 화면 $(@($report.pages).Count)개 · 알림 $(@($report.messageBoxes).Count)개" })
 }
 
 # 기준 위치 · 바로가기 자리
@@ -444,9 +451,11 @@ function Walk($prefix) {
   $h = [IntPtr]::Zero
   for ($i = 0; $i -lt 800 -and $h -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 50; $h = [Win]::FindDialog('Poster Studio') }
   if ($h -eq [IntPtr]::Zero) { return $false }
-  # 처음 보인 자리가 검사 모니터인가(설치기는 Start-OnTestMonitor로 연다 — 10/28 오후 팀장). 아니면 옮기고 걸림으로 남긴다.
+  # 처음 보인 자리가 검사 모니터인가(설치기는 Start-OnTestMonitor로 연다 — 10/28 오후 팀장). 밖이면 옮기지 않고 그 창의 프로세스를 끄고 멈춘다(팀장 «즉시 중단»).
   $report.startedOnTestMonitor = Test-OnTestMonitor $h
-  Check "$prefix 창이 처음부터 검사 모니터에 떴다(모니터를 지정해 열기)" $report.startedOnTestMonitor $null
+  $report.stoppedOffMonitor = Stop-OffTestMonitor $h
+  Check "$prefix 창이 처음부터 검사 모니터에 떴다(모니터를 지정해 열기)" $report.startedOnTestMonitor $(if ($report.stoppedOffMonitor) { "밖에 떠서 바로 끔: $($report.stoppedOffMonitor)" })
+  if ($report.stoppedOffMonitor) { return $false }
   $report.testMonitor = Move-ToTestMonitor $h
   $report.title = [Win]::Text($h)
   for ($n = 1; $n -le 14; $n++) {
@@ -457,7 +466,9 @@ function Walk($prefix) {
       if ($h2 -eq [IntPtr]::Zero) { break }
       $h = $h2
       $report.elevatedStartedOnTestMonitor = Test-OnTestMonitor $h
-      Check "$prefix 관리자 권한으로 다시 뜬 창이 처음부터 검사 모니터에 떴다" $report.elevatedStartedOnTestMonitor $null
+      $report.stoppedOffMonitor = Stop-OffTestMonitor $h
+      Check "$prefix 관리자 권한으로 다시 뜬 창이 처음부터 검사 모니터에 떴다" $report.elevatedStartedOnTestMonitor $(if ($report.stoppedOffMonitor) { "밖에 떠서 바로 끔: $($report.stoppedOffMonitor)" })
+      if ($report.stoppedOffMonitor) { return $false }
       Move-ToTestMonitor $h | Out-Null
     }
     $next = [Win]::GetDlgItem($h, 1)
@@ -541,7 +552,7 @@ function StartInstaller {
   if ($AsUser) { Start-OnTestMonitor (Join-Path $env:WINDIR 'explorer.exe') "`"$Installer`"" | Out-Null } else { Start-OnTestMonitor $Installer | Out-Null }
 }
 
-# 제거기를 사람이 여는 두 길 중 하나로 연다
+# 제거기를 사람이 여는 두 길 중 하나로 연다(제거기가 임시 폴더로 복사해 다시 띄우는 창은 Start-TestWindowPlacement가 만들어지는 순간 옮긴다)
 function StartUninstaller {
   if ($Via -eq 'startmenu') {
     Check '시작 메뉴 «Uninstall Poster Studio»가 있다' (Test-Path $uninstallLnk) $uninstallLnk
@@ -588,8 +599,9 @@ function StartApp($path) {
   for ($i = 0; $i -lt 60 -and -not $p; $i++) { Start-Sleep -Milliseconds 500; $p = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'Poster Studio' -and $_.Path -ieq $path } | Select-Object -First 1 }
   if ($p) {
     $on = Test-OnTestMonitor $p.MainWindowHandle
-    Check '시험으로 켠 앱이 처음부터 검사 모니터에 떴다(시험용 창 자리)' $on "pid $($p.Id)"
-    if (-not $on) { Move-ToTestMonitor $p.MainWindowHandle -Maximize | Out-Null }
+    $stopped = Stop-OffTestMonitor $p.MainWindowHandle
+    Check '시험으로 켠 앱이 처음부터 검사 모니터에 떴다(시험용 창 자리)' $on $(if ($stopped) { "밖에 떠서 바로 끔: $stopped" } else { "pid $($p.Id)" })
+    if ($stopped) { return $null }
   }
   return $p
 }
@@ -729,6 +741,9 @@ if ($Step -eq 'install') {
   }
 }
 TextChecks
+$place = Stop-TestWindowPlacement
+$report.placement = $place
+Check '창 자리: 설치 · 제거 창을 만들어지는 순간 검사 모니터로 옮겼다 — 위 모니터에 보인 창 0 · 옮기기 전에 이미 보인 창 0' ($report.placementHooked -and $place.violations.Count -eq 0 -and $place.alreadyVisible -eq 0) "옮김 $($place.moved.Count)번 · 위 모니터에 보임 $($place.violations.Count) · 이미 보임 $($place.alreadyVisible)$(if (-not $report.placementHooked) { ' · 훅을 걸지 못함(검사 모니터 없음?)' })"
 $report.finishedAt = (Get-Date).ToString('o')
 $report | ConvertTo-Json -Depth 6 | Out-File -Encoding utf8 (Join-Path $Out "installer-$tag.json")
 $failed = @($report.checks | Where-Object { -not $_.ok }).Count
