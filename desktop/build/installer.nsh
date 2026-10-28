@@ -15,6 +15,40 @@
 !define /ifndef INSTALL_REGISTRY_KEY "Software\${APP_GUID}"
 !define /ifndef UNINSTALL_REGISTRY_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_APP_KEY}"
 
+; ── 화면 안내문: 문장마다 새 줄, 줄은 칸 안에, «(을)를» 같은 조사 표기 없이(10/28 Bumm님, 팀장 전달) ──
+; NSIS · electron-builder 한국어 기본 문구는 여러 문장이 한 덩어리로 흘러 칸 끝에서 낱말 중간에 끊겼다(«설치를 시 / 작하시려면» — 한국어는 글자마다 줄이 바뀔 수 있다).
+; 칸 글꼴은 굴림 9pt(-12px), 칸 폭은 100%에서 위치 안내 525px · 설치 범위 아래 안내 490px · 머리 설명 368px · 제거 시작 안내 341px다(desktop-installer-probe.ps1로 잼).
+; 칸보다 긴 한 문장은 문구를 그대로 두고 낱말 사이에서 줄을 나눈다. 고친 문구는 아래 customHeader에 모았다.
+; 위치 화면 안내만 MUI 설정으로 바꾼다 — 그 화면(MUI_PAGE_DIRECTORY)보다 먼저 정해야 해서 여기 둔다. $_CLICK = «설치를 시작하시려면 '설치' 버튼을 눌러 주세요.»
+!ifndef BUILD_UNINSTALLER
+  !define MUI_DIRECTORYPAGE_TEXT_TOP "${PRODUCT_NAME}를 다음 폴더에 설치할 예정입니다.$\r$\n다른 폴더에 설치하고 싶으시면 '찾아보기' 버튼을 눌러서 다른 폴더를 선택해 주세요.$\r$\n$_CLICK"
+!endif
+; 나머지는 언어 문구가 다 정해진 뒤(customHeader — 설치기 본문의 MUI_LANGUAGE 다음) 같은 이름으로 다시 정한다. 나중 값이 이긴다.
+; 같은 이름을 두 번 정하면 NSIS가 «자리 낭비» 경고(6030)를 내고 electron-builder는 경고를 오류로 다룬다(-WX) — 이 몇 줄에서만 그 경고를 끈다.
+; «설치 범위» 아래 안내는 설치기가 «$(…Exists)(경로)$\r$\n$(reinstallUpgrade)»로 잇는다 — 앞 문장 끝에 줄바꿈을 넣어 경로가 제 줄에 오게 한다.
+!macro customHeader
+  !pragma warning push
+  !pragma warning disable 6030
+  !ifndef BUILD_UNINSTALLER
+    LangString MUI_TEXT_DIRECTORY_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치할 폴더를 선택해 주세요."
+    LangString MUI_TEXT_INSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치하는 동안 잠시 기다려 주세요."
+  !else
+    LangString MUI_UNTEXT_WELCOME_INFO_TEXT ${LANG_KOREAN} "이 프로그램은 당신의 컴퓨터에서$\r$\n${PRODUCT_NAME}를 제거할 것입니다.$\r$\n$\r$\n제거를 시작하기 전에$\r$\n${PRODUCT_NAME}를 종료하여 주시기 바랍니다.$\r$\n$\r$\n$_CLICK"
+    LangString MUI_UNTEXT_UNINSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 제거하는 동안 잠시 기다려 주시기 바랍니다."
+  !endif
+  LangString selectUserMode ${LANG_KOREAN} "이 프로그램을 모든 사용자가 사용할 수 있도록 할 것인지$\r$\n아니면 자신만 사용할 수 있도록 할 것인지 선택하십시오."
+  LangString freshInstallForAll ${LANG_KOREAN} "모든 사용자를 위해 새로 설치.$\r$\n(관리자 자격 증명을 묻는 메시지가 표시됨)"
+  LangString perUserInstallExists ${LANG_KOREAN} "이미 사용자별 설치가 있습니다.$\r$\n"
+  LangString perMachineInstallExists ${LANG_KOREAN} "이미 머신별로 설치되어 있습니다.$\r$\n"
+  ; 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 기본 번역의 «\n»은 줄바꿈이 아니라 글자 그대로 찍혔다
+  LangString whichInstallationRemove ${LANG_KOREAN} "이 프로그램은 시스템당(모든 사용자)또는 사용자별로 설치됩니다.$\r$\n어떤 설치를 제거하시겠습니까?"
+  LangString perUserInstall ${LANG_KOREAN} "사용자별로 설치되어 있습니다.$\r$\n"
+  LangString perMachineInstall ${LANG_KOREAN} "머신별로 설치되어 있습니다.$\r$\n"
+  ; 앱이 켜져 있을 때 설치 · 제거 첫머리에 뜨는 알림(MB_OKCANCEL) — 한국어 Windows에서 단추 이름은 «확인» · «취소»다
+  LangString appRunning ${LANG_KOREAN} "${PRODUCT_NAME}가 실행 중입니다.$\r$\n'확인'을 클릭하면 종료됩니다."
+  !pragma warning pop
+!macroend
+
 ; ── 설치 화면 그림: 칸 크기에 맞춘 판 고르기(10/27 Bumm님 «오른쪽 위 로고가 가로로 늘어나 깨져 보인다», 팀장 전달) ──
 ; 그림 칸 크기는 한글 Windows 글꼴과 화면 배율로 정해진다 — 100%에서 머리 로고 칸 175×53, 완료 화면 왼쪽 칸 191×290(desktop-installer-probe.ps1로 잼).
 ; electron-builder가 넣는 그림은 한 크기라 칸에 맞게 비율 없이 늘어났다(150×57 → 175×53: 가로 1.17배 · 세로 0.93배). make-assets.mjs가 배율
