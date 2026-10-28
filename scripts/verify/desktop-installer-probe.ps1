@@ -273,6 +273,43 @@ public static class Win {
       return true; }, IntPtr.Zero);
     return rows.ToArray();
   }
+  // 줄 간격(10/28 오후 팀장 «윗줄과 아랫줄 글자가 거의 맞닿아 겹쳐 보인다» — 기준: 보통 글 줄 간격). 설치 · 제거 화면의 보이는 글 칸마다:
+  //   ① 한 칸 안에서 빈 줄 없이 바로 이어지는 두 줄 — 칸 안의 줄 간격은 글꼴 줄 높이 그대로라(굴림 9pt는 글자 높이와 같다) 걸린다(«\r\n\r\n»로 띄운 문단은 된다)
+  //   ② 칸끼리 — 왼쪽이 같고(±2px) 바로 아래 줄로 이어지는 칸(꼭대기 차이 < 글자 높이 × 2)은 꼭대기 차이가 글자 높이(LOGFONT 높이)의 1.3배 이상
+  //      (예전 위치 안내 1.0배 · «필요한 / 남은 디스크 공간» 1.33배 · 이 파일이 띄운 줄 1.6배). 글꼴을 못 읽으면 걸림.
+  public static string[] Spacing(IntPtr p) {
+    var bad = new System.Collections.Generic.List<string>();
+    var boxes = new System.Collections.Generic.List<int[]>();
+    var texts = new System.Collections.Generic.List<string>();
+    EnumChildWindows(p, (h, l) => {
+      int style = GetWindowLong(h, -16);
+      string t = Text(h);
+      if (IsWindowVisible(h) && Cls(h) == "Static" && (style & 0x1F) <= 2 && t.Trim().Length > 0) {
+        var lines = t.Replace("\r\n", "\n").Split('\n');
+        for (int i = 1; i < lines.Length; i++)
+          if (lines[i].Trim().Length > 0 && lines[i - 1].Trim().Length > 0) { bad.Add("한 칸 안 붙은 줄[" + GetDlgCtrlID(h) + "]: " + lines[i - 1] + " / " + lines[i]); break; }
+        byte[] lf = new byte[92];
+        IntPtr f = SendMessage(h, 0x0031, IntPtr.Zero, IntPtr.Zero);
+        int fh = (f != IntPtr.Zero && GetObject(f, lf.Length, lf) != 0) ? Math.Abs(BitConverter.ToInt32(lf, 0)) : (f == IntPtr.Zero ? 16 : -1);
+        if (fh <= 0) bad.Add("글꼴을 못 읽어 줄 간격을 못 잼[" + GetDlgCtrlID(h) + "]: " + lines[0]);
+        RECT w; GetWindowRect(h, out w);
+        boxes.Add(new int[] { w.L, w.T, fh, GetDlgCtrlID(h) }); texts.Add(lines[0]);
+      }
+      return true; }, IntPtr.Zero);
+    for (int a = 0; a < boxes.Count; a++) {
+      int fh = boxes[a][2]; if (fh <= 0) continue;
+      int best = -1;
+      for (int b = 0; b < boxes.Count; b++) {
+        int dy = boxes[b][1] - boxes[a][1];
+        if (b != a && Math.Abs(boxes[b][0] - boxes[a][0]) <= 2 && dy > 0 && dy < fh * 2 && (best < 0 || dy < boxes[best][1] - boxes[a][1])) best = b;
+      }
+      if (best >= 0) {
+        double ratio = (boxes[best][1] - boxes[a][1]) / (double)fh;
+        if (ratio < 1.3) bad.Add(string.Format("줄 간격 {0:0.00}배[{1}→{2}]: {3} / {4}", ratio, boxes[a][3], boxes[best][3], texts[a], texts[best]));
+      }
+    }
+    return bad.ToArray();
+  }
 }
 "@
 [Win]::SetProcessDPIAware() | Out-Null
@@ -407,6 +444,9 @@ function Walk($prefix) {
   $h = [IntPtr]::Zero
   for ($i = 0; $i -lt 800 -and $h -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 50; $h = [Win]::FindDialog('Poster Studio') }
   if ($h -eq [IntPtr]::Zero) { return $false }
+  # 처음 보인 자리가 검사 모니터인가(설치기는 Start-OnTestMonitor로 연다 — 10/28 오후 팀장). 아니면 옮기고 걸림으로 남긴다.
+  $report.startedOnTestMonitor = Test-OnTestMonitor $h
+  Check "$prefix 창이 처음부터 검사 모니터에 떴다(모니터를 지정해 열기)" $report.startedOnTestMonitor $null
   $report.testMonitor = Move-ToTestMonitor $h
   $report.title = [Win]::Text($h)
   for ($n = 1; $n -le 14; $n++) {
@@ -416,6 +456,8 @@ function Walk($prefix) {
       for ($i = 0; $i -lt 200 -and $h2 -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 50; $h2 = [Win]::FindDialog('Poster Studio') }
       if ($h2 -eq [IntPtr]::Zero) { break }
       $h = $h2
+      $report.elevatedStartedOnTestMonitor = Test-OnTestMonitor $h
+      Check "$prefix 관리자 권한으로 다시 뜬 창이 처음부터 검사 모니터에 떴다" $report.elevatedStartedOnTestMonitor $null
       Move-ToTestMonitor $h | Out-Null
     }
     $next = [Win]::GetDlgItem($h, 1)
@@ -441,17 +483,17 @@ function Walk($prefix) {
     if (-not [Win]::IsWindow($h)) { break } # «마침»을 누른 뒤 닫히는 창 — 화면이 아니다
     $page = [ordered]@{ shot = (Split-Path $file -Leaf); stable = $stable; text = [Win]::AllText($h); bitmaps = [Win]::Bitmaps($h); dpi = [Win]::GetDpiForWindow($h) }
     $page.textLines = @([Win]::TextLines($h))
-    $page.textProblems = @(TextRules $page.textLines)
+    $page.textProblems = @(TextRules $page.textLines) + @([Win]::Spacing($h))
     if ($progress.Count) { $page.progress = $progress }
     # 설치 범위 화면 — 기준 단추를 고른다
-    $pick = if ($Mode -eq 'all') { [Win]::FindButton($h, '모든 사용자') } else { [Win]::FindButton($h, '전용') }
+    $pick = if ($Mode -eq 'all') { [Win]::FindButton($h, '모든 사용자') } else { [Win]::FindButton($h, '나만') }
     if ($pick -ne [IntPtr]::Zero -and $page.text -match '모든 사용자') {
       [Win]::SendMessage($pick, $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
       Start-Sleep -Milliseconds 400
       $page.picked = [Win]::Text($pick)
       [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-범위.png' -f $prefix, $n))) | Out-Null
       $page.pickedTextLines = @([Win]::TextLines($h))
-      $page.pickedTextProblems = @(TextRules $page.pickedTextLines)
+      $page.pickedTextProblems = @(TextRules $page.pickedTextLines) + @([Win]::Spacing($h))
     }
     # 완료 화면 «Poster Studio 실행하기» — 처음 상태를 적고, -NoRun이면 풀고 찍는다(BM_GETCHECK 0xF0: 1 체크)
     $run = [Win]::FindButton($h, '실행하기')
@@ -486,20 +528,20 @@ function Walk($prefix) {
 
 # 설치기를 연다 — -AsUser면 탐색기를 거쳐 일반 권한으로(이 도구가 관리자 권한이어도 사람이 두 번 누른 것과 같은 권한)
 function StartInstaller {
-  if ($AsUser) { Start-Process -FilePath (Join-Path $env:WINDIR 'explorer.exe') -ArgumentList "`"$Installer`"" | Out-Null } else { Start-Process -FilePath $Installer | Out-Null }
+  if ($AsUser) { Start-OnTestMonitor (Join-Path $env:WINDIR 'explorer.exe') "`"$Installer`"" | Out-Null } else { Start-OnTestMonitor $Installer | Out-Null }
 }
 
 # 제거기를 사람이 여는 두 길 중 하나로 연다
 function StartUninstaller {
   if ($Via -eq 'startmenu') {
     Check '시작 메뉴 «Uninstall Poster Studio»가 있다' (Test-Path $uninstallLnk) $uninstallLnk
-    Start-Process -FilePath $uninstallLnk | Out-Null   # 시작 메뉴에서 누른 것과 같다(바로가기를 연다)
+    Start-OnTestMonitor $uninstallLnk | Out-Null   # 시작 메뉴에서 누른 것과 같다(바로가기를 연다)
   } else {
     $props = Get-ItemProperty (Entry $hive).PSPath
     Check "«설치된 앱»의 «Poster Studio» 제거 명령이 있다($hive)" ($props.UninstallString -like "*Uninstall Poster Studio.exe*") $props.UninstallString
     # «설정 → 앱 → 설치된 앱»과 «프로그램 추가/제거»의 «제거»는 이 등록 값의 명령을 그대로 실행한다
     $cmd = $props.UninstallString
-    if ($cmd -match '^"([^"]+)"\s*(.*)$') { Start-Process -FilePath $Matches[1] -ArgumentList $Matches[2] | Out-Null } else { Start-Process -FilePath $cmd | Out-Null }
+    if ($cmd -match '^"([^"]+)"\s*(.*)$') { Start-OnTestMonitor $Matches[1] $Matches[2] | Out-Null } else { Start-OnTestMonitor $cmd | Out-Null }
   }
 }
 
@@ -527,12 +569,18 @@ function Remember {
   $script:known = @($script:known + $files + $links | Select-Object -Unique)
 }
 
-# 깔린 앱을 켠다(-AppOn) — 창이 뜰 때까지 기다린다
+# 깔린 앱을 켠다(-AppOn) — 창이 뜰 때까지 기다린다. 앱에 시험용 창 자리(POSTER_STUDIO_TEST_WINDOW = 검사 모니터의 점)를 넘겨
+# 처음부터 그 모니터에서 최대화로 뜨게 한다(desktop/main.mjs — 이 변수는 이 도구가 띄운 앱에만 간다). 다른 모니터에 떴으면 옮기고 걸림으로 남긴다.
 function StartApp($path) {
-  Start-Process -FilePath $path | Out-Null
+  $env:POSTER_STUDIO_TEST_WINDOW = "$([int]$script:testMonitor.point[0]),$([int]$script:testMonitor.point[1])"
+  try { Start-OnTestMonitor $path | Out-Null } finally { Remove-Item Env:POSTER_STUDIO_TEST_WINDOW -ErrorAction SilentlyContinue }
   $p = $null
   for ($i = 0; $i -lt 60 -and -not $p; $i++) { Start-Sleep -Milliseconds 500; $p = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'Poster Studio' -and $_.Path -ieq $path } | Select-Object -First 1 }
-  if ($p) { Move-ToTestMonitor $p.MainWindowHandle -Maximize | Out-Null }   # 앱은 스스로 최대화한다 — 최대화된 창은 풀고 옮긴 뒤 다시 최대화
+  if ($p) {
+    $on = Test-OnTestMonitor $p.MainWindowHandle
+    Check '시험으로 켠 앱이 처음부터 검사 모니터에 떴다(시험용 창 자리)' $on "pid $($p.Id)"
+    if (-not $on) { Move-ToTestMonitor $p.MainWindowHandle -Maximize | Out-Null }
+  }
   return $p
 }
 function CloseApps { Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null; $_.WaitForExit(15000) | Out-Null } }

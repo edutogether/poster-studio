@@ -10,10 +10,11 @@
    - 앱 밖 주소로 이동하지 않는다. 새 창은 앱 안 주소(개인정보처리방침)만 연다.
    - 저장은 Windows 저장 창으로 위치를 묻는다. 인쇄는 4×6 인화지 · 여백 없음으로 Windows 인쇄 창을 연다(미리보기는 화면이 먼저 보인다).
 
-   확인 도구(scripts/verify/desktop-app-probe.mjs)만 쓰는 환경 변수 — 사람이 쓰는 설치판에서는 비어 있다:
+   확인 도구(scripts/verify/desktop-*.mjs)만 쓰는 환경 변수 — 사람이 쓰는 설치판에서는 비어 있다:
      POSTER_STUDIO_TEST_SAVE_DIR   저장 창 없이 이 폴더에 저장한다
-     POSTER_STUDIO_TEST_PRINT_PDF  인쇄 창 대신 같은 규격(4×6 · 여백 없음)으로 이 PDF 파일에 «인쇄»한다 */
-import { app, BrowserWindow, Menu, ipcMain, protocol, session, shell } from 'electron';
+     POSTER_STUDIO_TEST_PRINT_PDF  인쇄 창 대신 같은 규격(4×6 · 여백 없음)으로 이 PDF 파일에 «인쇄»한다
+     POSTER_STUDIO_TEST_WINDOW     창 자리 — «x,y»면 그 점의 모니터에서 최대화, «hidden»이면 창을 보이지 않는다(아래 readTestWindow) */
+import { app, BrowserWindow, Menu, ipcMain, protocol, screen, session, shell } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -109,6 +110,26 @@ ipcMain.handle('poster-studio:print', async (event) => {
   });
 });
 
+// 시험용 창 자리(2026-10-28 팀장 — 자동 시험 창은 아래 작은 모니터에만, 위 모니터에는 한순간도 뜨지 않게. 시험 도구가 줄 때만 켜지고 사용자 PC에는 영향이 없게).
+// 확인 도구가 앱을 띄울 때 넘기는 환경 변수 POSTER_STUDIO_TEST_WINDOW만 읽는다(위 두 변수와 같은 방식). 없으면 지금 그대로 주 모니터에서 최대화한다.
+//   «x,y»     그 점(화면 실제 화소 좌표)을 품은 모니터에서 최대화해 보인다 — 보이기 전에 그 모니터로 옮긴다. 새 창(개인정보처리방침)도 그 모니터에.
+//   «hidden»  창을 보이지 않는다 — 창 크기를 바꿔 가며 배치를 재는 확인 도구용(scripts/verify/desktop-window-sweep.mjs). 숨은 창에서도 배치가 돌게 배경 늦춤을 끈다.
+function readTestWindow() {
+  const v = (process.env.POSTER_STUDIO_TEST_WINDOW ?? '').trim();
+  if (v === 'hidden') return { point: null, hidden: true };
+  const m = v.match(/^(-?\d+),(-?\d+)$/);
+  return m ? { point: { x: Number(m[1]), y: Number(m[2]) }, hidden: false } : null;
+}
+const TEST_WINDOW = readTestWindow();
+// 시험 자리를 품은 모니터의 작업 영역(DIP) — 시험 파일이 없거나 그 점에 모니터가 없으면 null
+function testWorkArea() {
+  if (!TEST_WINDOW?.point) return null;
+  const p = screen.screenToDipPoint(TEST_WINDOW.point);
+  const d = screen.getDisplayNearestPoint(p);
+  const b = d.bounds;
+  return p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + b.height ? d.workArea : null;
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1366,
@@ -119,9 +140,12 @@ function createWindow() {
     title: 'Poster Studio',
     backgroundColor: '#ffffff',
     autoHideMenuBar: true,
-    webPreferences: { preload: path.join(HERE, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
+    webPreferences: { preload: path.join(HERE, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false, ...(TEST_WINDOW?.hidden ? { backgroundThrottling: false } : {}) },
   });
   win.once('ready-to-show', () => {
+    if (TEST_WINDOW?.hidden) return;
+    const area = testWorkArea();
+    if (area) win.setBounds(area);   // 보이기 전에 시험 모니터로 — 최대화는 창이 놓인 모니터에서 된다
     win.maximize();
     win.show();
   });
@@ -152,7 +176,10 @@ if (!app.requestSingleInstanceLock()) {
     });
     contents.on('will-attach-webview', (event) => event.preventDefault());
     contents.setWindowOpenHandler(({ url }) => {
-      if (url.startsWith(`${ORIGIN}/`)) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, width: 900, height: 860 } };
+      if (url.startsWith(`${ORIGIN}/`)) {
+        const area = testWorkArea();
+        return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, width: 900, height: 860, ...(area ? { x: area.x + 24, y: area.y + 24 } : {}) } };
+      }
       if (url.startsWith('https://')) void shell.openExternal(url);
       return { action: 'deny' };
     });
