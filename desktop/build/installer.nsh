@@ -570,6 +570,8 @@
       ${NSD_OnClick} $MultiUser.InstallModePage.CurrentUser ${PSF}psModeClick
       ${NSD_OnClick} $MultiUser.InstallModePage.AllUsers ${PSF}psModeClick
     ${EndIf}
+    Push $MultiUser.InstallModePage
+    Call ${PSF}psFreezeUntilShown
   FunctionEnd
   Function ${PSF}psModeClick
     Call ${PSF}InstModeChange   ; 스택의 단추를 템플릿이 꺼내 아래 안내 글을 바꾼다
@@ -590,6 +592,47 @@
     Push $RadioButtonLabel1
     Push 2120
     Call ${PSF}psSpread
+  FunctionEnd
+
+  ; ── 화면 넘김 깜빡임 0(10/28 Bumm님 «깜빡임 0», 팀장 전달) ──
+  ; 화면을 바꾸면 Windows가 지운 자리를 바로 바탕색으로 칠한다 — 새 화면이 다 차기 전(줄 칸 만들기 · 그림 꺼내기)의 빈 화면이 녹화에 2~3장 잡혔다
+  ; (설치 범위 → 위치 0.1초, 진행 → 완료 0.07초). 그래서 바꾸기 전에 바깥 창 그리기를 멈추고(WM_SETREDRAW 0 — 그동안 앞 화면이 그대로 보인다)
+  ; 새 화면을 보이게 한 뒤 다시 켜 한 번에 그린다. 바깥 창이 아직 안 보이면(첫 화면) 멈추지 않는다 — 다시 켜기가 숨은 창을 보이게 만든다.
+  Var psFrozen
+  Var psThawPage
+  Function ${PSF}psFreeze
+    Push $0
+    System::Call "user32::IsWindowVisible(p $HWNDPARENT) i .r0"
+    ${If} $0 <> 0
+    ${AndIf} $psFrozen != "1"
+      SendMessage $HWNDPARENT ${WM_SETREDRAW} 0 0
+      StrCpy $psFrozen "1"
+    ${EndIf}
+    Pop $0
+  FunctionEnd
+  ; 스택: 새 화면 HWND
+  Function ${PSF}psThaw
+    Exch $0
+    ${If} $psFrozen == "1"
+      ShowWindow $0 8   ; SW_SHOWNA — NSIS가 뒤에 하는 것을 먼저(이미 보이면 그대로)
+      SendMessage $HWNDPARENT ${WM_SETREDRAW} 1 0
+      System::Call "user32::RedrawWindow(p $HWNDPARENT, p 0, p 0, i 0x585)"   ; INVALIDATE | ERASE | ALLCHILDREN | UPDATENOW | FRAME
+      StrCpy $psFrozen ""
+    ${EndIf}
+    Pop $0
+  FunctionEnd
+  ; nsDialogs 화면(설치 범위 · 완료)은 SHOW 뒤에 nsDialogs가 앞 화면을 지우고 새 화면을 띄운다 — 그 뒤 첫 타이머에서 다시 켠다
+  Function ${PSF}psFreezeUntilShown
+    Exch $0
+    StrCpy $psThawPage $0
+    Pop $0
+    Call ${PSF}psFreeze
+    ${NSD_CreateTimer} ${PSF}psThawTimer 1
+  FunctionEnd
+  Function ${PSF}psThawTimer
+    ${NSD_KillTimer} ${PSF}psThawTimer
+    Push $psThawPage
+    Call ${PSF}psThaw
   FunctionEnd
 
   ; ── 막대 · 줄 ──
@@ -852,22 +895,30 @@
 
     Function psFinishShow
       !insertmacro psSideArt $mui.FinishPage.Image $mui.FinishPage.Image.Bitmap
+      Push $mui.FinishPage
+      Call psFreezeUntilShown
     FunctionEnd
 
-    ; 위치 화면 — 업데이트(--updated)로 다시 깔 때는 건너뛴다(템플릿 skipPageIfUpdated와 같다)
+    ; 위치 화면 — 업데이트(--updated)로 다시 깔 때는 건너뛴다(템플릿 skipPageIfUpdated와 같다).
+    ; 띄우기로 정했으면 앞 화면을 지우기 전에 그리기를 멈춘다(NSIS는 PRE 다음에 앞 화면을 지운다 — 다시 켜는 것은 psDirShow 끝)
     Function psDirPre
       ${if} ${isUpdated}
         Abort
       ${endif}
+      Call psFreeze
     FunctionEnd
-    ; 위 안내 세 줄(칸 1006)의 줄 간격
+    ; 위 안내 세 줄(칸 1006)의 줄 간격 → 다 되면 화면을 보이고 한 번에 그린다
     Function psDirShow
       Push $R0
-      FindWindow $R0 "#32770" "" $HWNDPARENT
-      GetDlgItem $R0 $R0 1006
+      Push $R1
+      FindWindow $R1 "#32770" "" $HWNDPARENT
+      GetDlgItem $R0 $R1 1006
       Push $R0
       Push 2101
       Call psSpread
+      Push $R1
+      Call psThaw
+      Pop $R1
       Pop $R0
     FunctionEnd
 
@@ -1116,6 +1167,8 @@
 
     Function un.psUnFinishShow
       !insertmacro psSideArt $mui.FinishPage.Image $mui.FinishPage.Image.Bitmap
+      Push $mui.FinishPage
+      Call un.psFreezeUntilShown
     FunctionEnd
   !endif
 !macroend
