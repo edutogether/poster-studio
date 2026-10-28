@@ -4,9 +4,9 @@
      icon.ico                아이콘(16 · 20 · 24 · 32 · 40 · 48 · 64 · 128 · 256) — Poster Studio 슬레이트.
                              앱 실행 파일 · 바로가기 · 작업표시줄 · 앱 창 · «설치된 앱» 목록, 그리고 설치 파일 · 설치 창 · 제거 프로그램에 쓴다.
      installer-art/header-<배율>.bmp   설치 화면 머리 로고(슬레이트) — 배율 100~300%마다 칸 크기(100%에서 175×53) 그대로
-     installer-art/finish-<배율>.bmp   설치 완료 화면 왼쪽 그림(영화관 + 제목 글귀) — 배율마다 칸 크기(100%에서 191×290) 그대로
-     installerHeader.bmp · installerSidebar.bmp   위 두 그림의 100% 판(electron-builder 설정의 기본 그림). 설치기는 칸에 맞는 판으로 바꾼다(installer.nsh)
-     uninstallerSidebar.bmp  제거 화면 왼쪽 그림(191×290) — 슬레이트 · 앱 이름
+     installer-art/finish-<배율>.bmp   설치 완료 화면 · 제거기 첫 화면 · 제거 완료 화면 왼쪽 그림(영화관 + 제목 글귀) — 배율마다 칸 크기(100%에서 191×290) 그대로
+     installerHeader.bmp · installerSidebar.bmp   위 두 그림의 100% 판(electron-builder 설정의 기본 그림 — installerSidebar는 제거기 그림 칸에도 쓴다).
+                             설치기 · 제거기는 칸에 맞는 판으로 바꾼다(installer.nsh). 예전 제거기 전용 그림(흰 바탕 슬레이트)은 10/28 Bumm님 지시로 걷었다.
      icon-spec.json          원본 · 크기 · 설치 화면 그림 수치
 
    규칙(2026-10-27 Bumm님 «포스터 스튜디오 원래 아이콘 있잖아 ? 그 슬레이트 하자», 팀장 전달):
@@ -190,21 +190,6 @@ function finish(W, H) {
   return cv;
 }
 
-// 제거 화면 왼쪽 그림(배율 하나 — 191×290): 흰 바탕 · 슬레이트 · 앱 이름 · 아래 InKY 노랑 띠
-function unSidebar() {
-  const [W, H] = ART.finish;
-  const cv = createCanvas(W, H);
-  const c = cv.getContext('2d');
-  c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
-  c.fillStyle = '#ffe700'; c.fillRect(0, H - 20, W, 20);
-  const L = 132;
-  c.drawImage(slateIcon(L), (W - L) / 2, 22);
-  c.fillStyle = '#1d1d1f'; c.textAlign = 'center';
-  c.font = '23px "Pretendard Black"'; c.fillText('Poster', W / 2, 184); c.fillText('Studio', W / 2, 210);
-  c.fillStyle = '#6b6b70'; c.font = '11px "Pretendard Bold"'; c.fillText('InKY Film Festival', W / 2, 238);
-  return cv;
-}
-
 const SIZES = [16, 20, 24, 32, 40, 48, 64, 128, 256];
 const icons = SIZES.map((S) => slateIcon(S));
 writeIco(path.join(HERE, 'icon.ico'), icons);
@@ -218,10 +203,9 @@ finishes.forEach(([pct, cv]) => writeBmp(path.join(ARTDIR, `finish-${pct}.bmp`),
 // electron-builder 설정의 기본 그림(설치기 안에 늘 들어가는 것) — 100% 판. 설치기는 시작할 때 칸에 맞는 판으로 바꾼다.
 writeBmp(path.join(HERE, 'installerHeader.bmp'), headers[0][1]);
 writeBmp(path.join(HERE, 'installerSidebar.bmp'), finishes[0][1]);
-writeBmp(path.join(HERE, 'uninstallerSidebar.bmp'), unSidebar());
 fs.rmSync(path.join(HERE, 'installer.ico'), { force: true }); // 10/27: 설치 파일 아이콘도 앱 아이콘(icon.ico)을 쓴다
 fs.writeFileSync(path.join(HERE, 'icon-spec.json'), JSON.stringify({ source: SLATE_SRC, sourceSize: slate.width, resample: 'lanczos3 (alpha premultiplied)', sizes: SIZES, installerArt: ART }, null, 2) + '\n');
-console.log('만듦: icon.ico(' + SIZES.join(' · ') + ') · installer-art/header · finish(' + ART.scales.join(' · ') + '%) · installerHeader.bmp · installerSidebar.bmp · uninstallerSidebar.bmp · icon-spec.json');
+console.log('만듦: icon.ico(' + SIZES.join(' · ') + ') · installer-art/header · finish(' + ART.scales.join(' · ') + '%) · installerHeader.bmp · installerSidebar.bmp · icon-spec.json');
 
 if (preview) {
   fs.mkdirSync(preview, { recursive: true });
@@ -245,5 +229,4 @@ if (preview) {
   fs.writeFileSync(path.join(preview, 'icon-sheet.png'), sheet.toBuffer('image/png'));
   headers.forEach(([pct, cv]) => fs.writeFileSync(path.join(preview, `installer-header-${pct}.png`), cv.toBuffer('image/png')));
   finishes.forEach(([pct, cv]) => fs.writeFileSync(path.join(preview, `installer-finish-${pct}.png`), cv.toBuffer('image/png')));
-  fs.writeFileSync(path.join(preview, 'uninstaller-sidebar.png'), unSidebar().toBuffer('image/png'));
 }

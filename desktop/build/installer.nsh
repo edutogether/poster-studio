@@ -8,51 +8,40 @@
 ;               (처음엔 preInit에서 적었더니 첫 설치인데 그 문구가 떴다 — 10/27 실측). «나만»으로 끝까지 설치하지 않으면(취소 · 모든 사용자) 창이 닫힐 때 지운다.
 ; 시작 메뉴 «InKY Film Festival» 폴더에는 «Poster Studio»(electron-builder)와 «Uninstall Poster Studio»(아래)를 둔다.
 ; 제거하면 그 바로가기와, 비게 된 «InKY Film Festival» 폴더(설치 폴더 쪽)까지 지운다. 시작 메뉴 폴더는 electron-builder가 비면 지운다.
+;
+; 화면 흐름(10/28 Bumm님, 팀장 전달):
+;   설치기  설치 범위 → 설치 위치(«설치»를 누르면: 이미 깔려 있으면 «지우고 새로 설치할까요?», 앱이 켜져 있으면 «끄고 계속할까요?» — «취소»면 이 화면에 남는다)
+;           → 진행(예전 판을 «삭제: …» 줄과 함께 지움 → 프로그램 파일 → «설치: …» 줄 → 바로가기 · 등록 → «설치가 끝났습니다.» · 100% 1초) → 완료
+;   제거기  첫 화면(«다음»을 누르면 앱이 켜져 있을 때 «끄고 계속할까요?») → 진행(«삭제: …» 줄 → «제거가 끝났습니다.» · 100% 1초) → 완료
+; 설치 위치 화면은 이 파일이 직접 넣는다(customPageAfterChangeDir). 템플릿의 위치 화면은 그 앞 화면(설치 범위)이 MUI 콜백 자리를 먼저 가져가
+; «떠날 때» 확인을 붙일 수 없어, package.json에서 allowToChangeInstallationDirectory를 끄고 같은 MUI 위치 화면을 여기서 넣는다(모양 · «설치» 단추 그대로).
 
 ; 이 파일은 설치기 머리에 먼저 들어간다 — 아래 함수가 쓰는 ${If} 등(LogicLib)을 여기서 불러 둔다(이미 불렀으면 다시 읽지 않는다).
 !include LogicLib.nsh
-; 아래 .onGUIEnd가 쓰는 등록 키 이름 — electron-builder multiUser.nsh와 같은 정의(그쪽도 /ifndef라 한 값으로 맞는다). 그 파일은 이 파일보다 뒤에 들어온다.
+; 등록 키 이름 — electron-builder multiUser.nsh와 같은 정의(그쪽도 /ifndef라 한 값으로 맞는다). 그 파일은 이 파일보다 뒤에 들어온다.
 !define /ifndef INSTALL_REGISTRY_KEY "Software\${APP_GUID}"
 !define /ifndef UNINSTALL_REGISTRY_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_APP_KEY}"
+; 아래 함수 이름 앞붙이 — 제거기 빌드의 함수는 «un.»으로 시작해야 한다
+!ifdef BUILD_UNINSTALLER
+  !define PSF "un."
+!else
+  !define PSF ""
+!endif
 
 ; ── 화면 안내문: 문장마다 새 줄, 줄은 칸 안에, «(을)를» 같은 조사 표기 없이(10/28 Bumm님, 팀장 전달) ──
 ; NSIS · electron-builder 한국어 기본 문구는 여러 문장이 한 덩어리로 흘러 칸 끝에서 낱말 중간에 끊겼다(«설치를 시 / 작하시려면» — 한국어는 글자마다 줄이 바뀔 수 있다).
-; 칸 글꼴은 굴림 9pt(-12px), 칸 폭은 100%에서 위치 안내 525px · 설치 범위 아래 안내 490px · 머리 설명 368px · 제거 시작 안내 341px다(desktop-installer-probe.ps1로 잼).
+; 칸 글꼴은 굴림 9pt(-12px), 칸 폭은 100%에서 위치 안내 525px · 설치 범위 아래 안내 490px · 머리 설명 368px · 제거 첫 화면 안내 341px다(desktop-installer-probe.ps1로 잼).
 ; 칸보다 긴 한 문장은 문구를 그대로 두고 낱말 사이에서 줄을 나눈다. 고친 문구는 아래 customHeader에 모았다.
 ; 위치 화면 안내만 MUI 설정으로 바꾼다 — 그 화면(MUI_PAGE_DIRECTORY)보다 먼저 정해야 해서 여기 둔다. $_CLICK = «설치를 시작하시려면 '설치' 버튼을 눌러 주세요.»
 !ifndef BUILD_UNINSTALLER
   !define MUI_DIRECTORYPAGE_TEXT_TOP "${PRODUCT_NAME}를 다음 폴더에 설치할 예정입니다.$\r$\n다른 폴더에 설치하고 싶으시면 '찾아보기' 버튼을 눌러서 다른 폴더를 선택해 주세요.$\r$\n$_CLICK"
 !endif
-; 나머지는 언어 문구가 다 정해진 뒤(customHeader — 설치기 본문의 MUI_LANGUAGE 다음) 같은 이름으로 다시 정한다. 나중 값이 이긴다.
-; 같은 이름을 두 번 정하면 NSIS가 «자리 낭비» 경고(6030)를 내고 electron-builder는 경고를 오류로 다룬다(-WX) — 이 몇 줄에서만 그 경고를 끈다.
-; «설치 범위» 아래 안내는 설치기가 «$(…Exists)(경로)$\r$\n$(reinstallUpgrade)»로 잇는다 — 앞 문장 끝에 줄바꿈을 넣어 경로가 제 줄에 오게 한다.
-!macro customHeader
-  !pragma warning push
-  !pragma warning disable 6030
-  !ifndef BUILD_UNINSTALLER
-    LangString MUI_TEXT_DIRECTORY_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치할 폴더를 선택해 주세요."
-    LangString MUI_TEXT_INSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치하는 동안 잠시 기다려 주세요."
-  !else
-    LangString MUI_UNTEXT_WELCOME_INFO_TEXT ${LANG_KOREAN} "이 프로그램은 당신의 컴퓨터에서$\r$\n${PRODUCT_NAME}를 제거할 것입니다.$\r$\n$\r$\n제거를 시작하기 전에$\r$\n${PRODUCT_NAME}를 종료하여 주시기 바랍니다.$\r$\n$\r$\n$_CLICK"
-    LangString MUI_UNTEXT_UNINSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 제거하는 동안 잠시 기다려 주시기 바랍니다."
-  !endif
-  LangString selectUserMode ${LANG_KOREAN} "이 프로그램을 모든 사용자가 사용할 수 있도록 할 것인지$\r$\n아니면 자신만 사용할 수 있도록 할 것인지 선택하십시오."
-  LangString freshInstallForAll ${LANG_KOREAN} "모든 사용자를 위해 새로 설치.$\r$\n(관리자 자격 증명을 묻는 메시지가 표시됨)"
-  LangString perUserInstallExists ${LANG_KOREAN} "이미 사용자별 설치가 있습니다.$\r$\n"
-  LangString perMachineInstallExists ${LANG_KOREAN} "이미 머신별로 설치되어 있습니다.$\r$\n"
-  ; 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 기본 번역의 «\n»은 줄바꿈이 아니라 글자 그대로 찍혔다
-  LangString whichInstallationRemove ${LANG_KOREAN} "이 프로그램은 시스템당(모든 사용자)또는 사용자별로 설치됩니다.$\r$\n어떤 설치를 제거하시겠습니까?"
-  LangString perUserInstall ${LANG_KOREAN} "사용자별로 설치되어 있습니다.$\r$\n"
-  LangString perMachineInstall ${LANG_KOREAN} "머신별로 설치되어 있습니다.$\r$\n"
-  ; 앱이 켜져 있을 때 설치 · 제거 첫머리에 뜨는 알림(MB_OKCANCEL) — 한국어 Windows에서 단추 이름은 «확인» · «취소»다
-  LangString appRunning ${LANG_KOREAN} "${PRODUCT_NAME}가 실행 중입니다.$\r$\n'확인'을 클릭하면 종료됩니다."
-  !pragma warning pop
-!macroend
 
 ; ── 설치 화면 그림: 칸 크기에 맞춘 판 고르기(10/27 Bumm님 «오른쪽 위 로고가 가로로 늘어나 깨져 보인다», 팀장 전달) ──
 ; 그림 칸 크기는 한글 Windows 글꼴과 화면 배율로 정해진다 — 100%에서 머리 로고 칸 175×53, 완료 화면 왼쪽 칸 191×290(desktop-installer-probe.ps1로 잼).
 ; electron-builder가 넣는 그림은 한 크기라 칸에 맞게 비율 없이 늘어났다(150×57 → 175×53: 가로 1.17배 · 세로 0.93배). make-assets.mjs가 배율
 ; 100~300%마다 칸 크기 그대로 그려 둔 판(build/installer-art) 가운데 칸의 실제 너비에 가장 가까운 것을 끼운다 — 칸과 몇 화소 다르면 그만큼만 맞춰 늘인다.
+; 제거기 첫 화면 · 완료 화면 왼쪽도 설치 완료 화면과 같은 극장 그림이다(10/28 Bumm님 — 예전 흰 바탕 슬레이트 그림은 걷었다).
 !define PS_HEADER_W 175
 !define PS_FINISH_W 191
 
@@ -127,28 +116,88 @@
   Pop $R7
   Pop $R6
 !macroend
-; 함수 몸은 MUI가 화면(머리 그림 칸 포함)을 정의한 뒤에 컴파일돼야 한다 — 이 파일은 설치기 맨 앞에 들어가 여기서 정의하면
-; «no branding image found»로 빌드가 멈췄다(10/27). 그래서 이름만 여기서 정하고, 몸은 화면 정의 뒤에 끼는 자리
-; (설치기 customFinishPage · 제거기 customUninstallPage)에서 정의한다.
+
+; 완료 화면 · 제거기 첫 화면 왼쪽 그림 칸(IMG)에 칸 크기에 맞는 극장 그림을 끼운다 — 칸은 화면이 만들어질 때 생겨 그 화면을 띄우기 직전(SHOW)에 잰다
+!macro psSideArt IMG BMP
+  Push $R7
+  Push $R8
+  Push $R9
+  !insertmacro psClientWidth ${IMG}
+  ${If} $R9 > 0
+    !insertmacro psPickScale ${PS_FINISH_W}
+    !insertmacro psExtractArt finish
+    ${NSD_FreeImage} ${BMP}
+    ${NSD_SetStretchedImage} ${IMG} "$PLUGINSDIR\ps-finish.bmp" ${BMP}
+  ${EndIf}
+  Pop $R9
+  Pop $R8
+  Pop $R7
+!macroend
+
+; ── 진행 화면 막대(10/28 Bumm님 «막대가 80%까지 갔다가 뒤로 · 100%를 안 보이고 끝남», 팀장 전달) ──
+; 원래 막대(ID 1004)에는 쓰는 쪽이 둘이었다 — NSIS는 지나간 명령 수로, 7z 풀기(Nsis7z)는 제 진행률 0~30000으로 같은 막대를 덮어 막대가 뒤로 튀었다
+; (두 번 눌러 «모든 사용자»로 덮어쓸 때 50% → 5% → 80%, 그대로 완료 화면 — 10/28 설치 창 녹화).
+; 그래서 원래 막대 자리에 막대를 하나 더 두고 이 파일만 그것을 움직인다(앞으로만 — psAt). 원래 막대는 숨긴다(NSIS는 계속 숨은 막대에 쓴다).
+;   ① 창이 뜰 때(화면 스레드, .onGUIInit) 숨은 막대를 만든다 — 창은 만든 스레드가 그리므로 설치 스레드에서 만들면 그려지지 않는다.
+;   ② 진행 화면이 열리면 그 자리로 옮겨 원래 막대를 가린다(설치기는 진행 화면 SHOW, 제거기는 제거 단계 맨 앞 — 제거기 진행 화면 SHOW 자리는 템플릿 제거 범위 화면이 가져간다).
+;   ③ 설치 단계가 시작된 뒤 ID를 맞바꾼다(원래 막대 1999 · 새 막대 1004) — NSIS는 단계가 시작될 때 원래 막대를 잡아 두고, Nsis7z는 풀 때 ID 1004로 찾는다
+;      (시제품 실측: SHOW에서 바꾸면 NSIS가 새 막대를 잡아 29000으로 되돌렸다). 새 막대의 범위를 Nsis7z의 0~30000이 정한 구간(A~800‰)에 오도록 잡는다.
+!macro psBarCreate
+  System::Call 'user32::CreateWindowExW(i 0, w "msctls_progress32", w "", i 0x40000000, i 0, i 0, i 10, i 10, p $HWNDPARENT, p 0, p 0, p 0) p.r0'
+  StrCpy $psBar $0
+!macroend
+
+; ‰ 단위 위치를 막대 값으로: 값 = psLo + ‰ × psSpan / 1000. 앞으로만 간다(작은 값은 버린다).
+!macro psAt PERMILLE
+  Push ${PERMILLE}
+  Call ${PSF}psAt
+!macroend
+
+; ── 진행 글 ── 원래 기록(«압축 해제: …\Temp\nsg….tmp\app-64.7z», 파일 복사 …)은 꺼 두고(SetDetailsPrint none) 이 파일이 쓰는 줄만 켰다 끈다.
+; 단계 문장은 막대 위 한 줄과 상자에, 파일 줄(«설치: …» · «삭제: …»)은 상자에만 적는다. 상자는 진행 화면이 열릴 때부터 보인다(ShowInstDetails show).
+!macro psStage TEXT
+  SetDetailsPrint both
+  DetailPrint "${TEXT}"
+  SetDetailsPrint none
+!macroend
+!macro psLine TEXT
+  SetDetailsPrint listonly
+  DetailPrint "${TEXT}"
+  SetDetailsPrint none
+!macroend
+; 파일 줄 사이 간격 — 파일 20여 개는 한순간에 지워지고 놓여 줄이 한꺼번에 찍힌다. 하나씩 흘러가 보이게 줄마다 잠깐 둔다(Bumm님 «주르륵 지나가야»).
+!define PS_PACE 35
+
+; ── 설치기: 위치 화면 · 진행 화면 ──
 !ifndef BUILD_UNINSTALLER
+  Var psBar
+  Var psBarOn
+  Var psLo
+  Var psSpan
+  Var psLast
+  Var psFrom
+  Var psTo
+  Var psTotal
+  Var psDone
+  Var psExtractFrom
+  Var psRemoveOld
+  Var psOldDone
+  Var psStarted
+  Var psHasUser
+  Var psHasAll
+
   !define MUI_CUSTOMFUNCTION_GUIINIT psGuiInit
-!else
-  !define MUI_CUSTOMFUNCTION_UNGUIINIT un.psGuiInit
-  !macro customUninstallPage
-    Function un.psGuiInit
-      !insertmacro psHeaderArt
-    FunctionEnd
+  !macro customPageAfterChangeDir
+    !include StrContains.nsh
+    !define MUI_PAGE_CUSTOMFUNCTION_PRE psDirPre
+    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE psDirLeave
+    !insertmacro MUI_PAGE_DIRECTORY
+    !define MUI_PAGE_CUSTOMFUNCTION_PRE psInstFilesPre
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW psInstFilesShow
   !macroend
-!endif
 
-; 완료 화면: electron-builder 기본 완료 화면(설치기 템플릿 assistedInstaller.nsh와 같은 «실행하기» 상자)에 왼쪽 그림 바꾸기만 더한다.
-; 왼쪽 그림 칸은 화면이 만들어질 때 생기므로 그 화면을 띄우기 직전(SHOW)에 칸을 재서 판을 고른다. 그림 손잡이는 MUI가 화면을 떠날 때 푼다.
-!ifndef BUILD_UNINSTALLER
+  ; 완료 화면: electron-builder 기본 완료 화면(템플릿 assistedInstaller.nsh와 같은 «실행하기» 상자)에 왼쪽 그림 바꾸기만 더한다.
   !macro customFinishPage
-    Function psGuiInit
-      !insertmacro psHeaderArt
-    FunctionEnd
-
     !ifndef HIDE_RUN_AFTER_FINISH
       Function StartApp
         ${if} ${isUpdated}
@@ -164,85 +213,680 @@
     !endif
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW psFinishShow
     !insertmacro MUI_PAGE_FINISH
+  !macroend
+!else
+  Var psBar
+  Var psBarOn
+  Var psLo
+  Var psSpan
+  Var psLast
+  Var psFrom
+  Var psTo
+  Var psTotal
+  Var psDone
+  Var psHadDesk
+  Var psHadMenu
 
-    Function psFinishShow
-      Push $R7
-      Push $R8
-      Push $R9
-      !insertmacro psClientWidth $mui.FinishPage.Image
-      ${If} $R9 > 0
-        !insertmacro psPickScale ${PS_FINISH_W}
-        !insertmacro psExtractArt finish
-        ${NSD_FreeImage} $mui.FinishPage.Image.Bitmap
-        ${NSD_SetStretchedImage} $mui.FinishPage.Image "$PLUGINSDIR\ps-finish.bmp" $mui.FinishPage.Image.Bitmap
-      ${EndIf}
-      Pop $R9
-      Pop $R8
-      Pop $R7
-    FunctionEnd
+  !define MUI_CUSTOMFUNCTION_UNGUIINIT un.psGuiInit
+  ; 제거기 첫 화면: 왼쪽 극장 그림(SHOW) · «다음»을 누르면 켜진 앱 확인(LEAVE — «취소»면 이 화면에 남는다)
+  !macro customUnWelcomePage
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psWelcomeShow
+    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psWelcomeLeave
+    !insertmacro MUI_UNPAGE_WELCOME
+  !macroend
+  ; 제거기 완료 화면 왼쪽 그림 — 템플릿이 이 자리 바로 뒤에 완료 화면(MUI_UNPAGE_FINISH)을 넣는다
+  !macro customUninstallPage
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psUnFinishShow
   !macroend
 !endif
 
-; ── 설치 · 제거 진행 화면에는 사람이 읽는 짧은 문장만 보인다(10/27 Bumm님 B안 «원래 기록 대신 쉬운 문장», 팀장 전달) ──
-; NSIS는 하는 일마다 원래 기록(«압축 해제: …\Temp\nsg….tmp\app-64.7z», 파일 복사, 바로 가기 생성, 파일 삭제 …)을 진행 글 한 줄과 «자세히 보기» 목록에 적는다.
-; 그 기록은 꺼 두고(SetDetailsPrint none — 설치 단계는 템플릿이 처음에 끄고, 제거는 customUnInit에서 끈다), 단계마다 쉬운 문장 한 줄만 켰다 끈다(psSay).
-; 임시 폴더 경로 · .7z · .dll 같은 내부 파일 이름은 화면에 나오지 않는다. 문장을 끼울 수 있는 곳은 템플릿이 열어 둔 자리뿐이다:
-;   ① customCheckAppRunning — 설치 단계 맨 앞: 설치 위치 · 켜진 앱 확인 · (예전 판이 있으면) 정리. 앱을 찾는 데 4초쯤 걸린다(10/27 실측).
-;      «모든 사용자»는 관리자 권한으로 다시 뜬 설치기에서 이 단계를 건너뛴다(템플릿) — 그래서 설치 위치는 ②에서도 한 번만 적는다(psWhere).
-;   ② customUnInstallCheck — 예전 판 지우기를 마친 뒤 = 앱 파일을 풀기 직전: «프로그램 파일을 설치하는 중입니다 …»(가장 오래 걸리는 단계).
-;   ③ customInstall — 파일 · 등록 · 바로가기를 마친 뒤: 한 일을 «…했습니다»로 적고 끝낸다. 파일 풀기와 바로가기 만들기 사이에는 끼울 자리가 없다(둘 다 1초가 안 걸린다).
-;   제거기: customCheckAppRunning(제거 위치 · 켜진 앱 확인) → customUnInstall(지우는 중). 끝나면 완료 화면이 «제거 완료»를 보인다.
-!macro psSay TEXT
-  SetDetailsPrint both
-  DetailPrint "${TEXT}"
-  SetDetailsPrint none
-!macroend
 !ifndef BUILD_UNINSTALLER
-  Var psShownWhere
-  !macro psWhere
-    ${IfNot} ${Silent}
-    ${AndIf} $psShownWhere != "1"
-      StrCpy $psShownWhere "1"
-      SetDetailsView show
-      !insertmacro psSay "설치 위치: $INSTDIR"
+  ; 진행 화면이 열릴 때(설치 단계 시작 전, 화면 스레드): 막대를 가리고, 지울 예전 판이 있으면 템플릿의 «예전 판 조용히 지우기»(uninstallOldVersion)가 비켜 가게
+  ; 그 판의 제거 명령 값을 다른 이름(psUninstallString)으로, «바로가기 그대로 두기» 값을 psKeepShortcuts로 옮겨 둔다 — 지우기는 설치 첫 단계에서 이 파일이 줄을 적으며 한다.
+  ; (KeepShortcuts가 남아 있으면 템플릿이 새 바로가기를 만들지 않는다.) 템플릿은 «모든 사용자»면 HKLM · HKCU, «나만»이면 HKCU만 본다.
+  !macro psStash ROOT
+    ReadRegStr $R0 ${ROOT} "${UNINSTALL_REGISTRY_KEY}" UninstallString
+    ${If} $R0 != ""
+      WriteRegStr ${ROOT} "${UNINSTALL_REGISTRY_KEY}" psUninstallString $R0
+      DeleteRegValue ${ROOT} "${UNINSTALL_REGISTRY_KEY}" UninstallString
+    ${EndIf}
+    ReadRegStr $R0 ${ROOT} "${INSTALL_REGISTRY_KEY}" KeepShortcuts
+    ${If} $R0 != ""
+      WriteRegStr ${ROOT} "${INSTALL_REGISTRY_KEY}" psKeepShortcuts $R0
+      DeleteRegValue ${ROOT} "${INSTALL_REGISTRY_KEY}" KeepShortcuts
     ${EndIf}
   !macroend
+  !macro psUnstash ROOT
+    ReadRegStr $R0 ${ROOT} "${UNINSTALL_REGISTRY_KEY}" psUninstallString
+    ${If} $R0 != ""
+      WriteRegStr ${ROOT} "${UNINSTALL_REGISTRY_KEY}" UninstallString $R0
+      DeleteRegValue ${ROOT} "${UNINSTALL_REGISTRY_KEY}" psUninstallString
+    ${EndIf}
+    ReadRegStr $R0 ${ROOT} "${INSTALL_REGISTRY_KEY}" psKeepShortcuts
+    ${If} $R0 != ""
+      WriteRegStr ${ROOT} "${INSTALL_REGISTRY_KEY}" KeepShortcuts $R0
+      DeleteRegValue ${ROOT} "${INSTALL_REGISTRY_KEY}" psKeepShortcuts
+    ${EndIf}
+  !macroend
+
+  ; 설치 단계 맨 앞(일반 권한 설치기는 customCheckAppRunning, 관리자 권한으로 다시 뜬 «모든 사용자» 설치기는 customUnInstallCheck가 처음이다):
+  ; 막대 ID를 맞바꾸고(③) 설치 위치를 적는다
+  !macro psInstallStart
+    ${If} $psStarted != "1"
+      StrCpy $psStarted "1"
+      ${If} $psBarOn == "1"
+        FindWindow $R0 "#32770" "" $HWNDPARENT
+        GetDlgItem $R1 $R0 1004
+        System::Call "user32::SetWindowLongW(p $R1, i -12, i 1999)"
+        System::Call "user32::SetWindowLongW(p $psBar, i -12, i 1004)"
+      ${EndIf}
+      !insertmacro psStage "설치 위치: $INSTDIR"
+    ${EndIf}
+  !macroend
+
+  ; 예전 판 한 범위(ROOT · CONTEXT) 지우기 — 이 설치기가 그 범위를 쓸 수 있을 때(«나만»은 늘, «모든 사용자»는 관리자 권한일 때).
+  ;   파일을 하나씩 지우며 «삭제: …»(psDeleteDir) → 바로가기 · 시작 메뉴 · 등록(예전 제거기가 지우는 것과 같은 것) → 비게 된 위 폴더.
+  ;   예전 제거기는 부르지 않는다 — 조용히 돌아 줄을 남기지 못하고, 켜진 앱 찾기(PowerShell)로 4초쯤 막대가 멈췄다. 앱 데이터(%APPDATA%\Poster Studio)는 둔다.
+  ;   위치는 등록된 InstallLocation이고, 그 폴더에 «Poster Studio.exe»나 제거기가 있고 이름이 «Poster Studio»일 때만 파일을 지운다(엉뚱한 폴더를 지우지 않게).
+  !macro psRemoveScope ROOT CONTEXT
+    ReadRegStr $R5 ${ROOT} "${INSTALL_REGISTRY_KEY}" InstallLocation
+    ${GetFileName} "$R5" $R6
+    ${If} $R6 == "${APP_FILENAME}"
+    ${AndIf} $R5 != ""
+      ${If} ${FileExists} "$R5\${APP_EXECUTABLE_FILENAME}"
+      ${OrIf} ${FileExists} "$R5\${UNINSTALL_FILENAME}"
+        Push $R5
+        Call psDeleteDir
+        RMDir $R5
+        ${GetParent} "$R5" $R6
+        RMDir $R6
+      ${EndIf}
+    ${EndIf}
+    SetShellVarContext ${CONTEXT}
+    ReadRegStr $R6 ${ROOT} "${INSTALL_REGISTRY_KEY}" ShortcutName
+    ${If} $R6 == ""
+      StrCpy $R6 "${PRODUCT_FILENAME}"
+    ${EndIf}
+    ReadRegStr $R7 ${ROOT} "${INSTALL_REGISTRY_KEY}" MenuDirectory
+    ${If} ${FileExists} "$DESKTOP\$R6.lnk"
+      Delete "$DESKTOP\$R6.lnk"
+      !insertmacro psLine "삭제: $DESKTOP\$R6.lnk"
+    ${EndIf}
+    ${If} $R7 != ""
+      ${If} ${FileExists} "$SMPROGRAMS\$R7\$R6.lnk"
+        Delete "$SMPROGRAMS\$R7\$R6.lnk"
+        !insertmacro psLine "삭제: $SMPROGRAMS\$R7\$R6.lnk"
+      ${EndIf}
+      ${If} ${FileExists} "$SMPROGRAMS\$R7\Uninstall ${PRODUCT_NAME}.lnk"
+        Delete "$SMPROGRAMS\$R7\Uninstall ${PRODUCT_NAME}.lnk"
+        !insertmacro psLine "삭제: $SMPROGRAMS\$R7\Uninstall ${PRODUCT_NAME}.lnk"
+      ${EndIf}
+      RMDir "$SMPROGRAMS\$R7"
+    ${ElseIf} ${FileExists} "$SMPROGRAMS\$R6.lnk"
+      Delete "$SMPROGRAMS\$R6.lnk"
+      !insertmacro psLine "삭제: $SMPROGRAMS\$R6.lnk"
+    ${EndIf}
+    DeleteRegKey ${ROOT} "${UNINSTALL_REGISTRY_KEY}"
+    !ifdef UNINSTALL_REGISTRY_KEY_2
+      DeleteRegKey ${ROOT} "${UNINSTALL_REGISTRY_KEY_2}"
+    !endif
+    DeleteRegKey ${ROOT} "${INSTALL_REGISTRY_KEY}"
+  !macroend
+
 !endif
-; 템플릿(allowOnlyOneInstallerInstance.nsh)은 customCheckAppRunning이 있으면 기본 검사가 쓰는 getProcessInfo.nsh · $pid를 들이지 않는다 —
-; 기본 검사를 그대로 옮겨 쓰므로 여기서 들인다(빠뜨리면 «Invalid command: ${GetProcessInfo}»로 빌드가 멈춘다 — 10/27). 제거기도 같은 검사를 쓴다.
-!include "getProcessInfo.nsh"
-Var pid
-; 켜진 앱 찾기(PowerShell, 4초쯤)는 설치 · 제거 단계 맨 앞에서 돈다 — 그 앞에 위치와 지금 하는 일을 적어 빈 화면으로 기다리지 않게 한다
-; (제거기는 이 자리가 없으면 처음 4초쯤 글 없이 막대만 움직였다 — 10/27 실측)
+
+; 언어 문구가 다 정해진 뒤(설치기 본문의 MUI_LANGUAGE 다음) 고친 문구를 같은 이름으로 다시 정하고, 이 파일의 함수 몸을 둔다 — 함수가 쓰는 템플릿 변수 · 플러그인 경로가
+; 이 자리에서는 다 정해져 있다(이 파일 맨 앞에서 정의하면 «no branding image found» · StdUtils를 못 찾아 빌드가 멈췄다 — 10/27).
+; 같은 이름을 두 번 정하면 NSIS가 «자리 낭비» 경고(6030)를 내고 electron-builder는 경고를 오류로 다룬다(-WX) — 이 몇 줄에서만 그 경고를 끈다.
+; «설치 범위» 아래 안내는 설치기가 «$(…Exists)(경로)$\r$\n$(reinstallUpgrade)»로 잇는다 — 앞 문장 끝에 줄바꿈을 넣어 경로가 제 줄에 오게 한다.
+!macro customHeader
+  !pragma warning push
+  !pragma warning disable 6030
+  !ifndef BUILD_UNINSTALLER
+    ShowInstDetails show
+    LangString MUI_TEXT_DIRECTORY_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치할 폴더를 선택해 주세요."
+    LangString MUI_TEXT_INSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치하는 동안 잠시 기다려 주세요."
+  !else
+    ShowUninstDetails show
+    ; 제거 첫 화면 — 번역투(«당신의 컴퓨터에서 … 제거할 것입니다», «종료하여 주시기 바랍니다»)를 쉬운 문장으로(10/28 Bumm님, 팀장 예시 문구)
+    LangString MUI_UNTEXT_WELCOME_INFO_TEXT ${LANG_KOREAN} "이 컴퓨터에서 ${PRODUCT_NAME}를 지웁니다.$\r$\n$\r$\n${PRODUCT_NAME}가 켜져 있으면 먼저 꺼 주세요.$\r$\n$\r$\n계속하려면 '다음' 단추를 눌러 주세요."
+    LangString MUI_UNTEXT_UNINSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 제거하는 동안 잠시 기다려 주시기 바랍니다."
+    ; 제거 완료 화면 — 기본 문구는 «완료 되었습니다»(띄어쓰기) · 제거기인데 «설치 프로그램을 마치려면»이었다
+    LangString MUI_UNTEXT_FINISH_INFO_TEXT ${LANG_KOREAN} "${PRODUCT_NAME}를 지웠습니다.$\r$\n$\r$\n마치려면 '마침' 단추를 눌러 주세요."
+  !endif
+  LangString selectUserMode ${LANG_KOREAN} "이 프로그램을 모든 사용자가 사용할 수 있도록 할 것인지$\r$\n아니면 자신만 사용할 수 있도록 할 것인지 선택하십시오."
+  LangString freshInstallForAll ${LANG_KOREAN} "모든 사용자를 위해 새로 설치.$\r$\n(관리자 자격 증명을 묻는 메시지가 표시됨)"
+  LangString perUserInstallExists ${LANG_KOREAN} "이미 사용자별 설치가 있습니다.$\r$\n"
+  LangString perMachineInstallExists ${LANG_KOREAN} "이미 머신별로 설치되어 있습니다.$\r$\n"
+  ; 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 기본 번역의 «\n»은 줄바꿈이 아니라 글자 그대로 찍혔다
+  LangString whichInstallationRemove ${LANG_KOREAN} "이 프로그램은 시스템당(모든 사용자)또는 사용자별로 설치됩니다.$\r$\n어떤 설치를 제거하시겠습니까?"
+  LangString perUserInstall ${LANG_KOREAN} "사용자별로 설치되어 있습니다.$\r$\n"
+  LangString perMachineInstall ${LANG_KOREAN} "머신별로 설치되어 있습니다.$\r$\n"
+  !pragma warning pop
+
+  ; ── 막대 · 줄 ──
+  Function ${PSF}psAt
+    Exch $R0
+    Push $R1
+    ${If} $psBarOn == "1"
+    ${AndIf} $R0 > $psLast
+      StrCpy $psLast $R0
+      IntOp $R1 $R0 * $psSpan
+      IntOp $R1 $R1 / 1000
+      IntOp $R1 $R1 + $psLo
+      SendMessage $psBar 0x402 $R1 0   ; PBM_SETPOS
+    ${EndIf}
+    Pop $R1
+    Pop $R0
+  FunctionEnd
+
+  ; 원래 막대(진행 화면 1004) 자리에 새 막대를 옮겨 가리고 원래 막대를 숨긴다. $psExtractFrom(‰)부터 800‰까지가 Nsis7z의 0~30000이 되도록 범위를 잡는다
+  ; (제거기는 풀기가 없어 0~1000‰ = 0~30000).
+  Function ${PSF}psBarCover
+    ${If} $psBar == ""
+    ${OrIf} $psBarOn == "1"
+      Return
+    ${EndIf}
+    Push $R0
+    Push $R1
+    Push $R2
+    Push $R3
+    Push $R4
+    Push $R5
+    Push $R6
+    FindWindow $R0 "#32770" "" $HWNDPARENT
+    GetDlgItem $R1 $R0 1004
+    System::Call "*(i,i,i,i) p.R2"
+    System::Call "user32::GetWindowRect(p $R1, p $R2)"
+    System::Call "user32::MapWindowPoints(p 0, p $R0, p $R2, i 2)"
+    System::Call "*$R2(i .R3, i .R4, i .R5, i .R6)"
+    System::Free $R2
+    IntOp $R5 $R5 - $R3
+    IntOp $R6 $R6 - $R4
+    !ifndef BUILD_UNINSTALLER
+      IntOp $R2 800 - $psExtractFrom
+      IntOp $psSpan 30000000 / $R2
+      IntOp $psLo $psExtractFrom * $psSpan
+      IntOp $psLo $psLo / 1000
+      IntOp $psLo 0 - $psLo
+    !else
+      StrCpy $psSpan 30000
+      StrCpy $psLo 0
+    !endif
+    IntOp $R2 $psLo + $psSpan
+    SendMessage $psBar 0x406 $psLo $R2   ; PBM_SETRANGE32
+    SendMessage $psBar 0x402 $psLo 0
+    System::Call "user32::SetParent(p $psBar, p $R0)"
+    System::Call "user32::SetWindowPos(p $psBar, p 0, i $R3, i $R4, i $R5, i $R6, i 0x40)"
+    ShowWindow $R1 0
+    StrCpy $psLast 0
+    StrCpy $psBarOn "1"
+    Pop $R6
+    Pop $R5
+    Pop $R4
+    Pop $R3
+    Pop $R2
+    Pop $R1
+    Pop $R0
+  FunctionEnd
+
+  ; 폴더 안 파일 수(하위 폴더까지) → $psTotal에 더한다
+  Function ${PSF}psCountDir
+    Exch $R0
+    Push $R1
+    Push $R2
+    ClearErrors
+    FindFirst $R1 $R2 "$R0\*.*"
+    ${DoWhile} $R2 != ""
+      ${If} $R2 != "."
+      ${AndIf} $R2 != ".."
+        ${If} ${FileExists} "$R0\$R2\*.*"
+          Push "$R0\$R2"
+          Call ${PSF}psCountDir
+        ${Else}
+          IntOp $psTotal $psTotal + 1
+        ${EndIf}
+      ${EndIf}
+      FindNext $R1 $R2
+    ${Loop}
+    FindClose $R1
+    Pop $R2
+    Pop $R1
+    Pop $R0
+  FunctionEnd
+
+  ; 하나 했을 때 막대: $psFrom ~ $psTo(‰)를 $psTotal개로 나눈 자리
+  Function ${PSF}psStep
+    Push $R0
+    IntOp $psDone $psDone + 1
+    IntOp $R0 $psTo - $psFrom
+    IntOp $R0 $R0 * $psDone
+    ${If} $psTotal > 0
+      IntOp $R0 $R0 / $psTotal
+    ${EndIf}
+    IntOp $R0 $R0 + $psFrom
+    !insertmacro psAt $R0
+    ${IfNot} ${Silent}
+      Sleep ${PS_PACE}
+    ${EndIf}
+    Pop $R0
+  FunctionEnd
+
+  ; 폴더 안 파일을 하나씩 지우며 «삭제: …»를 적는다(하위 폴더까지 — 빈 하위 폴더도 지운다). 못 지운 파일이 있으면 오류 표시를 남긴다.
+  Function ${PSF}psDeleteDir
+    Exch $R0
+    Push $R1
+    Push $R2
+    FindFirst $R1 $R2 "$R0\*.*"
+    ${DoWhile} $R2 != ""
+      ${If} $R2 != "."
+      ${AndIf} $R2 != ".."
+        ${If} ${FileExists} "$R0\$R2\*.*"
+          Push "$R0\$R2"
+          Call ${PSF}psDeleteDir
+          RMDir "$R0\$R2"
+        ${Else}
+          ClearErrors
+          Delete "$R0\$R2"
+          ; 못 지운 파일(사용 중 등)은 줄을 적지 않는다 — 남은 것은 뒤의 확인(등록 · 파일이 아직 있는가)이 잡는다
+          ${IfNot} ${Errors}
+            !insertmacro psLine "삭제: $R0\$R2"
+            Call ${PSF}psStep
+          ${EndIf}
+        ${EndIf}
+      ${EndIf}
+      FindNext $R1 $R2
+    ${Loop}
+    FindClose $R1
+    Pop $R2
+    Pop $R1
+    Pop $R0
+  FunctionEnd
+
+  ; ── 켜진 앱 확인(설치 위치 화면 · 제거 첫 화면을 떠날 때, 진행 단계 맨 앞에서 한 번 더) ──
+  ; 이름이 «Poster Studio.exe»인 프로그램이 켜져 있으면 «끄고 계속할까요?»를 묻는다. 확인 → 창을 닫게 하고 5초, 안 되면 끝내고 3초.
+  ; 그래도 켜져 있으면(관리자 권한으로 켠 앱을 일반 권한 설치기가 못 끄는 경우 등) 알리고 다시 시도하게 한다. 결과 $R0: "ok" · "stay"(취소).
+  Function ${PSF}psCloseApp
+    nsProcess::_CloseProcess "${APP_EXECUTABLE_FILENAME}"
+    Pop $R1
+    ${For} $R2 1 50
+      Sleep 100
+      nsProcess::_FindProcess "${APP_EXECUTABLE_FILENAME}"
+      Pop $R1
+      ${If} $R1 <> 0
+        StrCpy $R1 0
+        Return
+      ${EndIf}
+    ${Next}
+    nsProcess::_KillProcess "${APP_EXECUTABLE_FILENAME}"
+    Pop $R1
+    ${For} $R2 1 30
+      Sleep 100
+      nsProcess::_FindProcess "${APP_EXECUTABLE_FILENAME}"
+      Pop $R1
+      ${If} $R1 <> 0
+        StrCpy $R1 0
+        Return
+      ${EndIf}
+    ${Next}
+    StrCpy $R1 1
+  FunctionEnd
+  Function ${PSF}psAppGate
+    Push $R1
+    Push $R2
+    Push $R3
+    StrCpy $R0 "ok"
+    nsProcess::_FindProcess "${APP_EXECUTABLE_FILENAME}"
+    Pop $R1
+    ${If} $R1 = 0
+      MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "${PRODUCT_NAME}가 켜져 있습니다.$\r$\n끄고 계속할까요?" /SD IDOK IDOK psGateClose
+      StrCpy $R0 "stay"
+      Goto psGateEnd
+      psGateClose:
+      StrCpy $R3 "again"
+      ${DoWhile} $R3 == "again"
+        Call ${PSF}psCloseApp
+        ${If} $R1 = 0
+          StrCpy $R3 "done"
+        ${Else}
+          MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "${PRODUCT_NAME}를 끄지 못했습니다.$\r$\n${PRODUCT_NAME}를 직접 끈 뒤 '다시 시도'를 눌러 주세요." /SD IDCANCEL IDRETRY psGateRetry
+          StrCpy $R0 "stay"
+          StrCpy $R3 "done"
+          psGateRetry:
+        ${EndIf}
+      ${Loop}
+    ${EndIf}
+    psGateEnd:
+    Pop $R3
+    Pop $R2
+    Pop $R1
+  FunctionEnd
+
+  !ifndef BUILD_UNINSTALLER
+    Function psGuiInit
+      !insertmacro psHeaderArt
+      !insertmacro psBarCreate
+    FunctionEnd
+
+    Function psFinishShow
+      !insertmacro psSideArt $mui.FinishPage.Image $mui.FinishPage.Image.Bitmap
+    FunctionEnd
+
+    ; 위치 화면 — 업데이트(--updated)로 다시 깔 때는 건너뛴다(템플릿 skipPageIfUpdated와 같다)
+    Function psDirPre
+      ${if} ${isUpdated}
+        Abort
+      ${endif}
+    FunctionEnd
+
+    ; 이미 깔린 판: «설치된 앱» 등록(제거 명령)이 있는 범위. 진행 화면이 잠시 옮겨 둔 값(psUninstallString)도 센다 — 설치기가 그 사이에 멈췄던 경우.
+    Function psFindInstalls
+      Push $R0
+      StrCpy $psHasUser ""
+      StrCpy $psHasAll ""
+      ReadRegStr $R0 HKCU "${UNINSTALL_REGISTRY_KEY}" UninstallString
+      ${If} $R0 == ""
+        ReadRegStr $R0 HKCU "${UNINSTALL_REGISTRY_KEY}" psUninstallString
+      ${EndIf}
+      ${If} $R0 != ""
+        StrCpy $psHasUser "1"
+      ${EndIf}
+      ReadRegStr $R0 HKLM "${UNINSTALL_REGISTRY_KEY}" UninstallString
+      ${If} $R0 == ""
+        ReadRegStr $R0 HKLM "${UNINSTALL_REGISTRY_KEY}" psUninstallString
+      ${EndIf}
+      ${If} $R0 != ""
+        StrCpy $psHasAll "1"
+      ${EndIf}
+      Pop $R0
+    FunctionEnd
+
+    ; «설치»를 눌렀을 때: 이미 깔려 있으면 «지우고 새로 설치할까요?», 켜져 있으면 «끄고 계속할까요?» — «취소»면 이 화면에 남는다(Abort).
+    ; 설치를 묻는 것을 먼저 한다 — 설치를 취소했는데 앱이 꺼지면 안 된다.
+    Function psDirLeave
+      Push $R0
+      StrCpy $psRemoveOld ""
+      Call psFindInstalls
+      ${If} $psHasUser == "1"
+      ${OrIf} $psHasAll == "1"
+        MessageBox MB_OKCANCEL|MB_ICONQUESTION "${PRODUCT_NAME}가 이미 설치되어 있습니다.$\r$\n지우고 새로 설치할까요?" /SD IDOK IDOK psDirRemove
+        Pop $R0
+        Abort
+        psDirRemove:
+        StrCpy $psRemoveOld "1"
+      ${EndIf}
+      Call psAppGate
+      ${If} $R0 == "stay"
+        Pop $R0
+        Abort
+      ${EndIf}
+      Pop $R0
+    FunctionEnd
+
+    ; 템플릿 instFilesPre와 같다 — 고른 위치에 «Poster Studio» 폴더가 없으면 붙인다(위치 화면 LEAVE에서는 $INSTDIR을 바꿔도 되돌아간다 — 템플릿 주석)
+    Function psInstFilesPre
+      ${StrContains} $0 "${APP_FILENAME}" $INSTDIR
+      ${If} $0 == ""
+        StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
+      ${endIf}
+    FunctionEnd
+
+    Function psInstFilesShow
+      Push $R0
+      ${If} $psRemoveOld == "1"
+        StrCpy $psExtractFrom 330
+        !insertmacro psStash HKCU
+        ${If} $installMode == "all"
+          !insertmacro psStash HKLM
+        ${EndIf}
+      ${Else}
+        StrCpy $psExtractFrom 40
+      ${EndIf}
+      Call psBarCover
+      Pop $R0
+    FunctionEnd
+
+
+
+    ; «나만» 설치기가 «모든 사용자» 판을 지울 때 — 일반 권한으로는 Program Files · 공용 시작 메뉴 · HKLM을 못 지운다. 예전 제거기를 관리자 권한으로 부른다
+    ; (다른 PC에서는 승인 창이 한 번 뜬다). 지운 파일 줄은 끝난 뒤에 적는다(미리 적어 둔 목록 가운데 없어진 것). 승인을 안 하면 그대로 남아 아래 확인이 잡는다.
+    Function psRemoveAllElevated
+      ReadRegStr $R5 HKLM "${INSTALL_REGISTRY_KEY}" InstallLocation
+      ${GetFileName} "$R5" $R6
+      ${If} $R6 != "${APP_FILENAME}"
+      ${OrIf} $R5 == ""
+        Return
+      ${EndIf}
+      ${IfNot} ${FileExists} "$R5\${UNINSTALL_FILENAME}"
+        Return
+      ${EndIf}
+      FileOpen $R8 "$PLUGINSDIR\ps-old-all.txt" w
+      Push $R5
+      Call psWriteFileList
+      FileClose $R8
+      CopyFiles /SILENT "$R5\${UNINSTALL_FILENAME}" "$PLUGINSDIR\ps-old-all-uninstaller.exe"
+      ExecShellWait "runas" "$PLUGINSDIR\ps-old-all-uninstaller.exe" "/S /allusers _?=$R5" SW_HIDE
+      FileOpen $R8 "$PLUGINSDIR\ps-old-all.txt" r
+      ${Do}
+        ClearErrors
+        FileReadUTF16LE $R8 $R6
+        ${If} ${Errors}
+          ${ExitDo}
+        ${EndIf}
+        StrCpy $R6 $R6 -2   ; 줄 끝 \r\n
+        ${IfNot} ${FileExists} "$R6"
+          !insertmacro psLine "삭제: $R6"
+          Call psStep
+        ${EndIf}
+      ${Loop}
+      FileClose $R8
+    FunctionEnd
+    ; 폴더 안 파일 경로를 $R8(열린 파일)에 한 줄씩 적는다
+    Function psWriteFileList
+      Exch $R0
+      Push $R1
+      Push $R2
+      FindFirst $R1 $R2 "$R0\*.*"
+      ${DoWhile} $R2 != ""
+        ${If} $R2 != "."
+        ${AndIf} $R2 != ".."
+          ${If} ${FileExists} "$R0\$R2\*.*"
+            Push "$R0\$R2"
+            Call psWriteFileList
+          ${Else}
+            FileWriteUTF16LE $R8 "$R0\$R2$\r$\n"
+          ${EndIf}
+        ${EndIf}
+        FindNext $R1 $R2
+      ${Loop}
+      FindClose $R1
+      Pop $R2
+      Pop $R1
+      Pop $R0
+    FunctionEnd
+
+    ; 예전 판 지우기(설치 첫 단계) — 위치 화면에서 «지우고 새로 설치»를 고른 경우만. 0~300‰를 지운 파일 수로 나눠 막대를 옮긴다.
+    ; 다 지운 뒤 예전 판 등록이 남아 있으면(파일을 못 지움 · 승인 거절) 옮겨 둔 값을 되돌리고 알린 뒤 설치를 멈춘다 — 예전 판은 «설치된 앱»에 남아 다시 지울 수 있다.
+    Function psRemoveOldInstalls
+      ${If} $psRemoveOld != "1"
+        Return
+      ${EndIf}
+      Push $R0
+      Push $R5
+      Push $R6
+      Push $R7
+      Push $R8
+      !insertmacro psStage "예전 ${PRODUCT_NAME}를 지우는 중입니다 …"
+      Call psFindInstalls
+      StrCpy $psTotal 0
+      StrCpy $psDone 0
+      StrCpy $psFrom 0
+      StrCpy $psTo 300
+      ${If} $psHasUser == "1"
+        ReadRegStr $R5 HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
+        ${If} $R5 != ""
+          Push $R5
+          Call psCountDir
+        ${EndIf}
+      ${EndIf}
+      ${If} $psHasAll == "1"
+        ReadRegStr $R5 HKLM "${INSTALL_REGISTRY_KEY}" InstallLocation
+        ${If} $R5 != ""
+          Push $R5
+          Call psCountDir
+        ${EndIf}
+      ${EndIf}
+      ${If} $psHasUser == "1"
+        !insertmacro psRemoveScope HKCU current
+      ${EndIf}
+      ${If} $psHasAll == "1"
+        ${If} ${UAC_IsAdmin}
+          !insertmacro psRemoveScope HKLM all
+        ${Else}
+          Call psRemoveAllElevated
+        ${EndIf}
+      ${EndIf}
+      ${If} $installMode == "all"
+        SetShellVarContext all
+      ${Else}
+        SetShellVarContext current
+      ${EndIf}
+      !insertmacro psAt 300
+      Call psFindInstalls
+      ${If} $psHasUser == "1"
+      ${OrIf} $psHasAll == "1"
+        !insertmacro psUnstash HKCU
+        ${If} ${UAC_IsAdmin}
+          !insertmacro psUnstash HKLM
+        ${EndIf}
+        !insertmacro psStage "예전 ${PRODUCT_NAME}를 다 지우지 못했습니다."
+        MessageBox MB_OK|MB_ICONEXCLAMATION "예전 ${PRODUCT_NAME}를 다 지우지 못했습니다.$\r$\n${PRODUCT_NAME}를 모두 끈 뒤 다시 설치해 주세요." /SD IDOK
+        Pop $R8
+        Pop $R7
+        Pop $R6
+        Pop $R5
+        Pop $R0
+        Abort
+      ${EndIf}
+      Pop $R8
+      Pop $R7
+      Pop $R6
+      Pop $R5
+      Pop $R0
+    FunctionEnd
+
+    ; 설치 폴더에 놓인 파일을 하나씩 확인하며 «설치: …»를 적는다(하위 폴더까지)
+    Function psListDir
+      Exch $R0
+      Push $R1
+      Push $R2
+      FindFirst $R1 $R2 "$R0\*.*"
+      ${DoWhile} $R2 != ""
+        ${If} $R2 != "."
+        ${AndIf} $R2 != ".."
+          ${If} ${FileExists} "$R0\$R2\*.*"
+            Push "$R0\$R2"
+            Call psListDir
+          ${Else}
+            !insertmacro psLine "설치: $R0\$R2"
+            Call psStep
+          ${EndIf}
+        ${EndIf}
+        FindNext $R1 $R2
+      ${Loop}
+      FindClose $R1
+      Pop $R2
+      Pop $R1
+      Pop $R0
+    FunctionEnd
+  !else
+    Function un.psGuiInit
+      !insertmacro psHeaderArt
+      !insertmacro psBarCreate
+    FunctionEnd
+
+    Function un.psWelcomeShow
+      !insertmacro psSideArt $mui.WelcomePage.Image $mui.WelcomePage.Image.Bitmap
+    FunctionEnd
+
+    Function un.psWelcomeLeave
+      Push $R0
+      Call un.psAppGate
+      ${If} $R0 == "stay"
+        Pop $R0
+        Abort
+      ${EndIf}
+      Pop $R0
+    FunctionEnd
+
+    Function un.psUnFinishShow
+      !insertmacro psSideArt $mui.FinishPage.Image $mui.FinishPage.Image.Bitmap
+    FunctionEnd
+  !endif
+!macroend
+
+; ── 진행 단계에 끼우는 자리(템플릿이 열어 둔 매크로) ──
+; 앱 확인은 위치 화면 · 제거 첫 화면에서 이미 했다. 여기서는 그 사이에 다시 켰을 때만 묻는다(nsProcess — 예전처럼 PowerShell로 4초 기다리지 않는다).
+; 이 단계에서는 앞 화면으로 돌아갈 수 없어 «취소»면 설치 · 제거를 멈춘다(아무것도 바꾸기 전이다). 템플릿이 쓰던 getProcessInfo · $pid는 이제 쓰지 않는다.
 !macro customCheckAppRunning
   !ifdef BUILD_UNINSTALLER
     ${IfNot} ${Silent}
-      SetDetailsView show
-      !insertmacro psSay "제거 위치: $INSTDIR"
+      Call un.psBarCover
+      !insertmacro psStage "제거 위치: $INSTDIR"
     ${EndIf}
+    Push $R0
+    Call un.psAppGate
+    ${If} $R0 == "stay"
+      Pop $R0
+      Abort
+    ${EndIf}
+    Pop $R0
   !else
-    !insertmacro psWhere
-  !endif
-  !insertmacro psSay "켜져 있는 ${PRODUCT_NAME}가 있는지 확인하는 중입니다 …"
-  !insertmacro IS_POWERSHELL_AVAILABLE
-  !insertmacro _CHECK_APP_RUNNING
-  !ifndef BUILD_UNINSTALLER
-    ${If} ${FileExists} "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
-      !insertmacro psSay "이전에 설치한 ${PRODUCT_NAME}를 정리하는 중입니다 …"
+    ${IfNot} ${Silent}
+      !insertmacro psInstallStart
     ${EndIf}
+    Push $R0
+    Call psAppGate
+    ${If} $R0 == "stay"
+      Pop $R0
+      Abort
+    ${EndIf}
+    Pop $R0
   !endif
 !macroend
-; 템플릿(installUtil.nsh handleUninstallResult)과 같은 검사 — 영어 기록 대신 쉬운 문장을 남긴다
+
+; 템플릿(installUtil.nsh handleUninstallResult) 뒤 — «예전 판 조용히 지우기»가 비켜 간 뒤라 여기가 예전 판을 지우는 첫 자리다(«모든 사용자»는 두 번 불린다 — 한 번만 한다)
 !macro customUnInstallCheck
   ${If} ${Errors}
-    !insertmacro psSay "이전에 설치한 판을 지우지 못해 그 위에 새로 설치합니다."
+    !insertmacro psStage "이전에 설치한 판을 지우지 못해 그 위에 새로 설치합니다."
   ${ElseIf} $R0 != 0
     MessageBox MB_OK|MB_ICONEXCLAMATION "$(uninstallFailed): $R0"
     SetErrorLevel 2
     Quit
   ${EndIf}
-  !insertmacro psWhere
-  !insertmacro psSay "프로그램 파일을 설치하는 중입니다 …"
+  ${If} $psOldDone != "1"
+    StrCpy $psOldDone "1"
+    ${IfNot} ${Silent}
+      !insertmacro psInstallStart
+    ${EndIf}
+    Call psRemoveOldInstalls
+    !insertmacro psStage "프로그램 파일을 설치하는 중입니다 …"
+    !insertmacro psAt $psExtractFrom
+  ${EndIf}
+!macroend
+
+; 7z 풀기 · 설치 폴더로 옮기기가 끝난 뒤(템플릿 custom_files_post_decompression): Nsis7z가 막대를 800‰까지 옮겼다. 놓인 파일을 «설치: …»로 적으며 800 → 940‰.
+!macro customFiles_x64
+  StrCpy $psLast 799
+  !insertmacro psAt 800
+  StrCpy $psTotal 0
+  StrCpy $psDone 0
+  StrCpy $psFrom 800
+  StrCpy $psTo 940
+  Push $INSTDIR
+  Call psCountDir
+  Push $INSTDIR
+  Call psListDir
 !macroend
 
 !ifndef BUILD_UNINSTALLER
@@ -275,16 +919,25 @@ Var pid
   FunctionEnd
 !endif
 
+; 등록 · 바로가기를 마친 뒤(템플릿의 마지막 자리): 제거기 줄 · 한 일 · «설치가 끝났습니다.» → 100%를 1초 보인 뒤 완료 화면
 !macro customInstall
+  !insertmacro psLine "설치: $INSTDIR\${UNINSTALL_FILENAME}"
   CreateShortCut "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk" "$INSTDIR\${UNINSTALL_FILENAME}"
   ${If} $installMode == "all"
     DeleteRegValue HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
     DeleteRegKey /ifempty HKCU "${INSTALL_REGISTRY_KEY}"
   ${EndIf}
-  !insertmacro psSay "바탕화면에 «${PRODUCT_NAME}» 바로가기를 만들었습니다."
-  !insertmacro psSay "시작 메뉴 «${MENU_FILENAME}»에 등록했습니다."
-  !insertmacro psSay "«설치된 앱» 목록에 «${PRODUCT_NAME}»를 등록했습니다."
-  !insertmacro psSay "설치를 마쳤습니다."
+  !insertmacro psAt 950
+  !insertmacro psStage "바탕화면에 «${PRODUCT_NAME}» 바로가기를 만들었습니다."
+  !insertmacro psAt 965
+  !insertmacro psStage "시작 메뉴 «${MENU_FILENAME}»에 등록했습니다."
+  !insertmacro psAt 980
+  !insertmacro psStage "«설치된 앱» 목록에 «${PRODUCT_NAME}»를 등록했습니다."
+  !insertmacro psAt 1000
+  !insertmacro psStage "설치가 끝났습니다."
+  ${IfNot} ${Silent}
+    Sleep 1000
+  ${EndIf}
 !macroend
 
 ; 제거기는 처음부터 원래 기록(파일 삭제: …)을 끈다 — 앱이 켜져 있는지 보는 단계(un.checkAppRunning)도 이 뒤에 온다
@@ -294,12 +947,74 @@ Var pid
 
 !macro customUnInstall
   SetDetailsPrint none
-  !insertmacro psSay "프로그램 파일 · 바탕화면 바로가기 · 시작 메뉴를 지우는 중입니다 …"
+  !insertmacro psStage "프로그램 파일을 지우는 중입니다 …"
+  !insertmacro psAt 30
+  ; 바로가기는 템플릿이 아래에서 지운다 — 있었던 것만 끝에 «삭제: …»로 적는다
+  StrCpy $psHadDesk ""
+  StrCpy $psHadMenu ""
+  ${If} ${FileExists} "$oldDesktopLink"
+    StrCpy $psHadDesk "1"
+  ${EndIf}
+  ${If} ${FileExists} "$oldStartMenuLink"
+    StrCpy $psHadMenu "1"
+  ${EndIf}
   ; electron-builder가 제 바로가기를 지우는 조건(--keep-shortcuts가 없을 때)과 맞춘다. 예전에는 업데이트(--updated)면 남겼는데,
   ; «모든 사용자» 설치가 «나만» 설치를 먼저 지울 때도 --updated로 부르므로 «나만» 시작 메뉴에 대상 없는 «Uninstall» 바로가기와 폴더가 남았다(10/28 실측).
   ; 같은 범위 업데이트는 새 판이 customInstall에서 다시 만든다.
   ${IfNot} ${isKeepShortcuts}
-    Delete "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
+    ${If} ${FileExists} "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
+      Delete "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
+      !insertmacro psLine "삭제: $SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
+    ${EndIf}
+  ${EndIf}
+!macroend
+
+; 제거기 파일 지우기(템플릿 customRemoveFiles 자리): 업데이트(--updated, 조용히)는 템플릿 그대로(통째로 옮겼다가 실패하면 되돌림),
+; 사람이 지울 때는 파일을 하나씩 지우며 «삭제: …»(30 → 930‰) — 남은 빈 폴더는 마지막에 RMDir /r.
+!macro customRemoveFiles
+  ${if} ${isUpdated}
+    CreateDirectory "$PLUGINSDIR\old-install"
+    Push ""
+    Call un.atomicRMDir
+    Pop $R0
+    ${if} $R0 != 0
+      DetailPrint "File is busy, aborting: $R0"
+      Push ""
+      Call un.restoreFiles
+      Pop $R0
+      Abort `Can't rename "$INSTDIR" to "$PLUGINSDIR\old-install".`
+    ${endif}
+    SetOutPath $TEMP
+    RMDir /r $INSTDIR
+  ${else}
+    SetOutPath $TEMP
+    StrCpy $psTotal 0
+    StrCpy $psDone 0
+    StrCpy $psFrom 30
+    StrCpy $psTo 930
+    Push $INSTDIR
+    Call un.psCountDir
+    Push $INSTDIR
+    Call un.psDeleteDir
+    RMDir /r $INSTDIR
+  ${endif}
+!macroend
+
+; 템플릿이 바로가기를 지운 뒤(파일 연결 해제 자리 — 이 앱은 파일 연결이 없다): 지워진 바로가기 줄 · «제거가 끝났습니다.» → 100%를 1초 보인 뒤 완료 화면.
+; 이 뒤에 템플릿이 앱 데이터 · 등록을 지운다(1초 안).
+!macro unregisterFileAssociations
+  ${If} $psHadDesk == "1"
+  ${AndIfNot} ${FileExists} "$oldDesktopLink"
+    !insertmacro psLine "삭제: $oldDesktopLink"
+  ${EndIf}
+  ${If} $psHadMenu == "1"
+  ${AndIfNot} ${FileExists} "$oldStartMenuLink"
+    !insertmacro psLine "삭제: $oldStartMenuLink"
+  ${EndIf}
+  !insertmacro psAt 1000
+  !insertmacro psStage "제거가 끝났습니다."
+  ${IfNot} ${Silent}
+    Sleep 1000
   ${EndIf}
 !macroend
 

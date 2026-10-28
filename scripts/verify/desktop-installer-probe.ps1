@@ -1,15 +1,20 @@
 ﻿# Windows 설치판 설치 · 제거 확인(2026-10-27 Bumm님 기준, 팀장 전달 — _docs/intents/2026-10-27-desktop-installer).
 #
-#   설치:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify/desktop-installer-probe.ps1 -Step install -Mode user|all -Installer <Poster Studio Setup.exe> -Out <결과 폴더> [-Replace]
-#   제거:  ... -Step uninstall -Mode user|all -Via startmenu|settings -Out <결과 폴더>
-#   앱이 켜져 있을 때: ... -Step running -Mode user|all -Installer <…> -Via startmenu|settings -Out <결과 폴더>
-#          그 범위에 깔린 앱을 켜 둔 채 설치기 · 제거기를 띄워, 첫머리에 뜨는 «앱 실행 중» 알림을 찍고 «취소»로 닫는다(설치 · 제거는 일어나지 않는다).
-#   -Beside: 다른 범위에도 설치가 있는 PC — «모든 사용자» 위에 «나만»을 깔고 지울 때는 «모든 사용자» 설치가 그대로인지 본다.
-#          두 범위가 함께 있으면 제거기에 «제거 옵션 선택» 화면이 뜬다(-Mode에 맞는 단추를 고른다).
-#          «나만» 위에 «모든 사용자»를 깔면 electron-builder가 «나만» 설치를 먼저 지운다(설계) — 그 «나만» 설치가 남김없이 정리되는지 본다.
+#   설치:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify/desktop-installer-probe.ps1 -Step install -Mode user|all -Installer <Poster Studio Setup.exe> -Out <결과 폴더>
+#          [-Replace | -Beside] [-AppOn] [-Answers ok,cancel,…] [-Decline] [-AsUser] [-NoShots]
+#   제거:  ... -Step uninstall -Mode user|all -Via startmenu|settings -Out <결과 폴더> [-AppOn] [-Answers …] [-Decline]
 #
+#   -Replace  같은 범위에 예전 판이 있는 PC — «설치»를 누르면 «이미 설치되어 있습니다 · 지우고 새로 설치할까요?»가 뜬다(10/28 Bumm님).
+#   -Beside   다른 범위에만 예전 판이 있는 PC(«나만» 위에 «모든 사용자» 또는 그 반대) — 같은 질문이 뜨고, «확인»이면 그 판이 남김없이 지워져야 한다.
+#   -AppOn    그 PC에 깔린 앱을 켜 둔 채 시작한다 — «Poster Studio가 켜져 있습니다 · 끄고 계속할까요?»가 뜬다.
+#   -Answers  묻는 창에 차례로 할 답. ok(확인 · 다시 시도) · cancel(취소 — 그 화면에 남아야 한다, 도구는 다음 단추를 다시 누른다) ·
+#             cancel-exit(취소한 뒤 그 화면에 남았는지 보고 설치기 · 제거기를 «취소» 단추로 끝낸다). 남은 답이 없으면 ok.
+#   -Decline  답이 cancel-exit로 끝나는 시험 — 설치 · 제거가 일어나지 않고 예전 상태(설치 · 켜진 앱)가 그대로인지 본다.
+#
+# 진행 화면(10/28 Bumm님): 상자(«자세히» 목록)가 첫 표본부터 보이는지, 보이는 막대의 위치(‰)가 0.1초 표본마다 줄지 않고 100%까지 가는지,
+# 상자에 «설치: …» / «삭제: …» 파일 줄이 흐르고 마지막 줄이 «설치가 끝났습니다.» / «제거가 끝났습니다.»인지, 임시 폴더 · .7z · NSIS 원래 기록이 없는지 본다.
 # 화면 글(10/28 Bumm님): 화면마다 글 칸의 실제 글꼴로 줄 폭을 재서, 줄이 칸 안에 들어가는지(낱말 중간에서 꺾이지 않는지) · 한 줄에 두 문장이 없는지 ·
-# «(을)를» 같은 조사 표기와 글자 그대로 찍힌 «\n»이 없는지 본다. 알림 창 글도 같은 기준으로 본다.
+# «(을)를» 같은 조사 표기와 글자 그대로 찍힌 «\n»이 없는지 본다. 묻는 창 글도 같은 기준으로 본다.
 #
 # 사람이 더블클릭한 것처럼 설치 창을 띄운다(조용한 설치 /S가 아니다). 화면마다 그 창만 따로 찍고(PrintWindow), 창의 단추에 누름 메시지를 보낸다.
 # 다른 창을 가리거나 키보드를 빼앗지 않는다 — 이 PC를 쓰는 사람의 다른 창에 글자가 들어가지 않게.
@@ -25,16 +30,24 @@
 #   제거 뒤 — 설치 폴더 · 비게 된 «InKY Film Festival» 폴더 · 바로가기 · 시작 메뉴 폴더 · 등록 · 앱 데이터가 남지 않는다
 # 결과는 <결과 폴더>/installer-<단계>-<범위>.json, 하나라도 걸리면 종료코드 1.
 param(
-  [Parameter(Mandatory = $true)][ValidateSet('install', 'uninstall', 'running')][string]$Step,
+  [Parameter(Mandatory = $true)][ValidateSet('install', 'uninstall')][string]$Step,
   [Parameter(Mandatory = $true)][ValidateSet('user', 'all')][string]$Mode,
   [Parameter(Mandatory = $true)][string]$Out,
   [string]$Installer,
   [ValidateSet('startmenu', 'settings')][string]$Via = 'startmenu',
   # -Replace: 같은 범위에 예전 판이 깔려 있는 PC에서 새 판으로 덮어쓰는 시험(10/27 — Bumm님이 «모든 사용자»로 옛 판을 깔아 두신 PC).
-  #   설치 전 검사가 «설치가 없다» 대신 «예전 판이 있다»가 되고, 설치 뒤 앱 실행 파일이 새로 쓰였는지 본다.
   [switch]$Replace,
-  # -Beside: 다른 범위에도 설치가 있는 PC에서 시험한다(10/28 — 두 범위가 함께 있을 때만 뜨는 «제거 옵션 선택» 화면과, 한 범위를 깔고 지워도 다른 범위가 그대로인지).
+  # -Beside: 다른 범위에만 예전 판이 있는 PC(10/28 — «지우고 새로 설치»가 범위가 달라도 앞 판을 남기지 않는지).
   [switch]$Beside,
+  # -AppOn: 깔린 앱을 켜 둔 채 시작한다(-Replace · 제거는 같은 범위, -Beside는 다른 범위의 앱).
+  [switch]$AppOn,
+  # -Answers: 묻는 창에 차례로 할 답(위 설명).
+  [string[]]$Answers = @(),
+  # -Decline: 답이 cancel-exit로 끝나 설치 · 제거가 일어나지 않아야 하는 시험.
+  [switch]$Decline,
+  # -AsUser: 관리자 권한으로 도는 이 도구가 설치기를 일반 권한으로 띄운다(탐색기를 거쳐 — 사람이 두 번 누른 것과 같다).
+  #   «모든 사용자»를 고르면 첫 창이 숨고 관리자 권한 창이 새로 뜨는 실제 흐름을 탄다(10/28 — 진행 화면의 상자가 중간에 생기는 것은 이 흐름에서만 보였다).
+  [switch]$AsUser,
   # -NoShots: 창을 하나도 찍지 않는다(PrintWindow 0회). 찍는 동작이 화면에 깜빡임을 만드는지 가를 때 쓴다(10/27 — 화면 녹화와 함께).
   [switch]$NoShots
 )
@@ -180,6 +193,26 @@ public static class Win {
     return found;
   }
   // 설치기가 띄운 알림 창(MessageBox) — 설치 창과 같은 제목의 #32770이지만 화면 칸(1018)이 없고 알림 글 칸(ID 0xFFFF)이 있다
+  // 진행 화면에 보이는 막대의 위치(‰) — 숨은 막대(설치기가 가린 원래 막대)는 빼고 보이는 것만. 없으면 -1.
+  public static int BarPermille(IntPtr dlg) {
+    int result = -1;
+    EnumChildWindows(dlg, (h, l) => {
+      if (Cls(h) == "msctls_progress32" && IsWindowVisible(h)) {
+        long pos = (int)(long)SendMessage(h, 0x0408, IntPtr.Zero, IntPtr.Zero);          // PBM_GETPOS
+        long lo = (int)(long)SendMessage(h, 0x0407, (IntPtr)1, IntPtr.Zero);             // PBM_GETRANGE 낮은 값
+        long hi = (int)(long)SendMessage(h, 0x0407, IntPtr.Zero, IntPtr.Zero);           // 높은 값
+        if (hi > lo) result = (int)((pos - lo) * 1000 / (hi - lo));
+        return false;
+      }
+      return true; }, IntPtr.Zero);
+    return result;
+  }
+  // 진행 화면의 «자세히» 상자(목록)가 보이는가
+  public static bool ListVisible(IntPtr dlg) {
+    bool v = false;
+    EnumChildWindows(dlg, (h, l) => { if (Cls(h) == "SysListView32") { v = IsWindowVisible(h); return false; } return true; }, IntPtr.Zero);
+    return v;
+  }
   public static IntPtr MessageText(IntPtr box) {
     IntPtr found = IntPtr.Zero;
     EnumChildWindows(box, (h, l) => { if (Cls(h) == "Static" && (GetDlgCtrlID(h) & 0xFFFF) == 0xFFFF && Text(h).Length > 0) { found = h; return false; } return true; }, IntPtr.Zero);
@@ -240,19 +273,36 @@ function Check($name, $ok, $detail) {
   $report.checks += [ordered]@{ name = $name; ok = [bool]$ok; detail = $detail }
   Write-Output ("{0}  {1}{2}" -f ($(if ($ok) { '통과' } else { '걸림' })), $name, $(if ($null -ne $detail -and "$detail" -ne '') { " — $detail" } else { '' }))
 }
-# 진행 화면 글(10/27 Bumm님 B안): 위 한 줄과 «자세히» 목록에 사람이 읽는 문장만 — 임시 폴더 경로 · .7z · .dll 같은 내부 이름과 NSIS 원래 기록 말투가 없어야 하고,
-# 위치 줄(실제 경로)과 그 단계의 문장이 있어야 하며, 진행에 따라 문구가 바뀌어야(서로 다른 줄 3개 이상) 한다.
-function ProgressChecks($kind, $whereLabel, $doing) {
+# 진행 화면(10/27 Bumm님 B안 · 10/28 «상자는 처음부터 · 막대는 한 방향 · 파일이 주르륵 · 100% 1초»):
+#   글 — 위 한 줄과 «자세히» 목록에 사람이 읽는 문장과 파일 줄만. 임시 작업 경로(…\Temp\ns….tmp) · 압축 묶음(.7z) · NSIS 원래 기록 말투가 없어야 한다
+#        (파일 줄의 .dll은 설치 폴더 안 실제 파일이라 괜찮다). 위치 줄(실제 경로)과 그 단계의 문장이 있어야 한다.
+#   상자 · 막대 — 진행 화면 첫 표본부터 상자가 보이고, 보이는 막대의 위치(‰)가 0.1초 표본마다 2‰ 넘게 줄지 않으며 995‰ 이상까지 간다.
+#   파일 줄 — 상자의 마지막 모습에 «설치: …»(설치) / «삭제: …»(제거) 줄이 15개 이상, 모두 설치 폴더(제거는 바탕화면 · 시작 메뉴 바로가기도) 안이고,
+#            마지막 줄이 «설치가 끝났습니다.» / «제거가 끝났습니다.»다.
+function ProgressChecks($kind, $whereLabel, $doing, $word, $endLine) {
   $samples = @($report.pages | ForEach-Object { $_.progress } | Where-Object { $_ })
   $statuses = @($samples | ForEach-Object { if ($_.text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } } | Where-Object { $_ } | Select-Object -Unique)
   $lines = @($samples | ForEach-Object { $_.details } | Where-Object { $_ } | Select-Object -Unique)
-  $raw = '\\Temp\\|\.7z|\.dll|\.tmp|압축 해제|파일 복사|대상 폴더|폴더 생성|바로 가기 생성|파일 삭제|실행:|Extract|Output folder|Delete file|Uninstall was'
+  $raw = '\\Temp\\|\\ns[a-z0-9]+\.tmp|\.7z|압축 해제|파일 복사|대상 폴더|폴더 생성|바로 가기 생성|파일 삭제|실행:|Extract|Output folder|Delete file|Uninstall was|Can.t modify|File is busy'
   $bad = @(@($statuses) + @($lines) | Where-Object { $_ -match $raw } | Select-Object -Unique)
-  Check "$kind 진행 글에 원래 기록(임시 폴더 · .7z · .dll · 압축 해제 · 파일 삭제 …)이 없다" ($samples.Count -gt 0 -and $bad.Count -eq 0) $(if ($bad.Count) { $bad -join ' | ' } else { "표본 $($samples.Count)개" })
+  Check "$kind 진행 글에 원래 기록(임시 폴더 · .7z · 압축 해제 · 파일 삭제 …)이 없다" ($samples.Count -gt 0 -and $bad.Count -eq 0) $(if ($bad.Count) { $bad -join ' | ' } else { "표본 $($samples.Count)개" })
   $where = "$($whereLabel): $appDir"
   Check "$kind 진행 글이 쉬운 문장으로 바뀌어 간다(위치 줄 · «$doing» · 서로 다른 줄 3개 이상)" (($lines -contains $where) -and @($lines | Where-Object { $_ -like "*$doing*" }).Count -gt 0 -and $lines.Count -ge 3) ($lines -join ' → ')
+  $bars = @($samples | ForEach-Object { $_.bar } | Where-Object { $null -ne $_ -and $_ -ge 0 })
+  $drops = @(); for ($i = 1; $i -lt $bars.Count; $i++) { if ($bars[$i] -lt $bars[$i - 1] - 2) { $drops += "$($bars[$i - 1])→$($bars[$i])" } }
+  $max = if ($bars.Count) { ($bars | Measure-Object -Maximum).Maximum } else { -1 }
+  $firstList = if ($samples.Count) { [bool]$samples[0].list } else { $false }
+  Check "$kind 진행 화면: 상자가 처음부터 보이고 막대가 한 방향으로 100%까지 간다" ($firstList -and $bars.Count -ge 5 -and $drops.Count -eq 0 -and $max -ge 995) "첫 표본 상자 $firstList · 막대 표본 $($bars.Count)개 · 처음 $(if ($bars.Count) { $bars[0] })‰ · 최대 $max‰ · 줄어든 곳 $(if ($drops.Count) { $drops -join ', ' } else { '없음' })"
+  $final = @($samples | Sort-Object { @($_.details).Count } -Descending | Select-Object -First 1 | ForEach-Object { $_.details })
+  $fileLines = @($final | Where-Object { $_ -like "${word}: *" })
+  $allowed = @("${word}: $appDir\") + $(if ($word -eq '삭제') { @("${word}: $desktopDir\", "${word}: $programsDir\") } else { @() })
+  $outside = @($fileLines | Where-Object { $l = $_; -not @($allowed | Where-Object { $l.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }).Count })
+  $last = if ($final.Count) { $final[-1] } else { '' }
+  Check "$kind 상자에 «${word}: …» 파일 줄이 흐르고 마지막 줄이 «$endLine»" ($fileLines.Count -ge 15 -and $outside.Count -eq 0 -and $last -eq $endLine) "파일 줄 $($fileLines.Count)개 · 마지막 «$last»$(if ($outside.Count) { ' · 폴더 밖 ' + ($outside -join ' | ') })"
   $report.progressLines = $lines
   $report.progressStatuses = $statuses
+  $report.finalList = $final
+  $report.bars = $bars
 }
 # 화면 글 규칙(10/28 Bumm님 «문장마다 줄바꿈»): [Win]::TextLines의 줄마다 — 칸 안에 들어간다 · 한 줄에 두 문장이 없다 · 조사 표기 · «\n» 글자가 없다.
 # 칸보다 긴 한 문장은 낱말 사이에서 나눈 두 줄이면 통과다(줄마다 칸 안에 들면 꺾임이 없다).
@@ -292,6 +342,39 @@ $otherHive = if ($Mode -eq 'all') { 'HKCU' } else { 'HKLM' }
 function Entry($h) { Get-ChildItem "${h}:\Software\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -eq 'Poster Studio' } | Select-Object -First 1 }
 function LnkInfo($path) { if (-not (Test-Path $path)) { return $null }; $s = (New-Object -ComObject WScript.Shell).CreateShortcut($path); return [ordered]@{ target = $s.TargetPath; icon = $s.IconLocation } }
 
+# 묻는 창(MessageBox)이 뜨면 찍고 글을 재고 -Answers 차례대로 답한다(남은 답이 없으면 ok). 답한 뒤 그 화면 글 · 켜진 앱을 남긴다(«취소»는 1초 뒤).
+# WAIT: 첫 창을 기다리는 횟수(0.1초 단위). 돌려주는 값: 'exit'(cancel-exit로 답함) · 'none'.
+$script:answerIndex = 0
+# powershell -File로 부르면 -Answers ok,cancel이 «ok,cancel» 한 덩어리로 온다 — 쉼표로 나눈다
+$Answers = @($Answers | ForEach-Object { "$_" -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+function HandleBoxes($prefix, $n, $h, $wait) {
+  for ($k = 0; $k -lt 6; $k++) {
+    $box = [IntPtr]::Zero
+    for ($i = 0; $i -lt $wait -and $box -eq [IntPtr]::Zero; $i++) { $box = [Win]::FindMessageBox('Poster Studio'); if ($box -eq [IntPtr]::Zero) { Start-Sleep -Milliseconds 100 } }
+    if ($box -eq [IntPtr]::Zero) { return 'none' }
+    Start-Sleep -Milliseconds 400
+    $bf = Join-Path $Out ('{0}-{1:00}-알림-{2:00}.png' -f $prefix, $n, (@($report.messageBoxes).Count + 1))
+    [Win]::ShotStable($box, $bf) | Out-Null
+    $rows = @([Win]::TextLines($box))
+    $answer = if ($script:answerIndex -lt $Answers.Count) { $Answers[$script:answerIndex] } else { 'ok' }
+    $script:answerIndex++
+    $buttons = [Win]::AllText($box)
+    # «확인»(IDOK 1)이 없는 창(«다시 시도» · «취소»)이면 ok는 «다시 시도»(IDRETRY 4)
+    $id = if ($answer -like 'cancel*') { 2 } elseif ($buttons -match '\[1\]') { 1 } else { 4 }
+    $entry = [ordered]@{ shot = (Split-Path $bf -Leaf); prefix = $prefix; title = [Win]::Text($box); text = [Win]::Text([Win]::MessageText($box)); buttons = $buttons; answer = $answer; textLines = $rows; textProblems = @(TextRules $rows) }
+    [Win]::PostMessage($box, 0x0111, [IntPtr]$id, [IntPtr]::Zero) | Out-Null   # WM_COMMAND — 그 단추가 보내는 것과 같은 알림
+    for ($i = 0; $i -lt 40 -and [Win]::IsWindow($box); $i++) { Start-Sleep -Milliseconds 250 }
+    # «취소»면 그 화면에 남았는지 보려고 1초 기다린다. «확인»이면 바로 다음으로 — 진행 화면 첫 모습(상자 · 막대)을 놓치지 않게
+    Start-Sleep -Milliseconds $(if ($answer -like 'cancel*') { 1000 } else { 100 })
+    $entry.after = if ([Win]::IsWindow($h) -and [Win]::IsWindowVisible($h)) { [Win]::AllText($h) } else { '(창 없음)' }
+    $entry.appAlive = $null -ne (Get-Process 'Poster Studio' -ErrorAction SilentlyContinue)
+    $report.messageBoxes += $entry
+    if ($answer -eq 'cancel-exit') { return 'exit' }
+    $wait = 5   # 다음 묻는 창(이미 설치 → 켜진 앱)은 바로 뜬다
+  }
+  return 'none'
+}
+
 # 설치 · 제거 창을 화면마다 찍으며 «다음»(단추 1)을 누른다
 function Walk($prefix) {
   $h = [IntPtr]::Zero
@@ -299,40 +382,30 @@ function Walk($prefix) {
   if ($h -eq [IntPtr]::Zero) { return $false }
   $report.title = [Win]::Text($h)
   for ($n = 1; $n -le 14; $n++) {
-    if (-not [Win]::IsWindow($h)) {
-      # «모든 사용자»를 고르면 설치기가 관리자 권한으로 다시 뜬다(새 창) — 그 창을 이어서 잡는다
+    if (-not [Win]::IsWindow($h) -or -not [Win]::IsWindowVisible($h)) {
+      # «모든 사용자»를 고르면 설치기가 관리자 권한으로 다시 뜬다(새 창) — 그 창을 이어서 잡는다. 첫 창은 닫히지 않고 숨는다(-AsUser로 실측, 10/28)
       $h2 = [IntPtr]::Zero
       for ($i = 0; $i -lt 40 -and $h2 -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 250; $h2 = [Win]::FindDialog('Poster Studio') }
       if ($h2 -eq [IntPtr]::Zero) { break }
       $h = $h2
     }
     $next = [Win]::GetDlgItem($h, 1)
-    # 설치가 도는 동안(«다음»이 꺼져 있는 동안)은 0.5초마다 그 화면을 찍고, 진행 글(위 한 줄 · «자세히» 목록)은 0.1초마다 읽는다 —
+    # 설치가 도는 동안(«다음»이 꺼져 있는 동안)은 0.5초마다 그 화면을 찍고, 진행 글(위 한 줄 · «자세히» 목록) · 막대 위치 · 상자 보임은 0.1초마다 읽는다 —
     # 마지막 단계가 0.5초 안에 끝나면 찍는 간격으로는 그 줄을 놓친다(10/27 «모든 사용자» 제거 실측)
     $progress = @()
-    for ($w = 0; $w -lt 1500 -and -not [Win]::IsWindowEnabled($next) -and [Win]::IsWindow($h); $w++) {
-      # 알림 창(앱이 켜져 있을 때 등)이 뜨면 찍고 글을 재고 «취소»(단추 2)로 닫는다 — 설치기는 그만두고 닫힌다
-      $box = [Win]::FindMessageBox('Poster Studio')
-      if ($box -ne [IntPtr]::Zero) {
-        Start-Sleep -Milliseconds 500
-        $bf = Join-Path $Out ('{0}-{1:00}-알림-{2:00}.png' -f $prefix, $n, (@($report.messageBoxes).Count + 1))
-        [Win]::ShotStable($box, $bf) | Out-Null
-        $rows = @([Win]::TextLines($box))
-        $report.messageBoxes += [ordered]@{ shot = (Split-Path $bf -Leaf); prefix = $prefix; title = [Win]::Text($box); text = [Win]::Text([Win]::MessageText($box)); buttons = [Win]::AllText($box); textLines = $rows; textProblems = @(TextRules $rows) }
-        [Win]::PostMessage($box, 0x0111, [IntPtr]2, [IntPtr]::Zero) | Out-Null   # WM_COMMAND IDCANCEL — «취소» 단추가 보내는 것과 같은 알림
-        for ($i = 0; $i -lt 40 -and [Win]::IsWindow($box); $i++) { Start-Sleep -Milliseconds 250 }
-        continue
-      }
+    for ($w = 0; $w -lt 1500 -and -not [Win]::IsWindowEnabled($next) -and [Win]::IsWindow($h) -and [Win]::IsWindowVisible($h); $w++) {
+      # 진행 단계에서 뜨는 묻는 창(그 사이에 앱을 다시 켰을 때 등)
+      if ([Win]::FindMessageBox('Poster Studio') -ne [IntPtr]::Zero) { HandleBoxes $prefix $n $h 1 | Out-Null; continue }
+      $sample = [ordered]@{ text = [Win]::AllText($h); details = @(DetailLines $h); bar = [Win]::BarPermille($h); list = [Win]::ListVisible($h) }
       if ($w % 5 -eq 0 -and @($progress | Where-Object { $_.shot }).Count -lt 40) {
         $pf = Join-Path $Out ('{0}-{1:00}-진행-{2:00}.png' -f $prefix, $n, (@($progress | Where-Object { $_.shot }).Count + 1))
         [Win]::Shot($h, $pf)
-        $progress += [ordered]@{ shot = (Split-Path $pf -Leaf); text = [Win]::AllText($h); details = @(DetailLines $h) }
-      } else {
-        $progress += [ordered]@{ text = [Win]::AllText($h); details = @(DetailLines $h) }
+        $sample.shot = Split-Path $pf -Leaf
       }
+      $progress += $sample
       Start-Sleep -Milliseconds 100
     }
-    if (-not [Win]::IsWindow($h)) { continue }
+    if (-not [Win]::IsWindow($h) -or -not [Win]::IsWindowVisible($h)) { continue }
     Start-Sleep -Milliseconds 700
     $file = Join-Path $Out ('{0}-{1:00}.png' -f $prefix, $n)
     $stable = [Win]::ShotStable($h, $file)
@@ -356,9 +429,24 @@ function Walk($prefix) {
     if ($dir -ne [IntPtr]::Zero) { $page.defaultDir = [Win]::EditText($dir); $report.defaultDir = $page.defaultDir }
     $report.pages += $page
     [Win]::PostMessage($next, $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
-    Start-Sleep -Milliseconds 1000
+    Start-Sleep -Milliseconds 600
+    # «설치»(위치 화면) · «다음»(제거 첫 화면)을 누르면 묻는 창이 뜰 수 있다
+    if ((HandleBoxes $prefix $n $h 15) -eq 'exit') {
+      # 취소한 뒤 그 화면에 남은 것을 확인하고, 사람처럼 «취소» 단추(2)로 설치기 · 제거기를 끝낸다
+      [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-취소-뒤.png' -f $prefix, $n))) | Out-Null
+      [Win]::PostMessage([Win]::GetDlgItem($h, 2), $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+      for ($i = 0; $i -lt 40 -and [Win]::IsWindow($h) -and [Win]::IsWindowVisible($h); $i++) { Start-Sleep -Milliseconds 250 }
+      $report.exitedAfterCancel = -not ([Win]::IsWindow($h) -and [Win]::IsWindowVisible($h))
+      return $true
+    }
+    Start-Sleep -Milliseconds 400
   }
   return $true
+}
+
+# 설치기를 연다 — -AsUser면 탐색기를 거쳐 일반 권한으로(이 도구가 관리자 권한이어도 사람이 두 번 누른 것과 같은 권한)
+function StartInstaller {
+  if ($AsUser) { Start-Process -FilePath (Join-Path $env:WINDIR 'explorer.exe') -ArgumentList "`"$Installer`"" | Out-Null } else { Start-Process -FilePath $Installer | Out-Null }
 }
 
 # 제거기를 사람이 여는 두 길 중 하나로 연다
@@ -375,99 +463,137 @@ function StartUninstaller {
   }
 }
 
+# 다른 범위(-Beside의 예전 판)의 자리
+$otherRoot = if ($Mode -eq 'all') { Join-Path $env:LOCALAPPDATA 'Programs' } else { $env:ProgramFiles }
+$otherParent = Join-Path $otherRoot 'InKY Film Festival'
+$otherExe = Join-Path (Join-Path $otherParent 'Poster Studio') 'Poster Studio.exe'
+$otherDesk = Join-Path ([Environment]::GetFolderPath($(if ($Mode -eq 'all') { 'Desktop' } else { 'CommonDesktopDirectory' }))) 'Poster Studio.lnk'
+$otherMenu = Join-Path ([Environment]::GetFolderPath($(if ($Mode -eq 'all') { 'Programs' } else { 'CommonPrograms' }))) 'InKY Film Festival'
+
+# 깔린 앱을 켠다(-AppOn) — 창이 뜰 때까지 기다린다
+function StartApp($path) {
+  Start-Process -FilePath $path | Out-Null
+  $p = $null
+  for ($i = 0; $i -lt 60 -and -not $p; $i++) { Start-Sleep -Milliseconds 500; $p = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'Poster Studio' -and $_.Path -ieq $path } | Select-Object -First 1 }
+  return $p
+}
+function CloseApps { Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null; $_.WaitForExit(15000) | Out-Null } }
+
+# 묻는 창(10/28 Bumm님): 이미 깔려 있으면 «이미 설치되어 있습니다 · 지우고 새로 설치할까요?», 앱이 켜져 있으면 «켜져 있습니다 · 끄고 계속할까요?»
+# (끄지 못하면 «끄지 못했습니다 … 다시 시도»). «취소»는 그 화면(설치 위치 · 제거 첫 화면)에 남고 앱도 켜진 채여야 한다.
+function PromptChecks($kind) {
+  $boxes = @($report.messageBoxes)
+  $desc = ($boxes | ForEach-Object { '«' + ($_.text -replace "`r`n", ' / ') + '» → ' + $_.answer }) -join ' | '
+  if (-not ($Replace -or $Beside -or $AppOn)) {
+    Check "$kind 묻는 창이 뜨지 않는다(예전 판 없음 · 앱 꺼짐)" ($boxes.Count -eq 0) $desc
+    return
+  }
+  $unknown = @($boxes | Where-Object { $_.text -notmatch '이미 설치되어 있습니다|켜져 있습니다|끄지 못했습니다' })
+  $installed = @($boxes | Where-Object { $_.text -match '이미 설치되어 있습니다' })
+  $running = @($boxes | Where-Object { $_.text -match '켜져 있습니다' })
+  $pageMark = if ($kind -eq '설치') { '\[1037\]설치 위치 선택' } else { '\[1201\]' }   # 위치 화면 머리 제목 · 제거 첫 화면 제목(경로 칸 글은 다른 프로세스에서 이 방법으로 안 읽힌다)
+  $stayBad = @($boxes | Where-Object { $_.answer -like 'cancel*' -and ($_.after -notmatch $pageMark -or ($_.text -match '켜져 있습니다' -and -not $_.appAlive)) })
+  $ok = $boxes.Count -gt 0 -and $unknown.Count -eq 0 -and $stayBad.Count -eq 0 -and (-not ($Replace -or $Beside) -or $installed.Count -ge 1) -and (-not $AppOn -or $running.Count -ge 1)
+  Check "$kind 묻는 창이 뜨고(이미 설치 $($installed.Count) · 켜진 앱 $($running.Count)), «취소»면 그 화면에 남고 앱도 켜진 채다" $ok $desc
+}
+
 if ($Step -eq 'install') {
   if ($Replace) {
-    $oldTime = if (Test-Path $exe) { (Get-Item $exe).LastWriteTimeUtc } else { $null }
-    Check "설치 전: 같은 범위($hive)에 예전 판이 깔려 있다(덮어쓰기 시험)" ($null -ne (Entry $hive) -and $null -ne $oldTime) $(if ($oldTime) { "$exe · $($oldTime.ToString('o'))" })
+    $oldBorn = if (Test-Path $exe) { (Get-Item $exe).CreationTimeUtc } else { $null }
+    Check "설치 전: 같은 범위($hive)에 예전 판이 깔려 있다(덮어쓰기 시험)" ($null -ne (Entry $hive) -and $null -ne $oldBorn) $(if ($oldBorn) { "$exe · $($oldBorn.ToString('o'))" })
   } elseif ($Beside) {
-    Check "설치 전: 이 범위($hive)에는 설치가 없고 다른 범위($otherHive)에는 있다(두 범위 함께)" ((-not (Entry $hive)) -and -not (Test-Path $exe) -and $null -ne (Entry $otherHive)) $null
+    Check "설치 전: 이 범위($hive)에는 설치가 없고 다른 범위($otherHive)에만 있다" ((-not (Entry $hive)) -and -not (Test-Path $exe) -and $null -ne (Entry $otherHive) -and (Test-Path $otherExe)) $otherExe
   } else {
     Check '설치 전: 같은 이름의 설치가 없다(HKCU · HKLM)' ((-not (Entry 'HKCU')) -and (-not (Entry 'HKLM')) -and -not (Test-Path $exe)) $null
   }
-  Start-Process -FilePath $Installer | Out-Null
+  if ($AppOn) {
+    $appPath = if ($Beside) { $otherExe } else { $exe }
+    $appProc = StartApp $appPath
+    Check '설치 전: 깔린 앱을 켜 둔다' ($null -ne $appProc) $appPath
+  }
+  StartInstaller
   $walked = Walk "installer-$Mode"
-  Check '설치 창이 뜨고 화면을 끝까지 넘긴다' $walked $report.title
-  ProgressChecks '설치' '설치 위치' '프로그램 파일을 설치하는 중'
-  for ($i = 0; $i -lt 120 -and -not (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
-  Check '설치 범위 화면(«me 전용» · «모든 사용자»)이 있고 기준 단추를 골랐다' (@($report.pages | Where-Object { $_.picked }).Count -eq 1) (@($report.pages | Where-Object { $_.picked }) | ForEach-Object { $_.picked })
-  Check '위치 바꾸는 화면이 있고 기본 위치가 기준이다' ($report.defaultDir -eq $appDir) "$($report.defaultDir)"
-  Check "기준 위치에 설치된다($appDir)" (Test-Path $exe) $exe
-  if ($Replace) { $newTime = (Get-Item $exe -ErrorAction SilentlyContinue).LastWriteTimeUtc; Check '덮어쓴 뒤 앱 실행 파일이 새 판으로 바뀌었다' ($newTime -and $oldTime -and $newTime -ne $oldTime) "$($oldTime.ToString('o')) → $(if ($newTime) { $newTime.ToString('o') })" }
-  Check '설치 폴더에 제거 프로그램이 있다' (Test-Path $uninstaller) $uninstaller
-  $entry = Entry $hive
-  $props = if ($entry) { Get-ItemProperty $entry.PSPath } else { $null }
-  Check "«설치된 앱»에 «Poster Studio»로 등록($hive)" ($null -ne $props -and $props.UninstallString -like "*Uninstall Poster Studio.exe*") $(if ($props) { "$($props.DisplayName) · $($props.Publisher) · $($props.DisplayVersion) · $($props.UninstallString)" })
-  if ($Mode -eq 'all') {
-    $guid = if ($entry) { Split-Path $entry.PSPath -Leaf } else { '' }
-    $stub = if ($guid) { (Get-ItemProperty "HKCU:\Software\$guid" -ErrorAction SilentlyContinue).InstallLocation } else { $null }
-    Check '«모든 사용자» 설치 뒤 «나만» 위치 메모(HKCU)가 남지 않는다' (-not $stub) $stub
-    if ($Beside) {
-      # electron-builder는 «모든 사용자»로 설치하기 전에 «나만» 설치를 지운다(installSection — uninstallOldVersion HKEY_CURRENT_USER, «/currentuser --updated»).
-      # 그 «나만» 설치가 남김없이 지워져야 한다 — e58b65c는 «나만» 시작 메뉴에 대상 없는 «Uninstall Poster Studio»와 폴더를 남겼다(10/28 실측)
-      $userParent = Join-Path $env:LOCALAPPDATA 'Programs\InKY Film Festival'
-      $userDesk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Poster Studio.lnk'
-      $userMenu = Join-Path ([Environment]::GetFolderPath('Programs')) 'InKY Film Festival'
-      $left = @(@($userParent, $userDesk, $userMenu) | Where-Object { Test-Path $_ }) + @(if (Entry 'HKCU') { '«설치된 앱» HKCU 등록' })
-      Check '«나만» 설치가 남김없이 정리된다(폴더 · «설치된 앱» 등록 · 바탕화면 · 시작 메뉴 폴더)' ($left.Count -eq 0) $(if ($left.Count) { ($left + @(if (Test-Path $userMenu) { Get-ChildItem $userMenu | ForEach-Object { "시작 메뉴 안: $($_.Name)" } })) -join ' · ' })
+  PromptChecks '설치'
+  if ($Decline) {
+    Check '«취소» 뒤 설치기를 «취소» 단추로 끝낼 수 있다' ([bool]$report.exitedAfterCancel) $null
+    if ($Replace) { Check '설치하지 않아 예전 판(같은 범위)이 그대로다' ($null -ne (Entry $hive) -and (Test-Path $exe) -and (Get-Item $exe).CreationTimeUtc -eq $oldBorn -and (Test-Path $startLnk)) $exe }
+    if ($Beside) { Check "설치하지 않아 예전 판(다른 범위 $otherHive)이 그대로다" ($null -ne (Entry $otherHive) -and (Test-Path $otherExe) -and -not (Entry $hive)) $otherExe }
+    if ($AppOn) { Check '앱이 켜진 채다' ($null -ne (Get-Process 'Poster Studio' -ErrorAction SilentlyContinue)) $null; CloseApps }
+  } else {
+    Check '설치 창이 뜨고 화면을 끝까지 넘긴다' $walked $report.title
+    ProgressChecks '설치' '설치 위치' '프로그램 파일을 설치하는 중' '설치' '설치가 끝났습니다.'
+    for ($i = 0; $i -lt 120 -and -not (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
+    Check '설치 범위 화면(«me 전용» · «모든 사용자»)이 있고 기준 단추를 골랐다' (@($report.pages | Where-Object { $_.picked }).Count -eq 1) (@($report.pages | Where-Object { $_.picked }) | ForEach-Object { $_.picked })
+    Check '위치 바꾸는 화면이 있고 기본 위치가 기준이다' ($report.defaultDir -eq $appDir) "$($report.defaultDir)"
+    Check "기준 위치에 설치된다($appDir)" (Test-Path $exe) $exe
+    if ($Replace -or $Beside) {
+      $final = @($report.finalList)
+      $iOld = [array]::IndexOf($final, '예전 Poster Studio를 지우는 중입니다 …')
+      $iNew = [array]::IndexOf($final, '프로그램 파일을 설치하는 중입니다 …')
+      $dels = if ($iOld -ge 0 -and $iNew -gt $iOld + 1) { @($final[($iOld + 1)..($iNew - 1)] | Where-Object { $_ -like '삭제: *' }) } else { @() }
+      Check '예전 판: «예전 Poster Studio를 지우는 중입니다 …»와 «삭제: …» 줄이 먼저 흐르고 «프로그램 파일을 설치하는 중입니다 …»가 뒤따른다' ($iOld -ge 0 -and $iNew -gt $iOld -and $dels.Count -ge 15) "삭제 줄 $($dels.Count)개 · 순서 $iOld → $iNew"
     }
-  }
-  $d = LnkInfo $desktopLnk; $s = LnkInfo $startLnk; $u = LnkInfo $uninstallLnk
-  Check "바탕화면 «Poster Studio»($desktopDir)" ($d -and $d.target -ieq $exe) ($d | ConvertTo-Json -Compress)
-  Check '시작 메뉴 «InKY Film Festival» 폴더 안 «Poster Studio»' ($s -and $s.target -ieq $exe) ($s | ConvertTo-Json -Compress)
-  Check '시작 메뉴 «InKY Film Festival» 폴더 안 «Uninstall Poster Studio»' ($u -and $u.target -ieq $uninstaller) ($u | ConvertTo-Json -Compress)
-  $menuItems = if (Test-Path $menuDir) { (Get-ChildItem $menuDir | ForEach-Object { $_.Name }) -join ' · ' } else { '' }
-  $report.menuItems = $menuItems
-  $app = $null
-  for ($i = 0; $i -lt 60 -and -not $app; $i++) { Start-Sleep -Milliseconds 500; $app = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'Poster Studio' } | Select-Object -First 1 }
-  Check '설치가 끝나면 앱이 바로 뜬다(창 제목 «Poster Studio»)' ($null -ne $app) $(if ($app) { "$($app.Path)" })
-  if ($app) {
-    Start-Sleep -Seconds 5
-    [Win]::Shot($app.MainWindowHandle, (Join-Path $Out "app-after-install-$Mode.png"))
-    $app.CloseMainWindow() | Out-Null
-    Check '창을 닫으면 앱이 끝난다' ($app.WaitForExit(15000)) $null
-    Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | ForEach-Object { $_.WaitForExit(10000) | Out-Null }
-  }
-} elseif ($Step -eq 'running') {
-  # 앱을 켜 둔 채 설치기 · 제거기를 띄운다 — 설치 · 제거 첫머리에 «앱 실행 중» 알림이 뜬다. Walk가 그 창을 찍고 «취소»로 닫는다(설치기는 그만두고 닫힌다).
-  Check "시작 전: 이 범위($hive)에 설치가 있다" ($null -ne (Entry $hive) -and (Test-Path $exe)) $exe
-  $exeTime = if (Test-Path $exe) { (Get-Item $exe).LastWriteTimeUtc } else { $null }
-  Start-Process -FilePath $exe | Out-Null
-  $app = $null
-  for ($i = 0; $i -lt 60 -and -not $app; $i++) { Start-Sleep -Milliseconds 500; $app = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'Poster Studio' -and $_.Path -ieq $exe } | Select-Object -First 1 }
-  Check '앱을 켜 둔다(이 범위의 실행 파일)' ($null -ne $app) $exe
-  Start-Process -FilePath $Installer | Out-Null
-  Walk "running-installer-$Mode" | Out-Null
-  $boxes = @($report.messageBoxes | Where-Object { $_.prefix -like 'running-installer-*' })
-  Check '설치기: «앱 실행 중» 알림이 뜨고 «취소»를 누르면 설치기가 닫힌다' ($boxes.Count -eq 1 -and $boxes[0].text -like '*실행 중*' -and -not [Win]::IsWindow([Win]::FindDialog('Poster Studio'))) $(if ($boxes.Count) { "$($boxes[0].title) · $($boxes[0].text -replace "`r`n", ' / ') · $($boxes[0].buttons)" })
-  StartUninstaller
-  Walk "running-uninstaller-$Mode-$Via" | Out-Null
-  $boxes = @($report.messageBoxes | Where-Object { $_.prefix -like 'running-uninstaller-*' })
-  Check '제거기: «앱 실행 중» 알림이 뜨고 «취소»를 누르면 제거기가 닫힌다' ($boxes.Count -eq 1 -and $boxes[0].text -like '*실행 중*' -and -not [Win]::IsWindow([Win]::FindDialog('Poster Studio'))) $(if ($boxes.Count) { "$($boxes[0].title) · $($boxes[0].text -replace "`r`n", ' / ') · $($boxes[0].buttons)" })
-  Start-Sleep -Seconds 2
-  Check '«취소» 뒤에도 설치가 그대로다(실행 파일 · 제거 프로그램 · 등록)' ((Test-Path $exe) -and (Test-Path $uninstaller) -and $null -ne (Entry $hive) -and $exeTime -and (Get-Item $exe).LastWriteTimeUtc -eq $exeTime) $exe
-  if ($app) {
-    Check '앱은 그동안 켜진 채다' (-not $app.HasExited) $null
-    $app.CloseMainWindow() | Out-Null
-    Check '창을 닫으면 앱이 끝난다' ($app.WaitForExit(15000)) $null
-    Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | ForEach-Object { $_.WaitForExit(10000) | Out-Null }
+    if ($Replace) { $newBorn = (Get-Item $exe -ErrorAction SilentlyContinue).CreationTimeUtc; Check '덮어쓴 뒤 앱 실행 파일이 새로 놓였다(만든 시각)' ($newBorn -and $oldBorn -and $newBorn -gt $oldBorn) "$($oldBorn.ToString('o')) → $(if ($newBorn) { $newBorn.ToString('o') })" }
+    if ($Beside) {
+      # «InKY Film Festival» 폴더 · 시작 메뉴 폴더는 다른 앱(Voice Cinema 등)과 함께 쓴다 — Poster Studio 것이 남지 않고, 폴더는 비었을 때만 지워졌는지 본다
+      $left = @(@((Join-Path $otherParent 'Poster Studio'), $otherDesk, (Join-Path $otherMenu 'Poster Studio.lnk'), (Join-Path $otherMenu 'Uninstall Poster Studio.lnk')) | Where-Object { Test-Path $_ }) + @(@($otherParent, $otherMenu) | Where-Object { (Test-Path $_) -and -not (Get-ChildItem $_ -Force | Select-Object -First 1) }) + @(if (Entry $otherHive) { "«설치된 앱» $otherHive 등록" })
+      Check "다른 범위($otherHive)의 예전 판이 남김없이 지워진다(폴더 · «설치된 앱» 등록 · 바탕화면 · 시작 메뉴 폴더)" ($left.Count -eq 0) $(if ($left.Count) { ($left + @(if (Test-Path $otherMenu) { Get-ChildItem $otherMenu | ForEach-Object { "시작 메뉴 안: $($_.Name)" } })) -join ' · ' })
+    }
+    Check '설치 폴더에 제거 프로그램이 있다' (Test-Path $uninstaller) $uninstaller
+    $entry = Entry $hive
+    $props = if ($entry) { Get-ItemProperty $entry.PSPath } else { $null }
+    Check "«설치된 앱»에 «Poster Studio»로 등록($hive)" ($null -ne $props -and $props.UninstallString -like "*Uninstall Poster Studio.exe*") $(if ($props) { "$($props.DisplayName) · $($props.Publisher) · $($props.DisplayVersion) · $($props.UninstallString)" })
+    if ($Mode -eq 'all') {
+      $guid = if ($entry) { Split-Path $entry.PSPath -Leaf } else { '' }
+      $stub = if ($guid) { (Get-ItemProperty "HKCU:\Software\$guid" -ErrorAction SilentlyContinue).InstallLocation } else { $null }
+      Check '«모든 사용자» 설치 뒤 «나만» 위치 메모(HKCU)가 남지 않는다' (-not $stub) $stub
+    }
+    $d = LnkInfo $desktopLnk; $s = LnkInfo $startLnk; $u = LnkInfo $uninstallLnk
+    Check "바탕화면 «Poster Studio»($desktopDir)" ($d -and $d.target -ieq $exe) ($d | ConvertTo-Json -Compress)
+    Check '시작 메뉴 «InKY Film Festival» 폴더 안 «Poster Studio»' ($s -and $s.target -ieq $exe) ($s | ConvertTo-Json -Compress)
+    Check '시작 메뉴 «InKY Film Festival» 폴더 안 «Uninstall Poster Studio»' ($u -and $u.target -ieq $uninstaller) ($u | ConvertTo-Json -Compress)
+    $menuItems = if (Test-Path $menuDir) { (Get-ChildItem $menuDir | ForEach-Object { $_.Name }) -join ' · ' } else { '' }
+    $report.menuItems = $menuItems
+    $app = $null
+    for ($i = 0; $i -lt 60 -and -not $app; $i++) { Start-Sleep -Milliseconds 500; $app = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'Poster Studio' -and $_.Path -ieq $exe } | Select-Object -First 1 }
+    Check '설치가 끝나면 앱이 바로 뜬다(창 제목 «Poster Studio»)' ($null -ne $app) $(if ($app) { "$($app.Path)" })
+    if ($app) {
+      Start-Sleep -Seconds 5
+      [Win]::Shot($app.MainWindowHandle, (Join-Path $Out "app-after-install-$Mode.png"))
+      $app.CloseMainWindow() | Out-Null
+      Check '창을 닫으면 앱이 끝난다' ($app.WaitForExit(15000)) $null
+    }
+    CloseApps
   }
 } else {
+  $born = if (Test-Path $exe) { (Get-Item $exe).CreationTimeUtc } else { $null }
+  if ($AppOn) {
+    $appProc = StartApp $exe
+    Check '제거 전: 깔린 앱을 켜 둔다' ($null -ne $appProc) $exe
+  }
   StartUninstaller
   $walked = Walk "uninstaller-$Mode-$Via"
-  Check '제거 창이 뜨고 화면을 끝까지 넘긴다' $walked $report.title
-  ProgressChecks '제거' '제거 위치' '지우는 중'
-  for ($i = 0; $i -lt 120 -and (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
-  Start-Sleep -Seconds 3
-  Check '설치 폴더가 지워진다' (-not (Test-Path $appDir)) $(if (Test-Path $appDir) { (Get-ChildItem $appDir -Recurse | Measure-Object).Count.ToString() + '개 남음' })
-  Check '비게 된 «InKY Film Festival» 폴더(설치 쪽)도 지워진다' (-not (Test-Path $parent)) $parent
-  Check '바탕화면 바로가기가 지워진다' (-not (Test-Path $desktopLnk)) $desktopLnk
-  Check '시작 메뉴 «InKY Film Festival» 폴더와 두 바로가기가 지워진다' (-not (Test-Path $menuDir)) $(if (Test-Path $menuDir) { (Get-ChildItem $menuDir | ForEach-Object { $_.Name }) -join ' · ' })
-  if ($Beside) {
-    Check "«설치된 앱» 등록이 이 범위($hive)에서 지워지고 다른 범위($otherHive) 설치는 그대로다" ((-not (Entry $hive)) -and $null -ne (Entry $otherHive)) $null
+  PromptChecks '제거'
+  if ($Decline) {
+    Check '«취소» 뒤 제거기를 «취소» 단추로 끝낼 수 있다' ([bool]$report.exitedAfterCancel) $null
+    Check '제거하지 않아 설치가 그대로다' ($null -ne (Entry $hive) -and (Test-Path $exe) -and (Get-Item $exe).CreationTimeUtc -eq $born -and (Test-Path $startLnk)) $exe
+    if ($AppOn) { Check '앱이 켜진 채다' ($null -ne (Get-Process 'Poster Studio' -ErrorAction SilentlyContinue)) $null; CloseApps }
   } else {
+    Check '제거 창이 뜨고 화면을 끝까지 넘긴다' $walked $report.title
+    ProgressChecks '제거' '제거 위치' '지우는 중' '삭제' '제거가 끝났습니다.'
+    for ($i = 0; $i -lt 120 -and (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
+    Start-Sleep -Seconds 3
+    Check '설치 폴더가 지워진다' (-not (Test-Path $appDir)) $(if (Test-Path $appDir) { (Get-ChildItem $appDir -Recurse | Measure-Object).Count.ToString() + '개 남음' })
+    # «InKY Film Festival» 폴더는 다른 앱(Voice Cinema 등)과 함께 쓴다 — 비었으면 지워지고, 다른 앱이 있으면 그 앱 것만 남아야 한다(10/28: 이 PC에 Voice Cinema가 깔림)
+    $parentLeft = if (Test-Path $parent) { @(Get-ChildItem $parent -Force | ForEach-Object { $_.Name }) } else { @() }
+    Check '«InKY Film Festival» 폴더(설치 쪽)에 Poster Studio가 남지 않고, 비었으면 지워진다' ((-not (Test-Path $parent)) -or ($parentLeft.Count -gt 0 -and $parentLeft -notcontains 'Poster Studio')) $(if (Test-Path $parent) { '남은 것(다른 앱): ' + ($parentLeft -join ' · ') } else { '지워짐' })
+    Check '바탕화면 바로가기가 지워진다' (-not (Test-Path $desktopLnk)) $desktopLnk
+    $menuLeft = if (Test-Path $menuDir) { @(Get-ChildItem $menuDir -Force | ForEach-Object { $_.Name }) } else { @() }
+    Check '시작 메뉴 «InKY Film Festival»에서 두 바로가기가 지워지고, 폴더는 비었으면 지워진다' ((-not (Test-Path $menuDir)) -or ($menuLeft.Count -gt 0 -and $menuLeft -notcontains 'Poster Studio.lnk' -and $menuLeft -notcontains 'Uninstall Poster Studio.lnk')) $(if (Test-Path $menuDir) { '남은 것(다른 앱): ' + ($menuLeft -join ' · ') } else { '지워짐' })
     Check '«설치된 앱» 등록이 지워진다(HKCU · HKLM)' ((-not (Entry 'HKCU')) -and (-not (Entry 'HKLM'))) $null
+    Check '앱 데이터(%APPDATA%\Poster Studio)가 지워진다' (-not (Test-Path $appData)) $appData
+    if ($AppOn) { Check '켜 둔 앱이 꺼졌다' ($null -eq (Get-Process 'Poster Studio' -ErrorAction SilentlyContinue)) $null }
   }
-  Check '앱 데이터(%APPDATA%\Poster Studio)가 지워진다' (-not (Test-Path $appData)) $appData
 }
 TextChecks
 $report.finishedAt = (Get-Date).ToString('o')
