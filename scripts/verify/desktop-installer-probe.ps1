@@ -502,6 +502,10 @@ function Walk($prefix) {
   for ($i = 0; $i -lt 800 -and $h -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 50; $h = [Win]::FindDialog('Poster Studio') }
   if ($h -eq [IntPtr]::Zero) { return $false }
   # 처음 보인 자리가 검사 모니터인가(설치기는 Start-OnTestMonitor로 연다 — 10/28 오후 팀장). 밖이면 옮기지 않고 그 창의 프로세스를 끄고 멈춘다(팀장 «즉시 중단»).
+  # 0.3초 뒤에 판다 — 창이 만들어지는 순간 옮기는 훅(Start-TestWindowPlacement)과 겹치면 옮기기 직전 자리를 «밖»으로 읽어 제거기를 껐다
+  # (10/28 17차 ⑥ — 훅 «옮김 1 · 보이기 전», 창 감시 «밖 0 · 그 창 보임 없음»). 실제로 위 모니터에 보이는 창은 훅과 창 감시가 그 자리에서 끈다.
+  Start-Sleep -Milliseconds 300
+  if (-not [Win]::IsWindow($h)) { $h = [Win]::FindDialog('Poster Studio') }
   $report.startedOnTestMonitor = Test-OnTestMonitor $h
   $report.stoppedOffMonitor = Stop-OffTestMonitor $h
   Check "$prefix 창이 처음부터 검사 모니터에 떴다(모니터를 지정해 열기)" $report.startedOnTestMonitor $(if ($report.stoppedOffMonitor) { "밖에 떠서 바로 끔: $($report.stoppedOffMonitor)" })
