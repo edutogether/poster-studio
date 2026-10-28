@@ -21,6 +21,8 @@
 ; 등록 키 이름 — electron-builder multiUser.nsh와 같은 정의(그쪽도 /ifndef라 한 값으로 맞는다). 그 파일은 이 파일보다 뒤에 들어온다.
 !define /ifndef INSTALL_REGISTRY_KEY "Software\${APP_GUID}"
 !define /ifndef UNINSTALL_REGISTRY_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_APP_KEY}"
+; 이 파일이 있는 폴더 — 템플릿 매크로를 바꿔 끼우는 파일(ps-extract.nsh)과 빌드 때 표를 만드는 스크립트(ps-7z-list.mjs)를 여기서 찾는다
+!define PS_BUILD_DIR "${__FILEDIR__}"
 ; 아래 함수 이름 앞붙이 — 제거기 빌드의 함수는 «un.»으로 시작해야 한다
 !ifdef BUILD_UNINSTALLER
   !define PSF "un."
@@ -1227,29 +1229,156 @@
       Pop $R0
     FunctionEnd
 
-    ; 설치 폴더에 놓인 파일을 하나씩 확인하며 «설치: …»를 적는다(하위 폴더까지)
-    Function psListDir
-      Exch $R0
-      Push $R1
-      Push $R2
-      FindFirst $R1 $R2 "$R0\*.*"
-      ${DoWhile} $R2 != ""
-        ${If} $R2 != "."
-        ${AndIf} $R2 != ".."
-          ${If} ${FileExists} "$R0\$R2\*.*"
-            Push "$R0\$R2"
-            Call psListDir
-          ${Else}
-            !insertmacro psLine "설치" "$R0\$R2"
-            Call psStep
-          ${EndIf}
+    ; ── 앱 파일 풀기(ps-extract.nsh가 바꿔 끼운 extractUsing7za가 부른다 — 그 매크로는 설치 단계 안에서 펼쳐져 거기서는 함수를 정의할 수 없다) ──
+    ; 푼 바이트(Nsis7z::ExtractWithCallback)가 빌드 때 7z에서 만든 표(ps-7z-list.mjs — 푸는 순서 · 끝 KB · 크기 KB · 상대 경로)의 «끝»을 지날 때마다
+    ; «설치: <설치 위치>\…»를 적는다 — 그 파일이 다 풀린 뒤에만 나온다(10/28 팀장 «앞질러 나오지 않음»). 큰 파일 하나를 푸는 동안(실행 파일 240MB ≈ 2초)
+    ; 줄이 멈추지 않게, 줄 없이 PS_EX_PART_KB만큼 풀리면 «설치 중: …\파일 (NN%)»을 적는다. 막대는 $psExtractFrom → 930‰(푼 바이트 비율).
+    !define PS_EX_PART_KB 50000
+    !define PS_EX_TO 930
+    Var psExFile
+    Var psExEnd     ; 다음 파일이 다 풀리는 끝(KB, 1000바이트) — 표가 끝나면 -1
+    Var psExSize
+    Var psExPath
+    Var psExStart   ; 다음 파일이 시작하는 자리(= 앞 파일의 끝)
+    Var psExLineKb  ; 마지막 줄을 적을 때 푼 양
+    Var psExLine
+    Var psExI
+    Var psExC
+    Function psExtractBegin
+      FileOpen $psExFile "$PLUGINSDIR\ps-7z-list.txt" r
+      FileSeek $psExFile 2   ; UTF-16LE BOM
+      StrCpy $psExEnd 0
+      StrCpy $psExLineKb 0
+      Call psExtractNext
+    FunctionEnd
+    ; 표의 다음 줄 → $psExStart · $psExEnd · $psExSize · $psExPath(없으면 $psExEnd = -1)
+    Function psExtractNext
+      StrCpy $psExStart $psExEnd
+      ClearErrors
+      FileReadUTF16LE $psExFile $psExLine
+      ${If} ${Errors}
+      ${OrIf} $psExLine == ""
+        StrCpy $psExEnd -1
+        Return
+      ${EndIf}
+      ; 줄 끝(\r\n)을 뗀다
+      ${Do}
+        StrCpy $psExC $psExLine 1 -1
+        ${If} $psExC == "$\r"
+        ${OrIf} $psExC == "$\n"
+          StrCpy $psExLine $psExLine -1
+        ${Else}
+          ${Break}
         ${EndIf}
-        FindNext $R1 $R2
       ${Loop}
-      FindClose $R1
-      Pop $R2
-      Pop $R1
-      Pop $R0
+      ; «끝 크기 경로» — 앞의 두 칸은 빈칸으로 가른다(경로에는 빈칸이 있을 수 있다)
+      StrCpy $psExI 0
+      ${Do}
+        StrCpy $psExC $psExLine 1 $psExI
+        ${If} $psExC == " "
+        ${OrIf} $psExC == ""
+          ${Break}
+        ${EndIf}
+        IntOp $psExI $psExI + 1
+      ${Loop}
+      StrCpy $psExEnd $psExLine $psExI
+      IntOp $psExI $psExI + 1
+      StrCpy $psExLine $psExLine "" $psExI
+      StrCpy $psExI 0
+      ${Do}
+        StrCpy $psExC $psExLine 1 $psExI
+        ${If} $psExC == " "
+        ${OrIf} $psExC == ""
+          ${Break}
+        ${EndIf}
+        IntOp $psExI $psExI + 1
+      ${Loop}
+      StrCpy $psExSize $psExLine $psExI
+      IntOp $psExI $psExI + 1
+      StrCpy $psExPath $psExLine "" $psExI
+    FunctionEnd
+    ; 표에서 푼 양($R8, KB)까지 다 풀린 파일의 줄을 적는다
+    Function psExtractFlush
+      ${Do}
+        ${If} $psExEnd < 0
+        ${OrIf} $psExEnd > $R8
+          ${Break}
+        ${EndIf}
+        !insertmacro psLine "설치" "$OUTDIR\$psExPath"
+        StrCpy $psExLineKb $R8
+        Call psExtractNext
+      ${Loop}
+    FunctionEnd
+    ; Nsis7z 콜백 — 스택: 지금까지 푼 바이트, 전체 바이트(순서가 바뀌어 와도 맞게 읽는다). 바이트는 2GB를 넘을 수 있어 끝 세 자리를 떼어(KB) 셈한다
+    Function psExtractProgress
+      Exch $R8
+      Exch
+      Exch $R9
+      Push $R7
+      StrLen $R7 $R8
+      ${If} $R7 > 3
+        StrCpy $R8 $R8 -3
+      ${Else}
+        StrCpy $R8 0
+      ${EndIf}
+      StrLen $R7 $R9
+      ${If} $R7 > 3
+        StrCpy $R9 $R9 -3
+      ${Else}
+        StrCpy $R9 0
+      ${EndIf}
+      ${If} $R8 > $R9
+        StrCpy $R7 $R8
+        StrCpy $R8 $R9
+        StrCpy $R9 $R7
+      ${EndIf}
+      ; 막대: $psExtractFrom → PS_EX_TO(푼 양 비율, 큰 수를 곱하지 않게 전체를 먼저 1000으로 나눈다)
+      ${If} $R9 >= 1000
+        IntOp $R7 $R9 / 1000
+        IntOp $R7 $R8 / $R7
+      ${ElseIf} $R9 > 0
+        IntOp $R7 $R8 * 1000
+        IntOp $R7 $R7 / $R9
+      ${Else}
+        StrCpy $R7 0
+      ${EndIf}
+      ${If} $R7 > 1000
+        StrCpy $R7 1000
+      ${EndIf}
+      Push $R6
+      IntOp $R6 ${PS_EX_TO} - $psExtractFrom
+      IntOp $R7 $R7 * $R6
+      IntOp $R7 $R7 / 1000
+      IntOp $R7 $R7 + $psExtractFrom
+      Pop $R6
+      !insertmacro psAt $R7
+      ; 다 풀린 파일 줄 → 없으면 큰 파일을 푸는 중인 줄
+      StrCpy $R7 $psExLineKb
+      Call psExtractFlush
+      ${If} $psExLineKb == $R7
+      ${AndIf} $psExEnd > $R8
+      ${AndIf} $psExSize >= ${PS_EX_PART_KB}
+        IntOp $R7 $R8 - $psExLineKb
+        ${If} $R7 >= ${PS_EX_PART_KB}
+          IntOp $R7 $R8 - $psExStart
+          IntOp $R7 $R7 * 100
+          IntOp $R7 $R7 / $psExSize
+          !insertmacro psLine "설치 중" "$OUTDIR\$psExPath ($R7%)"
+          StrCpy $psExLineKb $R8
+        ${EndIf}
+      ${EndIf}
+      Pop $R7
+      Pop $R9
+      Pop $R8
+    FunctionEnd
+    ; 다 푼 뒤: 표에 남은 줄을 마저 적고(끝 세 자리를 떼어 견주므로 마지막 몇 개가 남을 수 있다) 표를 닫는다
+    Function psExtractEnd
+      Push $R8
+      StrCpy $R8 2147483647
+      Call psExtractFlush
+      Pop $R8
+      FileClose $psExFile
+      !insertmacro psAt ${PS_EX_TO}
     FunctionEnd
   !else
     Function un.psGuiInit
@@ -1296,6 +1425,9 @@
     ${EndIf}
     Pop $R0
   !else
+    ; 템플릿 «앱 파일 풀기»(extractUsing7za)를 이 설치기 것으로 바꿔 끼운다 — 설치 단계(installSection.nsh)에서 이 매크로가 펼쳐지는 자리는
+    ; 템플릿이 그 매크로를 정의한 뒤 · 쓰기 전이다(ps-extract.nsh에 이유, 빌드 때 한 번만 들인다). customUnInstallCheck는 그보다 앞(installUtil.nsh)에서 펼쳐져 안 된다
+    !include "${PS_BUILD_DIR}\ps-extract.nsh"
     ${IfNot} ${Silent}
       !insertmacro psInstallStart
     ${EndIf}
@@ -1331,17 +1463,9 @@
 
 ; 7z 풀기 · 설치 폴더로 옮기기가 끝난 뒤(템플릿 custom_files_post_decompression): Nsis7z가 막대를 800‰까지 옮겼다. 놓인 파일을 «설치: …»로 적으며 800 → 930‰.
 !macro customFiles_x64
-  StrCpy $psLast 799
-  !insertmacro psAt 800
-  StrCpy $psTotal 0
-  StrCpy $psDone 0
-  StrCpy $psFrom 800
-  StrCpy $psTo 930
-  Push $INSTDIR
-  Call psCountDir
-  Push $INSTDIR
-  Call psListDir
-  ; 다음은 템플릿이 바로가기를 만들고 셸에 알린다(SetLnkAUMI · SHChangeNotify) — 1.4초 동안 막대가 서 있었다(10/28 실측). 그 일을 단계 문장으로 띄우고 막대 몫(930 → 945‰)을 함께 준다
+  ; 파일 줄은 풀면서 이미 적었다(ps-extract.nsh · psExtract*) — 여기서 다시 적지 않는다(한 파일이 두 번 나오지 않게).
+  ; 다음은 템플릿이 설치기 사본을 남기고 바로가기를 만들어 셸에 알린다(SetLnkAUMI · SHChangeNotify) — 1.0~1.7초 동안 막대가 서 있었다(10/28 실측).
+  ; 그 일을 단계 문장으로 띄우고 막대 몫(930 → 945‰)을 함께 준다
   !insertmacro psStage "바로가기를 만들고 «설치된 앱»에 등록하는 중입니다 …"
   !insertmacro psAt 945
 !macroend
