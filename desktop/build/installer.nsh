@@ -206,6 +206,8 @@
   ; 설치 범위 화면(템플릿 PAGE_INSTALL_MODE)이 띄우기 직전(SHOW) — 아래 안내 줄 간격(psModeShow). 템플릿이 이 매크로 바로 뒤에 그 화면을 넣으므로 여기서 정해 둔다(화면은 넣지 않는다).
   !macro customWelcomePage
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW psModeShow
+    ; 떠날 때(«다음», 관리자 권한으로 다시 뜨지 않는 길만 — 템플릿 LEAVE 맨 끝) 그리기를 멈춘다: nsDialogs가 다음 화면 PRE보다 먼저 이 화면을 지운다
+    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE psFreeze
   !macroend
   !macro customPageAfterChangeDir
     !include StrContains.nsh
@@ -612,14 +614,23 @@
     ${EndIf}
     Pop $0
   FunctionEnd
-  ; 스택: 새 화면 HWND
+  ; 스택: 새 화면 HWND. 다시 그릴 때는 창 전체를 한 장에 그려 내보낸다(WS_EX_COMPOSITED) — 바탕부터 칠하고 칸을 하나씩 그리면
+  ; 그 사이가 녹화에 잡혔다(바탕만 · 머리만 보이는 장면, 10/28 f7cbf2b 녹화).
   Function ${PSF}psThaw
     Exch $0
     ${If} $psFrozen == "1"
+      Push $1
+      Push $2
       ShowWindow $0 8   ; SW_SHOWNA — NSIS가 뒤에 하는 것을 먼저(이미 보이면 그대로)
+      System::Call "user32::GetWindowLongW(p $HWNDPARENT, i -20) i .r1"
+      IntOp $2 $1 | 0x02000000
+      System::Call "user32::SetWindowLongW(p $HWNDPARENT, i -20, i r2)"
       SendMessage $HWNDPARENT ${WM_SETREDRAW} 1 0
       System::Call "user32::RedrawWindow(p $HWNDPARENT, p 0, p 0, i 0x585)"   ; INVALIDATE | ERASE | ALLCHILDREN | UPDATENOW | FRAME
+      System::Call "user32::SetWindowLongW(p $HWNDPARENT, i -20, i r1)"
       StrCpy $psFrozen ""
+      Pop $2
+      Pop $1
     ${EndIf}
     Pop $0
   FunctionEnd
@@ -745,9 +756,88 @@
     Pop $R0
   FunctionEnd
 
-  ; 상자 한 줄이 칸보다 길면 경로 가운데를 «...»로 줄여 파일 이름이 끝까지 보이게 한다 — PathCompactPathW가 상자 글꼴로 실제 폭을 잰다.
+  ; 상자 한 줄이 칸보다 길면 경로 가운데 폴더를 «…»로 줄여 파일 이름이 끝까지 보이게 한다 — 상자 글꼴로 실제 폭을 잰다(psFitFolders).
   ; «나만» 위치(C:\Users\<이름>\AppData\Local\Programs\…)는 줄마다 «…\Poster Stu…»에서 잘려 어느 파일인지 안 보였다(10/28 녹화). «모든 사용자» 위치는 거의 그대로 들어간다.
   ; 스택에 경로 → 머리말 순으로 넣고 부르면 맨 위에 적을 줄이 남는다. 상자가 없으면(조용한 실행) 그대로 붙인다.
+  ; 폴더 이름 단위로만 줄인다(10/28 팀장 — PathCompactPathW는 낱말 가운데를 잘랐다: «Poster St…» · «InKY Fil…» · «Microsof…», 줄마다 다른 곳).
+  ; 끝(앱 폴더 «Poster Studio»부터, 없으면 마지막 두 칸)을 남기고 앞에서 가운데 폴더를 뒤쪽부터 하나씩 떼어 «…» 하나로 — 칸에 드는 가장 긴 것.
+  ; 그래도 안 들면 첫 칸 · «…» · 파일 이름. 쓰는 것: $R0 머리말 · $R1 경로 · $R3 칸 폭 · $R4 글꼴을 고른 DC · $R6 SIZE 칸 → $R8 적을 줄.
+  Var psFtHead
+  Var psFtTail
+  Var psFtI
+  Var psFtC
+  Function ${PSF}psFitFolders
+    Push $R7
+    ; 끝: 맨 뒤 «\Poster Studio\»부터
+    StrLen $psFtI $R1
+    StrLen $R7 "\${APP_FILENAME}\"
+    IntOp $psFtI $psFtI - $R7
+    ${DoWhile} $psFtI >= 0
+      StrCpy $psFtC $R1 $R7 $psFtI
+      ${If} $psFtC == "\${APP_FILENAME}\"
+        ${Break}
+      ${EndIf}
+      IntOp $psFtI $psFtI - 1
+    ${Loop}
+    ; 없으면 끝에서 두 번째 «\»부터(마지막 두 칸)
+    ${If} $psFtI < 0
+      StrLen $psFtI $R1
+      StrCpy $R7 0
+      ${DoWhile} $psFtI > 0
+        IntOp $psFtI $psFtI - 1
+        StrCpy $psFtC $R1 1 $psFtI
+        ${If} $psFtC == "\"
+          IntOp $R7 $R7 + 1
+          ${If} $R7 = 2
+            ${Break}
+          ${EndIf}
+        ${EndIf}
+      ${Loop}
+      ${If} $R7 < 2
+        StrCpy $psFtI -1
+      ${EndIf}
+    ${EndIf}
+    StrCpy $R8 "$R0$R1"
+    ${If} $psFtI > 0
+      StrCpy $psFtTail $R1 "" $psFtI
+      StrCpy $psFtHead $R1 $psFtI
+      ; 앞에서 마지막 폴더를 하나씩 뗀다
+      ${Do}
+        StrLen $psFtI $psFtHead
+        ${DoWhile} $psFtI > 0
+          IntOp $psFtI $psFtI - 1
+          StrCpy $psFtC $psFtHead 1 $psFtI
+          ${If} $psFtC == "\"
+            ${Break}
+          ${EndIf}
+        ${Loop}
+        ${If} $psFtI <= 0
+          ${Break}
+        ${EndIf}
+        StrCpy $psFtHead $psFtHead $psFtI
+        StrCpy $R8 "$R0$psFtHead\…$psFtTail"
+        StrLen $R7 $R8
+        System::Call "gdi32::GetTextExtentPoint32W(p R4, w R8, i R7, p R6)"
+        System::Call "*$R6(i .R7)"
+        ${If} $R7 <= $R3
+          Pop $R7
+          Return
+        ${EndIf}
+      ${Loop}
+      ; 첫 칸 · «…» · 파일 이름
+      StrLen $psFtI $R1
+      ${DoWhile} $psFtI > 0
+        IntOp $psFtI $psFtI - 1
+        StrCpy $psFtC $R1 1 $psFtI
+        ${If} $psFtC == "\"
+          ${Break}
+        ${EndIf}
+      ${Loop}
+      StrCpy $psFtTail $R1 "" $psFtI
+      StrCpy $R8 "$R0$psFtHead\…$psFtTail"
+    ${EndIf}
+    Pop $R7
+  FunctionEnd
   Function ${PSF}psFit
     Exch $R0
     Exch
@@ -776,12 +866,7 @@
       System::Call "gdi32::GetTextExtentPoint32W(p R4, w R8, i R7, p R6)"
       System::Call "*$R6(i .R7)"
       ${If} $R7 > $R3
-        StrLen $R7 $R0
-        System::Call "gdi32::GetTextExtentPoint32W(p R4, w R0, i R7, p R6)"
-        System::Call "*$R6(i .R7)"
-        IntOp $R7 $R3 - $R7
-        System::Call "shlwapi::PathCompactPathW(p R4, w R1 R1, i R7)"
-        StrCpy $R8 "$R0$R1"
+        Call ${PSF}psFitFolders
       ${EndIf}
       System::Free $R6
       System::Call "gdi32::SelectObject(p R4, p R5)"
@@ -918,6 +1003,10 @@
       Push $R0
       Push 2101
       Call psSpread
+      ; 폴더 칸: 열릴 때 글이 모두 선택돼(파란색) 끝으로 밀려 앞(C:\Users\…)이 잘려 보였다 — 선택을 풀고 맨 앞부터(10/28 팀장)
+      GetDlgItem $R0 $R1 1019
+      SendMessage $R0 ${EM_SETSEL} 0 0
+      SendMessage $R0 ${EM_SCROLLCARET} 0 0
       Push $R1
       Call psThaw
       Pop $R1
@@ -974,6 +1063,7 @@
       ${If} $0 == ""
         StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
       ${endIf}
+      Call psFreeze   ; 위치 화면을 지우기 전에(다시 켜는 것은 psInstFilesShow 끝)
     FunctionEnd
 
     Function psInstFilesShow
@@ -988,6 +1078,9 @@
         StrCpy $psExtractFrom 40
       ${EndIf}
       Call psBarCover
+      FindWindow $R0 "#32770" "" $HWNDPARENT
+      Push $R0
+      Call psThaw
       Pop $R0
     FunctionEnd
 
@@ -1237,6 +1330,9 @@
   Call psCountDir
   Push $INSTDIR
   Call psListDir
+  ; 다음은 템플릿이 바로가기를 만들고 셸에 알린다(SetLnkAUMI · SHChangeNotify) — 1.4초 동안 막대가 서 있었다(10/28 실측). 그 일을 단계 문장으로 띄우고 막대 몫을 준다
+  !insertmacro psStage "바로가기를 만들고 «설치된 앱»에 등록하는 중입니다 …"
+  !insertmacro psAt 945
 !macroend
 
 !ifndef BUILD_UNINSTALLER
