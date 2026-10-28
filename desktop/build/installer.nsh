@@ -257,8 +257,9 @@
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psWelcomeShow
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psWelcomeLeave
     !insertmacro MUI_UNPAGE_WELCOME
-    ; 다음 화면 = 템플릿 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 안내 줄 간격
+    ; 다음 화면 = 템플릿 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 안내 줄 간격 · 떠날 때 그리기 멈춤(다시 켜는 것은 제거 단계 맨 앞)
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psModeShow
+    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psFreeze
   !macroend
   ; 제거기 완료 화면 왼쪽 그림 — 템플릿이 이 자리 바로 뒤에 완료 화면(MUI_UNPAGE_FINISH)을 넣는다
   !macro customUninstallPage
@@ -1258,6 +1259,8 @@
         Abort
       ${EndIf}
       Pop $R0
+      ; 넘어가기로 정했으면 그리기를 멈춘다 — 진행 화면은 SHOW 자리가 없어(템플릿 제거 범위 화면이 가져간다) 제거 단계 맨 앞(customCheckAppRunning)에서 다시 켠다
+      Call un.psFreeze
     FunctionEnd
 
     Function un.psUnFinishShow
@@ -1276,6 +1279,12 @@
     ${IfNot} ${Silent}
       Call un.psBarCover
       !insertmacro psLine "제거 위치" "$INSTDIR"
+      ; 첫 화면(또는 제거 범위)을 떠날 때 멈춘 그리기를 막대 · 위치 줄을 놓은 뒤 켠다(제거 단계 스레드 — 창 함수는 화면 스레드에서 돈다)
+      Push $R0
+      FindWindow $R0 "#32770" "" $HWNDPARENT
+      Push $R0
+      Call un.psThaw
+      Pop $R0
     ${EndIf}
     Push $R0
     Call un.psAppGate
@@ -1318,19 +1327,19 @@
   ${EndIf}
 !macroend
 
-; 7z 풀기 · 설치 폴더로 옮기기가 끝난 뒤(템플릿 custom_files_post_decompression): Nsis7z가 막대를 800‰까지 옮겼다. 놓인 파일을 «설치: …»로 적으며 800 → 940‰.
+; 7z 풀기 · 설치 폴더로 옮기기가 끝난 뒤(템플릿 custom_files_post_decompression): Nsis7z가 막대를 800‰까지 옮겼다. 놓인 파일을 «설치: …»로 적으며 800 → 930‰.
 !macro customFiles_x64
   StrCpy $psLast 799
   !insertmacro psAt 800
   StrCpy $psTotal 0
   StrCpy $psDone 0
   StrCpy $psFrom 800
-  StrCpy $psTo 940
+  StrCpy $psTo 930
   Push $INSTDIR
   Call psCountDir
   Push $INSTDIR
   Call psListDir
-  ; 다음은 템플릿이 바로가기를 만들고 셸에 알린다(SetLnkAUMI · SHChangeNotify) — 1.4초 동안 막대가 서 있었다(10/28 실측). 그 일을 단계 문장으로 띄우고 막대 몫을 준다
+  ; 다음은 템플릿이 바로가기를 만들고 셸에 알린다(SetLnkAUMI · SHChangeNotify) — 1.4초 동안 막대가 서 있었다(10/28 실측). 그 일을 단계 문장으로 띄우고 막대 몫(930 → 945‰)을 함께 준다
   !insertmacro psStage "바로가기를 만들고 «설치된 앱»에 등록하는 중입니다 …"
   !insertmacro psAt 945
 !macroend
