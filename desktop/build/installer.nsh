@@ -733,10 +733,11 @@
       Push $R5
       Call psWriteFileList
       FileClose $R8
-      ; 예전 판의 제거기가 아니라 이 설치기에 든 새 제거기를 쓴다 — 10/28 이전 제거기는 켜진 앱을 PowerShell로 찾아(템플릿 nsExec)
-      ; 관리자 권한으로 부르면 «관리자: Windows PowerShell» 창이 뜰 수 있다. 새 제거기는 nsProcess로 찾아 창이 없다. 앱 데이터는 둔다.
+      ; 예전 판의 제거기가 아니라 이 설치기에 든 새 제거기를 쓴다 — 10/28 이전 제거기는 켜진 앱을 PowerShell로 찾는다(템플릿 nsExec).
+      ; 새 제거기는 nsProcess로 찾아 PowerShell을 띄우지 않는다. 앱 데이터는 제거기 기본대로 지운다
+      ; (템플릿은 --updated가 아니면 지우고, /KEEP_APP_DATA는 읽지 않는다 — 예전 제거기를 부를 때와 같다).
       File "/oname=$PLUGINSDIR\ps-all-uninstaller.exe" "${UNINSTALLER_OUT_FILE}"
-      ExecShellWait "runas" "$PLUGINSDIR\ps-all-uninstaller.exe" "/S /allusers /KEEP_APP_DATA _?=$R5" SW_HIDE
+      ExecShellWait "runas" "$PLUGINSDIR\ps-all-uninstaller.exe" "/S /allusers _?=$R5" SW_HIDE
       FileOpen $R8 "$PLUGINSDIR\ps-old-all.txt" r
       ${Do}
         ClearErrors
@@ -1082,6 +1083,43 @@
   ${AndIfNot} ${FileExists} "$oldStartMenuLink"
     !insertmacro psLine "삭제" "$oldStartMenuLink"
   ${EndIf}
+  ; 앱 데이터는 템플릿이 이 뒤에 RMDir /r 한 번으로 지운다 — 그 순간 막 끈 앱이 쓴 파일을 다른 프로그램(백신 검사 등)이 잡고 있으면 남는다
+  ; (10/28 앱 켜짐 제거 8번 중 1번 %APPDATA%\Poster Studio가 남았다 · 다시 5번은 재현 안 됨). 템플릿과 같은 조건(--delete-app-data, 또는 업데이트가 아님)이면
+  ; 여기서 먼저 지우고, 남으면 0.3초 간격으로 10번까지 다시 지운다. ${isUpdated}는 함수 안에서 못 쓰므로 이 매크로 안에 둔다.
+  Push $R0
+  Push $R1
+  Push $R2
+  StrCpy $R2 "0"
+  ClearErrors
+  ${GetParameters} $R0
+  ${GetOptions} $R0 "--delete-app-data" $R1
+  ${If} ${Errors}
+    !ifdef DELETE_APP_DATA_ON_UNINSTALL
+      ${IfNot} ${isUpdated}
+        StrCpy $R2 "1"
+      ${EndIf}
+    !endif
+  ${Else}
+    StrCpy $R2 "1"
+  ${EndIf}
+  ${If} $R2 == "1"
+    ${If} $installMode == "all"
+      SetShellVarContext current   ; 앱 데이터는 늘 사람마다(템플릿과 같다)
+    ${EndIf}
+    ${For} $R1 1 10
+      RMDir /r "$APPDATA\${APP_FILENAME}"
+      ${IfNot} ${FileExists} "$APPDATA\${APP_FILENAME}\*.*"
+        ${ExitFor}
+      ${EndIf}
+      Sleep 300
+    ${Next}
+    ${If} $installMode == "all"
+      SetShellVarContext all
+    ${EndIf}
+  ${EndIf}
+  Pop $R2
+  Pop $R1
+  Pop $R0
   !insertmacro psAt 1000
   !insertmacro psStage "제거가 끝났습니다."
   ${IfNot} ${Silent}

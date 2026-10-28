@@ -664,7 +664,9 @@ if ($Step -eq 'install') {
     $menuLeft = if (Test-Path $menuDir) { @(Get-ChildItem $menuDir -Force | ForEach-Object { $_.Name }) } else { @() }
     Check '시작 메뉴 «InKY Film Festival»에서 두 바로가기가 지워지고, 폴더는 비었으면 지워진다' ((-not (Test-Path $menuDir)) -or ($menuLeft.Count -gt 0 -and $menuLeft -notcontains 'Poster Studio.lnk' -and $menuLeft -notcontains 'Uninstall Poster Studio.lnk')) $(if (Test-Path $menuDir) { '남은 것(다른 앱): ' + ($menuLeft -join ' · ') } else { '지워짐' })
     Check '«설치된 앱» 등록이 지워진다(HKCU · HKLM)' ((-not (Entry 'HKCU')) -and (-not (Entry 'HKLM'))) $null
-    Check '앱 데이터(%APPDATA%\Poster Studio)가 지워진다' (-not (Test-Path $appData)) $appData
+    # 남았으면 무엇이 언제 쓰였는지 적는다 — 10/28 한 번 남았을 때 남은 파일을 몰라 원인을 가리지 못했다
+    $adLeft = if (Test-Path $appData) { (@(Get-ChildItem $appData -Recurse -Force -File -ErrorAction SilentlyContinue | Select-Object -First 12 | ForEach-Object { $_.FullName.Substring($appData.Length) + '@' + $_.LastWriteTime.ToString('HH:mm:ss.fff') }) -join ' · ') } else { '' }
+    Check '앱 데이터(%APPDATA%\Poster Studio)가 지워진다' (-not (Test-Path $appData)) $(if ($adLeft) { "$appData 남은 파일: $adLeft" } else { $appData })
     if ($AppOn) { Check '켜 둔 앱이 꺼졌다' ($null -eq (Get-Process 'Poster Studio' -ErrorAction SilentlyContinue)) $null }
   }
 }
