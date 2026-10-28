@@ -4,8 +4,9 @@
 #   제거:  ... -Step uninstall -Mode user|all -Via startmenu|settings -Out <결과 폴더>
 #   앱이 켜져 있을 때: ... -Step running -Mode user|all -Installer <…> -Via startmenu|settings -Out <결과 폴더>
 #          그 범위에 깔린 앱을 켜 둔 채 설치기 · 제거기를 띄워, 첫머리에 뜨는 «앱 실행 중» 알림을 찍고 «취소»로 닫는다(설치 · 제거는 일어나지 않는다).
-#   -Beside: 다른 범위에도 설치가 있는 PC(«모든 사용자» · «나만» 함께) — 설치 전 · 제거 뒤 검사가 다른 범위 설치는 그대로인지를 본다.
+#   -Beside: 다른 범위에도 설치가 있는 PC — «모든 사용자» 위에 «나만»을 깔고 지울 때는 «모든 사용자» 설치가 그대로인지 본다.
 #          두 범위가 함께 있으면 제거기에 «제거 옵션 선택» 화면이 뜬다(-Mode에 맞는 단추를 고른다).
+#          «나만» 위에 «모든 사용자»를 깔면 electron-builder가 «나만» 설치를 먼저 지운다(설계) — 그 «나만» 설치가 남김없이 정리되는지 본다.
 #
 # 화면 글(10/28 Bumm님): 화면마다 글 칸의 실제 글꼴로 줄 폭을 재서, 줄이 칸 안에 들어가는지(낱말 중간에서 꺾이지 않는지) · 한 줄에 두 문장이 없는지 ·
 # «(을)를» 같은 조사 표기와 글자 그대로 찍힌 «\n»이 없는지 본다. 알림 창 글도 같은 기준으로 본다.
@@ -210,13 +211,15 @@ public static class Win {
         RECT c; GetClientRect(h, out c);
         IntPtr dc = GetDC(IntPtr.Zero), font = IntPtr.Zero, old = IntPtr.Zero;
         byte[] lf = new byte[92];
-        IntPtr f = SendMessage(h, 0x0031, IntPtr.Zero, IntPtr.Zero);   // WM_GETFONT
-        if (f != IntPtr.Zero && GetObject(f, lf.Length, lf) > 0) { font = CreateFontIndirect(lf); old = SelectObject(dc, font); }
+        IntPtr f = SendMessage(h, 0x0031, IntPtr.Zero, IntPtr.Zero);   // WM_GETFONT — 0이면 칸이 시스템 글꼴을 쓴다(이 DC의 기본 글꼴과 같다)
+        // 글꼴 정보를 못 읽으면(권한이 다른 프로세스 등) 폭을 -1로 둔다 — 다른 글꼴로 잰 폭을 통과로 믿지 않게(10/28: 관리자 창을 일반 권한으로 재니 914px로 틀리게 나왔다)
+        bool unreadable = f != IntPtr.Zero && GetObject(f, lf.Length, lf) == 0;
+        if (f != IntPtr.Zero && !unreadable) { font = CreateFontIndirect(lf); old = SelectObject(dc, font); }
         uint fmt = 0x0400 | 0x0020 | 0x0040 | ((style & 0x80) != 0 ? 0x0800u : 0u);   // CALCRECT · SINGLELINE · EXPANDTABS (+ SS_NOPREFIX면 NOPREFIX)
         foreach (var line in t.Replace("\r\n", "\n").Split('\n')) {
           if (line.Trim().Length == 0) continue;
           RECT r = new RECT(); DrawText(dc, line, -1, ref r, fmt);
-          rows.Add(GetDlgCtrlID(h) + "\t" + c.R + "\t" + (r.R - r.L) + "\t" + line);
+          rows.Add(GetDlgCtrlID(h) + "\t" + c.R + "\t" + (unreadable ? -1 : r.R - r.L) + "\t" + line);
         }
         if (font != IntPtr.Zero) { SelectObject(dc, old); DeleteObject(font); }
         ReleaseDC(IntPtr.Zero, dc);
@@ -257,6 +260,7 @@ function TextRules($rows) {
   $bad = @()
   foreach ($row in @($rows)) {
     $id, $box, $width, $line = $row -split "`t", 4
+    if ([int]$width -lt 0) { $bad += "글꼴을 못 읽어 폭을 못 잼[$id]: $line" }
     if ([int]$width -gt [int]$box) { $bad += "칸 넘침[$id] ${width}px > ${box}px: $line" }
     if ($line -match '[.?!]\s+\S') { $bad += "한 줄 두 문장[$id]: $line" }
     if ($line -match '\((을|이|은|과|으)\)|(을|이|은|과)\((를|가|는|와)\)') { $bad += "조사 표기[$id]: $line" }
@@ -396,12 +400,15 @@ if ($Step -eq 'install') {
   if ($Mode -eq 'all') {
     $guid = if ($entry) { Split-Path $entry.PSPath -Leaf } else { '' }
     $stub = if ($guid) { (Get-ItemProperty "HKCU:\Software\$guid" -ErrorAction SilentlyContinue).InstallLocation } else { $null }
+    Check '«모든 사용자» 설치 뒤 «나만» 위치 메모(HKCU)가 남지 않는다' (-not $stub) $stub
     if ($Beside) {
-      # «나만» 설치가 따로 있으면 HKCU 위치 값은 메모가 아니라 그 설치의 기록이다 — 지워지면 «나만» 제거기가 «모든 사용자» 설치를 지우러 간다(10/28)
-      $userDir = Join-Path $env:LOCALAPPDATA 'Programs\InKY Film Festival\Poster Studio'
-      Check '«모든 사용자» 설치 뒤에도 «나만» 설치의 위치 기록(HKCU)은 그대로다' ($stub -eq $userDir) "$stub"
-    } else {
-      Check '«모든 사용자» 설치 뒤 «나만» 위치 메모(HKCU)가 남지 않는다' (-not $stub) $stub
+      # electron-builder는 «모든 사용자»로 설치하기 전에 «나만» 설치를 지운다(installSection — uninstallOldVersion HKEY_CURRENT_USER, «/currentuser --updated»).
+      # 그 «나만» 설치가 남김없이 지워져야 한다 — e58b65c는 «나만» 시작 메뉴에 대상 없는 «Uninstall Poster Studio»와 폴더를 남겼다(10/28 실측)
+      $userParent = Join-Path $env:LOCALAPPDATA 'Programs\InKY Film Festival'
+      $userDesk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Poster Studio.lnk'
+      $userMenu = Join-Path ([Environment]::GetFolderPath('Programs')) 'InKY Film Festival'
+      $left = @(@($userParent, $userDesk, $userMenu) | Where-Object { Test-Path $_ }) + @(if (Entry 'HKCU') { '«설치된 앱» HKCU 등록' })
+      Check '«나만» 설치가 남김없이 정리된다(폴더 · «설치된 앱» 등록 · 바탕화면 · 시작 메뉴 폴더)' ($left.Count -eq 0) $(if ($left.Count) { ($left + @(if (Test-Path $userMenu) { Get-ChildItem $userMenu | ForEach-Object { "시작 메뉴 안: $($_.Name)" } })) -join ' · ' })
     }
   }
   $d = LnkInfo $desktopLnk; $s = LnkInfo $startLnk; $u = LnkInfo $uninstallLnk
