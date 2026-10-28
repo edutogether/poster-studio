@@ -167,6 +167,13 @@
   DetailPrint "${TEXT}"
   SetDetailsPrint none
 !macroend
+; 바깥 창의 칸 하나를 그 자리에서 다시 그린다(머리 바탕 1034 · 제목 1037 · 부제 1038 · 그림 1046 · 아래 줄 1028 · 1256 — psThaw). $2를 쓴다
+!macro psRepaintItem ID
+  GetDlgItem $2 $HWNDPARENT ${ID}
+  ${If} $2 <> 0
+    System::Call "user32::RedrawWindow(p r2, p 0, p 0, i 0x105)"   ; INVALIDATE | ERASE | UPDATENOW
+  ${EndIf}
+!macroend
 ; «머리말: 경로» 한 줄 — 상자 칸보다 길면 경로 가운데를 줄인다(psFit)
 !macro psLine WORD PATH
   Push $R0
@@ -257,9 +264,8 @@
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psWelcomeShow
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psWelcomeLeave
     !insertmacro MUI_UNPAGE_WELCOME
-    ; 다음 화면 = 템플릿 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 안내 줄 간격 · 떠날 때 그리기 멈춤(다시 켜는 것은 제거 단계 맨 앞)
+    ; 다음 화면 = 템플릿 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 안내 줄 간격
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psModeShow
-    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psFreeze
   !macroend
   ; 제거기 완료 화면 왼쪽 그림 — 템플릿이 이 자리 바로 뒤에 완료 화면(MUI_UNPAGE_FINISH)을 넣는다
   !macro customUninstallPage
@@ -629,6 +635,14 @@
       SendMessage $HWNDPARENT ${WM_SETREDRAW} 1 0
       System::Call "user32::RedrawWindow(p $HWNDPARENT, p 0, p 0, i 0x585)"   ; INVALIDATE | ERASE | ALLCHILDREN | UPDATENOW | FRAME
       System::Call "user32::SetWindowLongW(p $HWNDPARENT, i -20, i r1)"
+      ; 합성으로 그릴 때 머리(제목 · 부제 · 그림)와 아래 «Poster Studio 1.0.0» 줄은 그려지지 않는다(10/28 978973e 진행 화면 — 완료 화면까지 머리가 비었다).
+      ; 합성을 끈 뒤 그 칸들만 다시 그린다 — 화면 칸(새 화면)은 다시 칠하지 않는다
+      !insertmacro psRepaintItem 1034
+      !insertmacro psRepaintItem 1037
+      !insertmacro psRepaintItem 1038
+      !insertmacro psRepaintItem 1046
+      !insertmacro psRepaintItem 1028
+      !insertmacro psRepaintItem 1256
       StrCpy $psFrozen ""
       Pop $2
       Pop $1
@@ -1064,7 +1078,6 @@
       ${If} $0 == ""
         StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
       ${endIf}
-      Call psFreeze   ; 위치 화면을 지우기 전에(다시 켜는 것은 psInstFilesShow 끝)
     FunctionEnd
 
     Function psInstFilesShow
@@ -1079,9 +1092,6 @@
         StrCpy $psExtractFrom 40
       ${EndIf}
       Call psBarCover
-      FindWindow $R0 "#32770" "" $HWNDPARENT
-      Push $R0
-      Call psThaw
       Pop $R0
     FunctionEnd
 
@@ -1259,8 +1269,6 @@
         Abort
       ${EndIf}
       Pop $R0
-      ; 넘어가기로 정했으면 그리기를 멈춘다 — 진행 화면은 SHOW 자리가 없어(템플릿 제거 범위 화면이 가져간다) 제거 단계 맨 앞(customCheckAppRunning)에서 다시 켠다
-      Call un.psFreeze
     FunctionEnd
 
     Function un.psUnFinishShow
@@ -1279,12 +1287,6 @@
     ${IfNot} ${Silent}
       Call un.psBarCover
       !insertmacro psLine "제거 위치" "$INSTDIR"
-      ; 첫 화면(또는 제거 범위)을 떠날 때 멈춘 그리기를 막대 · 위치 줄을 놓은 뒤 켠다(제거 단계 스레드 — 창 함수는 화면 스레드에서 돈다)
-      Push $R0
-      FindWindow $R0 "#32770" "" $HWNDPARENT
-      Push $R0
-      Call un.psThaw
-      Pop $R0
     ${EndIf}
     Push $R0
     Call un.psAppGate
@@ -1361,6 +1363,25 @@
       StrCpy $psUserDefaultWritten "1"
     ${EndIf}
     Pop $0
+  !macroend
+
+  ; 조용한 설치(/S)도 «나만» 기본 위치를 화면 설치와 같게(…\Programs\InKY Film Festival\Poster Studio, 10/28 저녁 팀장) — 위 기본 위치는 범위 화면(PRE)에서 정하는데
+  ; 조용한 설치는 그 화면을 거치지 않아 템플릿 기본(…\Programs\Poster Studio)에 깔렸다. 예전 설치 위치(등록 값)와 /D는 그대로 따른다. «모든 사용자»는 템플릿이 이미 같은 모양이다.
+  !macro customInit
+    ${If} ${Silent}
+    ${AndIf} $installMode == "CurrentUser"
+      Push $0
+      Push $1
+      ReadRegStr $0 HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
+      !insertmacro GetDParameter $1
+      ${If} $0 == ""
+      ${AndIf} $1 == ""
+        ${GetParent} "$INSTDIR" $0
+        StrCpy $INSTDIR "$0\${MENU_FILENAME}\${APP_FILENAME}"
+      ${EndIf}
+      Pop $1
+      Pop $0
+    ${EndIf}
   !macroend
 
   Function .onGUIEnd
