@@ -387,6 +387,15 @@ function ProgressChecks($kind, $whereLabel, $doing, $word, $endLine) {
     $i = $k + 1 }
   $silent = @($stalls | Where-Object { -not $_.told })
   Check "$kind 진행 막대가 0.5초 넘게 서 있는 구간이 없거나, 있으면 그 자리에서 그 일의 단계 문장이 뜬다(100% 전)" ($timed.Count -ge 5 -and $silent.Count -eq 0) $(if ($timed.Count -lt 5) { "시각 붙은 표본 $($timed.Count)개" } elseif ($stalls.Count) { "선 구간 $($stalls.Count)곳(문장 없이 $($silent.Count)곳): " + (($stalls | ForEach-Object { $_.text }) -join ' | ') } else { "표본 $($timed.Count)개 · $([Math]::Round(($timed[-1].t - $timed[0].t) / 1000, 1))초 · 선 구간 0" })
+  # 막대가 움직이는데 상자 줄이 1초 넘게 늘지 않는 구간 — 줄이 «주르륵» 흐르지 않고 막대만 가는 자리(10/28 저녁 팀장, Bumm님 «설치 중입니다 하면 주르륵 떠야»)
+  $quiet = @(); $tLine = $null; $prevN = -1; $prevBar = -1
+  foreach ($s in $timed) {
+    $nLines = @($s.details).Count
+    if ($null -eq $tLine -or $nLines -gt $prevN) { $tLine = $s.t }
+    if ($prevBar -ge 0 -and $s.bar -gt $prevBar -and $s.t - $tLine -gt 1000) { $quiet += "$($prevBar)→$($s.bar)‰ · 줄 없이 $([Math]::Round(($s.t - $tLine) / 1000, 1))초" }
+    $prevN = $nLines; $prevBar = $s.bar
+  }
+  Check "$kind 막대가 움직이는 동안 상자 줄이 1초 넘게 늘지 않는 구간이 없다" ($timed.Count -ge 5 -and $quiet.Count -eq 0) $(if ($timed.Count -lt 5) { "시각 붙은 표본 $($timed.Count)개" } elseif ($quiet.Count) { "$($quiet.Count)곳: " + (($quiet | Select-Object -First 5) -join ' | ') } else { '0곳' })
   # «삭제: …» 줄이 새로 붙는 동안 막대 위 단계 문장이 하는 일(지우기)과 같다 — «…설치하는 중»이면 걸림(10/28 팀장)
   $mismatch = @(); $prevCount = 0
   foreach ($s in $samples) { $d = @($s.details); if ($d.Count -gt $prevCount -and $d[-1] -like '삭제: *') { $st = if ($s.text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } else { '' }; if ($st -notlike '*지우는*') { $mismatch += "«$st» · $($d[-1])" } }; $prevCount = $d.Count }
