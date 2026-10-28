@@ -475,6 +475,17 @@ function HandleBoxes($prefix, $n, $h, $wait) {
   return 'none'
 }
 
+# 창이 보이는가 — 설치기가 화면을 넘기는 동안 바깥 창 그리기를 멈추면(WM_SETREDRAW) 잠깐 «보이지 않음»으로 읽힌다(10/28 깜빡임 고침).
+# 1초 안에 다시 보이면 보이는 것으로 본다 — 제거가 끝나 완료 화면으로 넘어가는 순간 진행 기록을 통째로 버렸다(1088192 «앱 켜짐» 제거).
+function Shown($h) {
+  for ($i = 0; $i -lt 20; $i++) {
+    if (-not [Win]::IsWindow($h)) { return $false }
+    if ([Win]::IsWindowVisible($h)) { return $true }
+    Start-Sleep -Milliseconds 50
+  }
+  return $false
+}
+
 # 설치 · 제거 창을 화면마다 찍으며 «다음»(단추 1)을 누른다
 function Walk($prefix) {
   $walkClock = [Diagnostics.Stopwatch]::StartNew()   # 진행 표본의 시각(막대가 멈춘 시간을 잰다)
@@ -508,7 +519,7 @@ function Walk($prefix) {
     # 설치가 도는 동안(«다음»이 꺼져 있는 동안)은 0.5초마다 그 화면을 찍고, 진행 글(위 한 줄 · «자세히» 목록) · 막대 위치 · 상자 보임은 0.1초마다 읽는다 —
     # 마지막 단계가 0.5초 안에 끝나면 찍는 간격으로는 그 줄을 놓친다(10/27 «모든 사용자» 제거 실측)
     $progress = @()
-    for ($w = 0; $w -lt 1500 -and -not [Win]::IsWindowEnabled($next) -and [Win]::IsWindow($h) -and [Win]::IsWindowVisible($h); $w++) {
+    for ($w = 0; $w -lt 1500 -and -not [Win]::IsWindowEnabled($next) -and (Shown $h); $w++) {
       # 진행 단계에서 뜨는 묻는 창(그 사이에 앱을 다시 켰을 때 등)
       if ([Win]::FindMessageBox('Poster Studio') -ne [IntPtr]::Zero) { HandleBoxes $prefix $n $h 1 | Out-Null; continue }
       $sample = [ordered]@{ t = $walkClock.ElapsedMilliseconds; text = [Win]::AllText($h); details = @(DetailLines $h); bar = [Win]::BarPermille($h); list = [Win]::ListVisible($h) }
@@ -520,7 +531,7 @@ function Walk($prefix) {
       $progress += $sample
       Start-Sleep -Milliseconds 100
     }
-    if (-not [Win]::IsWindow($h) -or -not [Win]::IsWindowVisible($h)) { continue }
+    if (-not (Shown $h)) { continue }
     Start-Sleep -Milliseconds 700
     $file = Join-Path $Out ('{0}-{1:00}.png' -f $prefix, $n)
     $stable = [Win]::ShotStable($h, $file)
