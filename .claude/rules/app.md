@@ -402,10 +402,13 @@
   배포 상태가 곧 행사 준비 상태이고, 11/14 전에 "배포한 줄 알았는데 안 됐다"가 나면 안 된다.
 
 ## Windows 설치판 · 첫 화면 다운로드 단추 (2026-10-27 Bumm님, 팀장 전달 — `_docs/intents/2026-10-27-desktop-installer`)
-- 🔴 **설치판에는 AI가 없다.** 찍거나 불러온 사진을 그대로 8종 틀에 넣는다(로컬 합성 — `buildPosters` 그대로).
+- 🔴 **설치판에는 AI가 없다.** 찍은 사진을 그대로 8종 틀에 넣는다(로컬 합성 — `buildPosters` 그대로).
   - 부스 토큰 0 · 서버 요청 0이다. 화면 정책은 `connect-src 'self'`이고, `desktop/main.mjs`가 http · https · ws를 전부 끊는다.
   - 머리글에 «설치판 · AI 없이 사진 그대로»를 늘 띄운다.
-  - «샘플 포스터 보기» 흐름은 싣지 않는다.
+  - 2단계 빨간 단추는 카메라를 켜기 전 «샘플 포스터 보기», 켜면 «3초 뒤 사진 찍기»다(10/28 Bumm님, `studioMode.ts` 설치판 = «both»).
+    샘플은 웹의 AI 원화가 아니라 화면의 «촬영 구도 예시» 사진(지금 고른 개인 · 단체, 승인된 예시 영상이면 «찰칵» 뒤 마지막 장면)을 같은 로컬 합성으로 8종에 넣는다 —
+    설치판이 실제로 만드는 모습이어야 한다(웹 원화를 보이면 거짓 안내). 로딩은 아래 두 장면 그대로. «사진 불러오기»(파일 고르기)는 10/28에 걷었다.
+    ⚠ `onSample`의 `DESKTOP` 삼항은 압축기가 접지 않아 설치판 번들에도 웹 샘플 원화(`design-sample-*.webp` 1.9MB)와 그 조각이 남는다. 앱은 부르지 않는다.
   - «이 사진으로 포스터 만들기»는 웹과 같은 로딩 화면을 무작위 장면 둘(16초, `DESKTOP_WAIT_SCENES`) 보인 뒤 3단계로 간다(10/27 Bumm님 «토스트 말고 로딩 화면 · 최소 두 바퀴»).
     장면마다 웹과 같은 승인된 대기 영상(`waiting-v3`, 12편 11MB — 설치 파일에 넣는다)을 틀고, 재생 중인 영상은 끝까지 보여 준다(10/27 Bumm님 «승인된 영상과 디자인을 그대로»).
     «AI가 당신의 영화를 그리고 있어요» 장면 하나만 뺀다(`GenerationWait.tsx`의 `setsForBuild` — AI가 없으니 거짓 표시). 영상을 빼거나 장면을 0으로 줄이면 `test/desktop-and-download.test.tsx` 3건이 잡는다.
@@ -440,20 +443,61 @@
   - «나만» 기본 위치는 설치 범위 화면이 열릴 때 적는다. 설치기 시작에서 적으면 첫 설치인데 «이미 사용자별 설치가 있습니다»가 뜬다. 끝까지 «나만»으로 설치하지 않으면 창이 닫힐 때 지운다.
   - 리액트 `autoFocus`는 HTML 속성으로 나가지 않는다. `<dialog>.showModal()`이 첫 단추에 초점을 주므로, 열고 나서 직접 `focus()`한다.
   - `SetBrandingImage`를 쓰는 함수는 MUI 화면 정의 뒤에 컴파일돼야 한다(앞이면 «no branding image found»). 그래서 `customFinishPage` · `customUninstallPage` 매크로 안에 둔다.
-  - `customCheckAppRunning`을 직접 쓰면 템플릿이 빼 버리는 `getProcessInfo.nsh` · `Var pid`를 그 파일에서 들인다(빠뜨리면 «Invalid command: ${GetProcessInfo}»).
-  - 🟠 **진행 화면에는 쉬운 문장만**(10/27 Bumm님 B안): NSIS 원래 기록(«압축 해제: …Temp
-sg….tmpapp-64.7z», 파일 삭제 …)은 꺼 두고(`SetDetailsPrint none` — 설치는 템플릿 기본, 제거는 `customUnInit`),
-    `psSay`가 문장 한 줄만 켰다 끈다(위 한 줄 · «자세히 보기» 목록 같음). 설치: 설치 위치 → 켜진 앱 확인 → 프로그램 파일 설치 중 → 바로가기 · 시작 메뉴 · «설치된 앱» 등록(끝난 뒤 «…했습니다») → 마침.
-    제거: 제거 위치 → 지우는 중 → 마침. 파일 풀기와 바로가기 사이에는 템플릿 자리가 없다. 확인 도구가 위 한 줄과 목록(UI 자동화)을 읽어 원래 기록 말투 · 임시 경로 · .7z · .dll이 없는지 본다.
+  - 켜진 앱 확인은 nsProcess로 한다(닫기 5초 → 강제 종료 3초). 템플릿의 PowerShell 찾기(`getProcessInfo` · `$pid`)는 쓰지 않는다 — 진행 중 막대가 4초쯤 멈췄다.
+  - 🟠 **진행 화면**(10/28 Bumm님 «막대는 한 방향 · 100%를 1초 · 상자는 처음부터 · 실제 파일 줄 · 깜빡임 0»):
+    - 막대: 원래 막대(ID 1004)에 NSIS(지나간 명령 수)와 Nsis7z(풀기 0~30000)가 번갈아 써 50 → 5 → 80%로 튀고 100%에 닿지 않았다(녹화 실측).
+      화면 스레드(`(un.)onGUIInit`)에서 막대를 하나 더 만들어 원래 막대 자리에 덮고(설치는 진행 화면 SHOW, 제거는 첫 단계), **단계가 시작된 뒤** ID를 맞바꾼다(원래 1999 · 새 막대 1004) —
+      NSIS는 단계 시작 때 막대를 잡아 두므로 SHOW에서 바꾸면 NSIS가 새 막대에 썼다. 새 막대 범위는 Nsis7z의 0~30000이 그 구간(A~800‰)에 오게 잡는다(span = 30000000/(800−A), lo = −A·span/1000).
+      `psAt`은 앞으로만 간다. 끝에 1000‰을 1초 보인 뒤 완료 화면.
+    - 상자: `ShowInstDetails show` — 처음부터 보인다(예전 nevershow + 나중 `SetDetailsView`가 중간에 상자를 띄웠다). NSIS 원래 기록은 끈다(`SetDetailsPrint none`).
+      막대 위 한 줄과 상자 맨 위는 단계 문장(`psStage`), 그 아래 «설치: …» · «삭제: …» 실제 파일 줄(`psLine`, 줄마다 35ms), 바로가기 · 등록(`psNote`), 마지막 줄 «설치가 끝났습니다.» · «제거가 끝났습니다.».
+      위치 줄 · 한 일은 상자에만 적는다 — 위 한 줄에도 적으면 몇 ms 만에 글이 연달아 바뀌었다(녹화).
+    - 줄이 상자 칸보다 길면 경로 가운데를 «...»로 줄인다(`psFit` — 상자 글꼴로 폭을 재 `PathCompactPathW`). «나만» 위치는 줄마다 «…\Poster Stu…»에서 잘려 파일 이름이 안 보였다.
+    - 🟡 상자 줄이 올라갈 때 맨 아래 줄에 앞 줄 반쪽이 한 장면(33ms) 남는 일이 설치 한 번에 0~1번 있다 — 목록 상자가 화면 조각을 먼저 밀고 새 줄을 나중에 그린다.
+      이중 버퍼(`LVS_EX_DOUBLEBUFFER`)는 줄이지 못했고 그리기 멈춤(`WM_SETREDRAW`)은 5~7번으로 늘려 둘 다 넣지 않았다(10/28 녹화 · `installer-list-tear.mjs`).
+  - 🟠 **묻는 창**(10/28 Bumm님): 설치 위치 화면을 떠날 때(«설치») 「이미 설치되어 있습니다 · 지우고 새로 설치할까요?」(위치 · 범위가 달라도) → 「켜져 있습니다 · 끄고 계속할까요?」.
+    제거는 첫 화면 «다음»에서 켜진 앱만 묻는다. «취소»면 그 화면에 남고 아무것도 바꾸지 않는다. 안 꺼지면 «다시 시도».
+    - 템플릿 위치 화면에는 떠나는 순간을 걸 수 없다 — 앞의 설치 범위 화면이 `MUI_PAGE_CUSTOMFUNCTION_*` 정의를 먼저 가져간다. 그래서 `allowToChangeInstallationDirectory: false`로 끄고
+      `customPageAfterChangeDir`에 위치 화면을 직접 넣는다(PRE/LEAVE, 진행 화면 PRE는 템플릿의 경로 정리를 그대로 옮김). 진행 화면 SHOW에서 «뒤로»는 설치 스레드가 그대로 돌아 못 쓴다(시제품 실측).
+    - «확인»이면 «예전 Poster Studio를 지우는 중입니다 …»와 «삭제: …» 줄 → «설치: …» 줄(막대는 한 방향). 같은 범위 · «나만»은 이 설치기가 폴더 이름 · 실행 파일을 확인하고 직접 지운다.
+      일반 권한 설치기가 «모든 사용자» 판을 지울 때만 이 설치기에 든 **새 제거기**(`UNINSTALLER_OUT_FILE`)를 관리자 권한(runas)으로 «/S /allusers _?=<그 폴더>» 부른다 —
+      예전 판의 제거기는 켜진 앱을 PowerShell로 찾는다(10/28 324b3da). 다 지우지 못하면 되돌리고 멈춘다(«다 지우지 못했습니다»).
+      ⚠ 템플릿은 `/KEEP_APP_DATA`를 읽지 않는다 — 앱 데이터를 남기는 것은 `--updated`뿐이다(그 경로는 앱 데이터를 지운다, 같은 범위 덮어쓰기는 남긴다).
+  - 🔴 **설치 · 제거에 PowerShell을 쓰지 않는다**(10/28 Bumm님 «관리자: Windows PowerShell 창이 뜬다»): 켜진 앱 확인은 nsProcess, 예전 «모든 사용자» 판 지우기는 새 제거기.
+    템플릿 검사(10/28 이전 판)는 nsExec로 PowerShell 프로세스를 만들지만 창은 0번이었다(e58b65c 창 기록). 보인 창은 확인 도구가 `Start-Process -Verb RunAs`로 띄운
+    관리자 PowerShell이었다 — 이 PC는 기본 콘솔이 Windows 터미널이라 숨김 요청(SW_HIDE · -WindowStyle Hidden)도 터미널 창으로 위 모니터에 뜬다(10/28 자기검사).
+    확인 도구는 `scripts/verify/run-hidden.ps1`(창 없는 실행 파일이 CREATE_NO_WINDOW로 PowerShell을 돌림, 관리자 권한)로 돌리고,
+    `installer-window-watch.ps1`(0.1초 창 목록 + 창이 보이는 순간 알림)로 콘솔 창 0번을 잰다(일부러 띄운 cmd를 잡는 것 확인).
+  - 🟠 **자동 검사 창은 아래 작은 모니터에만**(9/26 Bumm님 규칙, 10/28 재확인): `scripts/verify/test-monitor.ps1`의 `Move-ToTestMonitor`(앱 창은 `-Maximize`)가
+    `test-monitor.json`의 좌표(1601,1441)를 품은 모니터로 옮긴다 — 모니터 이름(DISPLAYn)은 다시 연결하면 바뀐다. 그 모니터는 125%라 녹화는 모니터별 DPI 좌표로 찍는다(약 730×452).
+  - 완료 화면 «Poster Studio 실행하기»는 처음부터 체크돼 있고(템플릿 `StartApp` — «모든 사용자»에서도 `ExecShellAsUser`로 일반 권한), 풀면 켜지지 않는다.
+    탐침이 켜진 앱의 TokenElevation(0)을 보고, `-NoRun`으로 체크를 풀어 10초 동안 앱이 안 켜지는지 본다(10/28 나만 · 모든 사용자).
+  - 🟡 설치기만 빨리 묶는 시험 빌드(`--prepackaged`)는 지금 커밋의 앱 파일로만 — 10/28 낡은 `out/win-unpacked`(10/27 오전, «IN+PS» 아이콘)로 묶어 이 PC에 깔았다가
+    바탕화면 아이콘이 예전 것으로 보였다(제품 icon.ico는 그대로였다 — 셸 아이콘 화소 대조).
+    - `allowToChangeInstallationDirectory: false`면 템플릿이 `isTryToKeepShortcuts`를 참으로 읽는다 — `KeepShortcuts` 값을 잠깐 치워 두지 않으면 새 바로가기가 안 생긴다(`psStash`).
+  - 🟠 **화면 안내문은 문장마다 새 줄, 줄은 칸 안에**(10/28 Bumm님): NSIS · electron-builder 한국어 기본 문구는 여러 문장이 한 덩어리로 흘러 낱말 중간에서 꺾였다(한국어는 글자 사이에서도 꺾인다).
+    칸 글꼴은 굴림 9pt(-12px), 100%에서 칸 폭은 위치 안내 525 · 설치 범위 위 525 · 아래 490 · 머리 설명 368 · 제거 시작 안내 341px다.
+    고친 문구는 `installer.nsh`의 `customHeader`(언어 문구가 다 정해진 뒤)에서 같은 이름의 `LangString`으로 다시 정한다 — 같은 이름을 두 번 정하면 경고 6030이 빌드를 멈추므로
+    그 몇 줄만 `!pragma warning disable 6030`으로 감싼다(나중 값이 이긴다 — 시험 스크립트로 확인). 위치 화면 안내만 MUI 설정 `MUI_DIRECTORYPAGE_TEXT_TOP`이다.
+    «설치 범위» 아래 안내는 설치기가 «$(…Exists)(경로)$\r$\n$(reinstallUpgrade)»로 이으므로 앞 문장 끝에 줄바꿈을 넣어 경로를 제 줄로 보낸다. 칸보다 긴 한 문장은 문구를 그대로 두고 낱말 사이에서 나눈다.
+    문구를 바꾸면 탐침의 «화면 글» 검사(칸 넘침 · 한 줄 두 문장 · 조사 표기 · «\n» 글자)를 돌린다. 이 PC 100% 화면 기준이고, 다른 배율에서는 실측하지 않았다.
+  - 🟠 **«모든 사용자»로 설치하면 electron-builder가 «나만» 설치를 먼저 지운다**(설계 — `installSection.nsh`의 `uninstallOldVersion HKEY_CURRENT_USER`, 인자 «/currentuser --updated»).
+    그래서 두 범위가 함께 있는 PC는 예전 판(10/28 낮 이전)으로 «모든 사용자» 위에 «나만»을 깔았을 때뿐이다 — 10/28 판부터는 범위가 달라도 묻고 앞 판을 먼저 지운다(아래 «묻는 창»).
+    두 범위가 함께 있을 때 «나만» 제거기를 시작 메뉴로 열면 «제거 옵션 선택» 화면이 뜬다(«설치된 앱»은 «/currentuser»라 안 뜬다).
+    제거기의 «Uninstall Poster Studio» 바로가기는 electron-builder와 같은 조건(`--keep-shortcuts` 없을 때)으로 지운다 — 예전 `--updated` 조건은 그 정리 때 «나만» 시작 메뉴에 대상 없는 바로가기 · 폴더를 남겼다(10/28 실측).
+  - 🟡 **시험 중 설치기를 강제로 끄지 않는다**: 설치 범위 화면이 열리면 «나만» 기본 위치 메모(HKCU `Software\<앱 GUID>` InstallLocation)를 적고 창이 닫힐 때 지운다.
+    프로세스를 죽이면 그 메모가 남아 다음 설치기가 «이미 사용자별 설치가 있습니다»로 읽는다(10/28 — 측정용으로 띄운 창을 죽였다가 남은 값을 지웠다). 닫으려면 «취소»로 닫는다.
 - 🟠 **설치기 그림은 화면 배율마다 따로 그린다**(10/27 Bumm님 «머리 로고가 가로로 늘어남 · 고화질»):
   - 한국어 Windows 100%에서 머리 칸은 175×53, 완료 · 첫 화면 옆 칸은 191×290이다(실측). 그 비율 그대로 100~300% 여덟 벌을 `desktop/build/installer-art/`에 굽는다.
   - 설치기가 뜰 때 칸 폭을 재어(`GetClientRect`) 가장 가까운 배율을 골라 넣는다(`installer.nsh`의 `psPickScale` · `psHeaderArt`). 칸과 그림 비율이 같아 늘어나지 않는다.
   - 완료 화면 그림은 웹 첫 화면의 극장 그림 · 제목(«이번 영화의 / 주인공은, 나.»)이다. 표 · «Poster Studio · CGV 인천» 줄은 넣지 않는다.
-  - 설치기 머리 로고 · 제거 화면 그림도 슬레이트다(아래 «아이콘»).
+  - 설치기 머리 로고는 슬레이트다(아래 «아이콘»). 제거 첫 · 완료 화면 왼쪽 그림은 설치 완료 화면과 같은 극장 그림이다(10/28 — `uninstallerSidebar`도 `installerSidebar.bmp`, 칸 크기에 맞춰 `psSideArt`).
 - **확인**(전부 실제 실행):
-  - `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(또는 `--dev`): 가짜 카메라로 한글 입력 → 촬영 → 8종 → PC 저장 → 인쇄 미리보기 → 4×6 PDF → 사진 불러오기 → 로고 → 종료.
+  - `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(또는 `--dev`): 가짜 카메라로 한글 입력 → 촬영 → 8종 → PC 저장 → 인쇄 미리보기 → 4×6 PDF → «샘플 포스터 보기»(촬영 구도 예시 사진 · 로컬 합성) → 로고 → 종료.
   - `powershell -File scripts/verify/desktop-installer-probe.ps1 -Step install|uninstall -Mode user|all -Via startmenu|settings …`: 설치 창을 화면마다 찍으며 단추 누름 메시지로 넘긴다. 키보드 흉내는 없다.
     «모든 사용자»는 설치기가 관리자 권한으로 다시 뜨므로 이 도구도 관리자 권한으로 돌린다(권한이 낮은 창의 단추 누름 메시지는 Windows가 막는다).
+    묻는 창 시험은 `-Replace`(같은 범위 예전 판) · `-Beside`(다른 범위) · `-AppOn` · `-Answers ok,cancel,…` · `-Decline`, 사람이 두 번 누른 흐름은 `-AsUser`(머리말에 설명).
+    진행 화면 녹화는 `installer-screen-record.ps1` + 상자 줄 겹침 `installer-list-tear.mjs`(깜빡임 판정 `installer-flicker-scan.mjs`는 흐르는 줄도 세므로 상자 칸에는 쓰지 않는다).
   - `node scripts/verify/desktop-vs-web.mjs <결과> --exe <설치한 exe> --web-dist <웹 빌드>`: 첫 화면을 같은 엔진으로 찍어 «설치판» 표시 밖 화소 차이 0인지 본다.
     첫 화면 설명 한 줄은 `StudioCaption`(Medium · `font-display: optional`)이라 글꼴이 늦게 온 판은 Regular로 그린다(그 줄만 7,249화소 — 웹 · 설치판 같은 제품 동작).
     그래서 캐시를 지우지 않고 다시 열고(웹 쪽 작은 서버도 라이브처럼 글꼴에 30일 캐시를 준다), 크기마다 3번 찍어 «그린 글꼴이 같은 짝» 가운데서만 차이 0을 찾는다.

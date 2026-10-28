@@ -1,5 +1,16 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-28(수) 낮 — 설치판 최종 `4cc4f18` · 공개 설치 파일 교체는 팀장 OK 대기
+
+- 최종 설치 파일: `4cc4f18` LF 빌드 `Poster Studio Setup.exe` 160,326,084바이트 · SHA-256 `b76c06db…637b`(안내문 줄바꿈 · 진행 화면 · 묻는 창 · 제거 화면 그림 ·
+  PowerShell 없음 · 앱 데이터 지우기 다시 시도 · 2단계 «샘플 포스터 보기»). 내용과 시험 숫자는 CHANGELOG 10/28 낮.
+  - 작업 폴더 `build-4cc4f18`에 있다. 직전 시험 판들은 `build-e58f9d9` · `build-f954c2d` · `build-324b3da`(쓰지 않는다).
+  - 🔴 **공개 객체(gs://inky-poster-studio-download/PosterStudio-Setup.exe)는 아직 `e58b65c`다.** 바꾸기 전에 팀장에게 «배포 직전 한 줄»을 보내고 OK를 받는다.
+    웹 Hosting · 함수는 손대지 않는다.
+- 이 PC에는 `4cc4f18`이 «모든 사용자»로 깔려 있다(공개 판 위에 덮어쓴 것). Voice Cinema도 «모든 사용자»로 깔려 있다 — 건드리지 않는다.
+- 🟠 설치기 GUI 시험은 아래 작은 모니터에서, 관리자 단계는 `run-hidden.ps1`로 창 없이 한다(app.md «자동 검사 창»). 같은 PC에서 Voice Cinema도 설치기 시험을 하므로 화면 순서는 팀장이 정한다.
+- 웹 반영 대기(Bumm님 A안)는 그대로다(아래 00:30 · 10/27 항목).
+
 ## 2026-10-28(수) 00:30 — 설치판 최종 `e58b65c` · 전달 폴더 · 공개 설치 파일 = 이 빌드
 
 - 최종 설치 파일: `e58b65c` LF 빌드 `Poster Studio Setup.exe` 159,415,288바이트 · SHA-256 `251b2a73…a129`(창 높이 구간 · 슬레이트 아이콘 · 진행 문장).
