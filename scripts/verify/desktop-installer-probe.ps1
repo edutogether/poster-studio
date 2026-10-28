@@ -364,7 +364,7 @@ function ProgressChecks($kind, $whereLabel, $doing, $word, $endLine) {
   $midCut = @($fileLines | Where-Object { $_.Contains('...') -or $_.Contains('…') } | Where-Object {
       $p = $_.Substring($word.Length + 2); $mark = if ($p.Contains('…')) { '…' } else { '...' }; $k = $p.IndexOf($mark)
       -not ($p.Substring(0, $k).EndsWith('\') -and $p.Substring($k + $mark.Length).StartsWith('\')) })
-  Check "$kind 상자 경로 줄임이 폴더 이름 단위다(낱말 가운데를 자른 줄 0)" ($midCut.Count -eq 0) $(if ($midCut.Count) { "$($midCut.Count)줄: " + (($midCut | Select-Object -First 4) -join ' | ') } else { "줄인 줄 $short개 · 모두 폴더 단위" })
+  Check "$kind 상자 경로 줄임이 폴더 이름 단위다(낱말 가운데를 자른 줄 0)" ($midCut.Count -eq 0) $(if ($midCut.Count) { "$($midCut.Count)줄: " + (($midCut | Select-Object -First 4) -join ' | ') } else { "줄인 줄 $($short)개 · 모두 폴더 단위" })
   $last = if ($final.Count) { $final[-1] } else { '' }
   Check "$kind 상자에 «${word}: …» 파일 줄이 흐르고 마지막 줄이 «$endLine»" ($fileLines.Count -ge 15 -and $outside.Count -eq 0 -and $last -eq $endLine) "파일 줄 $($fileLines.Count)개(가운데를 줄인 줄 $($short)개) · 마지막 «$last»$(if ($outside.Count) { ' · 폴더 밖 ' + ($outside -join ' | ') })"
   # 막대가 0.5초 넘게 한자리에 서 있는 구간(100% 전) — 멈춘 것처럼 보인다(10/28 팀장). 표본 시각(t, 0.1초 간격)으로 잰다
@@ -374,9 +374,15 @@ function ProgressChecks($kind, $whereLabel, $doing, $word, $endLine) {
     $end = if ($k + 1 -lt $timed.Count) { $timed[$k + 1].t } else { $timed[$k].t }
     if ($timed[$i].bar -lt 995 -and $end - $timed[$i].t -ge 500) {
       $st = if ($timed[$i].text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } else { '' }
-      # 그 자리에서 새 단계 문장이 떴는가(바로 앞 표본과 다르다 — 팀장 «막대 몫을 주거나 그 단계 문장을 띄워»)
-      $prevSt = if ($i -gt 0 -and $timed[$i - 1].text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } else { '' }
-      $stalls += [pscustomobject]@{ text = "$($timed[$i].bar)‰에서 $([Math]::Round(($end - $timed[$i].t) / 1000, 1))초(«$st»$(if ($st -ne $prevSt) { ' — 이때 뜬 단계 문장' }))"; told = ($st -ne $prevSt) }
+      # 그 자리에서 새 단계 문장이 떴는가 — 선 구간 시작 앞뒤 0.3초 안에 단계 문장이 바뀌었다(팀장 «막대 몫을 주거나 그 단계 문장을 띄워»)
+      $t0 = $timed[$i].t; $told = $false
+      for ($j = 1; $j -lt $timed.Count; $j++) {
+        if ([Math]::Abs($timed[$j].t - $t0) -gt 300) { continue }
+        $a = if ($timed[$j - 1].text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } else { '' }
+        $b = if ($timed[$j].text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } else { '' }
+        if ($a -ne $b) { $told = $true; $st = $b }
+      }
+      $stalls += [pscustomobject]@{ text = "$($timed[$i].bar)‰에서 $([Math]::Round(($end - $t0) / 1000, 1))초(«$st»$(if ($told) { ' — 이때 뜬 단계 문장' }))"; told = $told }
     }
     $i = $k + 1 }
   $silent = @($stalls | Where-Object { -not $_.told })
