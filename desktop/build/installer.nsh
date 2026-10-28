@@ -233,6 +233,7 @@
       !define MUI_FINISHPAGE_RUN_FUNCTION "StartApp"
     !endif
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW psFinishShow
+    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE psFreeze
     !insertmacro MUI_PAGE_FINISH
   !macroend
 !else
@@ -260,6 +261,7 @@
   ; 제거기 완료 화면 왼쪽 그림 — 템플릿이 이 자리 바로 뒤에 완료 화면(MUI_UNPAGE_FINISH)을 넣는다
   !macro customUninstallPage
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psUnFinishShow
+    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psFreeze
   !macroend
 !endif
 
