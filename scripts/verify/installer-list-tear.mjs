@@ -5,12 +5,16 @@
    상자 줄 글자는 y=135~146(16px 간격, 100% 실측)에 놓인다. 밀린 장면은 ① 줄 사이 빈 띠(y=148~150 + 16k)에 글자가 걸치거나
    ② 한 줄 띠 안에서 글자 화소 사이에 빈 가로줄이 3줄 이상 끼어 있다. 결과는 JSON 한 줄(장면 수 · 시각 · 이유). 진행 화면 장면이 0개면 종료코드 1.
    installer-flicker-scan.mjs(«되돌아간 칸»)는 줄이 흐를 때 비슷한 줄이 다시 지나가는 것도 세므로, 상자 칸은 이 도구로 잰다. */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const [video] = process.argv.slice(2);
 if (!video) { console.error('사용: installer-list-tear.mjs <screen.mkv>'); process.exit(2); }
 const W = 584, H = 362, size = W * H * 3;
-const ff = spawn('ffmpeg', ['-loglevel', 'error', '-i', video, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+// 검사용 아래 모니터(125%)에서 찍은 녹화는 창이 늘어나 있다(약 730×452) — 100% 크기로 줄여 같은 자리에서 잰다(10/28)
+const probe = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', video], { encoding: 'utf8' });
+const [vw, vh] = String(probe.stdout).trim().split(',').map(Number);
+const scale = vw && vh && (vw !== W || vh !== H) ? ['-vf', `scale=${W}:${H}:flags=area`] : [];
+const ff = spawn('ffmpeg', ['-loglevel', 'error', '-i', video, ...scale, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
 let buf = Buffer.alloc(0), n = 0, progress = 0;
 const torn = [];
 // 한 줄 띠 안에서 글자 화소 사이에 낀 가장 긴 빈 가로줄 수
@@ -48,6 +52,6 @@ ff.stdout.on('data', (c) => {
   }
 });
 ff.on('close', (code) => {
-  console.log(JSON.stringify({ video: video.split(/[\\/]/).slice(-4).join('/'), frames: n, progressFrames: progress, torn: torn.length, at: torn.slice(0, 12) }));
+  console.log(JSON.stringify({ video: video.split(/[\\/]/).slice(-4).join('/'), size: `${vw}x${vh}`, frames: n, progressFrames: progress, torn: torn.length, at: torn.slice(0, 12) }));
   if (code !== 0 || progress === 0) { console.error(`진행 화면 장면을 찾지 못함(ffmpeg ${code}, 프레임 ${n})`); process.exit(1); }
 });

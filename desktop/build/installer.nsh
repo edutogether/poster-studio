@@ -502,8 +502,11 @@
     Push $R7
     Push $R8
     StrCpy $R8 "$R0$R1"
-    FindWindow $R2 "#32770" "" $HWNDPARENT
-    GetDlgItem $R2 $R2 1016
+    StrCpy $R2 0
+    ${If} $HWNDPARENT <> 0   ; 조용한 실행(창 없음)에서는 맨 위 창을 뒤지지 않는다
+      FindWindow $R2 "#32770" "" $HWNDPARENT
+      GetDlgItem $R2 $R2 1016
+    ${EndIf}
     ${If} $R2 <> 0
       SendMessage $R2 0x101D 0 0 $R3   ; LVM_GETCOLUMNWIDTH
       IntOp $R3 $R3 - ${PS_LIST_PAD}
@@ -730,8 +733,10 @@
       Push $R5
       Call psWriteFileList
       FileClose $R8
-      CopyFiles /SILENT "$R5\${UNINSTALL_FILENAME}" "$PLUGINSDIR\ps-old-all-uninstaller.exe"
-      ExecShellWait "runas" "$PLUGINSDIR\ps-old-all-uninstaller.exe" "/S /allusers _?=$R5" SW_HIDE
+      ; 예전 판의 제거기가 아니라 이 설치기에 든 새 제거기를 쓴다 — 10/28 이전 제거기는 켜진 앱을 PowerShell로 찾아(템플릿 nsExec)
+      ; 관리자 권한으로 부르면 «관리자: Windows PowerShell» 창이 뜰 수 있다. 새 제거기는 nsProcess로 찾아 창이 없다. 앱 데이터는 둔다.
+      File "/oname=$PLUGINSDIR\ps-all-uninstaller.exe" "${UNINSTALLER_OUT_FILE}"
+      ExecShellWait "runas" "$PLUGINSDIR\ps-all-uninstaller.exe" "/S /allusers /KEEP_APP_DATA _?=$R5" SW_HIDE
       FileOpen $R8 "$PLUGINSDIR\ps-old-all.txt" r
       ${Do}
         ClearErrors

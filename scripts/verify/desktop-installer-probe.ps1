@@ -1,7 +1,7 @@
 ﻿# Windows 설치판 설치 · 제거 확인(2026-10-27 Bumm님 기준, 팀장 전달 — _docs/intents/2026-10-27-desktop-installer).
 #
 #   설치:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify/desktop-installer-probe.ps1 -Step install -Mode user|all -Installer <Poster Studio Setup.exe> -Out <결과 폴더>
-#          [-Replace | -Beside] [-AppOn] [-Answers ok,cancel,…] [-Decline] [-AsUser] [-NoShots]
+#          [-Replace | -Beside] [-AppOn] [-Answers ok,cancel,…] [-Decline] [-AsUser] [-NoShots] [-NoRun]
 #   제거:  ... -Step uninstall -Mode user|all -Via startmenu|settings -Out <결과 폴더> [-AppOn] [-Answers …] [-Decline]
 #
 #   -Replace  같은 범위에 예전 판이 있는 PC — «설치»를 누르면 «이미 설치되어 있습니다 · 지우고 새로 설치할까요?»가 뜬다(10/28 Bumm님).
@@ -10,6 +10,9 @@
 #   -Answers  묻는 창에 차례로 할 답. ok(확인 · 다시 시도) · cancel(취소 — 그 화면에 남아야 한다, 도구는 다음 단추를 다시 누른다) ·
 #             cancel-exit(취소한 뒤 그 화면에 남았는지 보고 설치기 · 제거기를 «취소» 단추로 끝낸다). 남은 답이 없으면 ok.
 #   -Decline  답이 cancel-exit로 끝나는 시험 — 설치 · 제거가 일어나지 않고 예전 상태(설치 · 켜진 앱)가 그대로인지 본다.
+#   -NoRun    완료 화면 «Poster Studio 실행하기» 체크를 풀고 «마침» — 앱이 켜지지 않아야 한다. 주지 않으면 체크된 채(기본) «마침» — 앱이 켜지고, 관리자 권한이 아니어야 한다(10/28).
+#   설치 창 · 알림 창 · 이 도구가 켠 앱 창은 검사용 아래 모니터로 옮긴다(test-monitor.ps1 — 10/28 팀장 «자동 검사 창은 아래 작은 모니터에만»).
+#   관리자 권한으로 돌릴 때는 run-hidden.ps1로 창 없이 띄운다(Start-Process -Verb RunAs는 이 PC에서 «관리자: Windows PowerShell» 창이 보였다).
 #
 # 진행 화면(10/28 Bumm님): 상자(«자세히» 목록)가 첫 표본부터 보이는지, 보이는 막대의 위치(‰)가 0.1초 표본마다 줄지 않고 100%까지 가는지,
 # 상자에 «설치: …» / «삭제: …» 파일 줄이 흐르고 마지막 줄이 «설치가 끝났습니다.» / «제거가 끝났습니다.»인지, 임시 폴더 · .7z · NSIS 원래 기록이 없는지 본다.
@@ -49,7 +52,9 @@ param(
   #   «모든 사용자»를 고르면 첫 창이 숨고 관리자 권한 창이 새로 뜨는 실제 흐름을 탄다(10/28 — 진행 화면의 상자가 중간에 생기는 것은 이 흐름에서만 보였다).
   [switch]$AsUser,
   # -NoShots: 창을 하나도 찍지 않는다(PrintWindow 0회). 찍는 동작이 화면에 깜빡임을 만드는지 가를 때 쓴다(10/27 — 화면 녹화와 함께).
-  [switch]$NoShots
+  [switch]$NoShots,
+  # -NoRun: 완료 화면 «실행하기» 체크를 풀고 끝낸다(앱이 켜지지 않아야 한다).
+  [switch]$NoRun
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force $Out | Out-Null
@@ -187,6 +192,17 @@ public static class Win {
     } finally { VirtualFreeEx(hp, remote, IntPtr.Zero, 0x8000); CloseHandle(hp); }
     return items.ToArray();
   }
+  [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
+  [DllImport("advapi32.dll")] static extern bool OpenProcessToken(IntPtr p, uint access, out IntPtr t);
+  [DllImport("advapi32.dll")] static extern bool GetTokenInformation(IntPtr t, int cls, out int info, int len, out int ret);
+  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+  // 그 프로세스가 관리자 권한(UAC 상승)으로 도는가 — 1 관리자 · 0 일반 · -1 못 읽음(TokenElevation)
+  public static int Elevated(int pid) {
+    IntPtr p = OpenProcess(0x1000, false, pid); if (p == IntPtr.Zero) return -1;   // PROCESS_QUERY_LIMITED_INFORMATION
+    IntPtr t; int e = -1, n;
+    if (OpenProcessToken(p, 0x8, out t)) { if (GetTokenInformation(t, 20, out e, 4, out n)) e = e != 0 ? 1 : 0; else e = -1; CloseHandle(t); }   // TOKEN_QUERY · TokenElevation
+    CloseHandle(p); return e;
+  }
   public static IntPtr FindButton(IntPtr p, string contains) {
     IntPtr found = IntPtr.Zero;
     EnumChildWindows(p, (h, l) => { if (IsWindowVisible(h) && Cls(h) == "Button" && Text(h).Contains(contains)) { found = h; return false; } return true; }, IntPtr.Zero);
@@ -262,6 +278,7 @@ public static class Win {
 }
 "@
 [Win]::SetProcessDPIAware() | Out-Null
+. (Join-Path $PSScriptRoot 'test-monitor.ps1')
 [Win]::Off = [bool]$NoShots
 # 진행 화면 «자세히 보기» 목록의 항목 글 — [Win]::ListItems(창)이 목록에 직접 물어 받는다
 function DetailLines($h) { try { return @([Win]::ListItems($h)) } catch { return @() } }
@@ -390,16 +407,18 @@ function HandleBoxes($prefix, $n, $h, $wait) {
 # 설치 · 제거 창을 화면마다 찍으며 «다음»(단추 1)을 누른다
 function Walk($prefix) {
   $h = [IntPtr]::Zero
-  for ($i = 0; $i -lt 160 -and $h -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 250; $h = [Win]::FindDialog('Poster Studio') }
+  for ($i = 0; $i -lt 800 -and $h -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 50; $h = [Win]::FindDialog('Poster Studio') }
   if ($h -eq [IntPtr]::Zero) { return $false }
+  $report.testMonitor = Move-ToTestMonitor $h
   $report.title = [Win]::Text($h)
   for ($n = 1; $n -le 14; $n++) {
     if (-not [Win]::IsWindow($h) -or -not [Win]::IsWindowVisible($h)) {
       # «모든 사용자»를 고르면 설치기가 관리자 권한으로 다시 뜬다(새 창) — 그 창을 이어서 잡는다. 첫 창은 닫히지 않고 숨는다(-AsUser로 실측, 10/28)
       $h2 = [IntPtr]::Zero
-      for ($i = 0; $i -lt 40 -and $h2 -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 250; $h2 = [Win]::FindDialog('Poster Studio') }
+      for ($i = 0; $i -lt 200 -and $h2 -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 50; $h2 = [Win]::FindDialog('Poster Studio') }
       if ($h2 -eq [IntPtr]::Zero) { break }
       $h = $h2
+      Move-ToTestMonitor $h | Out-Null
     }
     $next = [Win]::GetDlgItem($h, 1)
     # 설치가 도는 동안(«다음»이 꺼져 있는 동안)은 0.5초마다 그 화면을 찍고, 진행 글(위 한 줄 · «자세히» 목록) · 막대 위치 · 상자 보임은 0.1초마다 읽는다 —
@@ -435,6 +454,17 @@ function Walk($prefix) {
       [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-범위.png' -f $prefix, $n))) | Out-Null
       $page.pickedTextLines = @([Win]::TextLines($h))
       $page.pickedTextProblems = @(TextRules $page.pickedTextLines)
+    }
+    # 완료 화면 «Poster Studio 실행하기» — 처음 상태를 적고, -NoRun이면 풀고 찍는다(BM_GETCHECK 0xF0: 1 체크)
+    $run = [Win]::FindButton($h, '실행하기')
+    if ($run -ne [IntPtr]::Zero) {
+      $page.runChecked = ([Win]::SendMessage($run, 0x00F0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt64() -eq 1)
+      if ($NoRun) {
+        [Win]::SendMessage($run, $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+        Start-Sleep -Milliseconds 300
+        $page.runAfter = ([Win]::SendMessage($run, 0x00F0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt64() -eq 1)
+        [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-실행-끔.png' -f $prefix, $n))) | Out-Null
+      }
     }
     # 위치 화면 — 기본값을 읽어 둔다(바꾸지 않는다)
     $dir = [Win]::FindChildById($h, 1019)
@@ -504,6 +534,7 @@ function StartApp($path) {
   Start-Process -FilePath $path | Out-Null
   $p = $null
   for ($i = 0; $i -lt 60 -and -not $p; $i++) { Start-Sleep -Milliseconds 500; $p = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'Poster Studio' -and $_.Path -ieq $path } | Select-Object -First 1 }
+  if ($p) { Move-ToTestMonitor $p.MainWindowHandle | Out-Null }
   return $p
 }
 function CloseApps { Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null; $_.WaitForExit(15000) | Out-Null } }
@@ -585,10 +616,22 @@ if ($Step -eq 'install') {
     Check '시작 메뉴 «InKY Film Festival» 폴더 안 «Uninstall Poster Studio»' ($u -and $u.target -ieq $uninstaller) ($u | ConvertTo-Json -Compress)
     $menuItems = if (Test-Path $menuDir) { (Get-ChildItem $menuDir | ForEach-Object { $_.Name }) -join ' · ' } else { '' }
     $report.menuItems = $menuItems
+    $finish = @($report.pages | Where-Object { $null -ne $_.runChecked }) | Select-Object -Last 1
+    Check '완료 화면에 «Poster Studio 실행하기»가 있고 처음부터 체크되어 있다' ($finish -and $finish.runChecked) $(if ($finish) { $finish.shot })
     $app = $null
+    if ($NoRun) {
+      Check '«실행하기» 체크를 풀었다' ($finish -and $finish.runAfter -eq $false) $null
+      Start-Sleep -Seconds 10
+      $late = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.Path -ieq $exe }
+      Check '체크를 풀고 «마침»을 누르면 앱이 켜지지 않는다(10초 지켜봄)' (-not $late) $(if ($late) { "켜짐 pid $($late.Id -join ',')" })
+    } else {
     for ($i = 0; $i -lt 60 -and -not $app; $i++) { Start-Sleep -Milliseconds 500; $app = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'Poster Studio' -and $_.Path -ieq $exe } | Select-Object -First 1 }
     Check '설치가 끝나면 앱이 바로 뜬다(창 제목 «Poster Studio»)' ($null -ne $app) $(if ($app) { "$($app.Path)" })
+    }
     if ($app) {
+      Move-ToTestMonitor $app.MainWindowHandle | Out-Null
+      $elev = [Win]::Elevated($app.Id)
+      Check '켜진 앱은 관리자 권한이 아니다(일반 사용자 권한 — TokenElevation)' ($elev -eq 0) "pid $($app.Id) · 관리자 권한 $elev(1 관리자 · 0 일반 · -1 못 읽음)"
       Start-Sleep -Seconds 5
       [Win]::Shot($app.MainWindowHandle, (Join-Path $Out "app-after-install-$Mode.png"))
       $app.CloseMainWindow() | Out-Null
