@@ -295,7 +295,10 @@ Var pid
 !macro customUnInstall
   SetDetailsPrint none
   !insertmacro psSay "프로그램 파일 · 바탕화면 바로가기 · 시작 메뉴를 지우는 중입니다 …"
-  ${IfNot} ${isUpdated}
+  ; electron-builder가 제 바로가기를 지우는 조건(--keep-shortcuts가 없을 때)과 맞춘다. 예전에는 업데이트(--updated)면 남겼는데,
+  ; «모든 사용자» 설치가 «나만» 설치를 먼저 지울 때도 --updated로 부르므로 «나만» 시작 메뉴에 대상 없는 «Uninstall» 바로가기와 폴더가 남았다(10/28 실측).
+  ; 같은 범위 업데이트는 새 판이 customInstall에서 다시 만든다.
+  ${IfNot} ${isKeepShortcuts}
     Delete "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
   ${EndIf}
 !macroend
