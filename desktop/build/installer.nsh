@@ -277,16 +277,9 @@ Var pid
 
 !macro customInstall
   CreateShortCut "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk" "$INSTDIR\${UNINSTALL_FILENAME}"
-  ; «모든 사용자»로 설치하면 설치 범위 화면이 적어 둔 «나만» 기본 위치 메모를 지운다. 단 «나만» 설치가 따로 있으면 그 값은 메모가 아니라 그 설치의 위치 기록이다 —
-  ; 지우면 «나만» 제거기가 자기 설치를 못 찾고 «모든 사용자» 설치를 지우러 간다(10/28 코드 확인). 그래서 .onGUIEnd와 같이 «나만» 제거 등록이 없을 때만 지운다.
   ${If} $installMode == "all"
-    Push $0
-    ReadRegStr $0 HKCU "${UNINSTALL_REGISTRY_KEY}" UninstallString
-    ${If} $0 == ""
-      DeleteRegValue HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
-      DeleteRegKey /ifempty HKCU "${INSTALL_REGISTRY_KEY}"
-    ${EndIf}
-    Pop $0
+    DeleteRegValue HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
+    DeleteRegKey /ifempty HKCU "${INSTALL_REGISTRY_KEY}"
   ${EndIf}
   !insertmacro psSay "바탕화면에 «${PRODUCT_NAME}» 바로가기를 만들었습니다."
   !insertmacro psSay "시작 메뉴 «${MENU_FILENAME}»에 등록했습니다."
