@@ -32,9 +32,10 @@
 ; NSIS · electron-builder 한국어 기본 문구는 여러 문장이 한 덩어리로 흘러 칸 끝에서 낱말 중간에 끊겼다(«설치를 시 / 작하시려면» — 한국어는 글자마다 줄이 바뀔 수 있다).
 ; 칸 글꼴은 굴림 9pt(-12px), 칸 폭은 100%에서 위치 안내 525px · 설치 범위 아래 안내 490px · 머리 설명 368px · 제거 첫 화면 안내 341px다(desktop-installer-probe.ps1로 잼).
 ; 칸보다 긴 한 문장은 문구를 그대로 두고 낱말 사이에서 줄을 나눈다. 고친 문구는 아래 customHeader에 모았다.
-; 위치 화면 안내만 MUI 설정으로 바꾼다 — 그 화면(MUI_PAGE_DIRECTORY)보다 먼저 정해야 해서 여기 둔다. $_CLICK = «설치를 시작하시려면 '설치' 버튼을 눌러 주세요.»
+; 번역투(«~할 예정입니다 · ~하십시오 · ~하였습니다 · ~주시기 바랍니다 · ~됨 · 성공적으로 완료되었습니다»)는 쉬운 말로 바꿨다(10/28 오후 팀장). 단추 이름은 «'…' 단추».
+; 위치 화면 안내만 MUI 설정으로 바꾼다 — 그 화면(MUI_PAGE_DIRECTORY)보다 먼저 정해야 해서 여기 둔다. 여러 줄 안내의 줄 간격은 psSpread가 띄운다.
 !ifndef BUILD_UNINSTALLER
-  !define MUI_DIRECTORYPAGE_TEXT_TOP "${PRODUCT_NAME}를 다음 폴더에 설치할 예정입니다.$\r$\n다른 폴더에 설치하고 싶으시면 '찾아보기' 버튼을 눌러서 다른 폴더를 선택해 주세요.$\r$\n$_CLICK"
+  !define MUI_DIRECTORYPAGE_TEXT_TOP "${PRODUCT_NAME}를 아래 폴더에 설치합니다.$\r$\n다른 폴더에 설치하려면 '찾아보기' 단추를 눌러 폴더를 골라 주세요.$\r$\n설치를 시작하려면 '설치' 단추를 눌러 주세요."
 !endif
 
 ; ── 설치 화면 그림: 칸 크기에 맞춘 판 고르기(10/27 Bumm님 «오른쪽 위 로고가 가로로 늘어나 깨져 보인다», 팀장 전달) ──
@@ -202,9 +203,14 @@
   Var psHasAll
 
   !define MUI_CUSTOMFUNCTION_GUIINIT psGuiInit
+  ; 설치 범위 화면(템플릿 PAGE_INSTALL_MODE)이 띄우기 직전(SHOW) — 아래 안내 줄 간격(psModeShow). 템플릿이 이 매크로 바로 뒤에 그 화면을 넣으므로 여기서 정해 둔다(화면은 넣지 않는다).
+  !macro customWelcomePage
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW psModeShow
+  !macroend
   !macro customPageAfterChangeDir
     !include StrContains.nsh
     !define MUI_PAGE_CUSTOMFUNCTION_PRE psDirPre
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW psDirShow
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE psDirLeave
     !insertmacro MUI_PAGE_DIRECTORY
     !define MUI_PAGE_CUSTOMFUNCTION_PRE psInstFilesPre
@@ -248,6 +254,8 @@
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psWelcomeShow
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psWelcomeLeave
     !insertmacro MUI_UNPAGE_WELCOME
+    ; 다음 화면 = 템플릿 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 안내 줄 간격
+    !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psModeShow
   !macroend
   ; 제거기 완료 화면 왼쪽 그림 — 템플릿이 이 자리 바로 뒤에 완료 화면(MUI_UNPAGE_FINISH)을 넣는다
   !macro customUninstallPage
@@ -357,27 +365,197 @@
 !macro customHeader
   !pragma warning push
   !pragma warning disable 6030
+  ; 10/28 오후 팀장: 설치 범위 화면은 쉬운 말로 줄인다(결정 2번) · 제거 쪽 번역투 · 모든 화면 머리글 · 안내문을 다시 훑어 «~하십시오 · ~하였습니다 · ~주시기 바랍니다 · ~됨»을 없앤다.
+  ; 범위 이름은 설명서와 같이 «나만» · «모든 사용자»다. 바꾼 문구 목록은 _docs/CHANGELOG.md 10/28 오후 절.
   !ifndef BUILD_UNINSTALLER
     ShowInstDetails show
-    LangString MUI_TEXT_DIRECTORY_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치할 폴더를 선택해 주세요."
+    LangString MUI_TEXT_DIRECTORY_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치할 폴더를 골라 주세요."
+    LangString MUI_TEXT_INSTALLING_TITLE ${LANG_KOREAN} "설치 중"
     LangString MUI_TEXT_INSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치하는 동안 잠시 기다려 주세요."
+    LangString MUI_TEXT_FINISH_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치했습니다."
+    LangString MUI_TEXT_ABORT_SUBTITLE ${LANG_KOREAN} "설치를 마치지 못했습니다."
+    LangString MUI_TEXT_FINISH_INFO_TEXT ${LANG_KOREAN} "${PRODUCT_NAME}를 설치했습니다.$\r$\n$\r$\n마치려면 '마침' 단추를 눌러 주세요."
+    LangString installing ${LANG_KOREAN} "설치하는 중입니다. 잠시 기다려 주세요."
+    ; 설치 범위 화면 — 아래 안내는 고른 단추마다 템플릿이 바꾼다(관리자 권한으로 켠 설치기에서는 허락 창 줄을 뺀다 — psModeNote)
+    LangString selectUserMode ${LANG_KOREAN} "이 컴퓨터에서 누가 ${PRODUCT_NAME}를 쓸지 골라 주세요."
+    LangString forAll ${LANG_KOREAN} "모든 사용자 (이 컴퓨터를 쓰는 모든 사람)"
+    LangString onlyForMe ${LANG_KOREAN} "나만"
+    LangString freshInstallForAll ${LANG_KOREAN} "모든 사용자가 쓸 수 있게 설치합니다.$\r$\n'다음' 단추를 누르면 관리자 허락을 묻는 창이 뜹니다."
+    LangString psFreshForAllAdmin ${LANG_KOREAN} "모든 사용자가 쓸 수 있게 설치합니다."
+    LangString freshInstallForCurrent ${LANG_KOREAN} "나만 쓸 수 있게 설치합니다."
+    LangString perUserInstallExists ${LANG_KOREAN} "이미 '나만'으로 설치되어 있습니다.$\r$\n"
+    LangString perMachineInstallExists ${LANG_KOREAN} "이미 '모든 사용자'로 설치되어 있습니다.$\r$\n"
+    LangString reinstallUpgrade ${LANG_KOREAN} "다시 설치합니다."
   !else
     ShowUninstDetails show
     ; 제거 첫 화면 — 번역투(«당신의 컴퓨터에서 … 제거할 것입니다», «종료하여 주시기 바랍니다»)를 쉬운 문장으로(10/28 Bumm님, 팀장 예시 문구)
     LangString MUI_UNTEXT_WELCOME_INFO_TEXT ${LANG_KOREAN} "이 컴퓨터에서 ${PRODUCT_NAME}를 지웁니다.$\r$\n$\r$\n${PRODUCT_NAME}가 켜져 있으면 먼저 꺼 주세요.$\r$\n$\r$\n계속하려면 '다음' 단추를 눌러 주세요."
-    LangString MUI_UNTEXT_UNINSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 제거하는 동안 잠시 기다려 주시기 바랍니다."
+    LangString MUI_UNTEXT_UNINSTALLING_TITLE ${LANG_KOREAN} "제거 중"
+    LangString MUI_UNTEXT_UNINSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 제거하는 동안 잠시 기다려 주세요."
+    ; 진행 화면이 끝났을 때 머리 — 기본 «제거 마침 / 프로그램을 성공적으로 제거하였습니다.»(설치 쪽 «설치 완료»와 완료 화면 «… 제거 완료»에 맞춘다)
+    LangString MUI_UNTEXT_FINISH_TITLE ${LANG_KOREAN} "제거 완료"
+    LangString MUI_UNTEXT_FINISH_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 지웠습니다."
+    LangString MUI_UNTEXT_ABORT_TITLE ${LANG_KOREAN} "제거 취소"
+    LangString MUI_UNTEXT_ABORT_SUBTITLE ${LANG_KOREAN} "제거를 마치지 못했습니다."
     ; 제거 완료 화면 — 기본 문구는 «완료 되었습니다»(띄어쓰기) · 제거기인데 «설치 프로그램을 마치려면»이었다
     LangString MUI_UNTEXT_FINISH_INFO_TEXT ${LANG_KOREAN} "${PRODUCT_NAME}를 지웠습니다.$\r$\n$\r$\n마치려면 '마침' 단추를 눌러 주세요."
+    ; 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 기본 번역의 «\n»은 줄바꿈이 아니라 글자 그대로 찍혔다
+    LangString whichInstallationShouldBeRemoved ${LANG_KOREAN} "어느 쪽을 지울까요?"
+    LangString whichInstallationRemove ${LANG_KOREAN} "${PRODUCT_NAME}가 '모든 사용자'와 '나만'으로 함께 설치되어 있습니다.$\r$\n지울 쪽을 골라 주세요."
+    LangString forAll ${LANG_KOREAN} "모든 사용자 (이 컴퓨터를 쓰는 모든 사람)"
+    LangString onlyForMe ${LANG_KOREAN} "나만"
+    LangString perUserInstall ${LANG_KOREAN} "'나만'으로 설치되어 있습니다.$\r$\n"
+    LangString perMachineInstall ${LANG_KOREAN} "'모든 사용자'로 설치되어 있습니다.$\r$\n"
+    LangString uninstall ${LANG_KOREAN} "이 설치를 지웁니다."
   !endif
-  LangString selectUserMode ${LANG_KOREAN} "이 프로그램을 모든 사용자가 사용할 수 있도록 할 것인지$\r$\n아니면 자신만 사용할 수 있도록 할 것인지 선택하십시오."
-  LangString freshInstallForAll ${LANG_KOREAN} "모든 사용자를 위해 새로 설치.$\r$\n(관리자 자격 증명을 묻는 메시지가 표시됨)"
-  LangString perUserInstallExists ${LANG_KOREAN} "이미 사용자별 설치가 있습니다.$\r$\n"
-  LangString perMachineInstallExists ${LANG_KOREAN} "이미 머신별로 설치되어 있습니다.$\r$\n"
-  ; 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 기본 번역의 «\n»은 줄바꿈이 아니라 글자 그대로 찍혔다
-  LangString whichInstallationRemove ${LANG_KOREAN} "이 프로그램은 시스템당(모든 사용자)또는 사용자별로 설치됩니다.$\r$\n어떤 설치를 제거하시겠습니까?"
-  LangString perUserInstall ${LANG_KOREAN} "사용자별로 설치되어 있습니다.$\r$\n"
-  LangString perMachineInstall ${LANG_KOREAN} "머신별로 설치되어 있습니다.$\r$\n"
+  ; 실패할 때만 뜨는 알림 — 템플릿 한국어가 없거나(영어로 떴다) 번역투였다
+  LangString loginWithAdminAccount ${LANG_KOREAN} "관리자 계정으로 허락해야 계속할 수 있습니다."
+  LangString appRunning ${LANG_KOREAN} "${PRODUCT_NAME}가 켜져 있습니다.$\r$\n'확인'을 누르면 끕니다."
+  LangString appCannotBeClosed ${LANG_KOREAN} "${PRODUCT_NAME}를 끄지 못했습니다.$\r$\n${PRODUCT_NAME}를 직접 끈 뒤 '다시 시도'를 눌러 주세요."
+  LangString appClosing ${LANG_KOREAN} "${PRODUCT_NAME}를 끄는 중입니다."
+  LangString uninstallFailed ${LANG_KOREAN} "예전 ${PRODUCT_NAME} 파일을 지우지 못했습니다. 설치기를 다시 실행해 주세요. 오류 번호"
+  LangString decompressionFailed ${LANG_KOREAN} "파일을 풀지 못했습니다. 설치기를 다시 실행해 주세요."
   !pragma warning pop
+
+  ; ── 여러 줄 안내의 줄 간격(10/28 오후 팀장 — «윗줄과 아랫줄 글자가 거의 맞닿아 겹쳐 보인다») ──
+  ; 글 칸(STATIC) 하나 안의 줄은 사이를 띄울 수 없다 — 굴림 9pt는 줄 높이가 글자 높이와 같아(100%에서 12px) 줄이 붙어 보였다.
+  ; 그래서 칸의 글을 줄(«\r\n»)마다 따로 된 칸으로 나눠 줄 사이를 글자 높이의 0.6배 띄운다(줄 간격 160%). 줄 칸은 원래 칸과 같은 부모 · 글꼴 · 왼쪽 · 폭이고
+  ; 원래 칸은 숨긴다(글은 그대로 두어 템플릿이 바꾸면 다시 부른다). 한 줄이 폭보다 길면 그 칸 안에서 꺾고 그만큼 높인다(DrawText로 잰 높이).
+  ; 스택: 칸 HWND → 줄 칸 ID 바탕(줄 칸 ID = 바탕 + 0~3, 이미 있으면 다시 쓴다). 줄은 넷까지.
+  Var psSpGap
+  Var psSpN
+  Var psSpI
+  Var psSpLen
+  Var psSpLine
+  Var psSpH
+  Function ${PSF}psSpread
+    Exch $R0
+    Exch
+    Exch $R1
+    Push $R2
+    Push $R3
+    Push $R4
+    Push $R5
+    Push $R6
+    Push $R7
+    Push $R8
+    Push $R9
+    Push $0
+    System::Call "user32::GetParent(p R1) p.R2"
+    System::Call "*(i 0, i 0, i 0, i 0) p.R3"
+    System::Call "user32::GetWindowRect(p R1, p R3)"
+    System::Call "user32::MapWindowPoints(p 0, p R2, p R3, i 2)"
+    System::Call "*$R3(i .R4, i .R5, i .R6, i)"
+    IntOp $R6 $R6 - $R4
+    SendMessage $R1 ${WM_GETFONT} 0 0 $R7
+    System::Call "user32::GetWindowTextW(p R1, w .R8, i ${NSIS_MAX_STRLEN})"
+    ShowWindow $R1 ${SW_HIDE}
+    System::Call "user32::GetDC(p R2) p.R9"
+    System::Call "gdi32::SelectObject(p R9, p R7) p.s"
+    ; 글자 높이(한 줄) → 줄 사이
+    System::Call "*$R3(i 0, i 0, i R6, i 0)"
+    Push "가"
+    System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C00) i.r0"
+    IntOp $psSpGap $0 * 6
+    IntOp $psSpGap $psSpGap / 10
+    StrCpy $psSpN 0
+    ${Do}
+      ; 다음 줄을 떼어 낸다
+      StrLen $psSpLen $R8
+      StrCpy $psSpI 0
+      StrCpy $psSpLine $R8
+      ${DoWhile} $psSpI < $psSpLen
+        StrCpy $0 $R8 2 $psSpI
+        ${If} $0 == "$\r$\n"
+          StrCpy $psSpLine $R8 $psSpI
+          IntOp $psSpI $psSpI + 2
+          ${Break}
+        ${EndIf}
+        IntOp $psSpI $psSpI + 1
+      ${Loop}
+      StrCpy $R8 $R8 "" $psSpI
+      ${If} $psSpLine != ""
+        ; 이 줄 높이(폭 안에서 꺾이면 그만큼)
+        System::Call "*$R3(i 0, i 0, i R6, i 0)"
+        Push $psSpLine
+        System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C10) i.r0"
+        StrCpy $psSpH $0
+        IntOp $0 $R0 + $psSpN
+        GetDlgItem $0 $R2 $0
+        ${If} $0 = 0
+          IntOp $0 $R0 + $psSpN
+          Push $psSpLine
+          System::Call "user32::CreateWindowExW(i 0, w 'STATIC', w s, i 0x50000080, i $R4, i $R5, i $R6, i $psSpH, p $R2, p $0, p 0, p 0) p.r0"
+          SendMessage $0 ${WM_SETFONT} $R7 1
+        ${Else}
+          SendMessage $0 ${WM_SETTEXT} 0 "STR:$psSpLine"
+          System::Call "user32::SetWindowPos(p r0, p 0, i $R4, i $R5, i $R6, i $psSpH, i 0x0054)"   ; NOZORDER | NOACTIVATE | SHOWWINDOW
+        ${EndIf}
+        IntOp $R5 $R5 + $psSpH
+        IntOp $R5 $R5 + $psSpGap
+        IntOp $psSpN $psSpN + 1
+      ${EndIf}
+      ${If} $psSpN >= 4
+        ${Break}
+      ${EndIf}
+    ${LoopUntil} $R8 == ""
+    ; 앞서 쓰다 남은 줄 칸은 숨긴다(글이 줄었을 때)
+    ${DoWhile} $psSpN < 4
+      IntOp $0 $R0 + $psSpN
+      GetDlgItem $0 $R2 $0
+      ${If} $0 <> 0
+        ShowWindow $0 ${SW_HIDE}
+      ${EndIf}
+      IntOp $psSpN $psSpN + 1
+    ${Loop}
+    System::Call "gdi32::SelectObject(p R9, p s)"
+    System::Call "user32::ReleaseDC(p R2, p R9)"
+    System::Free $R3
+    Pop $0
+    Pop $R9
+    Pop $R8
+    Pop $R7
+    Pop $R6
+    Pop $R5
+    Pop $R4
+    Pop $R3
+    Pop $R2
+    Pop $R1
+    Pop $R0
+  FunctionEnd
+
+  ; 설치 · 제거 범위 화면(템플릿)을 띄우기 직전: 위 · 아래 안내 줄 간격. 아래 안내는 단추를 고를 때마다 템플릿(InstModeChange)이 바꾸므로
+  ; 그 자리에 이 파일의 함수를 걸어 템플릿 함수를 부른 뒤 다시 나눈다(템플릿과 같은 조건 — 두 단추를 다 고를 수 있을 때만).
+  Function ${PSF}psModeShow
+    Push $MultiUser.InstallModePage.Text
+    Push 2110
+    Call ${PSF}psSpread
+    Call ${PSF}psModeNote
+    ${If} $HasTwoAvailableOptions == "1"
+      ${NSD_OnClick} $MultiUser.InstallModePage.CurrentUser ${PSF}psModeClick
+      ${NSD_OnClick} $MultiUser.InstallModePage.AllUsers ${PSF}psModeClick
+    ${EndIf}
+  FunctionEnd
+  Function ${PSF}psModeClick
+    Call ${PSF}InstModeChange   ; 스택의 단추를 템플릿이 꺼내 아래 안내 글을 바꾼다
+    Call ${PSF}psModeNote
+  FunctionEnd
+  Function ${PSF}psModeNote
+    !ifndef BUILD_UNINSTALLER
+      ; 이미 관리자 권한인 설치기는 «모든 사용자»를 골라도 허락 창이 뜨지 않는다 — 그 줄을 뺀다(화면에 쓴 것은 일어나야 한다)
+      ${If} ${UAC_IsAdmin}
+        Push $R0
+        System::Call "user32::GetWindowTextW(p $RadioButtonLabel1, w .R0, i ${NSIS_MAX_STRLEN})"
+        ${If} $R0 == "$(freshInstallForAll)"
+          SendMessage $RadioButtonLabel1 ${WM_SETTEXT} 0 "STR:$(psFreshForAllAdmin)"
+        ${EndIf}
+        Pop $R0
+      ${EndIf}
+    !endif
+    Push $RadioButtonLabel1
+    Push 2120
+    Call ${PSF}psSpread
+  FunctionEnd
 
   ; ── 막대 · 줄 ──
   Function ${PSF}psAt
@@ -646,6 +824,16 @@
       ${if} ${isUpdated}
         Abort
       ${endif}
+    FunctionEnd
+    ; 위 안내 세 줄(칸 1006)의 줄 간격
+    Function psDirShow
+      Push $R0
+      FindWindow $R0 "#32770" "" $HWNDPARENT
+      GetDlgItem $R0 $R0 1006
+      Push $R0
+      Push 2101
+      Call psSpread
+      Pop $R0
     FunctionEnd
 
     ; 이미 깔린 판: «설치된 앱» 등록(제거 명령)이 있는 범위. 진행 화면이 잠시 옮겨 둔 값(psUninstallString)도 센다 — 설치기가 그 사이에 멈췄던 경우.
