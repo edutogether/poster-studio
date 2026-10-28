@@ -532,7 +532,7 @@ function StartApp($path) {
   Start-Process -FilePath $path | Out-Null
   $p = $null
   for ($i = 0; $i -lt 60 -and -not $p; $i++) { Start-Sleep -Milliseconds 500; $p = Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'Poster Studio' -and $_.Path -ieq $path } | Select-Object -First 1 }
-  if ($p) { Move-ToTestMonitor $p.MainWindowHandle | Out-Null }
+  if ($p) { Move-ToTestMonitor $p.MainWindowHandle -Maximize | Out-Null }   # 앱은 스스로 최대화한다 — 최대화된 창은 풀고 옮긴 뒤 다시 최대화
   return $p
 }
 function CloseApps { Get-Process 'Poster Studio' -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null; $_.WaitForExit(15000) | Out-Null } }
@@ -627,7 +627,7 @@ if ($Step -eq 'install') {
     Check '설치가 끝나면 앱이 바로 뜬다(창 제목 «Poster Studio»)' ($null -ne $app) $(if ($app) { "$($app.Path)" })
     }
     if ($app) {
-      Move-ToTestMonitor $app.MainWindowHandle | Out-Null
+      Move-ToTestMonitor $app.MainWindowHandle -Maximize | Out-Null
       $elev = [Win]::Elevated($app.Id)
       Check '켜진 앱은 관리자 권한이 아니다(일반 사용자 권한 — TokenElevation)' ($elev -eq 0) "pid $($app.Id) · 관리자 권한 $elev(1 관리자 · 0 일반 · -1 못 읽음)"
       Start-Sleep -Seconds 5
