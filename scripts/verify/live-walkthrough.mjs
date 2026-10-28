@@ -129,8 +129,11 @@ try {
     await must(videoOn, '카메라 켜짐'); await delay(400);
     await shot('05-2단계-켠뒤-숫자');
   } else {
+    // 10/28: 카메라를 켜기 전 빨간 단추는 «샘플 포스터 보기», 켜면 «3초 뒤 사진 찍기»
+    await must(`document.getElementById('shotBtn').textContent.trim() === '샘플 포스터 보기'`, '켜기 전 빨간 단추 «샘플 포스터 보기»', 3000);
     await click('#startBtn');
     await must(videoOn, '카메라 켜짐'); await delay(2400);
+    await must(`document.getElementById('shotBtn').textContent.trim() === '3초 뒤 사진 찍기'`, '켠 뒤 빨간 단추 «3초 뒤 사진 찍기»', 3000);
     await shot('05-2단계-켠뒤');
     await click('#shotBtn'); await delay(700);
     await shot('06-2단계-숫자');

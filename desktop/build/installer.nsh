@@ -154,19 +154,34 @@
 !macroend
 
 ; ── 진행 글 ── 원래 기록(«압축 해제: …\Temp\nsg….tmp\app-64.7z», 파일 복사 …)은 꺼 두고(SetDetailsPrint none) 이 파일이 쓰는 줄만 켰다 끈다.
-; 단계 문장은 막대 위 한 줄과 상자에, 파일 줄(«설치: …» · «삭제: …»)은 상자에만 적는다. 상자는 진행 화면이 열릴 때부터 보인다(ShowInstDetails show).
+; 단계 문장은 막대 위 한 줄과 상자에, 위치 · 파일 줄(«설치 위치: …» · «설치: …» · «삭제: …») · 한 일(바로가기 · 등록)은 상자에만 적는다.
+; 막대 위 한 줄은 단계가 바뀔 때만 바뀐다 — 위치 줄 · 한 일을 거기도 적으면 몇 ms 만에 글이 연달아 바뀌어 깜빡였다(10/28 녹화). 상자는 진행 화면이 열릴 때부터 보인다(ShowInstDetails show).
 !macro psStage TEXT
   SetDetailsPrint both
   DetailPrint "${TEXT}"
   SetDetailsPrint none
 !macroend
-!macro psLine TEXT
+!macro psNote TEXT
   SetDetailsPrint listonly
   DetailPrint "${TEXT}"
   SetDetailsPrint none
 !macroend
+; «머리말: 경로» 한 줄 — 상자 칸보다 길면 경로 가운데를 줄인다(psFit)
+!macro psLine WORD PATH
+  Push $R0
+  Push "${PATH}"
+  Push "${WORD}: "
+  Call ${PSF}psFit
+  Pop $R0
+  SetDetailsPrint listonly
+  DetailPrint $R0
+  SetDetailsPrint none
+  Pop $R0
+!macroend
 ; 파일 줄 사이 간격 — 파일 20여 개는 한순간에 지워지고 놓여 줄이 한꺼번에 찍힌다. 하나씩 흘러가 보이게 줄마다 잠깐 둔다(Bumm님 «주르륵 지나가야»).
 !define PS_PACE 35
+; 상자 칸 폭에서 뺄 글 앞뒤 여백(px) — 이만큼 남겨야 상자가 줄 끝을 «…»로 자르지 않는다
+!define PS_LIST_PAD 16
 
 ; ── 설치기: 위치 화면 · 진행 화면 ──
 !ifndef BUILD_UNINSTALLER
@@ -280,7 +295,7 @@
         System::Call "user32::SetWindowLongW(p $R1, i -12, i 1999)"
         System::Call "user32::SetWindowLongW(p $psBar, i -12, i 1004)"
       ${EndIf}
-      !insertmacro psStage "설치 위치: $INSTDIR"
+      !insertmacro psLine "설치 위치" "$INSTDIR"
     ${EndIf}
   !macroend
 
@@ -310,21 +325,21 @@
     ReadRegStr $R7 ${ROOT} "${INSTALL_REGISTRY_KEY}" MenuDirectory
     ${If} ${FileExists} "$DESKTOP\$R6.lnk"
       Delete "$DESKTOP\$R6.lnk"
-      !insertmacro psLine "삭제: $DESKTOP\$R6.lnk"
+      !insertmacro psLine "삭제" "$DESKTOP\$R6.lnk"
     ${EndIf}
     ${If} $R7 != ""
       ${If} ${FileExists} "$SMPROGRAMS\$R7\$R6.lnk"
         Delete "$SMPROGRAMS\$R7\$R6.lnk"
-        !insertmacro psLine "삭제: $SMPROGRAMS\$R7\$R6.lnk"
+        !insertmacro psLine "삭제" "$SMPROGRAMS\$R7\$R6.lnk"
       ${EndIf}
       ${If} ${FileExists} "$SMPROGRAMS\$R7\Uninstall ${PRODUCT_NAME}.lnk"
         Delete "$SMPROGRAMS\$R7\Uninstall ${PRODUCT_NAME}.lnk"
-        !insertmacro psLine "삭제: $SMPROGRAMS\$R7\Uninstall ${PRODUCT_NAME}.lnk"
+        !insertmacro psLine "삭제" "$SMPROGRAMS\$R7\Uninstall ${PRODUCT_NAME}.lnk"
       ${EndIf}
       RMDir "$SMPROGRAMS\$R7"
     ${ElseIf} ${FileExists} "$SMPROGRAMS\$R6.lnk"
       Delete "$SMPROGRAMS\$R6.lnk"
-      !insertmacro psLine "삭제: $SMPROGRAMS\$R6.lnk"
+      !insertmacro psLine "삭제" "$SMPROGRAMS\$R6.lnk"
     ${EndIf}
     DeleteRegKey ${ROOT} "${UNINSTALL_REGISTRY_KEY}"
     !ifdef UNINSTALL_REGISTRY_KEY_2
@@ -472,6 +487,57 @@
     Pop $R0
   FunctionEnd
 
+  ; 상자 한 줄이 칸보다 길면 경로 가운데를 «...»로 줄여 파일 이름이 끝까지 보이게 한다 — PathCompactPathW가 상자 글꼴로 실제 폭을 잰다.
+  ; «나만» 위치(C:\Users\<이름>\AppData\Local\Programs\…)는 줄마다 «…\Poster Stu…»에서 잘려 어느 파일인지 안 보였다(10/28 녹화). «모든 사용자» 위치는 거의 그대로 들어간다.
+  ; 스택에 경로 → 머리말 순으로 넣고 부르면 맨 위에 적을 줄이 남는다. 상자가 없으면(조용한 실행) 그대로 붙인다.
+  Function ${PSF}psFit
+    Exch $R0
+    Exch
+    Exch $R1
+    Push $R2
+    Push $R3
+    Push $R4
+    Push $R5
+    Push $R6
+    Push $R7
+    Push $R8
+    StrCpy $R8 "$R0$R1"
+    FindWindow $R2 "#32770" "" $HWNDPARENT
+    GetDlgItem $R2 $R2 1016
+    ${If} $R2 <> 0
+      SendMessage $R2 0x101D 0 0 $R3   ; LVM_GETCOLUMNWIDTH
+      IntOp $R3 $R3 - ${PS_LIST_PAD}
+      System::Call "user32::GetDC(p R2) p.R4"
+      SendMessage $R2 0x31 0 0 $R5     ; WM_GETFONT
+      System::Call "gdi32::SelectObject(p R4, p R5) p.R5"
+      System::Call "*(i 0, i 0) p.R6"
+      StrLen $R7 $R8
+      System::Call "gdi32::GetTextExtentPoint32W(p R4, w R8, i R7, p R6)"
+      System::Call "*$R6(i .R7)"
+      ${If} $R7 > $R3
+        StrLen $R7 $R0
+        System::Call "gdi32::GetTextExtentPoint32W(p R4, w R0, i R7, p R6)"
+        System::Call "*$R6(i .R7)"
+        IntOp $R7 $R3 - $R7
+        System::Call "shlwapi::PathCompactPathW(p R4, w R1 R1, i R7)"
+        StrCpy $R8 "$R0$R1"
+      ${EndIf}
+      System::Free $R6
+      System::Call "gdi32::SelectObject(p R4, p R5)"
+      System::Call "user32::ReleaseDC(p R2, p R4)"
+    ${EndIf}
+    StrCpy $R0 $R8
+    Pop $R8
+    Pop $R7
+    Pop $R6
+    Pop $R5
+    Pop $R4
+    Pop $R3
+    Pop $R2
+    Pop $R1
+    Exch $R0
+  FunctionEnd
+
   ; 폴더 안 파일을 하나씩 지우며 «삭제: …»를 적는다(하위 폴더까지 — 빈 하위 폴더도 지운다). 못 지운 파일이 있으면 오류 표시를 남긴다.
   Function ${PSF}psDeleteDir
     Exch $R0
@@ -490,7 +556,7 @@
           Delete "$R0\$R2"
           ; 못 지운 파일(사용 중 등)은 줄을 적지 않는다 — 남은 것은 뒤의 확인(등록 · 파일이 아직 있는가)이 잡는다
           ${IfNot} ${Errors}
-            !insertmacro psLine "삭제: $R0\$R2"
+            !insertmacro psLine "삭제" "$R0\$R2"
             Call ${PSF}psStep
           ${EndIf}
         ${EndIf}
@@ -675,7 +741,7 @@
         ${EndIf}
         StrCpy $R6 $R6 -2   ; 줄 끝 \r\n
         ${IfNot} ${FileExists} "$R6"
-          !insertmacro psLine "삭제: $R6"
+          !insertmacro psLine "삭제" "$R6"
           Call psStep
         ${EndIf}
       ${Loop}
@@ -788,7 +854,7 @@
             Push "$R0\$R2"
             Call psListDir
           ${Else}
-            !insertmacro psLine "설치: $R0\$R2"
+            !insertmacro psLine "설치" "$R0\$R2"
             Call psStep
           ${EndIf}
         ${EndIf}
@@ -832,7 +898,7 @@
   !ifdef BUILD_UNINSTALLER
     ${IfNot} ${Silent}
       Call un.psBarCover
-      !insertmacro psStage "제거 위치: $INSTDIR"
+      !insertmacro psLine "제거 위치" "$INSTDIR"
     ${EndIf}
     Push $R0
     Call un.psAppGate
@@ -921,18 +987,18 @@
 
 ; 등록 · 바로가기를 마친 뒤(템플릿의 마지막 자리): 제거기 줄 · 한 일 · «설치가 끝났습니다.» → 100%를 1초 보인 뒤 완료 화면
 !macro customInstall
-  !insertmacro psLine "설치: $INSTDIR\${UNINSTALL_FILENAME}"
+  !insertmacro psLine "설치" "$INSTDIR\${UNINSTALL_FILENAME}"
   CreateShortCut "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk" "$INSTDIR\${UNINSTALL_FILENAME}"
   ${If} $installMode == "all"
     DeleteRegValue HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
     DeleteRegKey /ifempty HKCU "${INSTALL_REGISTRY_KEY}"
   ${EndIf}
   !insertmacro psAt 950
-  !insertmacro psStage "바탕화면에 «${PRODUCT_NAME}» 바로가기를 만들었습니다."
+  !insertmacro psNote "바탕화면에 «${PRODUCT_NAME}» 바로가기를 만들었습니다."
   !insertmacro psAt 965
-  !insertmacro psStage "시작 메뉴 «${MENU_FILENAME}»에 등록했습니다."
+  !insertmacro psNote "시작 메뉴 «${MENU_FILENAME}»에 등록했습니다."
   !insertmacro psAt 980
-  !insertmacro psStage "«설치된 앱» 목록에 «${PRODUCT_NAME}»를 등록했습니다."
+  !insertmacro psNote "«설치된 앱» 목록에 «${PRODUCT_NAME}»를 등록했습니다."
   !insertmacro psAt 1000
   !insertmacro psStage "설치가 끝났습니다."
   ${IfNot} ${Silent}
@@ -964,7 +1030,7 @@
   ${IfNot} ${isKeepShortcuts}
     ${If} ${FileExists} "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
       Delete "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
-      !insertmacro psLine "삭제: $SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
+      !insertmacro psLine "삭제" "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk"
     ${EndIf}
   ${EndIf}
 !macroend
@@ -1005,11 +1071,11 @@
 !macro unregisterFileAssociations
   ${If} $psHadDesk == "1"
   ${AndIfNot} ${FileExists} "$oldDesktopLink"
-    !insertmacro psLine "삭제: $oldDesktopLink"
+    !insertmacro psLine "삭제" "$oldDesktopLink"
   ${EndIf}
   ${If} $psHadMenu == "1"
   ${AndIfNot} ${FileExists} "$oldStartMenuLink"
-    !insertmacro psLine "삭제: $oldStartMenuLink"
+    !insertmacro psLine "삭제" "$oldStartMenuLink"
   ${EndIf}
   !insertmacro psAt 1000
   !insertmacro psStage "제거가 끝났습니다."

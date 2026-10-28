@@ -212,8 +212,7 @@ public static class Win {
     bool v = false;
     EnumChildWindows(dlg, (h, l) => { if (Cls(h) == "SysListView32") { v = IsWindowVisible(h); return false; } return true; }, IntPtr.Zero);
     return v;
-  }
-  public static IntPtr MessageText(IntPtr box) {
+  }  public static IntPtr MessageText(IntPtr box) {
     IntPtr found = IntPtr.Zero;
     EnumChildWindows(box, (h, l) => { if (Cls(h) == "Static" && (GetDlgCtrlID(h) & 0xFFFF) == 0xFFFF && Text(h).Length > 0) { found = h; return false; } return true; }, IntPtr.Zero);
     return found;
@@ -286,8 +285,8 @@ function ProgressChecks($kind, $whereLabel, $doing, $word, $endLine) {
   $raw = '\\Temp\\|\\ns[a-z0-9]+\.tmp|\.7z|압축 해제|파일 복사|대상 폴더|폴더 생성|바로 가기 생성|파일 삭제|실행:|Extract|Output folder|Delete file|Uninstall was|Can.t modify|File is busy'
   $bad = @(@($statuses) + @($lines) | Where-Object { $_ -match $raw } | Select-Object -Unique)
   Check "$kind 진행 글에 원래 기록(임시 폴더 · .7z · 압축 해제 · 파일 삭제 …)이 없다" ($samples.Count -gt 0 -and $bad.Count -eq 0) $(if ($bad.Count) { $bad -join ' | ' } else { "표본 $($samples.Count)개" })
-  $where = "$($whereLabel): $appDir"
-  Check "$kind 진행 글이 쉬운 문장으로 바뀌어 간다(위치 줄 · «$doing» · 서로 다른 줄 3개 이상)" (($lines -contains $where) -and @($lines | Where-Object { $_ -like "*$doing*" }).Count -gt 0 -and $lines.Count -ge 3) ($lines -join ' → ')
+  $whereOk = @($lines | Where-Object { $_.StartsWith("$($whereLabel): ") -and (SamePath $_.Substring($whereLabel.Length + 2) $appDir) }).Count -gt 0
+  Check "$kind 진행 글이 쉬운 문장으로 바뀌어 간다(위치 줄 · «$doing» · 서로 다른 줄 3개 이상)" ($whereOk -and @($lines | Where-Object { $_ -like "*$doing*" }).Count -gt 0 -and $lines.Count -ge 3) ($lines -join ' → ')
   $bars = @($samples | ForEach-Object { $_.bar } | Where-Object { $null -ne $_ -and $_ -ge 0 })
   $drops = @(); for ($i = 1; $i -lt $bars.Count; $i++) { if ($bars[$i] -lt $bars[$i - 1] - 2) { $drops += "$($bars[$i - 1])→$($bars[$i])" } }
   $max = if ($bars.Count) { ($bars | Measure-Object -Maximum).Maximum } else { -1 }
@@ -296,9 +295,14 @@ function ProgressChecks($kind, $whereLabel, $doing, $word, $endLine) {
   $final = @($samples | Sort-Object { @($_.details).Count } -Descending | Select-Object -First 1 | ForEach-Object { $_.details })
   $fileLines = @($final | Where-Object { $_ -like "${word}: *" })
   $allowed = @("${word}: $appDir\") + $(if ($word -eq '삭제') { @("${word}: $desktopDir\", "${word}: $programsDir\") } else { @() })
-  $outside = @($fileLines | Where-Object { $l = $_; -not @($allowed | Where-Object { $l.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }).Count })
+  # 줄인 줄(«...»)은 맞는 실제 파일로 바꿔 본다 — 맞는 파일이 없으면 폴더 밖으로 센다
+  $outside = @($fileLines | Where-Object {
+      $p = $_.Substring($word.Length + 2)
+      $cands = if ($p.Contains('...')) { @($script:known | Where-Object { SamePath $p $_ }) } else { @($p) }
+      -not @($cands | Where-Object { $c = "${word}: $_"; @($allowed | Where-Object { $c.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }).Count }).Count })
+  $short = @($fileLines | Where-Object { $_.Contains('...') }).Count
   $last = if ($final.Count) { $final[-1] } else { '' }
-  Check "$kind 상자에 «${word}: …» 파일 줄이 흐르고 마지막 줄이 «$endLine»" ($fileLines.Count -ge 15 -and $outside.Count -eq 0 -and $last -eq $endLine) "파일 줄 $($fileLines.Count)개 · 마지막 «$last»$(if ($outside.Count) { ' · 폴더 밖 ' + ($outside -join ' | ') })"
+  Check "$kind 상자에 «${word}: …» 파일 줄이 흐르고 마지막 줄이 «$endLine»" ($fileLines.Count -ge 15 -and $outside.Count -eq 0 -and $last -eq $endLine) "파일 줄 $($fileLines.Count)개(가운데를 줄인 줄 $($short)개) · 마지막 «$last»$(if ($outside.Count) { ' · 폴더 밖 ' + ($outside -join ' | ') })"
   $report.progressLines = $lines
   $report.progressStatuses = $statuses
   $report.finalList = $final
@@ -350,7 +354,15 @@ $Answers = @($Answers | ForEach-Object { "$_" -split ',' } | ForEach-Object { $_
 function HandleBoxes($prefix, $n, $h, $wait) {
   for ($k = 0; $k -lt 6; $k++) {
     $box = [IntPtr]::Zero
-    for ($i = 0; $i -lt $wait -and $box -eq [IntPtr]::Zero; $i++) { $box = [Win]::FindMessageBox('Poster Studio'); if ($box -eq [IntPtr]::Zero) { Start-Sleep -Milliseconds 100 } }
+    # 진행이 시작되면(«다음»이 꺼짐) 기다리지 않는다 — 제거는 2초 안에 끝나 기다리는 동안 진행 화면을 통째로 놓쳤다(10/28, 막대 표본 1개).
+    # 진행 중에 뜨는 묻는 창(제거의 켜진 앱)은 Walk의 진행 표본 줄이 잡는다.
+    for ($i = 0; $i -lt $wait -and $box -eq [IntPtr]::Zero; $i++) {
+      $box = [Win]::FindMessageBox('Poster Studio')
+      if ($box -eq [IntPtr]::Zero) {
+        if ([Win]::IsWindow($h) -and [Win]::IsWindowVisible($h) -and -not [Win]::IsWindowEnabled([Win]::GetDlgItem($h, 1))) { return 'none' }
+        Start-Sleep -Milliseconds 100
+      }
+    }
     if ($box -eq [IntPtr]::Zero) { return 'none' }
     Start-Sleep -Milliseconds 400
     $bf = Join-Path $Out ('{0}-{1:00}-알림-{2:00}.png' -f $prefix, $n, (@($report.messageBoxes).Count + 1))
@@ -470,6 +482,23 @@ $otherExe = Join-Path (Join-Path $otherParent 'Poster Studio') 'Poster Studio.ex
 $otherDesk = Join-Path ([Environment]::GetFolderPath($(if ($Mode -eq 'all') { 'Desktop' } else { 'CommonDesktopDirectory' }))) 'Poster Studio.lnk'
 $otherMenu = Join-Path ([Environment]::GetFolderPath($(if ($Mode -eq 'all') { 'Programs' } else { 'CommonPrograms' }))) 'InKY Film Festival'
 
+# 상자 줄의 경로는 칸보다 길면 가운데가 «...»로 준다(설치기의 PathCompactPathW, 10/28 — «나만» 위치는 줄마다 파일 이름이 잘려 안 보였다).
+# 줄인 줄은 앞 · 뒤가 이 시험에서 본 실제 파일(Remember)과 맞아야 그 파일 줄로 친다 — 아무 경로나 «...»로 가려 통과하지 못하게.
+function SamePath($shown, $full) {
+  if ($shown -ieq $full) { return $true }
+  $i = $shown.IndexOf('...')
+  if ($i -lt 3) { return $false }
+  $head = $shown.Substring(0, $i); $tail = $shown.Substring($i + 3)
+  return ($full.Length -gt $head.Length + $tail.Length) -and $full.StartsWith($head, [StringComparison]::OrdinalIgnoreCase) -and $full.EndsWith($tail, [StringComparison]::OrdinalIgnoreCase)
+}
+$script:known = @()
+function Remember {
+  $dirs = @($appDir, (Join-Path $otherParent 'Poster Studio')) | Where-Object { Test-Path $_ }
+  $files = @($dirs | ForEach-Object { Get-ChildItem $_ -Recurse -File -Force | ForEach-Object { $_.FullName } })
+  $links = @($desktopLnk, $startLnk, $uninstallLnk, $otherDesk, (Join-Path $otherMenu 'Poster Studio.lnk'), (Join-Path $otherMenu 'Uninstall Poster Studio.lnk')) | Where-Object { Test-Path $_ }
+  $script:known = @($script:known + $files + $links | Select-Object -Unique)
+}
+
 # 깔린 앱을 켠다(-AppOn) — 창이 뜰 때까지 기다린다
 function StartApp($path) {
   Start-Process -FilePath $path | Out-Null
@@ -511,6 +540,7 @@ if ($Step -eq 'install') {
     $appProc = StartApp $appPath
     Check '설치 전: 깔린 앱을 켜 둔다' ($null -ne $appProc) $appPath
   }
+  Remember
   StartInstaller
   $walked = Walk "installer-$Mode"
   PromptChecks '설치'
@@ -521,6 +551,7 @@ if ($Step -eq 'install') {
     if ($AppOn) { Check '앱이 켜진 채다' ($null -ne (Get-Process 'Poster Studio' -ErrorAction SilentlyContinue)) $null; CloseApps }
   } else {
     Check '설치 창이 뜨고 화면을 끝까지 넘긴다' $walked $report.title
+    Remember
     ProgressChecks '설치' '설치 위치' '프로그램 파일을 설치하는 중' '설치' '설치가 끝났습니다.'
     for ($i = 0; $i -lt 120 -and -not (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
     Check '설치 범위 화면(«me 전용» · «모든 사용자»)이 있고 기준 단추를 골랐다' (@($report.pages | Where-Object { $_.picked }).Count -eq 1) (@($report.pages | Where-Object { $_.picked }) | ForEach-Object { $_.picked })
@@ -571,6 +602,7 @@ if ($Step -eq 'install') {
     $appProc = StartApp $exe
     Check '제거 전: 깔린 앱을 켜 둔다' ($null -ne $appProc) $exe
   }
+  Remember
   StartUninstaller
   $walked = Walk "uninstaller-$Mode-$Via"
   PromptChecks '제거'
