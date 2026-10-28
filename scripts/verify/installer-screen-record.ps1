@@ -50,7 +50,14 @@ while ($h -ne [IntPtr]::Zero -and (Get-Date) -lt $deadline) {
   $psi = New-Object System.Diagnostics.ProcessStartInfo('ffmpeg', ('-y -loglevel error -f gdigrab -framerate 30 -offset_x {0} -offset_y {1} -video_size {2}x{3} -i desktop -t {4} -c:v ffv1 "{5}"' -f $r.L, $r.T, $w, $hh, $left, $file))
   $psi.UseShellExecute = $false; $psi.RedirectStandardInput = $true; $psi.CreateNoWindow = $true
   $ff = [System.Diagnostics.Process]::Start($psi)
-  while (-not $ff.HasExited -and [FW]::IsWindow($h) -and [FW]::IsWindowVisible($h)) { Start-Sleep -Milliseconds 50 }
+  # 화면을 넘길 때 설치기가 바깥 창 그리기를 잠깐 멈추면(WM_SETREDRAW — 그동안 «보이지 않음»으로 읽힌다, 10/28 깜빡임 고침) 그 사이도 이어서 찍는다 — 0.7초 넘게 안 보일 때만 멈춘다
+  $hiddenSince = $null
+  while (-not $ff.HasExited -and [FW]::IsWindow($h)) {
+    if ([FW]::IsWindowVisible($h)) { $hiddenSince = $null }
+    elseif ($null -eq $hiddenSince) { $hiddenSince = Get-Date }
+    elseif (((Get-Date) - $hiddenSince).TotalMilliseconds -ge 700) { break }
+    Start-Sleep -Milliseconds 50
+  }
   if (-not $ff.HasExited) { $ff.StandardInput.Write('q'); $ff.StandardInput.Close(); $ff.WaitForExit(10000) | Out-Null }
   "part $part stop $((Get-Date).ToString('HH:mm:ss.fff')) ffmpeg exit $($ff.ExitCode) · 창이 닫힘 $(-not [FW]::IsWindow($h))" | Add-Content "$Out\watch.txt" -Encoding UTF8
   # 녹화가 끝나면 맨 위를 푼다(창이 남아 있으면 — HWND_NOTOPMOST(-2), NOSIZE|NOMOVE|NOACTIVATE)

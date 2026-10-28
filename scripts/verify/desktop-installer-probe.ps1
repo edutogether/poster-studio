@@ -464,12 +464,15 @@ function Walk($prefix) {
       $h2 = [IntPtr]::Zero
       for ($i = 0; $i -lt 200 -and $h2 -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 50; $h2 = [Win]::FindDialog('Poster Studio') }
       if ($h2 -eq [IntPtr]::Zero) { break }
-      $h = $h2
-      $report.elevatedStartedOnTestMonitor = Test-OnTestMonitor $h
-      $report.stoppedOffMonitor = Stop-OffTestMonitor $h
-      Check "$prefix 관리자 권한으로 다시 뜬 창이 처음부터 검사 모니터에 떴다" $report.elevatedStartedOnTestMonitor $(if ($report.stoppedOffMonitor) { "밖에 떠서 바로 끔: $($report.stoppedOffMonitor)" })
-      if ($report.stoppedOffMonitor) { return $false }
-      Move-ToTestMonitor $h | Out-Null
+      # 같은 창이 다시 보이면 화면을 넘기는 동안 그리기를 잠깐 멈췄던 것이다(WM_SETREDRAW — 10/28 깜빡임 고침). 새 창일 때만 다시 뜬 창으로 본다
+      if ($h2 -ne $h) {
+        $h = $h2
+        $report.elevatedStartedOnTestMonitor = Test-OnTestMonitor $h
+        $report.stoppedOffMonitor = Stop-OffTestMonitor $h
+        Check "$prefix 관리자 권한으로 다시 뜬 창이 처음부터 검사 모니터에 떴다" $report.elevatedStartedOnTestMonitor $(if ($report.stoppedOffMonitor) { "밖에 떠서 바로 끔: $($report.stoppedOffMonitor)" })
+        if ($report.stoppedOffMonitor) { return $false }
+        Move-ToTestMonitor $h | Out-Null
+      }
     }
     $next = [Win]::GetDlgItem($h, 1)
     # 설치가 도는 동안(«다음»이 꺼져 있는 동안)은 0.5초마다 그 화면을 찍고, 진행 글(위 한 줄 · «자세히» 목록) · 막대 위치 · 상자 보임은 0.1초마다 읽는다 —
@@ -663,7 +666,7 @@ if ($Step -eq 'install') {
       $dels = if ($iOld -ge 0 -and $iNew -gt $iOld + 1) { @($final[($iOld + 1)..($iNew - 1)] | Where-Object { $_ -like '삭제: *' }) } else { @() }
       Check '예전 판: «예전 Poster Studio를 지우는 중입니다 …»와 «삭제: …» 줄이 먼저 흐르고 «프로그램 파일을 설치하는 중입니다 …»가 뒤따른다' ($iOld -ge 0 -and $iNew -gt $iOld -and $dels.Count -ge 15) "삭제 줄 $($dels.Count)개 · 순서 $iOld → $iNew"
     }
-    if ($Replace) { $newBorn = (Get-Item $exe -ErrorAction SilentlyContinue).CreationTimeUtc; Check '덮어쓴 뒤 앱 실행 파일이 새로 놓였다(만든 시각)' ($newBorn -and $oldBorn -and $newBorn -gt $oldBorn) "$($oldBorn.ToString('o')) → $(if ($newBorn) { $newBorn.ToString('o') })" }
+    if ($Replace) { $newBorn = (Get-Item $exe -ErrorAction SilentlyContinue).CreationTimeUtc; Check '덮어쓴 뒤 앱 실행 파일이 새로 놓였다(만든 시각)' ($newBorn -and $oldBorn -and $newBorn -gt $oldBorn) "$(if ($oldBorn) { $oldBorn.ToString('o') }) → $(if ($newBorn) { $newBorn.ToString('o') })" }
     if ($Beside) {
       # «InKY Film Festival» 폴더 · 시작 메뉴 폴더는 다른 앱(Voice Cinema 등)과 함께 쓴다 — Poster Studio 것이 남지 않고, 폴더는 비었을 때만 지워졌는지 본다
       $left = @(@((Join-Path $otherParent 'Poster Studio'), $otherDesk, (Join-Path $otherMenu 'Poster Studio.lnk'), (Join-Path $otherMenu 'Uninstall Poster Studio.lnk')) | Where-Object { Test-Path $_ }) + @(@($otherParent, $otherMenu) | Where-Object { (Test-Path $_) -and -not (Get-ChildItem $_ -Force | Select-Object -First 1) }) + @(if (Entry $otherHive) { "«설치된 앱» $otherHive 등록" })
