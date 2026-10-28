@@ -357,11 +357,34 @@ function ProgressChecks($kind, $whereLabel, $doing, $word, $endLine) {
   # 줄인 줄(«...»)은 맞는 실제 파일로 바꿔 본다 — 맞는 파일이 없으면 폴더 밖으로 센다
   $outside = @($fileLines | Where-Object {
       $p = $_.Substring($word.Length + 2)
-      $cands = if ($p.Contains('...')) { @($script:known | Where-Object { SamePath $p $_ }) } else { @($p) }
+      $cands = if ($p.Contains('...') -or $p.Contains('…')) { @($script:known | Where-Object { SamePath $p $_ }) } else { @($p) }
       -not @($cands | Where-Object { $c = "${word}: $_"; @($allowed | Where-Object { $c.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }).Count }).Count })
-  $short = @($fileLines | Where-Object { $_.Contains('...') }).Count
+  $short = @($fileLines | Where-Object { $_.Contains('...') -or $_.Contains('…') }).Count
+  # 줄인 줄은 폴더 이름 단위여야 한다(10/28 팀장 — «Poster St…» · «InKY Fil…»처럼 낱말 가운데를 자르지 않는다): 줄임표 앞이 «\»로 끝나고 뒤가 «\»로 시작
+  $midCut = @($fileLines | Where-Object { $_.Contains('...') -or $_.Contains('…') } | Where-Object {
+      $p = $_.Substring($word.Length + 2); $mark = if ($p.Contains('…')) { '…' } else { '...' }; $k = $p.IndexOf($mark)
+      -not ($p.Substring(0, $k).EndsWith('\') -and $p.Substring($k + $mark.Length).StartsWith('\')) })
+  Check "$kind 상자 경로 줄임이 폴더 이름 단위다(낱말 가운데를 자른 줄 0)" ($midCut.Count -eq 0) $(if ($midCut.Count) { "$($midCut.Count)줄: " + (($midCut | Select-Object -First 4) -join ' | ') } else { "줄인 줄 $short개 · 모두 폴더 단위" })
   $last = if ($final.Count) { $final[-1] } else { '' }
   Check "$kind 상자에 «${word}: …» 파일 줄이 흐르고 마지막 줄이 «$endLine»" ($fileLines.Count -ge 15 -and $outside.Count -eq 0 -and $last -eq $endLine) "파일 줄 $($fileLines.Count)개(가운데를 줄인 줄 $($short)개) · 마지막 «$last»$(if ($outside.Count) { ' · 폴더 밖 ' + ($outside -join ' | ') })"
+  # 막대가 0.5초 넘게 한자리에 서 있는 구간(100% 전) — 멈춘 것처럼 보인다(10/28 팀장). 표본 시각(t, 0.1초 간격)으로 잰다
+  $timed = @($samples | Where-Object { $null -ne $_.t -and $null -ne $_.bar -and $_.bar -ge 0 })
+  $stalls = @(); $i = 0
+  while ($i -lt $timed.Count) { $k = $i; while ($k + 1 -lt $timed.Count -and $timed[$k + 1].bar -eq $timed[$i].bar) { $k++ }
+    $end = if ($k + 1 -lt $timed.Count) { $timed[$k + 1].t } else { $timed[$k].t }
+    if ($timed[$i].bar -lt 995 -and $end - $timed[$i].t -ge 500) {
+      $st = if ($timed[$i].text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } else { '' }
+      # 그 자리에서 새 단계 문장이 떴는가(바로 앞 표본과 다르다 — 팀장 «막대 몫을 주거나 그 단계 문장을 띄워»)
+      $prevSt = if ($i -gt 0 -and $timed[$i - 1].text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } else { '' }
+      $stalls += [pscustomobject]@{ text = "$($timed[$i].bar)‰에서 $([Math]::Round(($end - $timed[$i].t) / 1000, 1))초(«$st»$(if ($st -ne $prevSt) { ' — 이때 뜬 단계 문장' }))"; told = ($st -ne $prevSt) }
+    }
+    $i = $k + 1 }
+  $silent = @($stalls | Where-Object { -not $_.told })
+  Check "$kind 진행 막대가 0.5초 넘게 서 있는 구간이 없거나, 있으면 그 자리에서 그 일의 단계 문장이 뜬다(100% 전)" ($timed.Count -ge 5 -and $silent.Count -eq 0) $(if ($timed.Count -lt 5) { "시각 붙은 표본 $($timed.Count)개" } elseif ($stalls.Count) { "선 구간 $($stalls.Count)곳(문장 없이 $($silent.Count)곳): " + (($stalls | ForEach-Object { $_.text }) -join ' | ') } else { "표본 $($timed.Count)개 · $([Math]::Round(($timed[-1].t - $timed[0].t) / 1000, 1))초 · 선 구간 0" })
+  # «삭제: …» 줄이 새로 붙는 동안 막대 위 단계 문장이 하는 일(지우기)과 같다 — «…설치하는 중»이면 걸림(10/28 팀장)
+  $mismatch = @(); $prevCount = 0
+  foreach ($s in $samples) { $d = @($s.details); if ($d.Count -gt $prevCount -and $d[-1] -like '삭제: *') { $st = if ($s.text -match '\[1006\]([^|]*)\|') { $Matches[1].Trim() } else { '' }; if ($st -notlike '*지우는*') { $mismatch += "«$st» · $($d[-1])" } }; $prevCount = $d.Count }
+  Check "$kind «삭제: …» 줄이 흐르는 동안 단계 문장이 «…지우는 중»이다" ($mismatch.Count -eq 0) $(if ($mismatch.Count) { ($mismatch | Select-Object -First 5) -join ' | ' } else { '어긋남 0' })
   $report.progressLines = $lines
   $report.progressStatuses = $statuses
   $report.finalList = $final
@@ -448,6 +471,7 @@ function HandleBoxes($prefix, $n, $h, $wait) {
 
 # 설치 · 제거 창을 화면마다 찍으며 «다음»(단추 1)을 누른다
 function Walk($prefix) {
+  $walkClock = [Diagnostics.Stopwatch]::StartNew()   # 진행 표본의 시각(막대가 멈춘 시간을 잰다)
   $h = [IntPtr]::Zero
   for ($i = 0; $i -lt 800 -and $h -eq [IntPtr]::Zero; $i++) { Start-Sleep -Milliseconds 50; $h = [Win]::FindDialog('Poster Studio') }
   if ($h -eq [IntPtr]::Zero) { return $false }
@@ -481,7 +505,7 @@ function Walk($prefix) {
     for ($w = 0; $w -lt 1500 -and -not [Win]::IsWindowEnabled($next) -and [Win]::IsWindow($h) -and [Win]::IsWindowVisible($h); $w++) {
       # 진행 단계에서 뜨는 묻는 창(그 사이에 앱을 다시 켰을 때 등)
       if ([Win]::FindMessageBox('Poster Studio') -ne [IntPtr]::Zero) { HandleBoxes $prefix $n $h 1 | Out-Null; continue }
-      $sample = [ordered]@{ text = [Win]::AllText($h); details = @(DetailLines $h); bar = [Win]::BarPermille($h); list = [Win]::ListVisible($h) }
+      $sample = [ordered]@{ t = $walkClock.ElapsedMilliseconds; text = [Win]::AllText($h); details = @(DetailLines $h); bar = [Win]::BarPermille($h); list = [Win]::ListVisible($h) }
       if ($w % 5 -eq 0 -and @($progress | Where-Object { $_.shot }).Count -lt 40) {
         $pf = Join-Path $Out ('{0}-{1:00}-진행-{2:00}.png' -f $prefix, $n, (@($progress | Where-Object { $_.shot }).Count + 1))
         [Win]::Shot($h, $pf)
@@ -532,7 +556,14 @@ function Walk($prefix) {
     }
     # 위치 화면 — 기본값을 읽어 둔다(바꾸지 않는다)
     $dir = [Win]::FindChildById($h, 1019)
-    if ($dir -ne [IntPtr]::Zero) { $page.defaultDir = [Win]::EditText($dir); $report.defaultDir = $page.defaultDir }
+    if ($dir -ne [IntPtr]::Zero) {
+      $page.defaultDir = [Win]::EditText($dir); $report.defaultDir = $page.defaultDir
+      # 폴더 칸이 전체 선택(파란색)된 채 끝으로 밀려 앞이 잘려 보이지 않는가(10/28 팀장): 선택 시작 = 끝 · 첫 글자의 x ≥ 0
+      $sel = [Win]::SendMessage($dir, 0x00B0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt64()   # EM_GETSEL → 아래 16비트 시작 · 위 16비트 끝
+      $pos = [Win]::SendMessage($dir, 0x00D6, [IntPtr]::Zero, [IntPtr]::Zero).ToInt64()   # EM_POSFROMCHAR(0) → 아래 16비트 x(부호 있음)
+      $x0 = $pos -band 0xFFFF; if ($x0 -ge 0x8000) { $x0 -= 0x10000 }
+      $report.dirField = [ordered]@{ selStart = $sel -band 0xFFFF; selEnd = ($sel -shr 16) -band 0xFFFF; firstCharX = $x0 }
+    }
     $report.pages += $page
     [Win]::PostMessage($next, $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
     Start-Sleep -Milliseconds 600
@@ -580,9 +611,10 @@ $otherMenu = Join-Path ([Environment]::GetFolderPath($(if ($Mode -eq 'all') { 'P
 # 줄인 줄은 앞 · 뒤가 이 시험에서 본 실제 파일(Remember)과 맞아야 그 파일 줄로 친다 — 아무 경로나 «...»로 가려 통과하지 못하게.
 function SamePath($shown, $full) {
   if ($shown -ieq $full) { return $true }
-  $i = $shown.IndexOf('...')
+  $mark = if ($shown.Contains('…')) { '…' } else { '...' }
+  $i = $shown.IndexOf($mark)
   if ($i -lt 3) { return $false }
-  $head = $shown.Substring(0, $i); $tail = $shown.Substring($i + 3)
+  $head = $shown.Substring(0, $i); $tail = $shown.Substring($i + $mark.Length)
   return ($full.Length -gt $head.Length + $tail.Length) -and $full.StartsWith($head, [StringComparison]::OrdinalIgnoreCase) -and $full.EndsWith($tail, [StringComparison]::OrdinalIgnoreCase)
 }
 $script:known = @()
@@ -658,6 +690,8 @@ if ($Step -eq 'install') {
     for ($i = 0; $i -lt 120 -and -not (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
     Check '설치 범위 화면(«me 전용» · «모든 사용자»)이 있고 기준 단추를 골랐다' (@($report.pages | Where-Object { $_.picked }).Count -eq 1) (@($report.pages | Where-Object { $_.picked }) | ForEach-Object { $_.picked })
     Check '위치 바꾸는 화면이 있고 기본 위치가 기준이다' ($report.defaultDir -eq $appDir) "$($report.defaultDir)"
+    $df = $report.dirField
+    Check '위치 화면 폴더 칸: 선택 없이 맨 앞부터 보인다' ($df -and $df.selStart -eq $df.selEnd -and $df.firstCharX -ge 0) $(if ($df) { "선택 $($df.selStart)~$($df.selEnd) · 첫 글자 x $($df.firstCharX)" } else { '폴더 칸 없음' })
     Check "기준 위치에 설치된다($appDir)" (Test-Path $exe) $exe
     if ($Replace -or $Beside) {
       $final = @($report.finalList)
