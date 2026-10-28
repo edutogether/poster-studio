@@ -48,6 +48,8 @@ const exeArgs = [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : [])
 const env = { ...process.env, POSTER_STUDIO_TEST_SAVE_DIR: saveDir, POSTER_STUDIO_TEST_PRINT_PDF: printPdf };
 const started = Date.now();
 const app = spawn(exe, exeArgs, { env, stdio: 'ignore' });
+// 앱 창은 검사용 아래 모니터에서 최대화한다(10/28 «자동 검사 창은 아래 작은 모니터에만» — win-capture.ps1 -Maximize, 창을 찾으면 끝난다)
+spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts/verify/win-capture.ps1'), '-AppPid', String(app.pid), '-Out', os.tmpdir(), '-Maximize'], { stdio: 'ignore', windowsHide: true });
 let exitCode = null;
 const exited = new Promise((resolve) => app.on('exit', (code) => { exitCode = code; resolve(code); }));
 

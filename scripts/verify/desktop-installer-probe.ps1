@@ -192,13 +192,11 @@ public static class Win {
     } finally { VirtualFreeEx(hp, remote, IntPtr.Zero, 0x8000); CloseHandle(hp); }
     return items.ToArray();
   }
-  [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, int pid);
   [DllImport("advapi32.dll")] static extern bool OpenProcessToken(IntPtr p, uint access, out IntPtr t);
   [DllImport("advapi32.dll")] static extern bool GetTokenInformation(IntPtr t, int cls, out int info, int len, out int ret);
-  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
   // 그 프로세스가 관리자 권한(UAC 상승)으로 도는가 — 1 관리자 · 0 일반 · -1 못 읽음(TokenElevation)
   public static int Elevated(int pid) {
-    IntPtr p = OpenProcess(0x1000, false, pid); if (p == IntPtr.Zero) return -1;   // PROCESS_QUERY_LIMITED_INFORMATION
+    IntPtr p = OpenProcess(0x1000, false, (uint)pid); if (p == IntPtr.Zero) return -1;   // PROCESS_QUERY_LIMITED_INFORMATION
     IntPtr t; int e = -1, n;
     if (OpenProcessToken(p, 0x8, out t)) { if (GetTokenInformation(t, 20, out e, 4, out n)) e = e != 0 ? 1 : 0; else e = -1; CloseHandle(t); }   // TOKEN_QUERY · TokenElevation
     CloseHandle(p); return e;

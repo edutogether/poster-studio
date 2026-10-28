@@ -2,7 +2,7 @@
 
      node scripts/verify/desktop-print-shift.mjs <결과 폴더> (--exe <Poster Studio.exe> | --dev)
 
-   앱을 원격 디버깅 포트로 띄우고(창은 최대화), 사람이 하는 순서대로 «샘플 포스터 보기»(10/28부터 — «사진 불러오기»는 없앴다) → 3단계 → «이 포스터로 출력하기»(인쇄 미리보기)
+   앱을 원격 디버깅 포트로 띄우고(창은 검사용 아래 모니터에서 최대화 — 10/28), 사람이 하는 순서대로 «샘플 포스터 보기»(10/28부터 — «사진 불러오기»는 없앴다) → 3단계 → «이 포스터로 출력하기»(인쇄 미리보기)
    → «인쇄하기»를 누른다. 진짜 Windows 인쇄 창이 뜬다 — win-capture.ps1이 앱 창을 0.15초마다 원본 해상도로 12초 동안 찍는다. 인쇄 창은 찾으면
    2.5초 뒤 닫고, 끝나면 앱을 통째로 닫는다(인쇄 창이 떠 있는 동안 앱은 응답하지 않는다 · 실제로 인쇄하지 않는다).
    찍은 화면마다 «인쇄 미리보기를 열기 전 3단계 화면»과 화소를 견준다(창 테두리 · 제목 줄은 빼고 앱 화면만).
@@ -57,7 +57,7 @@ const capture = (dir, seconds, cancelAfter = 2500) => new Promise((resolve) => {
 const screen = async (name) => { const r = await send('Page.captureScreenshot', { format: 'png' }); fs.writeFileSync(path.join(out, `화면-${name}.png`), Buffer.from(r.result.data, 'base64')); };
 const metrics = () => evaluate(`({ clientW: document.documentElement.clientWidth, innerW: innerWidth, scrollH: document.documentElement.scrollHeight, innerH: innerHeight, printArea: !!document.getElementById('printArea'), step: document.body.dataset.step })`);
 
-// 창 최대화(Bumm님 화면처럼 큰 창) — Electron은 CDP 창 크기 명령을 받지 않아 Windows API로 한다
+// 창 최대화(검사용 아래 모니터에서) — Electron은 CDP 창 크기 명령을 받지 않아 Windows API로 한다
 spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts/verify/win-capture.ps1'), '-AppPid', String(app.pid), '-Out', work, '-Maximize']);
 await sleep(800);
 await waitFor(`document.body.classList.contains('app-ready') && !document.getElementById('splash')`);

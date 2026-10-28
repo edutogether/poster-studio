@@ -106,10 +106,12 @@ function compare(A, B, box) {
   return { outside, inside };
 }
 
+// 앱 창은 검사용 아래 모니터에서 최대화한다(10/28 — win-capture.ps1 -Maximize). 화면 크기는 아래에서 CDP로 정하므로(배율 1) 판정은 그대로다.
+const toTestMonitor = (child) => { spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts/verify/win-capture.ps1'), '-AppPid', String(child.pid), '-Out', os.tmpdir(), '-Maximize'], { stdio: 'ignore', windowsHide: true }); return child; };
 // ① 설치판
 const p1 = 9450 + Math.floor(Math.random() * 40);
 const exe = args.includes('--dev') ? ELECTRON : path.resolve(opt('--exe'));
-const desktop = await captureAll(spawn(exe, [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${p1}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore' }), p1, 'app://studio/', 'desktop');
+const desktop = await captureAll(toTestMonitor(spawn(exe, [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${p1}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore' })), p1, 'app://studio/', 'desktop');
 
 // ② 같은 엔진(Electron)으로 바꾸기 전 웹
 const root = path.resolve(webDist);
@@ -141,7 +143,7 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => app.quit());
 `);
 const p2 = 9490 + Math.floor(Math.random() * 40);
-const web = await captureAll(spawn(ELECTRON, [shell, `--remote-debugging-port=${p2}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore' }), p2, base, 'web-electron');
+const web = await captureAll(toTestMonitor(spawn(ELECTRON, [shell, `--remote-debugging-port=${p2}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore' })), p2, base, 'web-electron');
 server.close();
 fs.rmSync(shell, { recursive: true, force: true });
 

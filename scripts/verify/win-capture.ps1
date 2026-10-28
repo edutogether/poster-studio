@@ -5,6 +5,8 @@
 # -AppPid 프로세스의 보이는 주 창(크로뮴 창)을 IntervalMs마다 <폴더>/frame-NNN.png로 찍는다. 같은 프로세스에 Windows 인쇄 창(#32770, 제목에 «인쇄»)이
 # 뜨면 그 창도 print-dialog-NNN.png로 찍고, 뜬 지 CancelPrintAfterMs가 지나면 «취소»(IDCANCEL)를 눌러 닫는다 — 실제로 인쇄하지 않는다.
 # 찍은 시각과 창 상태는 <폴더>/frames.json.
+# -Maximize: 앱 창이 뜰 때까지 기다려 검사용 아래 모니터로 옮겨 최대화하고 끝낸다(test-monitor.ps1 — 10/28 «자동 검사 창은 아래 작은 모니터에만»,
+#   그런 모니터가 없는 PC에서는 그 자리에서 최대화). 앱 창을 띄우는 확인 도구(desktop-app-probe · desktop-vs-web · desktop-print-shift)가 부른다.
 param(
   [Parameter(Mandatory = $true)][int]$AppPid,
   [Parameter(Mandatory = $true)][string]$Out,
@@ -58,9 +60,10 @@ public static class Cap {
 }
 "@
 [Cap]::SetProcessDPIAware() | Out-Null
-# -Maximize: 앱 창이 뜰 때까지 기다려 최대화만 하고 끝낸다(Bumm님 화면처럼 큰 창으로 재려고)
+# -Maximize: 앱 창이 뜰 때까지 기다려 검사용 아래 모니터에서 최대화하고 끝낸다
 if ($Maximize) {
-  for ($i = 0; $i -lt 80; $i++) { $m = [Cap]::Find([uint32]$AppPid, 'Chrome_WidgetWin_1', 'Poster Studio'); if ($m -ne [IntPtr]::Zero) { [Cap]::ShowWindow($m, 3) | Out-Null; exit 0 }; Start-Sleep -Milliseconds 250 }
+  . (Join-Path $PSScriptRoot 'test-monitor.ps1')
+  for ($i = 0; $i -lt 160; $i++) { $m = [Cap]::Find([uint32]$AppPid, 'Chrome_WidgetWin_1', 'Poster Studio'); if ($m -ne [IntPtr]::Zero) { if (-not (Move-ToTestMonitor $m -Maximize)) { [Cap]::ShowWindow($m, 3) | Out-Null }; exit 0 }; Start-Sleep -Milliseconds 125 }
   exit 1
 }
 $frames = @()
