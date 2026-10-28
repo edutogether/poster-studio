@@ -632,18 +632,20 @@
       SendMessage $HWNDPARENT ${WM_SETREDRAW} 1 0
       System::Call "user32::RedrawWindow(p $HWNDPARENT, p 0, p 0, i 0x585)"   ; INVALIDATE | ERASE | ALLCHILDREN | UPDATENOW | FRAME
       System::Call "user32::SetWindowLongW(p $HWNDPARENT, i -20, i r1)"
-      ; 합성으로 그릴 때 머리(제목 · 부제 · 그림)와 아래 «Poster Studio 1.0.0» 줄은 그려지지 않는다(10/28 978973e 진행 화면 — 완료 화면까지 머리가 비었다).
-      ; 합성을 끈 뒤 그 칸들만 다시 그린다 — 화면 칸(새 화면)은 다시 칠하지 않는다. 단 새 화면이 머리 자리를 덮으면(완료 화면 — 창 전체 화면) 그리지 않는다:
-      ; 밑에 깔린 머리 바탕을 다시 그리면 완료 화면 위에 흰 띠로 덧칠됐다(10/28 7a6ee97 — «설치 완료» 제목 · 그림 윗부분이 가려짐).
+      ; 합성으로 그릴 때는 머리(제목 · 부제 · 그림 · 바탕)와 아래 «Poster Studio 1.0.0» 줄을 맞게 그리지 못한다 — 머리가 보이는 화면에서는 머리가 비고
+      ; (10/28 978973e 진행 화면), 창 전체를 덮는 완료 화면에서는 머리 바탕이 그 화면 위에 흰 띠로 칠해졌다(a63fa02 — «설치 완료» 제목 · 그림 윗부분이 가려짐).
+      ; 합성을 끈 뒤: 새 화면이 머리 아래에서 시작하면 머리 · 아래 줄 칸만, 머리를 덮으면 그 화면을 통째로 다시 그린다(화면이 맨 위에 그려지게).
+      Push $3
       System::Call "*(i,i,i,i) p.r1"
       System::Call "user32::GetWindowRect(p r0, p r1)"
       System::Call "*$1(i, i .r2)"
       System::Free $1
       GetDlgItem $1 $HWNDPARENT 1034
-      System::Call "*(i,i,i,i) p.r0"
-      System::Call "user32::GetWindowRect(p r1, p r0)"
-      System::Call "*$0(i, i, i, i .r1)"
-      System::Free $0
+      System::Call "*(i,i,i,i) p.r3"
+      System::Call "user32::GetWindowRect(p r1, p r3)"
+      System::Call "*$3(i, i, i, i .r1)"
+      System::Free $3
+      Pop $3
       ${If} $2 >= $1   ; 새 화면 윗변이 머리 아랫변 밑이다 — 머리가 보인다
         !insertmacro psRepaintItem 1034
         !insertmacro psRepaintItem 1037
@@ -651,6 +653,8 @@
         !insertmacro psRepaintItem 1046
         !insertmacro psRepaintItem 1028
         !insertmacro psRepaintItem 1256
+      ${Else}
+        System::Call "user32::RedrawWindow(p r0, p 0, p 0, i 0x185)"   ; INVALIDATE | ERASE | ALLCHILDREN | UPDATENOW — 새 화면 전체
       ${EndIf}
       StrCpy $psFrozen ""
       Pop $2
