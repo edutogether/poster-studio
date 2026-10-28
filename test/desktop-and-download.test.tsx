@@ -2,7 +2,8 @@
 /* 2026-10-27 — 웹 첫 화면 «↓ 다운로드» 단추와 Windows 설치판 갈래(_docs/intents/2026-10-27-desktop-installer).
 
    다운로드 단추: 첫 화면(1단계)에만 있고, 누르기 전에는 설치 파일을 하나도 받지 않는다(fetch 0건 · 링크만).
-   설치판(src/desktop.ts DESKTOP): AI 없이 찍거나 불러온 사진으로 8종을 만든다 — 서버 요청 0건(서버 확인 /health도 없다),
+   설치판(src/desktop.ts DESKTOP): AI 없이 찍은 사진으로 8종을 만든다 — 서버 요청 0건(서버 확인 /health도 없다). 카메라를 켜기 전에는
+   «샘플 포스터 보기»가 화면의 촬영 구도 예시 사진을 같은 로컬 합성에 넣어 보인다(10/28 — «사진 불러오기»는 걷었다),
    «PC에 저장» · «인쇄 미리보기 → 인쇄하기»(설치판 창구의 print) · 다운로드 단추 대신 «설치판 · AI 없이» 표시.
    실제 브라우저 · 실제 설치판 확인은 scripts/verify/download-button-probe.mjs · desktop-app-probe.mjs. */
 import fs from 'node:fs';
@@ -11,6 +12,8 @@ import { render, act, cleanup, fireEvent } from '@testing-library/react';
 import type { StudioMode } from '../src/studioMode.js';
 import PosterStudio from '../src/PosterStudio.js';
 import * as saveModule from '../src/savePoster.js';
+import * as posterModule from '../src/poster.js';
+import { approvedCameraVideo } from '../src/studio/cameraVideo.js';
 import { DOWNLOADS } from '../src/downloads.js';
 import {
   installCanvas, installCamera, installFetch, installImage, installFonts,
@@ -91,28 +94,27 @@ describe('웹 첫 화면 «↓ 다운로드»', () => {
     expect(document.querySelector('.download-menu-list')).toBeNull();
   });
 
-  test('웹에는 설치판 갈래(표시 · 사진 불러오기 · PC에 저장 · 인쇄 미리보기)가 없다', async () => {
+  test('웹에는 설치판 갈래(표시 · PC에 저장 · 인쇄 미리보기)가 없다', async () => {
     await act(async () => { renderApp(); });
     expect(document.querySelector('.desktop-badge')).toBeNull();
-    expect(document.getElementById('loadPhotoBtn')).toBeNull();
     expect(document.getElementById('desktopSaveBtn')).toBeNull();
     expect(document.querySelector('.print-preview')).toBeNull();
   });
 });
 
 describe('설치판(AI 없이 사진 그대로)', () => {
-  beforeEach(() => { flags.desktop = true; studioMode = 'real'; });
+  beforeEach(() => { flags.desktop = true; studioMode = 'both'; });   // src/studioMode.ts — 설치판도 두 단추(10/28)
 
   /* «이 사진으로 포스터 만들기»(10/27 Bumm님): 로딩 화면이 무작위 장면 둘(8초씩) 동안 돌고 나서 결과로 간다 — «최소 두 바퀴»(COMMON_STANDARDS §27).
      설치판에는 AI가 없으니 «AI …» 문구 장면은 나오지 않는다. 그 밖은 웹 그대로 — 승인된 대기 영상을 튼다(10/27 Bumm님 «승인된 영상과 디자인을 그대로»). */
-  const composeWithLoading = async () => {
+  const composeWithLoading = async (button = 'generateBtn') => {
     const media = [
       vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(),
       vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {}),
       vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {}),   // jsdom에는 load()가 없다
     ];
     vi.useFakeTimers();
-    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>(button).click(); });
     await act(async () => { await vi.advanceTimersByTimeAsync(100); });
     const wait = document.getElementById('spinner') as HTMLDialogElement;
     expect(wait?.hasAttribute('open')).toBe(true);
@@ -136,7 +138,7 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     expect(document.querySelector('.desktop-badge')?.textContent).toBe('설치판 · AI 없이 사진 그대로');
     expect(document.querySelector('.download-link')).toBeNull();
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
-    expect(document.body.textContent).not.toContain('샘플 포스터 보기');
+    expect(net.calls).toEqual([]);
   });
 
   test('찍은 사진으로 8종을 만든다(로딩 화면 장면 둘 뒤) — 서버 요청 0건, 사진은 카메라 화질 그대로', async () => {
@@ -159,34 +161,33 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     expect(net.calls).toEqual([]);
   });
 
-  test('«사진 불러오기»로 고른 사진으로 8종을 만든다 — 긴 변 1920으로 줄여 담는다', async () => {
-    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 4000, height: 3000, close: vi.fn() })));
+  /* 2단계 두 단추(10/28 Bumm님 «카메라 켜기 전에는 샘플 포스터 보기 — 아이들이 어떤 포스터가 있는지 미리 보고 온다» · «사진 불러오기는 뺀다») */
+  test('카메라를 켜기 전 빨간 단추는 «샘플 포스터 보기», 켜면 «3초 뒤 사진 찍기» — «사진 불러오기» 단추 · 파일 고르기 칸은 없다', async () => {
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
-    const input = document.querySelector('#loadPhotoBtn ~ input[type=file]') as HTMLInputElement;
-    expect(input.accept).toBe('image/jpeg,image/png,image/webp');
-    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
-    const canvases: HTMLCanvasElement[] = [];
-    const create = document.createElement.bind(document);
-    vi.spyOn(document, 'createElement').mockImplementation(((tag: string) => { const e = create(tag); if (tag === 'canvas') canvases.push(e as HTMLCanvasElement); return e; }) as typeof document.createElement);
-    await act(async () => { fireEvent.change(input, { target: { files: [file] } }); });
-    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-    expect([canvases[0].width, canvases[0].height]).toEqual([1920, 1440]);
-    expect(el('snapshot').className).toBe('');
-    await composeWithLoading();
-    expect(document.querySelectorAll('#resultView .style-option.thumb').length).toBe(8);
+    expect(el('shotBtn').textContent).toContain('샘플 포스터 보기');
+    expect(document.getElementById('loadPhotoBtn')).toBeNull();
+    expect(document.querySelector('input[type=file]')).toBeNull();
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    makeVideoReady(el<HTMLVideoElement>('video'));
+    expect(el('shotBtn').textContent).toContain('3초 뒤 사진 찍기');
     expect(net.calls).toEqual([]);
   });
 
-  test('사진으로 열 수 없는 파일이면 알리고 사진을 바꾸지 않는다', async () => {
-    vi.stubGlobal('createImageBitmap', vi.fn(async () => { throw new Error('decode'); }));
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+  /* 설치판 샘플은 설치판이 실제로 만드는 모습이어야 한다 — 웹의 AI 원화(design-sample)가 아니라 화면의 «촬영 구도 예시» 사진(예시 영상이 승인돼 있으면
+     «찰칵» 뒤 마지막 장면, 아니면 정지 그림)을 같은 로컬 합성(buildPosters)에 넣는다. 로딩 화면은 설치판 것(AI 문구 없음), 카메라 · 서버 요청 0건. */
+  test.each([['solo'], ['group']])('«샘플 포스터 보기»(%s): 화면의 촬영 구도 예시 사진을 로컬 합성으로 8종에 넣는다 — AI 원화 · AI 문구 · 카메라 · 서버 요청 없음', async (mode) => {
+    const build = vi.spyOn(posterModule, 'buildPosters');
     await act(async () => { renderApp(); });
+    if (mode === 'group') await act(async () => { (document.querySelector('#modeSeg [data-mode="group"]') as HTMLButtonElement).click(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
-    const input = document.querySelector('#loadPhotoBtn ~ input[type=file]') as HTMLInputElement;
-    await act(async () => { fireEvent.change(input, { target: { files: [new File(['x'], 'a.heic')] } }); });
-    expect(el('status').textContent).toContain('사진으로 열 수 없어요');
-    expect(el('snapshot').className).toBe('hidden');
+    await composeWithLoading('shotBtn');
+    const photo = approvedCameraVideo(mode)?.endStill ?? (mode === 'group' ? '/studio/camera-group.webp' : '/studio/camera-student.webp');
+    expect(build).toHaveBeenCalledTimes(1);
+    expect(build.mock.calls[0][0]).toEqual([photo]);
+    expect(document.querySelectorAll('#resultView .style-option.thumb').length).toBe(8);
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+    expect(net.calls).toEqual([]);
   });
 
   test('인쇄는 미리보기부터 — «인쇄하기»에서 설치판 창구 print(4×6)를 부르고, 끝나면 인쇄용 화면을 걷는다 · PC에 저장', async () => {

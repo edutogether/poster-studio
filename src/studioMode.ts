@@ -15,6 +15,7 @@ export const LIVE_MODE: StudioMode = "both";
  *  배포 빌드(`npm run build`)는 모드가 production이라 언제나 LIVE_MODE다 — .env 파일로는 바꿀 수 없다. */
 const CHECK_BUILDS: Record<string, StudioMode> = { "check-both": "both", "check-sample": "sample", "check-real": "real" };
 
-/** Windows 설치판(`npm run build:desktop`, src/desktop.ts)은 «진짜 생성만» 자리에 AI 대신 로컬 합성을 쓴다. 샘플 흐름은 두지 않는다 —
- *  샘플의 로딩 화면이 «AI가 당신의 영화를 그리고 있어요»라, AI가 없는 설치판에서는 거짓 표시가 된다(2026-10-27). */
-export const STUDIO_MODE: StudioMode = import.meta.env.MODE === "desktop" ? "real" : CHECK_BUILDS[import.meta.env.MODE] ?? LIVE_MODE;
+/** Windows 설치판(`npm run build:desktop`, src/desktop.ts)도 «두 단추»다(2026-10-28 Bumm님 «카메라 켜기 전에는 샘플 포스터 보기 — 아이들이 어떤 포스터가 있는지 미리 보고 온다»).
+ *  진짜 생성 자리에는 AI 대신 로컬 합성을 쓰고, 샘플은 웹의 AI 원화가 아니라 화면의 «촬영 구도 예시» 사진을 그 로컬 합성에 넣어 보인다 —
+ *  설치판이 실제로 만드는 모습이어야 거짓 안내가 아니다(PosterStudio.tsx onSample). 로딩 화면도 설치판 것(AI 장면 · AI 문구 없음)이다. */
+export const STUDIO_MODE: StudioMode = import.meta.env.MODE === "desktop" ? "both" : CHECK_BUILDS[import.meta.env.MODE] ?? LIVE_MODE;

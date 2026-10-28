@@ -2,7 +2,7 @@
 
      node scripts/verify/desktop-print-shift.mjs <결과 폴더> (--exe <Poster Studio.exe> | --dev)
 
-   앱을 원격 디버깅 포트로 띄우고(창은 최대화), 사람이 하는 순서대로 «사진 불러오기» → 포스터 만들기 → 3단계 → «이 포스터로 출력하기»(인쇄 미리보기)
+   앱을 원격 디버깅 포트로 띄우고(창은 최대화), 사람이 하는 순서대로 «샘플 포스터 보기»(10/28부터 — «사진 불러오기»는 없앴다) → 3단계 → «이 포스터로 출력하기»(인쇄 미리보기)
    → «인쇄하기»를 누른다. 진짜 Windows 인쇄 창이 뜬다 — win-capture.ps1이 앱 창을 0.15초마다 원본 해상도로 12초 동안 찍는다. 인쇄 창은 찾으면
    2.5초 뒤 닫고, 끝나면 앱을 통째로 닫는다(인쇄 창이 떠 있는 동안 앱은 응답하지 않는다 · 실제로 인쇄하지 않는다).
    찍은 화면마다 «인쇄 미리보기를 열기 전 3단계 화면»과 화소를 견준다(창 테두리 · 제목 줄은 빼고 앱 화면만).
@@ -31,8 +31,6 @@ if (!args[0] || args[0].startsWith('--') || (!args.includes('--dev') && !opt('--
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, 'frames'), { recursive: true });
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-print-shift-'));
-const photo = path.join(work, 'photo.jpg');
-spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', path.join(ROOT, 'public/studio/camera-student.webp'), '-frames:v', '1', photo]);
 
 const port = 9500 + Math.floor(Math.random() * 400);
 const exe = args.includes('--dev') ? path.join(ROOT, 'desktop/node_modules/electron/dist/electron.exe') : path.resolve(opt('--exe'));
@@ -67,12 +65,7 @@ await click('#prepareNextBtn');
 await waitFor(`document.body.dataset.step === '2'`);
 await sleep(1500);
 await screen('2단계');
-await send('DOM.enable');
-const { result: { root } } = await send('DOM.getDocument', { depth: 0 });
-const { result: input } = await send('DOM.querySelector', { nodeId: root.nodeId, selector: '#loadPhotoBtn ~ input[type=file]' });
-await send('DOM.setFileInputFiles', { nodeId: input.nodeId, files: [photo] });
-await waitFor(`!document.getElementById('generateBtn').hidden`);
-await click('#generateBtn');
+await click('#shotBtn');   // 카메라를 켜기 전이라 «샘플 포스터 보기»(촬영 구도 예시 사진 → 로컬 합성)
 await sleep(2500);
 await screen('로딩');
 check('3단계로 간다(포스터 8종)', await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 60000));

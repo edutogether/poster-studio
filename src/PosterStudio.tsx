@@ -23,6 +23,7 @@ import type { Meta, Poster } from "./state.js";
 import { restartAtHome } from "./restartHome.js";
 import { STUDIO_MODE } from "./studioMode.js";
 import { DESKTOP, desktopBridge } from "./desktop.js";
+import { approvedCameraVideo } from "./studio/cameraVideo.js";
 
 /* 한 장의 사진으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만 허용한다
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
@@ -35,7 +36,7 @@ const MAX_GENERATIONS_PER_PHOTO = 2;
    고쳐지지 않은 채 줄이 계속 멈추지 않게. 인터넷 끊김·부스 코드는 세지 않는다(사진을 바꿔도 낫지 않는다). */
 const MAX_FAILURES_PER_PHOTO = 3;
 
-/* 설치판(src/desktop.ts)은 사진을 AI에 보내지 않고 그대로 포스터(1200×1800)에 넣는다 — 찍거나 불러온 사진의 긴 변을 이만큼까지 남긴다. */
+/* 설치판(src/desktop.ts)은 사진을 AI에 보내지 않고 그대로 포스터(1200×1800)에 넣는다 — 찍은 사진의 긴 변을 이만큼까지 남긴다. */
 const DESKTOP_PHOTO_MAX = 1920;
 
 /* 부스 토큰은 웹만 싣는다 — 설치판 빌드에서는 DESKTOP이 참으로 접혀 토큰 값이 번들에서 빠진다(2026-10-27 «키 · 토큰을 설치판에 넣지 않는다»).
@@ -333,7 +334,7 @@ export default function PosterStudio() {
     }
   };
 
-  /* 찍은(설치판은 불러온 것도) 사진 한 장을 이번 사진으로 둔다. */
+  /* 찍은 사진 한 장을 이번 사진으로 둔다. */
   const keepPhoto = (blob: Blob) => {
     capturedBlobRef.current = blob;
     if (snapshotURLRef.current) URL.revokeObjectURL(snapshotURLRef.current); // 장시간 운영 대비
@@ -347,31 +348,6 @@ export default function PosterStudio() {
     if (videoRef.current) videoRef.current.srcObject = null;
     setStatus("");
     genCountRef.current = 0;
-  };
-
-  /* 설치판 «사진 불러오기»: 노트북에 있는 사진 한 장을 이번 사진으로 쓴다(거울 뒤집기 없음). 사진은 이 PC 밖으로 나가지 않는다.
-     긴 변을 DESKTOP_PHOTO_MAX로 줄여 JPEG로 다시 담는다 — 휴대폰 원본(4000px 넘음)을 8종 조판에 그대로 쓰면 메모리만 먹는다. */
-  const onLoadPhoto = async (file: File) => {
-    if (!DESKTOP || shootingRef.current || isGeneratingRef.current) return;
-    let blob: Blob | null = null;
-    try {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, DESKTOP_PHOTO_MAX / Math.max(bitmap.width, bitmap.height));
-      const cap = document.createElement("canvas");
-      cap.width = Math.round(bitmap.width * scale);
-      cap.height = Math.round(bitmap.height * scale);
-      cap.getContext("2d")!.drawImage(bitmap, 0, 0, cap.width, cap.height);
-      bitmap.close();
-      blob = await new Promise<Blob | null>((resolve) => cap.toBlob(resolve, "image/jpeg", 0.92));
-    } catch (e) {
-      console.error("[사진 불러오기 실패]", e);
-    }
-    if (!blob) {
-      setStatus("이 파일은 사진으로 열 수 없어요. JPG · PNG 사진을 다시 선택해 주세요.");
-      return;
-    }
-    stopCamera();
-    keepPhoto(blob);
   };
 
   const onRetake = async () => {
@@ -580,9 +556,13 @@ export default function PosterStudio() {
     setFailure(null);
     setSpinning(true);
     const stopElapsed = startElapsed();
-    const waited = new Promise((resolve) => setTimeout(resolve, SAMPLE_WAIT_SCENES * SCENE_MS));
+    const waited = new Promise((resolve) => setTimeout(resolve, (DESKTOP ? DESKTOP_WAIT_SCENES : SAMPLE_WAIT_SCENES) * SCENE_MS));
     try {
-      const { default: sampleArt } = await import("./studio/design-sample.webp");
+      // 설치판 샘플은 설치판이 실제로 만드는 모습이어야 한다(10/28 Bumm님) — 웹의 AI 원화 대신 화면의 «촬영 구도 예시» 사진(지금 고른 개인 · 단체)을
+      // 로컬 합성 그대로 8종에 넣는다. 예시가 승인된 영상이면 «찰칵» 뒤 마지막 장면, 아니면 정지 그림이다(CameraExample.tsx와 같은 규칙).
+      const { default: sampleArt } = DESKTOP
+        ? { default: approvedCameraVideo(mode)?.endStill ?? (mode === "group" ? "/studio/camera-group.webp" : "/studio/camera-student.webp") }
+        : await import("./studio/design-sample.webp");
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
       const built = await buildPosters([sampleArt], meta);
@@ -636,13 +616,13 @@ export default function PosterStudio() {
     };
   };
 
-  /* 설치판 «이 사진으로 포스터 만들기»: AI 없이 찍거나 불러온 사진을 그대로 8종 틀에 넣는다(로컬 합성 — 서버 요청 0건).
+  /* 설치판 «이 사진으로 포스터 만들기»: AI 없이 찍은 사진을 그대로 8종 틀에 넣는다(로컬 합성 — 서버 요청 0건).
      틀 · 글꼴 · 로고 · 인쇄 규격은 웹과 같은 buildPosters다. 비용이 없으니 횟수 제한도 없다. */
   const onCompose = async () => {
     if (!DESKTOP || isGeneratingRef.current) return;
     const photoURL = snapshotURLRef.current;
     if (!capturedBlobRef.current || !photoURL) {
-      setStatus("먼저 사진을 찍거나 불러와 주세요.");
+      setStatus("먼저 사진을 찍어 주세요.");
       return;
     }
     // 로컬 합성은 1~2초면 끝나 예전에는 왼쪽 아래 «포스터를 만들고 있어요» 한 줄만 스쳤다(10/27 Bumm님 «성의 없다»). 웹과 같은 로딩 화면(승인된 대기 영상)을
@@ -747,7 +727,6 @@ export default function PosterStudio() {
       onShot={sampleMode ? onSample : onShot}
       onRetake={onRetake}
       onGenerate={DESKTOP ? onCompose : sampleMode ? onSample : onGenerate}
-      onLoadPhoto={DESKTOP ? onLoadPhoto : undefined}
       onPrint={onPrint}
       onNewPerson={onNewPerson}
       onHome={onHome}

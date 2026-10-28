@@ -81,8 +81,6 @@ export interface StudioViewProps {
   onSample?: () => void;
   onRetake: Action;
   onGenerate: Action;
-  /** 설치판(src/desktop.ts)만: «사진 불러오기»로 고른 파일. 웹에서는 없다. */
-  onLoadPhoto?: (file: File) => void;
   onPrint: Action;
   onNewPerson: Action;
   onHome: Action;
@@ -347,7 +345,6 @@ export default function StudioView(p: StudioViewProps) {
     dialog.showModal();
     printNow.current?.focus();
   };
-  const photoInput = useRef<HTMLInputElement>(null);
   // 10/20 Bumm님: 아이폰은 공유 창으로 사진첩에 넣는다(웹에서 사진 앱으로 가는 유일한 길) — 누를 때 무엇을 눌러야 하는지 한 줄로 알린다.
   const [saveHint, setSaveHint] = useState(false);
   const saveHintTimer = useRef(0);
@@ -705,11 +702,6 @@ export default function StudioView(p: StudioViewProps) {
             <div id="camHint" className={p.phase === "idle" ? "camHint camera-example-caption" : "camHint hidden"}>
               <span className="camera-example-label">{p.mode === "group" ? "이렇게, 모두의 얼굴이 보이게" : "이렇게, 얼굴과 어깨가 보이게"}</span>
               {!p.sampleMode && <button type="button" id="startBtn" className="camera-start-button" onClick={p.onStart} disabled={locked}>카메라 켜기 <StudioIcon name="camera"/></button>}
-              {DESKTOP && <>
-                <button type="button" id="loadPhotoBtn" className="camera-start-button" onClick={() => photoInput.current?.click()} disabled={locked}>사진 불러오기 <StudioIcon name="download"/></button>
-                <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden
-                  onChange={(e) => { const file = e.currentTarget.files?.[0]; e.currentTarget.value = ""; if (file) p.onLoadPhoto?.(file); }}/>
-              </>}
             </div>
             {p.phase === "live" && <>
               <span className="camera-live-indicator"><i aria-hidden="true"/>실시간 미리보기</span>

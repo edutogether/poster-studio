@@ -2,12 +2,12 @@
 
      node scripts/verify/desktop-app-probe.mjs <결과 폴더> --exe <설치된 PosterStudio.exe>   설치한 판을 띄운다
      node scripts/verify/desktop-app-probe.mjs <결과 폴더> --dev                             desktop/의 개발 Electron으로 desktop/web을 띄운다
-       [--photo <사진>]  가짜 카메라 · «사진 불러오기»에 쓸 사진(기본: 앱에 이미 공개된 예시 그림 public/studio/camera-student.webp)
+       [--photo <사진>]  가짜 카메라에 쓸 사진(기본: 앱에 이미 공개된 예시 그림 public/studio/camera-student.webp)
 
    설치판을 원격 디버깅 포트와 가짜 카메라(그 사진)로 띄우고, 사람이 하는 순서대로 누른다:
-     1단계(설치판 표시 · 다운로드 단추 없음 · 화면 글꼴 · 한글 입력) → 2단계(예시 영상 · 카메라 켜기 · 3초 뒤 찍기)
+     1단계(설치판 표시 · 다운로드 단추 없음 · 화면 글꼴 · 한글 입력) → 2단계(예시 영상 · 켜기 전 «샘플 포스터 보기» · 카메라 켜기 · 3초 뒤 찍기)
      → «이 사진으로 포스터 만들기»(로딩 화면 장면 둘 → AI 없이 로컬 합성 8종) → PC에 저장(PNG 1200×1800) → 인쇄 미리보기 → 인쇄하기(4×6 PDF로 받음)
-     → 다음 주인공 → «사진 불러오기» → 8종 → 개인정보처리방침 새 창 → 창 닫기로 종료.
+     → 다음 주인공 → «샘플 포스터 보기»(화면의 촬영 구도 예시 사진 · 로컬 합성 — 웹의 AI 원화가 아니다) → 8종 → 개인정보처리방침 새 창 → 창 닫기로 종료.
    잰다: 앱이 보낸 요청이 전부 앱 안 주소(app://studio)·blob·data인지(바깥 인터넷 0건), 바깥 주소 fetch가 막히는지,
          콘솔 오류 · 못 받은 파일 0건, 화면마다 원본 해상도 캡처(<결과 폴더>/*.png), 결과 report.json.
    저장 · 인쇄 창은 확인용 환경 변수로 대신한다(desktop/main.mjs 머리말) — 사람이 쓰는 설치판은 Windows 저장 창 · 인쇄 창이 뜬다.
@@ -34,9 +34,8 @@ const saveDir = path.join(work, 'saved');
 fs.mkdirSync(saveDir);
 const printPdf = path.join(work, 'print.pdf');
 const y4m = path.join(work, 'camera.y4m');
-const loadJpg = path.join(work, 'photo.jpg');
-// 가짜 카메라 화면(4:3 1280×960 — 앱이 카메라에 요청하는 크기) · 불러오기용 JPG
-for (const [dst, vf, extra] of [[y4m, 'scale=1280:960:force_original_aspect_ratio=increase,crop=1280:960', ['-t', '2', '-r', '15', '-pix_fmt', 'yuv420p']], [loadJpg, 'scale=iw:ih', ['-frames:v', '1', '-q:v', '3']]]) {
+// 가짜 카메라 화면(4:3 1280×960 — 앱이 카메라에 요청하는 크기)
+for (const [dst, vf, extra] of [[y4m, 'scale=1280:960:force_original_aspect_ratio=increase,crop=1280:960', ['-t', '2', '-r', '15', '-pix_fmt', 'yuv420p']]]) {
   const r = spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-loop', '1', '-i', photo, ...extra, '-vf', vf, dst]);
   if (r.status !== 0) { console.error('ffmpeg 실패', String(r.stderr)); process.exit(2); }
 }
@@ -113,9 +112,9 @@ try {
   // 창 제목(작업표시줄에 보이는 이름)
   const title = spawnSync('powershell', ['-NoProfile', '-Command', `(Get-Process -Id ${app.pid}).MainWindowTitle`], { encoding: 'utf8' }).stdout.trim();
   check('창 제목 «Poster Studio»', title === 'Poster Studio', title);
-  const view = await main.evaluate(`({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio, step: document.body.dataset.step, desktop: 'desktop' in document.body.dataset, badge: document.querySelector('.desktop-badge')?.textContent ?? null, download: !!document.querySelector('.download-menu'), sampleButton: [...document.querySelectorAll('button')].some((b) => b.textContent.includes('샘플 포스터')) })`);
+  const view = await main.evaluate(`({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio, step: document.body.dataset.step, desktop: 'desktop' in document.body.dataset, badge: document.querySelector('.desktop-badge')?.textContent ?? null, download: !!document.querySelector('.download-menu') })`);
   check('1단계 · 설치판 표시', view.step === '1' && view.desktop && view.badge === '설치판 · AI 없이 사진 그대로', view);
-  check('설치판에는 다운로드 단추 · 샘플 단추가 없다', !view.download && !view.sampleButton);
+  check('설치판에는 다운로드 단추가 없다', !view.download);   // «샘플 포스터 보기»는 10/28부터 설치판 2단계에도 있다(아래)
   // 키 · 토큰을 설치판에 넣지 않는다 — 화면이 실제로 받은 스크립트에 부스 토큰 값이 없는지(값은 CI와 같은 방식으로 src/constants.ts에서 읽는다)
   const token = fs.readFileSync(path.join(ROOT, 'src/constants.ts'), 'utf8').match(/const BOOTH_TOKEN = '([^']+)'/)?.[1];
   const scripts = await main.evaluate(`Promise.all([...document.scripts].filter((s) => s.src).map((s) => fetch(s.src).then((r) => r.text()))).then((t) => ({ n: t.length, bytes: t.join('').length, text: t.join('') }))`);
@@ -150,9 +149,13 @@ try {
   await sleep(2500);
   const example = await main.evaluate(`(() => { const v = document.querySelector('#cameraView video:not(#video)'); return v ? { src: v.currentSrc.replace(/^.*\\/studio\\//, '/studio/'), ready: v.readyState, t: Math.round(v.currentTime * 10) / 10 } : null; })()`);
   check('촬영 예시 영상이 재생된다(필수 미디어)', !example || (example.ready >= 2 && example.t > 0), example ?? '예시 영상 없음(정지 그림)');
+  // 10/28 Bumm님: 설치판도 카메라를 켜기 전에는 빨간 단추가 «샘플 포스터 보기», «사진 불러오기»는 없다
+  const idle = await main.evaluate(`({ shot: document.getElementById('shotBtn')?.textContent.trim(), load: !!document.getElementById('loadPhotoBtn'), file: !!document.querySelector('input[type=file]') })`);
+  check('카메라를 켜기 전 빨간 단추 = «샘플 포스터 보기» · «사진 불러오기» 없음', idle.shot === '샘플 포스터 보기' && !idle.load && !idle.file, idle);
   await shot('2단계');
   await click('#startBtn');
   check('카메라가 켜진다(권한 허용 · 가짜 카메라)', await waitFor(`(() => { const v = document.getElementById('video'); return !!v && !v.classList.contains('hidden') && v.videoWidth > 0; })()`));
+  check('카메라를 켜면 빨간 단추 = «3초 뒤 사진 찍기»', await main.evaluate(`document.getElementById('shotBtn')?.textContent.trim() === '3초 뒤 사진 찍기'`));
   await sleep(800);
   await shot('2단계-카메라');
   await click('#shotBtn');
@@ -228,23 +231,31 @@ try {
   check('인쇄 = 4×6인치(288×432pt) 한 장 · 포스터 그림 포함', pdfInfo && pdfInfo.pages === 1 && pdfInfo.mediaBox?.[0] === 288 && pdfInfo.mediaBox?.[1] === 432 && pdfInfo.images >= 1, pdfInfo);
   check('인쇄 뒤 인쇄용 화면을 걷는다', await waitFor(`!document.getElementById('printArea')`, 5000));
 
-  // 다음 주인공 → 사진 불러오기
+  // 다음 주인공 → «샘플 포스터 보기»(10/28 Bumm님): 화면의 촬영 구도 예시 사진(승인된 예시 영상의 «찰칵» 뒤 마지막 장면)을 로컬 합성으로 8종에 넣는다.
+  // 로딩 화면은 설치판 것(장면 둘 · AI 문구 없음)이고, 웹의 AI 원화(design-sample)는 받지 않는다.
   await click('#resultView .result-tools .icon-button[aria-label="다음 주인공"]');
   await sleep(800);
   const afterReset = await main.evaluate(`({ step: document.body.dataset.step, title: document.getElementById('movieTitle').value, thumbs: document.querySelectorAll('#resultView .style-option.thumb').length, snapshot: !document.getElementById('snapshot').classList.contains('hidden') })`);
   check('다음 주인공 → 입력 · 사진 · 포스터 초기화', afterReset.title === '' && afterReset.thumbs === 0 && !afterReset.snapshot, afterReset);
   if (afterReset.step !== '2') { await main.evaluate(`document.querySelectorAll('.stepper button')[1].click()`); await waitFor(`document.body.dataset.step === '2'`); }
   await sleep(600);
-  const { result: fileInput } = await main.send('DOM.querySelector', { nodeId: (await main.send('DOM.getDocument', { depth: 0 })).result.root.nodeId, selector: '#loadPhotoBtn ~ input[type=file]' });
-  check('사진 불러오기 단추와 파일 칸', !!fileInput?.nodeId);
-  if (fileInput?.nodeId) await main.send('DOM.setFileInputFiles', { nodeId: fileInput.nodeId, files: [loadJpg] });
-  check('불러온 사진이 이번 사진이 된다', await waitFor(`(() => { const s = document.getElementById('snapshot'); return !!s && !s.classList.contains('hidden') && s.naturalWidth > 0; })()`, 8000));
-  await sleep(500);
-  await shot('2단계-사진불러오기');
-  await click('#generateBtn');
-  check('불러온 사진으로 8종', await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 40000));   // 로딩 화면 장면 둘(16초) 뒤
+  check('다시 2단계: 빨간 단추 = «샘플 포스터 보기»', await main.evaluate(`document.getElementById('shotBtn')?.textContent.trim() === '샘플 포스터 보기'`));
+  const reqBefore = report.requests.length;
+  await click('#shotBtn');
+  const sampleWait = [];
+  for (let i = 0; i < 60; i++) {
+    const w = await main.evaluate(`(() => { const d = document.querySelector('.generation-wait'); return { step: document.body.dataset.step, open: !!d?.open, ai: d ? /AI/.test(d.innerText) : false }; })()`);
+    sampleWait.push(w);
+    if (w.open && sampleWait.filter((x) => x.open).length === 6) await shot('2단계-샘플-로딩');
+    if (w.step === '3') break;
+    await sleep(500);
+  }
+  check('샘플: 설치판 로딩 화면(AI 문구 없음) 뒤 8종', sampleWait.some((w) => w.open) && sampleWait.every((w) => !w.ai) && await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 20000), { 로딩표본: sampleWait.filter((w) => w.open).length, 문구AI: sampleWait.some((w) => w.ai) });
+  const sampleReq = report.requests.slice(reqBefore).map((u) => u.replace(/^app:\/\/studio/, ''));
+  const examplePhoto = sampleReq.find((u) => /^\/studio\/camera-(v1\/(solo|group)-end|student|group)\.webp/.test(u));
+  check('샘플 사진 = 화면의 촬영 구도 예시 사진(웹의 AI 원화를 받지 않는다)', !!examplePhoto && !sampleReq.some((u) => /design-sample/.test(u)), { examplePhoto, 원화: sampleReq.filter((u) => /design-sample/.test(u)) });
   await sleep(1200);
-  await shot('3단계-불러온사진');
+  await shot('3단계-샘플');
 
   // 머리글 로고 → 처음으로(문서를 새로 연다 — 사진 · 포스터를 남김없이 버린다). 설치판(app://)에서도 같은지
   await main.evaluate(`document.querySelector('.brand.header-home').click()`);
