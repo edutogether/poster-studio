@@ -375,9 +375,9 @@ function TextRules($rows) {
   return $bad
 }
 function TextChecks() {
-  $rows = @($report.pages | ForEach-Object { $_.textLines; $_.pickedTextLines }) + @($report.messageBoxes | ForEach-Object { $_.textLines }) | Where-Object { $_ }
-  $bad = @($report.pages | ForEach-Object { $_.textProblems; $_.pickedTextProblems }) + @($report.messageBoxes | ForEach-Object { $_.textProblems }) | Where-Object { $_ } | Select-Object -Unique
-  Check '화면 글: 문장마다 새 줄 · 줄이 칸 안에 든다(낱말 중간 꺾임 없음) · «(을)를» 같은 조사 표기 · «\n» 글자 없음' ($rows.Count -gt 0 -and $bad.Count -eq 0) $(if ($bad.Count) { $bad -join ' | ' } else { "글 줄 $($rows.Count)개 · 화면 $(@($report.pages).Count)개 · 알림 $(@($report.messageBoxes).Count)개" })
+  $rows = @($report.pages | ForEach-Object { $_.textLines; $_.pickedTextLines; $_.otherTextLines }) + @($report.messageBoxes | ForEach-Object { $_.textLines }) | Where-Object { $_ }
+  $bad = @($report.pages | ForEach-Object { $_.textProblems; $_.pickedTextProblems; $_.otherTextProblems }) + @($report.messageBoxes | ForEach-Object { $_.textProblems }) | Where-Object { $_ } | Select-Object -Unique
+  Check '화면 글: 문장마다 새 줄 · 줄이 칸 안에 든다(낱말 중간 꺾임 없음) · «(을)를» 같은 조사 표기 · «\n» 글자 없음 · 줄 간격(글자 높이 1.3배 이상)'($rows.Count -gt 0 -and $bad.Count -eq 0) $(if ($bad.Count) { $bad -join ' | ' } else { "글 줄 $($rows.Count)개 · 화면 $(@($report.pages).Count)개 · 알림 $(@($report.messageBoxes).Count)개" })
 }
 
 # 기준 위치 · 바로가기 자리
@@ -487,6 +487,16 @@ function Walk($prefix) {
     if ($progress.Count) { $page.progress = $progress }
     # 설치 범위 화면 — 기준 단추를 고른다
     $pick = if ($Mode -eq 'all') { [Win]::FindButton($h, '모든 사용자') } else { [Win]::FindButton($h, '나만') }
+    $other = if ($Mode -eq 'all') { [Win]::FindButton($h, '나만') } else { [Win]::FindButton($h, '모든 사용자') }
+    # 다른 단추를 골랐을 때의 아래 안내도 찍고 잰다(고르기만 — «다음»은 기준 단추로 누른다. 일반 권한 설치기에서 «모든 사용자»의 «관리자 허락» 줄이 이 장면에 나온다)
+    if ($other -ne [IntPtr]::Zero -and $pick -ne [IntPtr]::Zero -and [Win]::IsWindowEnabled($other)) {
+      [Win]::SendMessage($other, $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
+      Start-Sleep -Milliseconds 400
+      $page.otherPicked = [Win]::Text($other)
+      [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-범위-다른단추.png' -f $prefix, $n))) | Out-Null
+      $page.otherTextLines = @([Win]::TextLines($h))
+      $page.otherTextProblems = @(TextRules $page.otherTextLines) + @([Win]::Spacing($h))
+    }
     if ($pick -ne [IntPtr]::Zero -and $page.text -match '모든 사용자') {
       [Win]::SendMessage($pick, $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
       Start-Sleep -Milliseconds 400
