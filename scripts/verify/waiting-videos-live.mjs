@@ -71,6 +71,9 @@ try {
   const capture = async (name) => { const s = await call('Page.captureScreenshot', { format: 'png' }); await fs.writeFile(path.join(out, `${name}.png`), Buffer.from(s.data, 'base64')); };
   await call('Page.enable');
   await call('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+  // 원격 데스크톱으로 접속하면 Windows 애니메이션이 꺼져 크롬이 «움직임 줄이기»로 보고하고, 앱은 영상 대신 정지 그림을 보인다(설계대로) —
+  // 이 검사는 영상이 도는 보통 경로를 보므로 이 PC 설정과 상관없이 «줄이지 않음»으로 연다(10/31: 원격 접속 중 12편 모두 «재생 0»으로 걸렸다)
+  await call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
   // 로딩 화면의 장면·영상 사건을 페이지 안에서 적는다(media 사건은 거품이 없어 문서에서 «잡기» 단계로 받는다).
   // 로딩 화면(#spinner) 안의 영상만 센다 — 10/19 촬영 화면 예시 영상이 2단계에서 재생되자 그 사건이 미리 정해 둔 장면 번호(6번)에 붙어 «주소 다름»으로 실패했다.
   await call('Page.addScriptToEvaluateOnNewDocument', { source: `
