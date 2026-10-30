@@ -134,6 +134,11 @@ async function measure(page, w, h, shotName) {
     m.titleInk = inkTop(shot.result.data, clip.y);
   }
   if (shotName) {
+    // «촬영 구도 예시» 영상이 도는 중이면 찍을 때마다 장면이 달라진다(10/31 라이브에서 손이 얼굴을 가린 장면 — 첫 장면도 그렇다).
+    // 화면을 건드리지 않고 한 번 재생이 끝나 마지막 장면에 머물 때까지 기다렸다 찍는다(상한 20초). 로컬 서버는 영상 부분 받기를 하지 않아 재생되지 않고 정지 그림 그대로다.
+    await page.ev(`Promise.all([...document.querySelectorAll('video.camera-example-video')].map((v) => (v.paused || v.ended ? null
+      : new Promise((r) => { const t = setTimeout(r, 20000); v.addEventListener('ended', () => { clearTimeout(t); r(); }, { once: true }); }))))`);
+    await page.ev(FRAMES);
     const shot = await page.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     fs.writeFileSync(path.join(out, `${shotName}-${w}x${h}.png`), Buffer.from(shot.result.data, 'base64'));
   }
