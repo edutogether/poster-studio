@@ -143,8 +143,7 @@
 ; 그래서 원래 막대 자리에 막대를 하나 더 두고 이 파일만 그것을 움직인다(앞으로만 — psAt). 원래 막대는 숨긴다(NSIS는 계속 숨은 막대에 쓴다).
 ;   ① 창이 뜰 때(화면 스레드, .onGUIInit) 숨은 막대를 만든다 — 창은 만든 스레드가 그리므로 설치 스레드에서 만들면 그려지지 않는다.
 ;   ② 진행 화면이 열리면 그 자리로 옮겨 원래 막대를 가린다(설치기는 진행 화면 SHOW, 제거기는 제거 단계 맨 앞 — 제거기 진행 화면 SHOW 자리는 템플릿 제거 범위 화면이 가져간다).
-;   ③ 설치 단계가 시작된 뒤 ID를 맞바꾼다(원래 막대 1999 · 새 막대 1004) — NSIS는 단계가 시작될 때 원래 막대를 잡아 두고, Nsis7z는 풀 때 ID 1004로 찾는다
-;      (시제품 실측: SHOW에서 바꾸면 NSIS가 새 막대를 잡아 29000으로 되돌렸다). 새 막대의 범위를 Nsis7z의 0~30000이 정한 구간(A~800‰)에 오도록 잡는다.
+;   ID는 맞바꾸지 않는다 — Nsis7z(ExtractWithCallback)도 ID 1004 막대를 제 기준으로 움직여 막대가 뒤로 갔다(a63fa02). 새 막대는 이 파일(psAt)만 움직인다.
 !macro psBarCreate
   System::Call 'user32::CreateWindowExW(i 0, w "msctls_progress32", w "", i 0x40000000, i 0, i 0, i 10, i 10, p $HWNDPARENT, p 0, p 0, p 0) p.r0'
   StrCpy $psBar $0
@@ -169,12 +168,12 @@
   DetailPrint "${TEXT}"
   SetDetailsPrint none
 !macroend
-; 바깥 창의 칸 하나를 그 자리에서 다시 그린다(머리 바탕 1034 · 제목 1037 · 부제 1038 · 그림 1046 · 아래 줄 1028 · 1256 — psThaw). $2를 쓴다
-!macro psRepaintItem ID
-  GetDlgItem $2 $HWNDPARENT ${ID}
-  ${If} $2 <> 0
-    System::Call "user32::RedrawWindow(p r2, p 0, p 0, i 0x105)"   ; INVALIDATE | ERASE | UPDATENOW
-  ${EndIf}
+; 바깥 창의 칸 하나가 겹침 위 칸 자리를 칠하지 않게(WS_CLIPSIBLINGS — psZOrder). $0 · $1을 쓴다
+!macro psClipSiblings ID
+  GetDlgItem $0 $HWNDPARENT ${ID}
+  System::Call "user32::GetWindowLongW(p r0, i -16) i .r1"
+  IntOp $1 $1 | 0x04000000
+  System::Call "user32::SetWindowLongW(p r0, i -16, i r1)"
 !macroend
 ; «머리말: 경로» 한 줄 — 상자 칸보다 길면 경로 가운데를 줄인다(psFit)
 !macro psLine WORD PATH
@@ -266,8 +265,9 @@
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psWelcomeShow
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psWelcomeLeave
     !insertmacro MUI_UNPAGE_WELCOME
-    ; 다음 화면 = 템플릿 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 안내 줄 간격
+    ; 다음 화면 = 템플릿 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 안내 줄 간격 · 떠날 때(진행 화면으로) 합성
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psModeShow
+    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psCompOn
   !macroend
   ; 제거기 완료 화면 왼쪽 그림 — 템플릿이 이 자리 바로 뒤에 완료 화면(MUI_UNPAGE_FINISH)을 넣는다
   !macro customUninstallPage
@@ -606,60 +606,75 @@
   ; 화면을 바꾸면 Windows가 지운 자리를 바로 바탕색으로 칠한다 — 새 화면이 다 차기 전(줄 칸 만들기 · 그림 꺼내기)의 빈 화면이 녹화에 2~3장 잡혔다
   ; (설치 범위 → 위치 0.1초, 진행 → 완료 0.07초). 그래서 바꾸기 전에 바깥 창 그리기를 멈추고(WM_SETREDRAW 0 — 그동안 앞 화면이 그대로 보인다)
   ; 새 화면을 보이게 한 뒤 다시 켜 한 번에 그린다. 바깥 창이 아직 안 보이면(첫 화면) 멈추지 않는다 — 다시 켜기가 숨은 창을 보이게 만든다.
+  ; 바깥 창 칸의 겹침 순서(psZOrder)를 고친 뒤로는 합성 한 번으로 머리 · 아래 줄 · 창 전체 화면까지 맞게 그린다. 합성은 그리기를 멈춘 채로 끈다(psThaw).
   Var psFrozen
   Var psThawPage
+  ; 보이면 멈춘다(이미 멈췄으면 «안 보임»으로 읽혀 그대로). psFrozen이 «1»이어도 다시 본다 — MUI가 창 전체 화면(첫 화면 · 완료)을 열고 닫을 때
+  ; LockWindow off로 그리기를 다시 켠다(완료 화면 PRE — 설치 · 제거 단계 끝에서 멈춘 것이 풀린다).
   Function ${PSF}psFreeze
     Push $0
     System::Call "user32::IsWindowVisible(p $HWNDPARENT) i .r0"
     ${If} $0 <> 0
-    ${AndIf} $psFrozen != "1"
       SendMessage $HWNDPARENT ${WM_SETREDRAW} 0 0
       StrCpy $psFrozen "1"
     ${EndIf}
     Pop $0
   FunctionEnd
-  ; 스택: 새 화면 HWND. 다시 그릴 때는 창 전체를 한 장에 그려 내보낸다(WS_EX_COMPOSITED) — 바탕부터 칠하고 칸을 하나씩 그리면
-  ; 그 사이가 녹화에 잡혔다(바탕만 · 머리만 보이는 장면, 10/28 f7cbf2b 녹화).
+  ; 스택: 새 화면 HWND. 새 화면을 칸 겹침 맨 위로 올리고(창 전체 화면이 머리 바탕 · 머리 선을 덮게 — psZOrder) 창 전체를 합성(WS_EX_COMPOSITED)으로 한 장에 그린 뒤,
+  ; 그리기를 멈춘 채로 합성을 끄고 다시 켠다 — 합성을 그냥 끄면 Windows가 창을 보통 방식으로 다시 그려(바탕부터 칸마다) 그 사이가 녹화에 잡혔다
+  ; (10/28 14d2583: 범위 → 위치 05 · 09 프레임 43 바탕 · 단추만, 진행 → 완료 03 프레임 102 단추 줄 빔). psCompOn으로 켜 둔 합성도 여기서 끈다.
   Function ${PSF}psThaw
     Exch $0
     ${If} $psFrozen == "1"
       Push $1
       Push $2
       ShowWindow $0 8   ; SW_SHOWNA — NSIS가 뒤에 하는 것을 먼저(이미 보이면 그대로)
+      System::Call "user32::SetWindowPos(p r0, p 0, i 0, i 0, i 0, i 0, i 0x13)"   ; HWND_TOP — NOSIZE | NOMOVE | NOACTIVATE
       System::Call "user32::GetWindowLongW(p $HWNDPARENT, i -20) i .r1"
+      IntOp $1 $1 & 0xFDFFFFFF   ; 합성을 뺀 값
       IntOp $2 $1 | 0x02000000
       System::Call "user32::SetWindowLongW(p $HWNDPARENT, i -20, i r2)"
       SendMessage $HWNDPARENT ${WM_SETREDRAW} 1 0
       System::Call "user32::RedrawWindow(p $HWNDPARENT, p 0, p 0, i 0x585)"   ; INVALIDATE | ERASE | ALLCHILDREN | UPDATENOW | FRAME
+      SendMessage $HWNDPARENT ${WM_SETREDRAW} 0 0
       System::Call "user32::SetWindowLongW(p $HWNDPARENT, i -20, i r1)"
-      ; 합성으로 그릴 때는 머리(제목 · 부제 · 그림 · 바탕)와 아래 «Poster Studio 1.0.0» 줄을 맞게 그리지 못한다 — 머리가 보이는 화면에서는 머리가 비고
-      ; (10/28 978973e 진행 화면), 창 전체를 덮는 완료 화면에서는 머리 바탕이 그 화면 위에 흰 띠로 칠해졌다(a63fa02 — «설치 완료» 제목 · 그림 윗부분이 가려짐).
-      ; 합성을 끈 뒤: 새 화면이 머리 아래에서 시작하면 머리 · 아래 줄 칸만, 머리를 덮으면 그 화면을 통째로 다시 그린다(화면이 맨 위에 그려지게).
-      Push $3
-      System::Call "*(i,i,i,i) p.r1"
-      System::Call "user32::GetWindowRect(p r0, p r1)"
-      System::Call "*$1(i, i .r2)"
-      System::Free $1
-      GetDlgItem $1 $HWNDPARENT 1034
-      System::Call "*(i,i,i,i) p.r3"
-      System::Call "user32::GetWindowRect(p r1, p r3)"
-      System::Call "*$3(i, i, i, i .r1)"
-      System::Free $3
-      Pop $3
-      ${If} $2 >= $1   ; 새 화면 윗변이 머리 아랫변 밑이다 — 머리가 보인다
-        !insertmacro psRepaintItem 1034
-        !insertmacro psRepaintItem 1037
-        !insertmacro psRepaintItem 1038
-        !insertmacro psRepaintItem 1046
-        !insertmacro psRepaintItem 1028
-        !insertmacro psRepaintItem 1256
-      ${Else}
-        System::Call "user32::RedrawWindow(p r0, p 0, p 0, i 0x185)"   ; INVALIDATE | ERASE | ALLCHILDREN | UPDATENOW — 새 화면 전체
-      ${EndIf}
+      SendMessage $HWNDPARENT ${WM_SETREDRAW} 1 0
       StrCpy $psFrozen ""
       Pop $2
       Pop $1
     ${EndIf}
+    Pop $0
+  FunctionEnd
+  ; 진행 화면으로 넘어갈 때(위치 · 제거 첫 화면 · 제거 범위 LEAVE): 바깥 창을 합성으로 둬 진행 화면이 처음 그려질 때 한 장에 그려지게 한다 — 다음 psThaw(완료 화면)가 끈다.
+  ; 멈춤으로는 안 된다 — 진행 화면에는 SHOW 자리가 없고(제거기 — 템플릿 제거 범위 화면이 가져간다), MUI가 첫 화면을 닫으며 LockWindow off로 그리기를 다시 켠다
+  ; (10/28 14d2583: 위치 → 진행 04 프레임 145 · 09 프레임 146 몸통 빔, 제거 첫 화면 → 진행 03 프레임 16 · 17). 진행 화면은 합성으로 그려도 상자 줄 · 막대가 그대로다(10/28 실험 C).
+  Function ${PSF}psCompOn
+    Push $0
+    System::Call "user32::GetWindowLongW(p $HWNDPARENT, i -20) i .r0"
+    IntOp $0 $0 | 0x02000000
+    System::Call "user32::SetWindowLongW(p $HWNDPARENT, i -20, i r0)"
+    Pop $0
+  FunctionEnd
+  ; ── 바깥 창 칸의 겹침 순서(창이 뜰 때 한 번) ──
+  ; 겹치는 칸: 머리 바탕(1034) 위의 제목(1037) · 부제(1038) · 그림(1046), 아래 줄 선(1035) 위의 상표 글(1256 · 1028), 창 전체 화면(첫 화면 · 완료) 아래의 머리 바탕 · 머리 선(1036).
+  ; 보통 그리기는 겹침 위 칸부터 칠해 아래 칸이 이기고, 합성 그리기는 아래 칸부터 칠해 위 칸이 이긴다. NSIS 화면 틀(modern_headerbmpr)은 바탕 · 선이 글 · 그림보다 위라
+  ; 합성으로 그리면 머리가 비고(978973e · 10/28 실험 C) 완료 화면 위가 흰 띠로 덮였다(a63fa02). 그래서 보일 칸을 위에 두고, 가려질 칸(1034 · 1035 · 1036 · 1256)은
+  ; 위 칸 자리를 칠하지 않게 한다(WS_CLIPSIBLINGS) — 두 방식 모두 지금 보이는 모습과 같다. 새 화면은 psThaw(제거기 첫 화면은 SHOW)가 맨 위로 올린다.
+  Function ${PSF}psZOrder
+    Push $0
+    Push $1
+    GetDlgItem $0 $HWNDPARENT 1035
+    System::Call "user32::SetWindowPos(p r0, p 1, i 0, i 0, i 0, i 0, i 0x13)"   ; HWND_BOTTOM
+    GetDlgItem $0 $HWNDPARENT 1034
+    System::Call "user32::SetWindowPos(p r0, p 1, i 0, i 0, i 0, i 0, i 0x13)"   ; 그 아래 — 맨 아래
+    GetDlgItem $0 $HWNDPARENT 1256
+    GetDlgItem $1 $HWNDPARENT 1028
+    System::Call "user32::SetWindowPos(p r0, p r1, i 0, i 0, i 0, i 0, i 0x13)"   ; 1256을 1028 바로 아래로 — 보통 그리기에서 보이던 것이 1028(회색 글)이다
+    !insertmacro psClipSiblings 1034
+    !insertmacro psClipSiblings 1035
+    !insertmacro psClipSiblings 1036
+    !insertmacro psClipSiblings 1256
+    Pop $1
     Pop $0
   FunctionEnd
   ; nsDialogs 화면(설치 범위 · 완료)은 SHOW 뒤에 nsDialogs가 앞 화면을 지우고 새 화면을 띄운다 — 그 뒤 첫 타이머에서 다시 켠다
@@ -677,17 +692,31 @@
   FunctionEnd
 
   ; ── 막대 · 줄 ──
+  ; 막대는 그 자리를 바로 그린다 — Windows 막대는 늘어날 때 천천히 채워 따라가 글보다 늦었다(«설치가 끝났습니다.»가 막대 95% · «제거가 끝났습니다.»가 75%에서 뜸,
+  ; 10/28 14d2583 녹화 — 팀장). 줄어들 때는 바로 그리므로 한 칸 더 갔다가 되돌린다. 끝(최대)은 더 갈 칸이 없어 한 칸 앞을 바로 그린 뒤 끝으로 간다
+  ; (한 칸은 막대 전체의 1/30000 이하 — 화소 하나도 안 된다). 범위는 바꾸지 않는다(100%에서 범위를 바꾸면 막대가 잠깐 사라졌다 — Voice Cinema).
   Function ${PSF}psAt
     Exch $R0
     Push $R1
+    Push $R2
     ${If} $psBarOn == "1"
     ${AndIf} $R0 > $psLast
       StrCpy $psLast $R0
       IntOp $R1 $R0 * $psSpan
       IntOp $R1 $R1 / 1000
       IntOp $R1 $R1 + $psLo
-      SendMessage $psBar 0x402 $R1 0   ; PBM_SETPOS
+      ${If} $R0 < 1000
+        IntOp $R2 $R1 + 1
+        SendMessage $psBar 0x402 $R2 0   ; PBM_SETPOS — 한 칸 더
+        SendMessage $psBar 0x402 $R1 0   ; 되돌려 바로 그림
+      ${Else}
+        IntOp $R2 $R1 - 1
+        SendMessage $psBar 0x402 $R1 0
+        SendMessage $psBar 0x402 $R2 0   ; 한 칸 앞을 바로 그림
+        SendMessage $psBar 0x402 $R1 0
+      ${EndIf}
     ${EndIf}
+    Pop $R2
     Pop $R1
     Pop $R0
   FunctionEnd
@@ -1006,6 +1035,7 @@
     Function psGuiInit
       !insertmacro psHeaderArt
       !insertmacro psBarCreate
+      Call psZOrder
     FunctionEnd
 
     Function psFinishShow
@@ -1083,6 +1113,7 @@
         Abort
       ${EndIf}
       Pop $R0
+      Call psCompOn   ; 진행 화면이 처음 그려질 때 한 장에(완료 화면 psThaw가 끈다)
     FunctionEnd
 
     ; 템플릿 instFilesPre와 같다 — 고른 위치에 «Poster Studio» 폴더가 없으면 붙인다(위치 화면 LEAVE에서는 $INSTDIR을 바꿔도 되돌아간다 — 템플릿 주석)
@@ -1395,10 +1426,13 @@
     Function un.psGuiInit
       !insertmacro psHeaderArt
       !insertmacro psBarCreate
+      Call un.psZOrder
     FunctionEnd
 
+    ; 첫 화면은 멈추지 않고 뜨므로(창이 아직 안 보임) 여기서 겹침 맨 위로 올린다 — 떠날 때 합성으로 그려도 머리 바탕 · 머리 선이 이 화면을 덮지 않게(psZOrder)
     Function un.psWelcomeShow
       !insertmacro psSideArt $mui.WelcomePage.Image $mui.WelcomePage.Image.Bitmap
+      System::Call "user32::SetWindowPos(p $mui.WelcomePage, p 0, i 0, i 0, i 0, i 0, i 0x13)"   ; HWND_TOP — NOSIZE | NOMOVE | NOACTIVATE
     FunctionEnd
 
     Function un.psWelcomeLeave
@@ -1409,6 +1443,7 @@
         Abort
       ${EndIf}
       Pop $R0
+      Call un.psCompOn
     FunctionEnd
 
     Function un.psUnFinishShow
@@ -1548,6 +1583,9 @@
   !insertmacro psStage "설치가 끝났습니다."
   ${IfNot} ${Silent}
     Sleep 1000
+    ; 완료 화면으로 넘어가기 전에 그리기를 멈춘다 — 단계가 끝나면 NSIS가 가운데 단추를 «닫음»으로 바꾸고 MUI 완료 화면이 «마침»으로 바꾸는데,
+    ; 그 사이 한 장이 녹화에 잡혔다(10/28 14d2583 04 프레임 281 · 09 프레임 280). 완료 화면이 다 차면 psThaw가 한 번에 그린다.
+    Call psFreeze
   ${EndIf}
 !macroend
 
@@ -1663,6 +1701,8 @@
   !insertmacro psStage "제거가 끝났습니다."
   ${IfNot} ${Silent}
     Sleep 1000
+    ; 완료 화면으로 넘어가기 전에 그리기를 멈춘다(설치기 customInstall과 같다 — 03에서는 진행 화면 위 «마침» 3장 · 단추 줄 빈 1장, 10/28 14d2583 프레임 99~102)
+    Call un.psFreeze
   ${EndIf}
 !macroend
 
