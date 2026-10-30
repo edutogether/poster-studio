@@ -1285,8 +1285,9 @@ html.ps-canvas #cameraWorkspace, html.ps-canvas #resultView #resultWorkspace, ht
 /* 1536 폭 노트북(1920 화면 125% 배율 — 전체 화면 1536×864 · 최대화한 창 1536×793): «나답게 …» 제목 글자 윗선을 왼쪽 카메라 사진 윗선(142.5)에 맞춘다
    (10/31 Bumm님 «제목이 사진보다 약 20px 위에 떠 있다», 팀장 전달 — 위 14px에서 글자 윗선 122 → 35px에서 143). 내린 21px은 안내 아래 · 티켓 아래의
    빈 높이(자동 여백)에서 나온다 — 높이 780 이상이면 그 빈 높이가 21px보다 커서 포스터 · 티켓 · 단추는 그대로다(1536×793: 22.9 · 22.9 → 12.4 · 12.4).
-   다른 크기(1366 · 1440 · 1600 등)는 지시대로 그대로 둔다 — step2-geometry.mjs가 그 크기들의 화면이 한 화소도 바뀌지 않았는지 본다. */
-@media (min-width: 1500px) and (max-width: 1599px) and (min-height: 780px) and (max-height: 869px) {
+   폭 1440(1440×900 화면에서 최대화한 창 1440×829)도 같은 높이 구간만 맞춘다(10/31 Bumm님 «1440만 맞추고 나머지는 둔다») — 폭이 정확히 1440인 창만이라 다른 폭은 섞이지 않는다.
+   🔴 Bumm님 확정 10/31: 1366 · 1600의 20px 어긋남은 그대로 — 그 밖의 크기도 손대지 않는다. step2-geometry.mjs가 그 크기들의 화면이 한 화소도 바뀌지 않았는지 본다. */
+@media (min-width: 1500px) and (max-width: 1599px) and (min-height: 780px) and (max-height: 869px), (min-width: 1440px) and (max-width: 1440px) and (min-height: 780px) and (max-height: 869px) {
   #cameraWorkspace .page-heading { margin-top: 35px; }
 }
 @media (min-width: 1100px) and (min-height: 1760px) {

@@ -31,7 +31,8 @@ test('창 크기 배치는 설치판 전용 범위 없이 웹과 설치판에 �
   expect(band).not.toMatch(/data-desktop/);
 });
 
-// 1536 폭(1920 화면 125%)에서만 «나답게 …» 제목을 사진 윗선에 맞춘다 — 다른 크기는 그대로(10/31 Bumm님, 팀장 전달)
-test('제목 내림은 1536 폭 · 높이 780~869 창에만', () => {
-  expect(studio).toMatch(/@media \(min-width: 1500px\) and \(max-width: 1599px\) and \(min-height: 780px\) and \(max-height: 869px\) \{\s*#cameraWorkspace \.page-heading \{ margin-top: 35px; \}\s*\}/);
+// 1536 폭(1920 화면 125%)과 폭 1440에서만 «나답게 …» 제목을 사진 윗선에 맞춘다 — 1366 · 1600 등 다른 크기는 그대로(10/31 Bumm님 확정, 팀장 전달)
+test('제목 내림은 1536 폭 · 1440 폭의 높이 780~869 창에만', () => {
+  expect(studio).toMatch(/@media \(min-width: 1500px\) and \(max-width: 1599px\) and \(min-height: 780px\) and \(max-height: 869px\), \(min-width: 1440px\) and \(max-width: 1440px\) and \(min-height: 780px\) and \(max-height: 869px\) \{\s*#cameraWorkspace \.page-heading \{ margin-top: 35px; \}\s*\}/);
+  expect(studio.match(/margin-top: 35px/g)).toHaveLength(1);
 });
