@@ -11,7 +11,8 @@
      --align의 크기(«후»)    제목 글자 윗선(화소로 찾은 첫 어두운 줄)이 카메라 사진 윗선과 1px 안 · 제목 ↔ 안내 ↔ «오늘 촬영할 영화» ↔ 포스터 · 티켓 ↔ 단추가
                              겹치지 않음 · 단추가 화면 안 · 가로 넘침 없음 · 티켓 글자 잘림 없음 · 보이는 포스터가 «전»보다 작아지지 않음
      --same-as <빌드>        그 빌드와 «후»의 2단계 요소 자리가 모든 크기에서 0.5px 안에서 같다(설치판 = 웹 확인용 — 설치판에만 있는 표시는 뺀다)
-   --shots의 크기는 빌드마다 <결과 폴더>/<이름>-<크기>.png로 찍는다(원본 해상도, 1배). 잰 값은 <결과 폴더>/geometry.json. */
+   --shots의 크기는 빌드마다 <결과 폴더>/<이름>-<크기>.png로 찍는다(원본 해상도, 1배). 잰 값은 <결과 폴더>/geometry.json.
+   빌드 자리에 https 주소(라이브)를 주면 그 주소를 그대로 연다 — 배포한 화면이 빌드와 같은지 볼 때(바깥 요청 차단 · /health 대신 답하기는 같다). */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -26,7 +27,8 @@ const opt = (name) => all(name)[0];
 const parseSizes = (s) => (s ? s.split(',').filter(Boolean).map((x) => x.split('x').map(Number)) : []);
 const builds = all('--build').map((b) => { const i = b.indexOf('='); return { name: b.slice(0, i), dir: b.slice(i + 1) }; });
 const sameAs = opt('--same-as');
-if (!out || out.startsWith('--') || builds.length !== 2 || !builds.every((b) => b.name && fs.existsSync(path.join(b.dir, 'index.html'))) || (sameAs && !fs.existsSync(path.join(sameAs, 'index.html')))) {
+const usable = (d) => /^https:\/\//.test(d) || fs.existsSync(path.join(d, 'index.html'));
+if (!out || out.startsWith('--') || builds.length !== 2 || !builds.every((b) => b.name && usable(b.dir)) || (sameAs && !usable(sameAs))) {
   console.error('사용: step2-geometry.mjs <결과 폴더> --build 전=<빌드> --build 후=<빌드> [--sizes WxH,…|sweep] [--changed WxH,…] [--align WxH,…] [--shots WxH,…] [--same-as <빌드>]');
   process.exit(2);
 }
@@ -140,7 +142,7 @@ async function measure(page, w, h, shotName) {
 
 for (let i = 0; i < 60; i++) { await sleep(200); try { await fetch(`http://127.0.0.1:${port}/json/version`); break; } catch { /* 아직 */ } }
 const dirs = [...builds.map((b) => b.dir), ...(sameAs ? [sameAs] : [])];
-const servers = await Promise.all(dirs.map(serve));
+const servers = await Promise.all(dirs.map((d) => (/^https:\/\//.test(d) ? { base: d.replace(/\/$/, '') } : serve(d))));
 const pages = [];
 for (const s of servers) pages.push(await openPage(s.base));
 
@@ -180,5 +182,5 @@ for (const [w, h] of SIZES) {
 fs.writeFileSync(path.join(out, 'geometry.json'), JSON.stringify(report, null, 1));
 const unchanged = report.sizes.filter((r) => !r.changed.length).length;
 console.log(`${bad ? `걸림 ${bad}건` : '모두 통과'} · 크기 ${SIZES.length}개(«전»과 같은 크기 ${unchanged}개 · 바뀐 크기 ${SIZES.length - unchanged}개)`);
-for (const s of servers) s.server.close();
+for (const s of servers) s.server?.close();
 process.exit(bad ? 1 : 0);

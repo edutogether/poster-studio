@@ -3,7 +3,8 @@
 import fs from 'node:fs';
 import { test, expect } from 'vitest';
 
-const studio = fs.readFileSync('src/studio.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+// 이 컴퓨터의 체크아웃은 CRLF일 수 있다(core.autocrlf) — 줄 끝을 맞춘 뒤 본다(10/31 웹 가지에서 «\n}\n»을 못 찾아 블록이 파일 끝까지 늘어났다)
+const studio = fs.readFileSync('src/studio.css', 'utf8').replace(/\r\n/g, '\n').replace(/\/\*[\s\S]*?\*\//g, '');
 const rules = (text: string) => [...text.matchAll(/ {2}(#cameraWorkspace \.camera-ticket[^{]*)\{([^}]*)\}/g)]
   .map(([, selector, body]) => `${selector.trim()} { ${body.replace(/\s+/g, ' ').trim()} }`);
 const block = (start: string, end: string) => {
