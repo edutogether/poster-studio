@@ -57,7 +57,17 @@ async function serve(dir) {
     if (p.endsWith('/')) p += 'index.html';
     const f = path.join(root, p);
     if (!f.startsWith(root + path.sep) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; }
-    res.writeHead(200, { 'content-type': TYPE[path.extname(f)] ?? 'application/octet-stream' });
+    const type = TYPE[path.extname(f)] ?? 'application/octet-stream', size = fs.statSync(f).size;
+    // 영상은 부분 받기(Range)가 되어야 재생된다 — 라이브 · 설치판 앱처럼 «촬영 구도 예시» 영상이 돌게(10/31, 안 되면 정지 그림에 머문다)
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+    if (range && (range[1] || range[2])) {
+      const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2])), end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+      if (start > end || start >= size) { res.writeHead(416, { 'content-range': `bytes */${size}` }); res.end(); return; }
+      res.writeHead(206, { 'content-type': type, 'accept-ranges': 'bytes', 'content-range': `bytes ${start}-${end}/${size}`, 'content-length': end - start + 1 });
+      fs.createReadStream(f, { start, end }).pipe(res);
+      return;
+    }
+    res.writeHead(200, { 'content-type': type, 'accept-ranges': 'bytes', 'content-length': size });
     fs.createReadStream(f).pipe(res);
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -135,8 +145,8 @@ async function measure(page, w, h, shotName) {
   }
   if (shotName) {
     // «촬영 구도 예시» 영상이 도는 중이면 찍을 때마다 장면이 달라진다(10/31 라이브에서 손이 얼굴을 가린 장면 — 첫 장면도 그렇다).
-    // 화면을 건드리지 않고 한 번 재생이 끝나 마지막 장면에 머물 때까지 기다렸다 찍는다(상한 20초). 로컬 서버는 영상 부분 받기를 하지 않아 재생되지 않고 정지 그림 그대로다.
-    await page.ev(`Promise.all([...document.querySelectorAll('video.camera-example-video')].map((v) => (v.paused || v.ended ? null
+    // 화면을 건드리지 않고 한 번 재생이 끝나 마지막 장면에 머물 때까지 기다렸다 찍는다(아직 시작 전이어도 기다린다, 상한 20초 — 재생이 안 되는 브라우저는 정지 그림 그대로).
+    await page.ev(`Promise.all([...document.querySelectorAll('video.camera-example-video')].map((v) => (v.ended ? null
       : new Promise((r) => { const t = setTimeout(r, 20000); v.addEventListener('ended', () => { clearTimeout(t); r(); }, { once: true }); }))))`);
     await page.ev(FRAMES);
     const shot = await page.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
