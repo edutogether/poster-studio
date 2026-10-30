@@ -242,18 +242,9 @@ describe('설치판 화면 규칙(src/desktop.css)', () => {
   test('마우스로 연 인쇄 미리보기는 «인쇄하기» 초점 테두리를 그리지 않는다', () => {
     expect(css).toMatch(/\.print-preview\[data-pointer\] \.primary-button:focus-visible\s*\{\s*outline:\s*none;/);
   });
-  /* 2단계 낮은 창 · 아주 높은 창의 세로형 티켓은 태블릿 세로 배치의 승인된 규칙을 그대로 옮긴 것이다(10/27 Bumm님 «패드에 사용했던 세로형 티켓»).
-     한쪽만 고쳐 두 티켓 모양이 갈리지 않게, 규칙(선택자 · 선언)이 하나도 빠짐없이 같은지 본다. */
-  test('세로형 티켓 규칙 = 태블릿 세로 배치(studio.css)의 규칙 그대로', () => {
-    const rules = (text: string, prefix: string) => [...text.matchAll(new RegExp(`${prefix}(#cameraWorkspace \\.camera-ticket[^{]*)\\{([^}]*)\\}`, 'g'))]
-      .map(([, selector, body]) => `${selector.trim()} { ${body.replace(/\s+/g, ' ').trim()} }`);
-    const studio = fs.readFileSync('src/studio.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    const tablet = studio.slice(studio.indexOf('@media (min-width: 761px) and (max-width: 1099px) and (min-height: 960px) and (orientation: portrait)'));
-    const tabletRules = rules(tablet.slice(0, tablet.indexOf('#cameraWorkspace .camera-actions {')), '  ');
-    const band = css.slice(css.indexOf('@media (min-width: 1100px) and (min-height: 680px) and (max-height: 869px), (min-width: 1100px) and (min-height: 1760px)'));
-    const desktopRules = rules(band.slice(0, band.indexOf('\n}\n')), '  body\\[data-desktop\\] ');
-    expect(tabletRules.length).toBe(16);
-    expect(desktopRules).toEqual(tabletRules);
+  // 2단계 «오늘 촬영할 영화» 창 크기 배치는 10/31 웹에도 넣으며 studio.css로 옮겼다(test/step2-film-layout.test.ts) — 여기 다시 두면 설치판만 갈린다
+  test('2단계 창 크기 배치 규칙이 설치판 전용 파일에 남아 있지 않다', () => {
+    expect(css).not.toMatch(/camera-film|camera-ticket|page-heading|camera-tips/);
   });
 });
 
