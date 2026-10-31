@@ -5,8 +5,8 @@
 - GitHub 복구로 **CI 배포가 다시 정상 경로다** — master push → test → functions → hosting. runbook §9(로컬 배포)는 다시 GitHub가 막힐 때만.
 - master는 이제 `download-20261027` 줄을 품는다(다운로드 단추 · `/download` 리디렉션 포함). 함수에 10/26 보류했던 서버 변경 3건이 나갔다(Bumm님 결정 A).
 - 되돌릴 곳: Hosting `rollback-20261031-3`(= `db8c334`, 11/30까지) · 함수 판 `posterstudio-00043-tof`(= `81a07b4`) — 명령은 CHANGELOG 10/31 10:42 절.
-- OPEN: ① 라이브 로그의 칸 · 판 필드는 첫 실제 생성 요청 때 확인 ② 10/26 뒤 나온 npm 권고(functions 운영 보통 5 · 루트 개발 4) 처리 여부 ③ 설치판 `2fabd75` 녹화 4편(아래 모니터가 비면)
-  ④ 현장 OPEN(11/12 포토프린터 · 교육청 노트북 설치 권한 · SmartScreen)은 그대로.
+- OPEN: ① 라이브 로그의 칸 · 판 필드는 첫 실제 생성 요청 때 확인 ② 10/26 뒤 나온 npm 권고(functions 운영 보통 5 · 개발 3 · 루트 개발 4) — 팀장 결정 B: 11/16~11/20에 고친다(app.md에 목록 · 근거) ③ GitHub 알림 64건이 다시 검사로 닫히는지 11/1 확인 ④ 설치판 `2fabd75` 녹화 4편(아래 모니터가 비면)
+  ⑤ 현장 OPEN(11/12 포토프린터 · 교육청 노트북 설치 권한 · SmartScreen)은 그대로.
 
 ## 2026-10-31(토) — GitHub 복구: 올릴 것 다 올림 · 🔴 master push 보류(Bumm님 «함께 배포 / 보류» 결정 대기) · 라이브 그대로
 

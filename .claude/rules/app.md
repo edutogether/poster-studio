@@ -162,6 +162,13 @@
 - **부스토큰(`src/constants.ts`) 변경과 Secret Manager 갱신을 다른 커밋으로 쪼개지 않는다.** 그 사이 전 부스가 401.
 - **`npm audit fix --force`를 `functions/`에서 돌리지 않는다.** firebase-functions 메이저 다운그레이드를 유발한다.
 - 🟡 **배포 도구(`tools/deploy`)의 `npm audit` 9건은 그대로 둔다**(2026-10-10 팀장 결정, Voice Cinema와 같음). firebase-tools 15.32.1 아래 braces(고친 판 없음)·basic-ftp·@opentelemetry/core(메이저를 바꿔야 해 쓰는 쪽이 깨짐)이고, GitHub가 개발 의존성으로 자동으로 닫았으며 CI 배포에만 쓰인다. **12월 말 분기 감사나 firebase-tools 새 판 때 다시 본다.** 그 아래 uuid만 `overrides`로 11.1.1(Dependabot)이다 — npm audit이 권하는 firebase-tools 14.23.0 되돌림은 쓰지 않는다.
+- 🟡 **10/26 뒤에 나온 npm 권고(모두 보통 등급)는 행사 뒤에 고친다 — 처리 예정 11/16(월)~11/20(금)**(2026-10-31 팀장 결정 B, 11/14 행사 다음 주).
+  - 목록: functions 운영 5건 — `qs` 6.16.0(express · body-parser 아래, GHSA-6pq8-jhm2-2vcw) · `glob` 10.5.0 · `rimraf` 5.0.10 · `google-gax` 5.0.8(@google-cloud/firestore 아래, GHSA-3g3m-2fjr-6pw4) ·
+    `minimatch` 9.0.9(glob 아래, GHSA-g3hv-75wg-m249). functions 개발 3건 · 루트 개발 4건은 `minimatch` 10.2.6과 eslint 경로. 루트 운영 0건.
+  - 닿지 않는 근거: qs 권고는 `qs.stringify`(comma 형식)인데 express · body-parser는 `qs.parse`만 쓰고, express 5 기본 쿼리 해석은 `simple`(node querystring)이며 앱은 `query parser`도
+    urlencoded 본문 해석도 켜지 않는다. google-gax 5.0.8은 rimraf를 의존성에만 적고 실행 코드(`build/`)에서 부르지 않아 glob · minimatch까지 닿는 실행 경로가 없다. 개발 쪽은 eslint가 저장소의 고정된 글롭만 쓴다.
+  - 지금 고치지 않는 까닭: 고치면 google-gax(Firestore 클라이언트)가 바뀐다 — 행사 2주 전에 운영 의존성을 흔드는 쪽이 더 큰 위험이다.
+  - 처리 방법: 양쪽 비강제 `npm audit fix` → 시험 · 에뮬레이터 · CI 배포. `--force`는 쓰지 않는다(eslint 4로 내려간다).
 - **테스트에서 실제 OpenAI·Firestore를 호출하지 않는다.** 주입 지점이 이미 있다(`_setClientForTesting` 등).
 - **촬영 후 카메라 스트림을 켜둔 채 두지 않는다.** 최소수집 원칙 위반이고 아동 대상이라 더 중요하다
   (`camera.js`의 `getTracks().stop()` — 6차 감사에서 고친 것).
