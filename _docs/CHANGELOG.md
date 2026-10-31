@@ -1,5 +1,20 @@
 # CHANGELOG — Poster Studio
 
+## 2026-10-31(토) 10:42~11:18 — master = 라이브 줄(CI 배포 재개): 함수 서버 변경 3건 «함께 배포» `posterstudio-00044-gaf` · Hosting 내용 그대로 · Dependabot #20~#22 머지 · #19 저절로 닫힘 (Bumm님 결정 A, 팀장 OK)
+
+- master: `a658d89`(10/15) → `ba2915a` 빨리감기 push(강제 없음) = `download-20261027` 줄. 다운로드 단추 · `/download/PosterStudio-Setup.exe` 리디렉션 그대로.
+  그 뒤 머지 3건: #22 fast-uri 3.1.9(`dadd40a`) · #21 undici 6.29.1 · 8.12.3(`0a2b8fa`, 둘 다 배포 도구 `tools/deploy`) · #20 pillow 13.0.0(`b26298e`, 누끼 도구). 머지마다 Dependabot 다시 맞춤 → PR 검사 통과 뒤.
+  ⚠ 이 저장소 PR은 사람이 머지하는 것이 기본인데, 이 세 건은 팀장 지시(10/31 «다시 맞춘 뒤 머지»)로 세션이 `gh pr merge --merge`로 머지했다. #19(functions vite 8.3.5)는 master에 이미 있어 Dependabot이 스스로 닫았다.
+- 되돌릴 곳: Hosting `rollback-20261031-3`(판 `862e70d6108f9c5c` = `db8c334`, 11/30까지, 복제 뒤 621/621 대조) · 함수 `posterstudio-00043-tof`(지문 `20a76909` = `81a07b4`)가 남아 있다 —
+  `gcloud run services update-traffic posterstudio --to-revisions=posterstudio-00043-tof=100 --region asia-northeast3 --project inky-poster-studio --account edutogether2015@gmail.com`(817beatles 계정은 권한 없음).
+- CI 네 번(`ba2915a` · `dadd40a` · `0a2b8fa` · `b26298e`) 모두 headSha로 골라 test · deploy-functions · deploy-hosting · 배포 직후 두 주소 확인 · 부스토큰 스모크 통과.
+  함수는 첫 배포에서만 새 판 `posterstudio-00044-gaf`(지문 `7c1df0d3`, 트래픽 100% · 최신)가 생겼고, 뒤 세 번은 소스가 같아 그대로였다. 라이브 Hosting 판은 마지막 `a51f8feb1b998d71`(파일은 앞과 같음).
+- 배포 뒤 확인(매번): 두 주소 621/621 바이트 같음 · 배포 직후 라이브 확인(홈 200 · 404 · og · CORS) · 스모크 400 `no_photo` · `/health` 200 · 다운로드 302 → 설치 파일 객체 200(159,415,288 B, 10/28 `e58b65c` 빌드).
+- 배포된 함수 소스(`function-source.zip`)를 받아 `ba2915a`의 `functions/index.js` · `package.json` · 잠금 파일과 같음을 확인 — `isModerationError` · 기록 줄 `칸=${cell}` · body-parser 2.4.0.
+  라이브 로그의 칸 · 판은 배포 뒤 생성 요청이 0건이라 아직 없다(«생성»은 누르지 않음). 같은 코드가 에뮬레이터에서 `칸=hero/group · 판=v2-20261025`를 찍는 것은 확인했다(아래 절). 배포 뒤 함수 오류 기록 0건.
+- 취약점: GitHub에 열린 알림 64건은 하나하나 master 판과 대조해 모두 이미 고쳐진 것(GitHub 재검사 대기). 로컬 `npm audit`에는 10/26 뒤 나온 새 권고가 있다 —
+  functions 운영 의존성 보통 5건(glob · rimraf · google-gax 경로, minimatch, qs) · 개발 3건, 루트 개발 4건(minimatch, eslint 경로), 루트 운영 0건. 이번엔 고치지 않았다(보고).
+
 ## 2026-10-31(토) — GitHub 복구 뒤 정리: 로컬 커밋 · 태그 올림, master 정렬 준비(push 없음), Dependabot 4건 보류 — 라이브 그대로 (팀장 전달)
 
 - 올림(강제 없음): 가지 `download-20261027`(`98997ab` — 로컬 master `85b1a74`의 331개를 모두 품는다) · `desktop-20261027`(`edcb87c`) · `mobile-pa-20261019` · `net-perf-20261024`,
