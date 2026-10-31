@@ -1,5 +1,12 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-10-31(토) — GitHub 복구: 올릴 것 다 올림 · 🔴 master push 보류(Bumm님 «함께 배포 / 보류» 결정 대기) · 라이브 그대로
+
+- GitHub에 올라간 것: `download-20261027`(로컬 master 331개 포함) · `desktop-20261027` · `mobile-pa-20261019` · `net-perf-20261024` · 태그 10개. origin/master는 아직 `a658d89`(10/15).
+- 🔴 **master를 지금 그대로 push하지 않는다** — 로컬 master `85b1a74`에는 다운로드 단추 · `/download` 리디렉션이 없다. 정렬은 master를 `download-20261027`로 빨리감기(«함께 배포»)
+  또는 그 위에 `functions/` = `81a07b4` 커밋(«보류», 로컬 가지 `master-hold-20261031`). 검사 결과 · 함수 되돌리기 세 길은 CHANGELOG 10/31 «GitHub 복구 뒤 정리».
+- Dependabot #19~#22는 master 정렬 push 뒤에 다룬다(지금 머지하면 옛 master가 배포된다).
+
 ## 2026-10-31(토) 03:25 — 라이브: **Hosting = 가지 `download-20261027`(`db8c334`, 판 `862e70d6108f9c5c`) · 함수 `81a07b4`** · 공개 설치 파일 = 설치판 `e58b65c` 빌드 그대로
 
 - 1440×829 제목 맞춤 추가(CHANGELOG 10/31 03:25). 🔴 Bumm님 확정: 1366 · 1600의 20px 어긋남은 그대로 — 다시 올리지 않는다.
