@@ -161,14 +161,15 @@
   2026-09-07에 라이브에서 실제로 뚫리는 것을 재현했다. `clientIpForRateLimit()`(맨 오른쪽)만 쓴다.
 - **부스토큰(`src/constants.ts`) 변경과 Secret Manager 갱신을 다른 커밋으로 쪼개지 않는다.** 그 사이 전 부스가 401.
 - **`npm audit fix --force`를 `functions/`에서 돌리지 않는다.** firebase-functions 메이저 다운그레이드를 유발한다.
-- 🟡 **배포 도구(`tools/deploy`)의 `npm audit` 9건은 그대로 둔다**(2026-10-10 팀장 결정, Voice Cinema와 같음). firebase-tools 15.32.1 아래 braces(고친 판 없음)·basic-ftp·@opentelemetry/core(메이저를 바꿔야 해 쓰는 쪽이 깨짐)이고, GitHub가 개발 의존성으로 자동으로 닫았으며 CI 배포에만 쓰인다. **12월 말 분기 감사나 firebase-tools 새 판 때 다시 본다.** 그 아래 uuid만 `overrides`로 11.1.1(Dependabot)이다 — npm audit이 권하는 firebase-tools 14.23.0 되돌림은 쓰지 않는다.
-- 🟡 **10/26 뒤에 나온 npm 권고(모두 보통 등급)는 행사 뒤에 고친다 — 처리 예정 11/16(월)~11/20(금)**(2026-10-31 팀장 결정 B, 11/14 행사 다음 주).
-  - 목록: functions 운영 5건 — `qs` 6.16.0(express · body-parser 아래, GHSA-6pq8-jhm2-2vcw) · `glob` 10.5.0 · `rimraf` 5.0.10 · `google-gax` 5.0.8(@google-cloud/firestore 아래, GHSA-3g3m-2fjr-6pw4) ·
-    `minimatch` 9.0.9(glob 아래, GHSA-g3hv-75wg-m249). functions 개발 3건 · 루트 개발 4건은 `minimatch` 10.2.6과 eslint 경로. 루트 운영 0건.
-  - 닿지 않는 근거: qs 권고는 `qs.stringify`(comma 형식)인데 express · body-parser는 `qs.parse`만 쓰고, express 5 기본 쿼리 해석은 `simple`(node querystring)이며 앱은 `query parser`도
-    urlencoded 본문 해석도 켜지 않는다. google-gax 5.0.8은 rimraf를 의존성에만 적고 실행 코드(`build/`)에서 부르지 않아 glob · minimatch까지 닿는 실행 경로가 없다. 개발 쪽은 eslint가 저장소의 고정된 글롭만 쓴다.
-  - 지금 고치지 않는 까닭: 고치면 google-gax(Firestore 클라이언트)가 바뀐다 — 행사 2주 전에 운영 의존성을 흔드는 쪽이 더 큰 위험이다.
-  - 처리 방법: 양쪽 비강제 `npm audit fix` → 시험 · 에뮬레이터 · CI 배포. `--force`는 쓰지 않는다(eslint 4로 내려간다).
+- 🟠 **배포 도구(firebase-tools)는 잠금 파일에 두지 않는다 — CI·로컬 배포 모두 `npx --yes firebase-tools@15.32.1`**(2026-11-01 Bumm님 결정, `_shared/CONVENTIONS.md` §3.7).
+  판은 `deploy.yml` 맨 위 `FIREBASE_TOOLS` 한 곳이다. 설치 스크립트는 끈다(`npm_config_ignore_scripts=true`). `tools/deploy/`(firebase-tools만 담은 잠금 파일)는 지웠다 —
+  firebase-tools가 고친 판이 없는 옛 minimatch(3·5·6·9)를 끌고 와 Dependabot 알림 #88 · #90이 닫히지 않았기 때문이다. 대가: 하위 의존성은 실행할 때마다 정해지고 Dependabot이 추적하지 않는다.
+  🔴 firebase-tools 아래에 minimatch 11을 `overrides`로 덮지 않는다 — `fsAsync`·`superstatic`이 «m is not a function»으로 깨져 배포가 멈춘다(§3.7).
+- 🟠 **루트·functions의 `overrides`는 고친 판을 끌어올리는 자리다**(2026-11-01, 알림 #84 · #85 · #86 · #87, Codyssey PR #104와 같은 방식). 지금: functions `uuid ^11.1.1` · `qs ^6.16.1`(6.16.2) ·
+  `glob ^14.0.2`(14.0.3) · `minimatch ^11.0.1`(11.0.3), 루트 `minimatch ^11.0.1`(11.0.3). 위쪽 최신판(eslint 10.14.0 · Firestore 9.4.0 → firestore-api 0.2.0 → google-gax 5.0.8 → rimraf 5)이 아직 옛 범위를 적는다.
+  - 닿지 않는 근거(동작 변화 0의 근거): functions의 glob · minimatch는 rimraf만 끌어오는데 rimraf를 부르는 코드가 없다(firebase-admin · Firestore · firebase-functions를 불러와도 glob · minimatch · rimraf 모듈 0개).
+    qs는 express가 불러오지만 앱은 `query parser`(express 5 기본 `simple`)도 urlencoded 본문 해석도 쓰지 않는다. 루트는 eslint만 쓰고, minimatch 10과 11에서 린트 대상 98 · 5개와 결과가 같다.
+  - 위쪽이 새 범위를 적으면 그 override는 할 일이 없어진다. 그때 지우고 같은 확인(시험 · 린트 대조 · 에뮬레이터)을 돌린다.
 - **테스트에서 실제 OpenAI·Firestore를 호출하지 않는다.** 주입 지점이 이미 있다(`_setClientForTesting` 등).
 - **촬영 후 카메라 스트림을 켜둔 채 두지 않는다.** 최소수집 원칙 위반이고 아동 대상이라 더 중요하다
   (`camera.js`의 `getTracks().stop()` — 6차 감사에서 고친 것).
@@ -444,7 +445,7 @@
   되돌리기는 그 채널을 `live`로 다시 복제하는 것이다. 10/15에 실제로 되돌렸다가 다시 냈다.
 - 🔴 **부스 코드 스위치가 켜진 뒤에는 functions를 로컬에서 그냥 내지 않는다**(지금은 쓰지 않음 — 10/23 확정, 다시 켤 때를 위해 남겨 둠). CI의 «부스 코드 설정» 단계가 매 배포마다 환경 파일을 만든다.
   그 파일 없이 내면 켜 둔 스위치가 빠질 수 있다. 비공개 운영 문서 절차로 같은 파일을 먼저 만들거나, 멈추고 보고한다.
-- 배포 도구는 CI와 같은 `tools/deploy` 잠금 판(firebase-tools 15.32.1)을 쓴다. 이 컴퓨터 전역의 `firebase`(15.22.4)를 쓰지 않는다.
+- 배포 도구는 CI와 같은 판 `npx --yes firebase-tools@15.32.1`(`deploy.yml`의 `FIREBASE_TOOLS`)을 쓴다. 이 컴퓨터 전역의 `firebase`(15.22.4)를 쓰지 않는다.
 
 ## CI — 문서만 고친 커밋은 배포를 건너뛴다 (2026-09-10, COMMON_STANDARDS §23)
 - 워크플로가 **하나**라 테스트·배포가 같은 파일에 있다. 그래서 `on.push.paths-ignore`를

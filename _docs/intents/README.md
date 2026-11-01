@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-11-01 | [deps-alerts-npx-firebase](2026-11-01-deps-alerts-npx-firebase/intent.md) | 2 | in-progress | Dependabot 알림 6건을 고친 판으로 — 루트·functions는 overrides(qs·glob·minimatch), 배포 도구는 잠금 파일 밖 `npx firebase-tools@15.32.1`. 화면·함수 동작 변화 0 |
 | 2026-10-27 | [download-button-deploy](2026-10-27-download-button-deploy/intent.md) | 2 | done | 설치 파일을 Cloud Storage 공개 객체 하나로 올리고 첫 화면 «↓ 다운로드»(메뉴 없이 바로 받기)를 hosting만 배포 |
 | 2026-10-26 | [slow-wifi-optimization](2026-10-26-slow-wifi-optimization/intent.md) | 2 | done | 느린 와이파이 최적화 1~5번(미리 받기 · 글꼴 쪼개기 · 장르 그림 WebP · 샘플 원화 WebP · 측정 도구)을 지금 코드로 이식 — 결과물 화소 동일 · 옛 주소 유지 · 실제 응답 재생 측정 |
 | 2026-10-26 | [waiting-video-protect](2026-10-26-waiting-video-protect/intent.md) | 2 | done | 대기 영상 12편이 느린 와이파이에서도 멈추지 않게 — 받기 차례 · 다시 인코딩(v3) · 1년 캐시, 포스터 속도는 7ab4be0 수준(⚠ intent를 착수 뒤에 씀) |
