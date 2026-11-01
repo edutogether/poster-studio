@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 등급: 2
 작성자: Poster Studio 세션 (Claude Opus 5.5)
 작성 시각: 2026-11-01 10:20 KST

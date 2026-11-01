@@ -1,6 +1,15 @@
 # CHANGELOG — Poster Studio
 
-## 2026-11-01(일) — Dependabot 알림 6건을 고친 판으로: 루트 · functions overrides · 배포 도구는 잠금 파일 밖 `npx firebase-tools@15.32.1` (대표님 지시 · 결정, 팀장 전달 — **배포 전, 팀장 승인 대기**)
+## 2026-11-01(일) 16:36~16:46 — Dependabot 알림 6건을 고친 판으로: 루트 · functions overrides · 배포 도구는 잠금 파일 밖 `npx firebase-tools@15.32.1` — CI 배포, 열린 알림 0 (대표님 지시 · 결정, 팀장 승인)
+
+- **배포**: PR #24(`cb271ba`)를 팀장 승인(«gh pr merge 해»)으로 세션이 `gh pr merge --merge` → master `174346e`. CI(headSha `174346e`, 실행 41285483144) test · changes · deploy-functions · deploy-hosting 전부 성공.
+  두 배포 잡 모두 npx로 `firebase-tools 15.32.1`을 받았다(판 확인 단계 통과). 배포 직후 라이브 확인(두 주소 · 200 · 404 · CORS) · 부스토큰 스모크(400 `no_photo`) 통과.
+  - 함수: 새 판 `posterstudio-00045-sub`(지문 `0e2785b8`, 트래픽 100% · 최신) · `keepwarm-00034-lev` · `cleanupoldcountersschedule-00027-var`(지문 `8bc0524d`). 소스는 그대로고 잠금 파일만 바뀌어 새 판이 났다.
+  - Hosting: 라이브 판 `2ae4c35140bac538`(07:39:44Z). 두 주소 모두 빌드와 621/621 바이트 같음 — 파일은 앞 판과 같다.
+  - `/health` 200 · `/download` 302 → 설치 파일 200(159,415,288 B, `e58b65c` 빌드 그대로).
+- **알림**: #84~#90 일곱 건(#89 glob · tools/deploy 포함)이 07:36Z에 저절로 «fixed». 열린 알림 0. Dependabot PR #23(tools/deploy qs)은 07:39Z에 저절로 닫힘. 손으로 닫은 것 없음.
+- 경로 정리(S3): 운영자 전달 PDF 4종과 E: 백업 세 폴더(`poster-studio-backup-20261026` · `-deployed` · `-prep`)가 `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\` 아래로 옮겨져 있어
+  인계 문서의 경로 다섯 곳을 지금 자리로 고쳤다(문서 폴더 «poster-studio-운영자-전달-20261026»은 없다). 이 CHANGELOG의 지난 절은 기록이라 그대로 둔다.
 
 - 원인: 10/31 새 권고 3종(qs GHSA-6pq8-jhm2-2vcw · glob GHSA-3g3m-2fjr-6pw4 · minimatch GHSA-g3hv-75wg-m249)의 고친 판이 위쪽 패키지가 적은 범위 밖이다.
   Dependabot 보안 갱신 6번(10/31 10:02 · 12:06 · 12:44Z)이 `security_update_not_possible`로 실패했다 — glob(functions)은 firebase-admin → Firestore → firestore-api 0.2.0 → google-gax 5.0.8 →

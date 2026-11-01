@@ -1,12 +1,17 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
-## 2026-11-01(일) — 라이브 그대로(아래 10/31 11:18) · Dependabot 알림 6건 고친 판은 가지 `deps-alerts-20261101`에 — **팀장 승인 뒤 master**
+## 2026-11-01(일) 16:46 — 라이브: **master `174346e` = CI 배포** · Hosting 판 `2ae4c35140bac538`(파일은 앞 판과 같음) · 함수 `posterstudio-00045-sub` · 공개 설치 파일 = `e58b65c` 빌드 그대로
 
-- 무엇: 루트 · functions `overrides`(qs 6.16.2 · glob 14.0.3 · minimatch 11.0.3) · `tools/deploy/` 지우고 배포 도구는 `npx --yes firebase-tools@15.32.1`(`deploy.yml` 맨 위 `FIREBASE_TOOLS`).
-  화면 · 함수 동작 변화 0 확인은 CHANGELOG 11/1 절. master에 올라가면 CI가 함수 세 개와 hosting을 다시 낸다(hosting 파일은 같다).
-- 10/31의 «npm 권고는 11/16~11/20에»(팀장 결정 B)는 11/1 대표님 지시로 지금 고치는 쪽으로 바뀌었다.
-- OPEN: ① 이 가지의 master 반영(팀장 승인) → 알림 6건이 저절로 닫히는지 확인 ② 라이브 로그의 칸 · 판 필드는 첫 실제 생성 요청 때(11/1 16시까지 실제 생성 0건)
-  ③ 설치판 `2fabd75` 녹화 4편(아래 모니터가 비면) ④ 현장 OPEN(11/12 포토프린터 · 교육청 노트북 설치 권한 · SmartScreen) 그대로. GitHub 옛 알림 64건은 닫혔다(11/1 열린 것은 위 6건뿐).
+- 무엇: Dependabot 알림 정리(PR #24) — 루트 · functions `overrides`(qs 6.16.2 · glob 14.0.3 · minimatch 11.0.3) · `tools/deploy/` 지우고 배포 도구는 `npx --yes firebase-tools@15.32.1`(`deploy.yml` 맨 위 `FIREBASE_TOOLS`).
+  화면 · 함수 동작 변화 0 확인과 배포 뒤 확인은 CHANGELOG 11/1 절. 열린 Dependabot 알림 0.
+- 되돌릴 곳: 함수 판 `posterstudio-00044-gaf`(10/31 판) · Hosting `rollback-20261031-3`(같은 파일, 11/30까지) · 태그 `pre-deps-20261101`(= `adff28b`).
+  함수 되돌리기: `gcloud run services update-traffic posterstudio --to-revisions=posterstudio-00044-gaf=100 --region asia-northeast3 --project inky-poster-studio --account edutogether2015@gmail.com`.
+- 10/31의 «npm 권고는 11/16~11/20에»(팀장 결정 B)는 11/1 대표님 지시로 지금 고치는 쪽으로 바뀌어 끝났다.
+- 결정판(`D:\Projects\_shared\ops\poster-studio-20261017\index.html`)을 11/1 판으로 갱신 — 판정 · Bumm님 최종검토 6개 · 캡처 33장(`final-20261101`).
+  ⑤번(11/12에도 함수 데워 두기)은 팀장이 대표님께 여쭙는다 — 식은 함수 첫 응답 7.9초 대 화면 기다림 6초(«AI 서버 연결을 확인할 수 없습니다»).
+- 경로: 운영자 전달 PDF 4종과 E: 백업 세 폴더는 `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\` 아래다(아래 절들의 경로도 고쳤다).
+- OPEN: ① 라이브 로그의 칸 · 판 필드는 첫 실제 생성 요청 때(11/1 16:46까지 실제 생성 0건) ② 설치판 `2fabd75` 녹화 4편(아래 모니터가 비면) → 팀장 OK → 공개 설치 파일 교체
+  ③ 현장 OPEN(11/12 포토프린터 · 교육청 노트북 설치 권한 · SmartScreen) 그대로 ④ 저장소 `CLAUDE.md`의 낡은 줄(샘플 모드 · 11/7 전환 · 시험 수 97 · 228 → 118 · 438) — Bumm님 직접 지시 대기.
 
 ## 2026-10-31(토) 11:18 — 라이브: **master `b26298e` = CI 배포** · Hosting 판 `a51f8feb1b998d71`(파일은 `db8c334`와 같음) · 함수 `posterstudio-00044-gaf`(`ba2915a`의 functions) · 공개 설치 파일 = `e58b65c` 빌드 그대로
 
@@ -66,20 +71,20 @@
   다음 runbook §9 1번의 함수 기준은 `81a07b4`다 — `git diff 81a07b4 master -- functions/`에 함수 3건(안전 차단 판정 통합 · 기록 칸 · body-parser 2.4.0)이 보여야 맞다.
 - 로컬 master = `836b1b9` + 기록 커밋들, push 없음(origin/master `a658d89`). 태그: `poster-studio-freeze-20261026-pre-deploy` · `poster-studio-freeze-20261026-audited-100`(둘 다 `836b1b9`).
 - 되돌릴 곳: Hosting `rollback-20261026`(= `81a07b4`, 11/25까지) · 그 전 `rollback-20261025-7`(`7ad0ad5`, 11/24까지). 둘 다 지우지 않는다.
-- 백업: `E:\poster-studio-backup-20261026`(출시 · 복원 검증) · `E:\poster-studio-backup-20261026-deployed`(배포 기록까지 · 복원 빌드 = 라이브). `-prep`도 그대로.
-- 운영자 전달: `C:\Users\817be\Documents\poster-studio-운영자-전달-20261026`(PDF 4종). 정식 주소 **poster.edutogether.kr**, 옛 주소 poster-studio.web.app도 같은 판.
+- 백업: `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026`(출시 · 복원 검증) · `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026-deployed`(배포 기록까지 · 복원 빌드 = 라이브). `-prep`도 그대로.
+- 운영자 전달: `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026-deployed\운영자-전달-PDF`(PDF 4종). 정식 주소 **poster.edutogether.kr**, 옛 주소 poster-studio.web.app도 같은 판.
 - 온라인판 소프트웨어 출시는 **완료**. 승인된 기능(1-A · 2-A · 처리방침 · 16칸 지시문 · 8종 · 인쇄)은 다시 고치지 않는다. 오프라인 비상판은 별도 과제.
 - OPEN 5건(담당 · 날짜)은 CHANGELOG 10/26 22:24 절.
 
 ## 2026-10-26(월) 밤 — 최종 출시 후보 `release-20261026` 완료 · 배포 승인 대기 (라이브는 Hosting · 함수 모두 `81a07b4` 그대로)
 
 - **출시 후보 `release-20261026`**(= `perf-port-20261026`): 7ab4be0 + 대기 영상 1-A + 종합감사 고침. 10개 항목 모두 10/10(이 트리 기준). 로컬만 · push 없음 · master `6ac7dc3` 그대로.
-  동결 태그 `poster-studio-freeze-20261026-pre-deploy`가 이 기록 커밋에 붙는다(되돌릴 큰 작업 = 배포 직전). E: 백업 `E:\poster-studio-backup-20261026`(복원 검증은 그 폴더 `restore-check.txt`).
+  동결 태그 `poster-studio-freeze-20261026-pre-deploy`가 이 기록 커밋에 붙는다(되돌릴 큰 작업 = 배포 직전). E: 백업 `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026`(복원 검증은 그 폴더 `restore-check.txt`).
 - 🔴 **배포 범위 = Hosting만**(함수 3건은 필요 없다고 판단 — CHANGELOG 10/26 밤). 배포한 뒤에는 이 문서 맨 위에 **Hosting = 출시 커밋, 함수 = `81a07b4`를 따로** 적는다 —
   한 커밋으로만 적으면 다음 runbook §9 1번의 `git diff <라이브 커밋> -- functions/`가 비어 보여 함수 3건이 모르는 사이 영영 안 나간다.
 - 배포 절차: «배포 직전 한 줄»(범위 · 되돌림 채널)을 팀장에게 → Bumm님 재승인 → master를 출시 커밋으로 앞으로 옮김(로컬) → runbook §9(LF 사본 · 되돌림 채널 · hosting만 · 두 주소 바이트 대조 · 스모크 · 대기 영상 · 함수 지문 그대로 확인).
 - 라이브 함수 지문(10/26 21시): `posterStudio 20a76909…` · `keepWarm` · `cleanupOldCountersSchedule` `ad325de2…`. 라이브 Hosting 487개 파일 = `81a07b4` 빌드(E: 백업과 바이트 같음).
-- 설명서 최종본 · 운영자 전달: `C:\Users\817be\Documents\poster-studio-운영자-전달-20261026`(PDF 4개).
+- 설명서 최종본 · 운영자 전달: `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026-deployed\운영자-전달-PDF`(PDF 4개).
 - OPEN: ① GitHub CI 미실행 ② 11/12 현장 장비 시험. OpenAI 행사 전 $100 수동 충전은 계획 그대로(지금 안 함).
 
 ### 같은 날 앞선 기록 — Bumm님 최종 결정 반영: 대기 영상 1-A 채택 · 2-A · 처리방침 그대로
@@ -95,7 +100,7 @@
 
 - **라이브는 `81a07b4` 그대로**, 로컬 master `6ac7dc3`, push 없음. 새 가지 `wait-video-20261026`은 `7ab4be0` 위(로컬). master에 넣지 않았다.
 - 보호 태그(로컬만): `poster-studio-live-20261026-81a07b4`(복구용 — 지금 라이브) · `poster-studio-cand-20261026-perf`(보호용 — 7ab4be0, 배포 전).
-  E: 백업 준비 `E:\poster-studio-backup-20261026-prep`(저장소 묶음 · 라이브/후보 빌드 · 체크섬 — 복원해 트리 같음 확인). **최종 동결은 1번 결정 뒤.**
+  E: 백업 준비 `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026-prep`(저장소 묶음 · 라이브/후보 빌드 · 체크섬 — 복원해 트리 같음 확인). **최종 동결은 1번 결정 뒤.**
 - 가지 내용(대표님 지시 1번): 받기 차례(첫 · 둘째 장면 영상 → 조판 받기) · 대기 영상 다시 인코딩 `waiting-v3`(H.264 CRF 22, 16.8 → 8.4MB) · 해시 이름 영상 1년 캐시 ·
   측정 도구(`--cert` · `--prewarm` · 장면별 멈춤). 수치는 CHANGELOG 10/26 저녁. 승인본 `waiting-v2`는 그대로 있다.
 - 🔴 **10/26 오전까지의 느린 망 측정은 크롬 디스크 캐시가 꺼진 채였다**(자체 서명 인증서 «오류 무시»). 재방문 수치는 이번 측정(`--cert`)으로 본다.
