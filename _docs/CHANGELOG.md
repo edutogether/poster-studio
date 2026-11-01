@@ -1,5 +1,25 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-01(일) — Dependabot 알림 6건을 고친 판으로: 루트 · functions overrides · 배포 도구는 잠금 파일 밖 `npx firebase-tools@15.32.1` (대표님 지시 · 결정, 팀장 전달 — **배포 전, 팀장 승인 대기**)
+
+- 원인: 10/31 새 권고 3종(qs GHSA-6pq8-jhm2-2vcw · glob GHSA-3g3m-2fjr-6pw4 · minimatch GHSA-g3hv-75wg-m249)의 고친 판이 위쪽 패키지가 적은 범위 밖이다.
+  Dependabot 보안 갱신 6번(10/31 10:02 · 12:06 · 12:44Z)이 `security_update_not_possible`로 실패했다 — glob(functions)은 firebase-admin → Firestore → firestore-api 0.2.0 → google-gax 5.0.8 →
+  rimraf 5.0.10의 `^10.3.7`, minimatch(tools/deploy)는 firebase-tools 15.32.1의 `^3.0.4` · readdir-glob의 `^5.1.0`. 위쪽 최신판(firebase-admin 14.5.0 · Firestore 9.4.0 · eslint 10.14.0 ·
+  firebase-tools 15.34.2)도 같아서 올려도 안 닫힌다(firebase-admin 14.5.0은 실제로 올려 보고 되돌렸다). intent `2026-11-01-deps-alerts-npx-firebase`.
+- 고친 것:
+  - functions `overrides`: `qs ^6.16.1`(잠금 6.16.2 — Dependabot #23과 같은 판) · `glob ^14.0.2`(14.0.3) · `minimatch ^11.0.1`(11.0.3). 루트 `overrides`: `minimatch ^11.0.1`(11.0.3).
+    잠금 파일에서 바뀐 것은 이 판과 그 하위(path-scurry 3.0.0 · @isaacs/nonrecursive-glob-match 1.0.3, glob 10이 쓰던 29개 빠짐)뿐이다. 원래 있던 `libc` 칸은 그대로다(npm 10으로 다시 만들면 지워져서 그 판으로 만들지 않았다).
+  - `tools/deploy/`를 지우고 CI 두 배포 잡이 `npx --yes "$FIREBASE_TOOLS"`(맨 위 `env: FIREBASE_TOOLS: firebase-tools@15.32.1` 한 곳)로 받는다. 설치 스크립트는 지금처럼 끈다(`npm_config_ignore_scripts`).
+    판 확인 단계는 받은 판이 적힌 판과 다르면 실패한다(`firebase-tools@^15.32.0`을 넣으면 15.34.2를 받아 실패하는 것 확인). runbook §9 5번 · app.md · 10/16 되돌리기 문서를 같이 고쳤다.
+- 동작 변화 0 확인(LF 사본, master `adff28b`와 대조):
+  - `dist` 621개가 기준 빌드와 바이트까지 같다 · 라이브 두 주소와도 621/621 같다.
+  - functions 118 · 루트 438 · 두 lint · typecheck · fonts:check · verify:selftest · dist 점검 전부 0. `npm ci`(CI와 같은 npm 10) 두 곳 통과.
+  - 실행 중 호출: 함수 시험 118개 내내 qs는 불러오기만 하고 호출 0번, glob · minimatch · rimraf는 불러오지도 않는다(`NODE_OPTIONS=--require` 덫). 덫이 빈 검사가 아닌지는 extended 쿼리를 켠 express로 확인했다(qs.parse 호출이 잡힘).
+    firebase-admin · Firestore · firebase-functions를 불러와도 glob · minimatch · rimraf 모듈 0개.
+  - 린트: minimatch 10.2.6과 11.0.3에서 대상 파일(루트 98 · functions 5)과 결과가 같다. 일부러 틀린 파일은 둘 다 `no-undef`로 잡고, 무시 대상(`dist` · `src/**/*.ts`)은 둘 다 무시한다.
+  - 에뮬레이터 8건(가짜 OpenAI · Firestore 에뮬레이터, 바깥 요청 0) — 새 잠금 · `npx firebase-tools@15.32.1`(설치 스크립트 끔)로 띄운 것 모두 통과. 로그에 칸 · 판 필드가 찍힌다.
+- 되돌릴 자리: 태그 `pre-deps-20261101`(= `adff28b`) · 함수 `posterstudio-00044-gaf` · Hosting `rollback-20261031-3`(= 지금 라이브와 같은 파일, 11/30까지).
+
 ## 2026-10-31(토) 10:42~11:18 — master = 라이브 줄(CI 배포 재개): 함수 서버 변경 3건 «함께 배포» `posterstudio-00044-gaf` · Hosting 내용 그대로 · Dependabot #20~#22 머지 · #19 저절로 닫힘 (Bumm님 결정 A, 팀장 OK)
 
 - master: `a658d89`(10/15) → `ba2915a` 빨리감기 push(강제 없음) = `download-20261027` 줄. 다운로드 단추 · `/download/PosterStudio-Setup.exe` 리디렉션 그대로.

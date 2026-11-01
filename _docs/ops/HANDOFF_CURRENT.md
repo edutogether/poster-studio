@@ -1,12 +1,19 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-11-01(일) — 라이브 그대로(아래 10/31 11:18) · Dependabot 알림 6건 고친 판은 가지 `deps-alerts-20261101`에 — **팀장 승인 뒤 master**
+
+- 무엇: 루트 · functions `overrides`(qs 6.16.2 · glob 14.0.3 · minimatch 11.0.3) · `tools/deploy/` 지우고 배포 도구는 `npx --yes firebase-tools@15.32.1`(`deploy.yml` 맨 위 `FIREBASE_TOOLS`).
+  화면 · 함수 동작 변화 0 확인은 CHANGELOG 11/1 절. master에 올라가면 CI가 함수 세 개와 hosting을 다시 낸다(hosting 파일은 같다).
+- 10/31의 «npm 권고는 11/16~11/20에»(팀장 결정 B)는 11/1 대표님 지시로 지금 고치는 쪽으로 바뀌었다.
+- OPEN: ① 이 가지의 master 반영(팀장 승인) → 알림 6건이 저절로 닫히는지 확인 ② 라이브 로그의 칸 · 판 필드는 첫 실제 생성 요청 때(11/1 16시까지 실제 생성 0건)
+  ③ 설치판 `2fabd75` 녹화 4편(아래 모니터가 비면) ④ 현장 OPEN(11/12 포토프린터 · 교육청 노트북 설치 권한 · SmartScreen) 그대로. GitHub 옛 알림 64건은 닫혔다(11/1 열린 것은 위 6건뿐).
+
 ## 2026-10-31(토) 11:18 — 라이브: **master `b26298e` = CI 배포** · Hosting 판 `a51f8feb1b998d71`(파일은 `db8c334`와 같음) · 함수 `posterstudio-00044-gaf`(`ba2915a`의 functions) · 공개 설치 파일 = `e58b65c` 빌드 그대로
 
 - GitHub 복구로 **CI 배포가 다시 정상 경로다** — master push → test → functions → hosting. runbook §9(로컬 배포)는 다시 GitHub가 막힐 때만.
 - master는 이제 `download-20261027` 줄을 품는다(다운로드 단추 · `/download` 리디렉션 포함). 함수에 10/26 보류했던 서버 변경 3건이 나갔다(Bumm님 결정 A).
 - 되돌릴 곳: Hosting `rollback-20261031-3`(= `db8c334`, 11/30까지) · 함수 판 `posterstudio-00043-tof`(= `81a07b4`) — 명령은 CHANGELOG 10/31 10:42 절.
-- OPEN: ① 라이브 로그의 칸 · 판 필드는 첫 실제 생성 요청 때 확인 ② 10/26 뒤 나온 npm 권고(functions 운영 보통 5 · 개발 3 · 루트 개발 4) — 팀장 결정 B: 11/16~11/20에 고친다(app.md에 목록 · 근거) ③ GitHub 알림 64건이 다시 검사로 닫히는지 11/1 확인 ④ 설치판 `2fabd75` 녹화 4편(아래 모니터가 비면)
-  ⑤ 현장 OPEN(11/12 포토프린터 · 교육청 노트북 설치 권한 · SmartScreen)은 그대로.
+- OPEN(11/1에 위 절로 옮김): ~~② npm 권고는 11/16~11/20에~~ → 11/1 지금 고침 · ~~③ 알림 64건 확인~~ → 닫힘. 나머지는 위 절.
 
 ## 2026-10-31(토) — GitHub 복구: 올릴 것 다 올림 · 🔴 master push 보류(Bumm님 «함께 배포 / 보류» 결정 대기) · 라이브 그대로
 

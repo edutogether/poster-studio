@@ -166,10 +166,10 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    - 루트: `npm ci` · `npm run lint` · `npm run typecheck` · `npm run fonts:check` · `npm test` · `npm run verify:selftest` · `npm run build`
    - dist 점검: `node scripts/ci/run-workflow-step.mjs "dist에 나가면 안 되는 것이 없는지"`(CI 단계의 명령을 워크플로 파일에서 꺼내 그대로 실행한다)
    - 대기 영상: `node scripts/verify/waiting-videos-live.mjs`
-5. **배포 도구는 CI와 같은 잠금 판을 쓴다.**
-   - 설치: `cd tools/deploy && npm ci --ignore-scripts --no-audit --no-fund`
-   - 확인: `tools/deploy/node_modules/.bin/firebase --version`이 `15.32.1`이어야 한다.
-   - 로그인한 계정이 `inky-poster-studio`에 접근되는지 `firebase projects:list`로 본다.
+5. **배포 도구는 CI와 같은 판을 쓴다**(2026-11-01부터 잠금 파일 없이 npx — `_shared/CONVENTIONS.md` §3.7).
+   - 판은 `.github/workflows/deploy.yml` 맨 위 `FIREBASE_TOOLS`(지금 `firebase-tools@15.32.1`) 한 곳에 있다. 거기 적힌 판을 그대로 쓴다.
+   - 받기·확인: `npm_config_ignore_scripts=true npx --yes firebase-tools@15.32.1 --version`이 `15.32.1`이어야 한다(설치 스크립트는 CI처럼 끈다).
+   - 로그인한 계정이 `inky-poster-studio`에 접근되는지 `npx --yes firebase-tools@15.32.1 projects:list`로 본다.
 6. **되돌릴 자리를 먼저 만든다.** 지금 라이브 판을 30일짜리 채널에 복제하고, 그 채널이 `base` 빌드와 같은지 대조한다.
    ```bash
    firebase hosting:channel:list --site poster-studio --project inky-poster-studio          # 지금 라이브 판 번호를 적어 둔다
@@ -191,7 +191,7 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    - 🔴 **부스 코드 스위치를 켰다면(지금은 쓰지 않음 — 10/23 확정, 절차만 남겨 둠) 그 뒤로는 functions를 그냥 내지 않는다.** CI는 배포할 때마다 «부스 코드 설정» 단계에서 환경 파일을 새로 만들어 넣는다.
      그 파일 없이 내면 켜 둔 스위치가 빠질 수 있다. 비공개 운영 문서의 절차로 같은 파일을 먼저 만들거나, 멈추고 팀장에게 보고한다.
    - hosting: `firebase deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive -m "로컬 배포 <커밋>"`
-   - `firebase`는 5번의 `tools/deploy/node_modules/.bin/firebase`다.
+   - 이 절의 `firebase`는 전부 5번의 `npx --yes firebase-tools@15.32.1`이다(이 컴퓨터 전역의 `firebase`를 쓰지 않는다).
 8. **배포 직후 CI와 같은 확인을 한다.**
    - 두 주소 바이트 대조:
      - `node scripts/verify/dist-vs-live.mjs dist https://poster.edutogether.kr`
