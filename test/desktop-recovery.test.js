@@ -174,3 +174,10 @@ test('main.mjs: 저장이 끝나면 결과를 그 화면에 보낸다(취소는 
   // 시험 저장 폴더 갈래가 결과 보내기보다 먼저 끝나 버리지 않는다
   expect(main.indexOf("item.once('done'")).toBeLessThan(main.indexOf('POSTER_STUDIO_TEST_SAVE_DIR;'));
 });
+
+test('main.mjs의 원인 기록은 바로 쓴다 — 안내 뒤 곧 끝나도 마지막 줄(멈춘 까닭)을 잃지 않는다', () => {
+  const main = fs.readFileSync('desktop/main.mjs', 'utf8');
+  const body = main.slice(main.indexOf('function log(line) {'), main.indexOf('\n}\n', main.indexOf('function log(line) {')));
+  expect(body).toMatch(/appendFileSync\(LOG_FILE,/);
+  expect(body).not.toMatch(/fs\.appendFile\(|\.then\(/);
+});

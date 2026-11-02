@@ -18,6 +18,7 @@
      POSTER_STUDIO_TEST_WINDOW     창 자리 — «x,y»면 그 점의 모니터에서 최대화, «hidden»이면 창을 보이지 않는다(아래 readTestWindow) */
 import { app, BrowserWindow, Menu, dialog, ipcMain, protocol, screen, session, shell } from 'electron';
 import fs from 'node:fs/promises';
+import { appendFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 // 방어 판정(앱 주소 서빙 · 바깥 요청 차단 · 권한 · 이동 · 새 창)은 guards.mjs에 있다 — Electron 없이 시험한다(test/desktop-guards.test.js)
@@ -36,12 +37,14 @@ const PAGE_4X6 = { width: 101600, height: 152400 };
 app.setPath('userData', path.join(app.getPath('appData'), 'Poster Studio'));
 
 // 원인 기록(11/2) — 화면이 죽거나 멈춘 까닭을 행사 뒤에도 볼 수 있게 앱 데이터 폴더에 한 줄씩 남긴다. 기록을 못 써도 앱은 그대로 돈다.
+// 바로 쓴다(동기) — 안내 뒤 곧 app.exit가 오면 비동기 쓰기는 마지막 줄(멈춘 까닭)을 잃는다(11/2 숨긴 창 시험에서 실측). 실패 때만 쓰는 드문 길이다.
 const LOG_FILE = path.join(app.getPath('userData'), 'logs', 'desktop.log');
 function log(line) {
   console.error(`[Poster Studio] ${line}`);
-  void fs.mkdir(path.dirname(LOG_FILE), { recursive: true })
-    .then(() => fs.appendFile(LOG_FILE, `${new Date().toISOString()} ${line}\n`))
-    .catch(() => {});
+  try {
+    mkdirSync(path.dirname(LOG_FILE), { recursive: true });
+    appendFileSync(LOG_FILE, `${new Date().toISOString()} ${line}\n`);
+  } catch { /* 기록을 못 써도 앱은 그대로 */ }
 }
 // 인쇄 창이 열려 있는 동안은 화면이 «응답 없음»이어도 끊지 않는다(recovery.mjs isBusy)
 let printing = 0;
