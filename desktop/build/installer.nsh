@@ -1155,12 +1155,28 @@
       Call psCompOn   ; 진행 화면이 처음 그려질 때 한 장에(완료 화면 psThaw가 끈다)
     FunctionEnd
 
-    ; 템플릿 instFilesPre와 같다 — 고른 위치에 «Poster Studio» 폴더가 없으면 붙인다(위치 화면 LEAVE에서는 $INSTDIR을 바꿔도 되돌아간다 — 템플릿 주석)
-    Function psInstFilesPre
-      ${StrContains} $0 "${APP_FILENAME}" $INSTDIR
-      ${If} $0 == ""
+    ; 설치 위치가 우리 폴더인지 — 아니면 «Poster Studio» 하위 폴더를 붙인다. 템플릿은 경로에 «Poster Studio» 글자가 들어 있기만 하면 그대로 써서,
+    ; D:\Poster Studio 사진을 고르면 그 폴더에 바로 깔리고 제거기가 그 폴더를 통째로 지웠다(11/2 종합감사). 그대로 쓰는 것은 마지막 폴더 이름이
+    ; 정확히 «Poster Studio»이고 그 폴더가 없거나 · 비었거나 · 우리 설치(앱 또는 제거기가 있음)일 때뿐이다. $0 · $1을 지켜 둔다.
+    Function psSafeInstDir
+      Push $0
+      Push $1
+      ${GetFileName} "$INSTDIR" $0
+      ${DirState} "$INSTDIR" $1
+      ${If} $0 != "${APP_FILENAME}"
         StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
-      ${endIf}
+      ${ElseIf} $1 == 1
+      ${AndIfNot} ${FileExists} "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
+      ${AndIfNot} ${FileExists} "$INSTDIR\${UNINSTALL_FILENAME}"
+        StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
+      ${EndIf}
+      Pop $1
+      Pop $0
+    FunctionEnd
+
+    ; 위치 화면 다음(PRE) — 고른 위치가 우리 폴더가 아니면 «Poster Studio» 하위 폴더를 붙인다(LEAVE에서는 $INSTDIR을 바꿔도 되돌아간다 — 템플릿 주석). 조용한 설치는 customInit이 같은 판정을 부른다.
+    Function psInstFilesPre
+      Call psSafeInstDir
     FunctionEnd
 
     Function psInstFilesShow
@@ -1590,6 +1606,10 @@
       ${EndIf}
       Pop $1
       Pop $0
+    ${EndIf}
+    ; 조용한 설치는 위치 화면이 없다 — /D로 사용자 폴더를 줘도 그 폴더에 바로 깔지 않게 같은 판정을 한다(psSafeInstDir, 11/2 종합감사)
+    ${If} ${Silent}
+      Call psSafeInstDir
     ${EndIf}
   !macroend
 

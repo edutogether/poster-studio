@@ -134,8 +134,10 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1366,
     height: 860,
-    minWidth: 1024,
-    minHeight: 640,
+    // 최소 창 600×480(11/2 Bumm님 «반 화면 붙이기까지 자유롭게»): 현장 노트북 1366×768 반 화면(683 폭) · 1920×1080 150% 반 화면(640 DIP)이 들어간다.
+    // 760 폭 이하는 웹과 같은 휴대폰 배치다(scripts/verify/desktop-window-sweep.mjs가 이 최소까지 잰다). 그 전 1024×640은 반 화면에 들어가지 않았다.
+    minWidth: 600,
+    minHeight: 480,
     show: false,
     title: 'Poster Studio',
     backgroundColor: '#ffffff',

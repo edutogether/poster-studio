@@ -11,7 +11,7 @@
       - 가로 넘침(문서 폭 > 화면 폭) · 단추 · 입력칸끼리 겹침(모달 창이 열려 있으면 그 안끼리) · 단추가 화면 왼쪽 · 오른쪽 밖 · 잘린 글자(넘침 숨김인데 내용이 더 큼, «…» 줄임과 줄 수 제한은 뺀다)
       - 같은 크기 웹과 요소 자리 비교(0.5px) — 설치판 전용 차이는 뺀다: «설치판» 표시 · 웹 «다운로드», 2단계 오른쪽 칸(제목 · 안내 · 영화 · 단추 줄 — 폭 1100 이상 · 높이 680 이상, desktop.css 높이 구간),
         3단계 단추 줄(«PC에 저장»). 웹이 세로로 스크롤되지 않는데 설치판만 스크롤되면 그것도 걸림.
-      - 앱이 정한 최소 창(1024×640, 안쪽 약 1008×601)보다 작은 크기는 창이 그 크기가 되지 않는다 — «최소 창보다 작음»으로 적고 판정에서 뺀다.
+      - 앱이 정한 최소 창(600×480, 안쪽 약 584×441 — 11/2 반 화면 붙이기 · 그 전 1024×640)보다 작은 크기는 창이 그 크기가 되지 않는다 — «최소 창보다 작음»으로 적고 판정에서 뺀다.
    ④ 배율: 두 창을 125% 모니터 자리(숨은 채)로 옮겨 같은 CSS 크기에서 배치가 100%와 같은지(반올림 1px), 옮겼다가 돌아와도 같은지 잰다.
    결과: <결과 폴더>/report.json, 하나라도 걸리면 종료코드 1. 서버 요청 · 생성 · 카메라 0건. */
 import fs from 'node:fs';
@@ -30,7 +30,7 @@ const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1
 const out = args[0];
 const webDist = opt('--web-dist');
 if (!out || out.startsWith('--') || !webDist || !fs.existsSync(path.join(webDist, 'index.html')) || (!args.includes('--dev') && !opt('--exe'))) {
-  console.error('사용: desktop-window-sweep.mjs <결과 폴더> (--exe <Poster Studio.exe> | --dev) --web-dist <웹 dist> [--sizes WxH,…] [--quick]');
+  console.error('사용: desktop-window-sweep.mjs <결과 폴더> (--exe <Poster Studio.exe> | --dev) --web-dist <웹 dist> [--sizes WxH,…] [--quick] [--force-scale S]');
   process.exit(2);
 }
 fs.mkdirSync(out, { recursive: true });
@@ -42,11 +42,12 @@ const NAMED = [[760, 1000], [1024, 768], [1099, 900], [1099, 1440], [1100, 820],
   [1280, 649], [1366, 697], [1440, 829], [1536, 793], [1600, 829], [1920, 1009], [3840, 2089]];
 const GRID = [];
 for (let w = 1100; w <= 3840; w += 137) for (let h = 640; h <= 2160; h += 67) GRID.push([w, h]);
-// 최소 창 근처(앱 최소 1024×640 — 안쪽 약 1008×601)를 촘촘히: 최소 크기의 근거를 잴 때 쓴다
-const SMALL = [[1008, 601], [1008, 640], [1008, 700], [1024, 601], [1024, 640], [1050, 620], [1099, 601], [1100, 601], [1100, 640], [1200, 601], [1280, 601], [1366, 601]];
+// 최소 창 근처와 반 화면 크기(11/2 — 1366×768 · 1920×1080 125 · 150% · 1280×800의 반 화면 안쪽, 760 · 761 휴대폰 ↔ PC 경계, 3단계 단추 줄이 넘치던 761~950)를 촘촘히
+const SMALL = [[584, 441], [600, 480], [624, 649], [640, 480], [667, 689], [700, 560], [752, 785], [760, 600], [761, 480], [761, 600], [800, 600], [900, 560], [944, 1001], [950, 640], [1000, 600], [1093, 543],
+  [1008, 601], [1008, 640], [1008, 700], [1024, 601], [1024, 640], [1050, 620], [1099, 601], [1100, 601], [1100, 640], [1200, 601], [1280, 601], [1366, 601]];
 const parseSizes = (s) => s.split(',').map((x) => x.split('x').map(Number));
 const SIZES = opt('--sizes') ? parseSizes(opt('--sizes')) : args.includes('--quick') ? [...NAMED, ...SMALL] : [...new Map([...NAMED, ...GRID, ...SMALL].map((s) => [s.join('x'), s])).values()];
-const MIN_CLIENT = { w: 1008, h: 601 };   // 앱 최소 창 1024×640(desktop/main.mjs)의 안쪽 — 100% 자리에서 잰 값(10/28)
+const MIN_CLIENT = { w: 584, h: 441 };   // 앱 최소 창 600×480(desktop/main.mjs, 11/2)의 안쪽 — 100% 자리에서 잰 값(그 전 1024×640 → 1008×601, 10/28)   // 앱 최소 창 1024×640(desktop/main.mjs)의 안쪽 — 100% 자리에서 잰 값(10/28)
 const DPI_SIZES = [[1366, 768], [1536, 793], [1280, 649], [1100, 820], [1366, 697], [1440, 829]];   // 125% 모니터 자리(1760×990)에 들어가는 크기
 
 // ── 앱 · 웹 창 띄우기 ──
@@ -54,6 +55,9 @@ const children = [];
 const cleanup = () => { for (const c of children) { try { c.kill(); } catch { /* 이미 끝남 */ } } };
 process.on('exit', cleanup);
 const FLAGS = ['--mute-audio', '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
+// --force-scale S(11/2): 두 창에 배율 S를 강제한다(Electron --force-device-scale-factor) — 이 PC에 없는 150~300% 모니터 대신. 크기는 CSS px로 주고 실제 창은 S배.
+const FORCE = opt('--force-scale') ? Number(opt('--force-scale')) : null;
+if (FORCE) FLAGS.push(`--force-device-scale-factor=${FORCE}`);
 const deskPort = 9300 + Math.floor(Math.random() * 100), webPort = 9400 + Math.floor(Math.random() * 100);
 const exe = args.includes('--dev') ? ELECTRON : path.resolve(opt('--exe'));
 const desk = spawn(exe, [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${deskPort}`, ...FLAGS], { stdio: 'ignore', windowsHide: true, env: { ...process.env, POSTER_STUDIO_TEST_WINDOW: 'hidden' } });
@@ -114,7 +118,7 @@ const D = await connect(deskPort, 'app://studio');
 const Wb = await connect(webPort, base);
 const hD = await cmd(`find ${desk.pid} Poster Studio`), hW = await cmd(`find ${web.pid} Poster Studio Web`);
 if (hD === 'none' || hW === 'none') throw new Error(`창을 못 찾음(설치판 ${hD} · 웹 ${hW})`);
-const report = { exe, webDist: root, startedAt: new Date().toISOString(), hidden: {}, screens: {}, dpi: [], checks: [] };
+const report = { exe, webDist: root, forceScale: FORCE, startedAt: new Date().toISOString(), hidden: {}, screens: {}, dpi: [], checks: [] };
 const visibleNow = async () => (await cmd(`state ${hD}`)).split(' ')[0] === '1' || (await cmd(`state ${hW}`)).split(' ')[0] === '1';
 report.hidden.start = !(await visibleNow());
 
@@ -145,9 +149,14 @@ const MEASURE = `(() => {
     const A = ctrls[a], B = ctrls[b];
     if (A.el.contains(B.el) || B.el.contains(A.el)) continue;
     const ix = Math.min(A.x + A.w, B.x + B.w) - Math.max(A.x, B.x), iy = Math.min(A.y + A.h, B.y + B.h) - Math.max(A.y, B.y);
+    // 3단계 넘김 화살표는 포스터 줄 가장자리에 일부러 얹었다(10/19 «양쪽에 화살표» — mobile-layout-probe.mjs와 같은 예외)
+    const arrowOnSlide = (p, q) => p.el.classList.contains('carousel-arrow') && q.el.classList.contains('poster-slide');
+    if (arrowOnSlide(A, B) || arrowOnSlide(B, A)) continue;
     if (ix > 1 && iy > 1) overlaps.push(A.key + ' × ' + B.key);
   }
-  const offside = ctrls.filter((i) => i.x < -0.5 || i.x + i.w > innerWidth + 0.5).map((i) => i.key);
+  // 3단계 휴대폰 배치의 포스터 넘기기(.poster-slide)는 가로로 넘겨 보는 줄이다 — 화면 옆 밖으로 세지 않는다(11/2 최소 창을 낮추며 760 이하 창이 생김).
+  // 넘겨 보는 줄 안이라는 것만으로 빼면 안 된다: 3단계 «출력하기»도 가로로 스크롤되는 칸 안에 있어 밀려 나간 것을 놓쳤다(11/2).
+  const offside = ctrls.filter((i) => (i.x < -0.5 || i.x + i.w > innerWidth + 0.5) && !i.el.classList.contains('poster-slide')).map((i) => i.key);
   const clipped = [...document.querySelectorAll('body *')].filter((e) => {
     if (!vis(e) || !e.childNodes.length || ![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return false;
     const s = getComputedStyle(e); if (s.textOverflow === 'ellipsis' || s.webkitLineClamp !== 'none') return false;
@@ -158,7 +167,8 @@ const MEASURE = `(() => {
   return { iw: innerWidth, ih: innerHeight, dpr: devicePixelRatio, sw: d.scrollWidth, cw: d.clientWidth, sh: d.scrollHeight, step: document.body.dataset.step,
     rects: Object.fromEntries(items.map((i) => [i.key, [i.x, i.y, i.w, i.h].map((v) => Math.round(v * 10) / 10)])), overlaps, offside, clipped };
 })()`;
-const EXCLUDE_ALWAYS = ['.desktop-badge', '.download-menu', '.download-link'];
+// 2단계 예시 칸의 영상 · 정지 그림은 재생 시점에 따라 서로 바뀐다(두 창이 같은 순간에 재지 않는다) — 칸(.cameraBox) 자리는 그대로 견준다(11/2 600×480에서 한쪽만 영상)
+const EXCLUDE_ALWAYS = ['.desktop-badge', '.download-menu', '.download-link', '.camera-example-video', '.camera-example-still'];
 const exclusions = (screen, w, h) => [...EXCLUDE_ALWAYS,
   // 2단계 오른쪽 칸 — 설치판 높이 구간(desktop.css, 폭 1100 이상 · 높이 680 이상)에서 제목 · 안내 · 영화 · 단추 줄을 일부러 다르게 둔다(그 배치는 desktop-layout-sweep.mjs의 구간 규칙이 잰다)
   ...(screen === 'step2' && w >= 1100 && h >= 680 ? ['#cameraWorkspace .page-heading', '#cameraWorkspace .camera-guide', '#cameraWorkspace .camera-actions', '#cameraView .camera-tips'] : []),
@@ -195,18 +205,18 @@ function judge(screen, w, h, d, v, exD, exV) {
 async function sweep(screen, withWeb) {
   const rows = [];
   for (const [w, h] of SIZES) {
-    const rd = await resize(D, hD, w, h);
-    if (withWeb) await resize(Wb, hW, w, h);
+    const rd = await resize(D, hD, w, h, FORCE ?? 1);
+    if (withWeb) await resize(Wb, hW, w, h, FORCE ?? 1);
     const d = await D.ev(MEASURE), v = withWeb ? await Wb.ev(MEASURE) : null;
     const sels = exclusions(screen, w, h);
     const exD = withWeb ? await excludedKeys(D, sels) : [], exV = withWeb ? await excludedKeys(Wb, sels) : [];
     const j = judge(screen, w, h, d, v, exD, exV);
-    rows.push({ size: `${w}x${h}`, client: [rd.clientW, rd.clientH], dpr: d.dpr, scroll: d.sh > d.ih + 1, ...j });
+    rows.push({ size: `${w}x${h}`, client: [rd.clientW, rd.clientH], dpr: d.dpr, scroll: d.sh > d.ih + 1, rects: d.rects, ...j });
   }
   report.screens[screen] = rows;
   const judged = rows.filter((r) => !r.skip);
   const failed = judged.filter((r) => r.bad.length);
-  report.checks.push({ name: `${screen}: ${judged.length}개 크기${withWeb ? ' · 같은 크기 웹과 비교' : ''}(최소 창보다 작아 뺀 것 ${rows.length - judged.length}개)`, ok: failed.length === 0, failed: failed.length });
+  report.checks.push({ name: `${screen}: ${judged.length}개 크기${withWeb ? ' · 같은 크기 웹과 비교' : ''}(최소 창보다 작아 뺀 것 ${rows.length - judged.length}개)`, ok: judged.length > 0 && failed.length === 0, failed: failed.length });   // 잰 크기가 0개면 통과가 아니다(11/2 감사 — 빈 게이트)
   console.log(`${failed.length ? '걸림' : '통과'}  ${screen} ${judged.length}개 크기(뺀 것 ${rows.length - judged.length}) — 걸린 크기 ${failed.length}`);
   for (const r of failed.slice(0, 6)) console.log(`   ${r.size}: ${r.bad.join(' / ')}`);
 }
@@ -217,7 +227,7 @@ for (const p of [D, Wb]) { await p.ev(`document.getElementById('prepareNextBtn')
 await sweep('step2', true);
 
 // 배율(④): 2단계에서 두 창을 125% 자리로 — 같은 CSS 크기의 100% 자리 잼과 견준다(반올림 1px). 옮겼다가 100%로 돌아와도 같은지.
-for (const [w, h] of DPI_SIZES) {
+for (const [w, h] of FORCE ? [] : DPI_SIZES) {   // 배율을 강제했으면 125% 옮기기는 하지 않는다
   await resize(D, hD, w, h, 1); const a = await D.ev(MEASURE);
   await resize(D, hD, w, h, 1.25); const b = await D.ev(MEASURE);
   await resize(D, hD, w, h, 1); const c = await D.ev(MEASURE);
