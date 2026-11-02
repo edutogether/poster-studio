@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
-  watchRenderer, createReloadGate,
+  watchRenderer, createReloadGate, saveResult,
   RELOAD_LIMIT, RELOAD_WINDOW_MS, RELOAD_DELAY_MS, UNRESPONSIVE_GRACE_MS,
 } from '../desktop/recovery.mjs';
 
@@ -159,4 +159,18 @@ test('main.mjs가 본 창의 화면에 이 지킴이를 건다 — 다시 읽기
   expect(main).toMatch(/watchRenderer\(win\.webContents, \{ home, reload: open, giveUp: \(\) => giveUp\(win\), log, isBusy: \(\) => printing > 0 \}\)/);
   expect(main).toMatch(/const open = \(\) => win\.loadURL\(home\)\.catch\(\(\) => \{\}\);/);
   expect(main).toMatch(/printing \+= 1;\s*try \{[\s\S]*?\} finally \{\s*printing -= 1;/);
+});
+
+test('저장 결과: 끝남은 성공 · 끊김은 실패 · 사람이 저장 창을 닫은 것은 알리지 않음', () => {
+  expect(saveResult('completed')).toBe(true);
+  expect(saveResult('interrupted')).toBe(false);
+  expect(saveResult('cancelled')).toBeNull();
+});
+
+test('main.mjs: 저장이 끝나면 결과를 그 화면에 보낸다(취소는 보내지 않음) — 시험 저장 폴더에서도', () => {
+  const main = fs.readFileSync('desktop/main.mjs', 'utf8');
+  expect(main).toMatch(/item\.once\('done', \(_e, state\) => \{\s*const ok = saveResult\(state\);\s*if \(ok === null\) return;/);
+  expect(main).toMatch(/contents\.send\('poster-studio:save-done', ok\)/);
+  // 시험 저장 폴더 갈래가 결과 보내기보다 먼저 끝나 버리지 않는다
+  expect(main.indexOf("item.once('done'")).toBeLessThan(main.indexOf('POSTER_STUDIO_TEST_SAVE_DIR;'));
 });

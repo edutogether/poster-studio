@@ -78,3 +78,10 @@ export function watchRenderer(contents, { home, reload, giveUp, log, isBusy = ()
     log('화면 응답 돌아옴');
   });
 }
+
+/** 저장(will-download)이 끝난 상태 → 화면에 알릴 결과. 사람이 저장 창을 닫은 것(cancelled)은 알리지 않는다(null). */
+export function saveResult(state) {
+  if (state === 'completed') return true;
+  if (state === 'cancelled') return null;
+  return false;
+}

@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 // 방어 판정(앱 주소 서빙 · 바깥 요청 차단 · 권한 · 이동 · 새 창)은 guards.mjs에 있다 — Electron 없이 시험한다(test/desktop-guards.test.js)
 import { ORIGIN, createAppServer, isAppUrl, lockDownSession, windowOpenAction } from './guards.mjs';
 // 화면이 죽거나 멈췄을 때 다시 읽기(test/desktop-recovery.test.js)
-import { watchRenderer } from './recovery.mjs';
+import { saveResult, watchRenderer } from './recovery.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(HERE, 'web');
@@ -50,9 +50,16 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
 ]);
 
-/** 저장 — Windows 저장 창으로 위치를 묻는다. */
+/** 저장 — Windows 저장 창으로 위치를 묻는다. 끝나면 결과를 그 화면에 보낸다(11/2 — 예전에는 저장이 끊겨도 아무 말이 없었다).
+    사람이 저장 창을 닫은 것은 보내지 않는다(recovery.mjs saveResult). 화면은 실패만 알린다(PosterStudio.tsx). */
 function handleSaves(ses) {
-  ses.on('will-download', (_event, item) => {
+  ses.on('will-download', (_event, item, contents) => {
+    item.once('done', (_e, state) => {
+      const ok = saveResult(state);
+      if (ok === null) return;
+      if (!ok) log(`저장 실패: ${state}`);
+      if (!contents.isDestroyed()) contents.send('poster-studio:save-done', ok);
+    });
     const testDir = process.env.POSTER_STUDIO_TEST_SAVE_DIR;
     if (testDir) {
       item.setSavePath(path.join(testDir, item.getFilename()));
@@ -80,7 +87,10 @@ ipcMain.handle('poster-studio:print', async (event) => {
     }
     return await new Promise((resolve) => {
       contents.print({ silent: false, printBackground: true, margins: { marginType: 'none' }, pageSize: PAGE_4X6 },
-        (ok, reason) => resolve(ok ? { ok } : { ok, reason }));
+        (ok, reason) => {
+          if (!ok) log(`인쇄 안 됨: ${reason}`);   // 사람이 닫은 것(…canceled)도 남긴다 — 화면은 실패만 알린다(src/desktop.ts printFailed)
+          resolve(ok ? { ok } : { ok, reason });
+        });
     });
   } finally {
     printing -= 1;

@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, act, cleanup, fireEvent } from '@testing-library/react';
 import type { StudioMode } from '../src/studioMode.js';
+import type { PrintResult } from '../src/desktop.js';
 import PosterStudio from '../src/PosterStudio.js';
 import * as saveModule from '../src/savePoster.js';
 import * as posterModule from '../src/poster.js';
@@ -193,7 +194,7 @@ describe('설치판(AI 없이 사진 그대로)', () => {
   test('인쇄는 미리보기부터 — «인쇄하기»에서 설치판 창구 print(4×6)를 부르고, 끝나면 인쇄용 화면을 걷는다 · PC에 저장', async () => {
     let done: (v: { ok: boolean }) => void = () => {};
     const print = vi.fn(() => new Promise<{ ok: boolean }>((r) => { done = r; }));
-    (window as any).posterStudioDesktop = { print };
+    (window as any).posterStudioDesktop = { print, onSaveDone: () => () => {} };
     const windowPrint = vi.fn();
     (window as any).print = windowPrint;
     const save = vi.spyOn(saveModule, 'savePoster').mockResolvedValue('downloaded');
@@ -227,9 +228,71 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     expect(print).toHaveBeenCalledTimes(1);
     expect(windowPrint).not.toHaveBeenCalled();
     expect(document.getElementById('printArea')).not.toBeNull();
-    await act(async () => { done({ ok: true }); await Promise.resolve(); });
+    await act(async () => { done({ ok: true }); await new Promise((r) => setTimeout(r, 0)); });
     expect(document.getElementById('printArea')).toBeNull();
+    expect(el('status').textContent).toBe('');
     expect(net.calls).toEqual([]);
+  });
+
+  /* 저장 · 인쇄 실패는 조용히 사라지지 않는다(11/2 종합감사) — 화면 알림(.studio-status)에 띄운다. 사람이 인쇄 · 저장 창을 닫은 것은 알리지 않는다. */
+  const PRINT_FAILED = '인쇄하지 못했어요. 프린터 연결을 확인하고 다시 인쇄해 주세요.';
+  const SAVE_FAILED = '포스터를 저장하지 못했어요. 저장할 곳을 확인하고 다시 저장해 주세요.';
+  const toResult = async () => {
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await composeWithLoading('shotBtn');   // 샘플 포스터 — 3단계까지 가장 짧은 길
+    expect(document.body.dataset.step).toBe('3');
+  };
+  const printOnce = async () => {
+    await act(async () => { fireEvent.click(el<HTMLButtonElement>('printBtn'), { detail: 1 }); });
+    const preview = document.querySelector('.print-preview') as HTMLDialogElement;
+    await act(async () => { [...preview.querySelectorAll('button')].find((b) => b.textContent?.includes('인쇄하기'))!.click(); });
+    const img = document.querySelector('#printArea img') as HTMLImageElement;
+    await act(async () => { img.onload?.(new Event('load') as any); await new Promise((r) => setTimeout(r, 0)); });
+  };
+  const toast = () => ({ text: el('status').textContent, shown: !(el('status').parentElement as HTMLElement).hidden });
+
+  test.each([
+    ['실패를 돌려받음', (): Promise<PrintResult> => Promise.resolve({ ok: false, reason: 'Print job failed' })],
+    ['창구가 거부함', (): Promise<PrintResult> => Promise.reject(new Error('IPC 끊김'))],
+  ])('인쇄 %s → 화면 알림 · 인쇄용 화면은 걷는다 — 다음 인쇄가 되면 그 알림만 걷는다', async (_name, fail) => {
+    const print = vi.fn(fail);
+    (window as any).posterStudioDesktop = { print, onSaveDone: () => () => {} };
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await toResult();
+    await printOnce();
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(toast()).toEqual({ text: PRINT_FAILED, shown: true });
+    expect(error).toHaveBeenCalled();
+    expect(document.getElementById('printArea')).toBeNull();
+    print.mockImplementation(() => Promise.resolve({ ok: true }));
+    await printOnce();
+    expect(toast()).toEqual({ text: '', shown: false });
+    expect(net.calls).toEqual([]);
+  });
+
+  test.each([['Print job canceled'], ['cancelled']])('사람이 인쇄 창을 닫음(%s)은 알리지 않는다', async (reason) => {
+    (window as any).posterStudioDesktop = { print: vi.fn(() => Promise.resolve({ ok: false, reason })), onSaveDone: () => () => {} };
+    await toResult();
+    await printOnce();
+    expect(toast()).toEqual({ text: '', shown: false });
+    expect(document.getElementById('printArea')).toBeNull();
+  });
+
+  test('저장이 끊기면(창구가 실패를 알림) 화면 알림 — 다음 저장이 되면 걷고, 화면을 닫으면 그만 듣는다', async () => {
+    let listener: ((ok: boolean) => void) | null = null;
+    const off = vi.fn(() => { listener = null; });
+    (window as any).posterStudioDesktop = { print: vi.fn(), onSaveDone: (l: (ok: boolean) => void) => { listener = l; return off; } };
+    const { unmount } = await (async () => { let r: ReturnType<typeof renderApp>; await act(async () => { r = renderApp(); }); return r!; })();
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await composeWithLoading('shotBtn');
+    expect(listener).not.toBeNull();
+    await act(async () => { listener!(false); });
+    expect(toast()).toEqual({ text: SAVE_FAILED, shown: true });
+    await act(async () => { listener!(true); });
+    expect(toast()).toEqual({ text: '', shown: false });
+    unmount();
+    expect(off).toHaveBeenCalledTimes(1);
   });
 });
 

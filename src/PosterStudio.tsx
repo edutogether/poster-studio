@@ -22,7 +22,7 @@ import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
 import type { Meta, Poster } from "./state.js";
 import { restartAtHome } from "./restartHome.js";
 import { STUDIO_MODE } from "./studioMode.js";
-import { DESKTOP, desktopBridge } from "./desktop.js";
+import { DESKTOP, desktopBridge, printFailed } from "./desktop.js";
 import { approvedCameraVideo } from "./studio/cameraVideo.js";
 
 /* 한 장의 사진으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만 허용한다
@@ -51,6 +51,10 @@ const boothToken = DESKTOP ? "" : BOOTH_TOKEN;
 const SAMPLE_WAIT_SCENES = 2;
 // 설치판 «포스터 만들기»의 로딩도 장면 둘(10/27 Bumm님 «로딩 화면을 최소 두 개 무작위로 · 최소 두 바퀴»)
 const DESKTOP_WAIT_SCENES = 2;
+/* 설치판 저장 · 인쇄 실패 알림(2026-11-02 종합감사 — 예전에는 실패가 조용히 사라졌다). 화면 알림(.studio-status)에 띄우고,
+   다음 저장 · 인쇄가 되면 그 알림만 걷는다. 사람이 저장 · 인쇄 창을 닫은 것은 실패가 아니다. */
+const DESKTOP_SAVE_FAILED = "포스터를 저장하지 못했어요. 저장할 곳을 확인하고 다시 저장해 주세요.";
+const DESKTOP_PRINT_FAILED = "인쇄하지 못했어요. 프린터 연결을 확인하고 다시 인쇄해 주세요.";
 
 /* 포스터 고르기 화면만 바로 여는 로컬 미리보기(2026-10-14 Bumm님: «샘플 흐름을 처음부터 거치지 않고 그 화면이 곧장 열리게»).
    개발 서버(npm run dev)에서 주소 끝에 ?preview=posters를 붙이면 샘플 원화로 8개 디자인을 채운 3단계가 곧장 열린다.
@@ -239,6 +243,16 @@ export default function PosterStudio() {
     };
     window.addEventListener("afterprint", onAfterPrint);
     return () => window.removeEventListener("afterprint", onAfterPrint);
+  }, []);
+
+  /* 설치판 저장 결과(desktop/main.mjs will-download → preload onSaveDone). 실패면 알리고, 다음 저장이 되면 그 알림만 걷는다. */
+  useEffect(() => {
+    const bridge = desktopBridge();
+    if (!bridge) return;
+    return bridge.onSaveDone((ok) => {
+      if (ok) setStatus((s) => (s === DESKTOP_SAVE_FAILED ? "" : s));
+      else setStatus(DESKTOP_SAVE_FAILED);
+    });
   }, []);
 
   const startCamera = useCallback(() => {
@@ -610,8 +624,21 @@ export default function PosterStudio() {
     img.onload = () => {
       // 설치판: 크로뮴 인쇄 미리보기가 없는 Electron이라 미리보기는 화면(StudioView «인쇄 미리보기»)이 먼저 보이고,
       // 여기서는 4×6 · 여백 없음으로 Windows 인쇄 창을 연다(desktop/main.mjs). 인쇄 창이 닫히면 인쇄용 노드를 걷는다.
+      // 실패(거부 포함)는 화면 알림으로 알린다 — 사람이 인쇄 창을 닫은 것은 빼고(printFailed). 다음 인쇄가 되면 그 알림만 걷는다.
       const bridge = desktopBridge();
-      if (DESKTOP && bridge) void bridge.print().finally(() => $("printArea")?.remove());
+      if (DESKTOP && bridge)
+        void bridge.print()
+          .then((result) => {
+            if (printFailed(result)) {
+              console.error("[인쇄 실패]", result.reason);
+              setStatus(DESKTOP_PRINT_FAILED);
+            } else if (result.ok) setStatus((s) => (s === DESKTOP_PRINT_FAILED ? "" : s));
+          })
+          .catch((e) => {
+            console.error("[인쇄 실패] 설치판 창구", e);
+            setStatus(DESKTOP_PRINT_FAILED);
+          })
+          .finally(() => $("printArea")?.remove());
       else window.print();
     };
   };
