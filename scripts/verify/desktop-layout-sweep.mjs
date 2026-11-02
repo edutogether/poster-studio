@@ -39,7 +39,17 @@ async function serve(dir) {
     if (p.endsWith('/')) p += 'index.html';
     const f = path.join(root, p);
     if (!f.startsWith(root + path.sep) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; }
-    res.writeHead(200, { 'content-type': TYPE[path.extname(f)] ?? 'application/octet-stream' });
+    const type = TYPE[path.extname(f)] ?? 'application/octet-stream', size = fs.statSync(f).size;
+    // 영상은 부분 받기(Range)가 되어야 재생된다 — step2-geometry.mjs 서버와 같게(11/2 감사: 이 서버에만 없어 «촬영 구도 예시»가 정지 그림에 머물렀다)
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+    if (range && (range[1] || range[2])) {
+      const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2])), end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+      if (start > end || start >= size) { res.writeHead(416, { 'content-range': `bytes */${size}` }); res.end(); return; }
+      res.writeHead(206, { 'content-type': type, 'accept-ranges': 'bytes', 'content-range': `bytes ${start}-${end}/${size}`, 'content-length': end - start + 1 });
+      fs.createReadStream(f, { start, end }).pipe(res);
+      return;
+    }
+    res.writeHead(200, { 'content-type': type, 'accept-ranges': 'bytes', 'content-length': size });
     fs.createReadStream(f).pipe(res);
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -62,7 +72,7 @@ const BAND_NAME = { narrow: '좁은 창(폭 1100 미만)', short: '아주 낮은
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'layout-sweep-'));
 const port = 9700 + Math.floor(Math.random() * 200);
-const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' });
+const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' });
 process.on('exit', () => chrome.kill());
 
 async function openPage(base) {
