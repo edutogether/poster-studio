@@ -117,3 +117,10 @@ test("주 단추가 켜져 있으면 초점은 주 단추에 있다", () => {
   const { view } = show({ action: "retry", message: "그림을 다 그리지 못했어요." });
   expect(document.activeElement).toBe(view.container.querySelector(".primary-button"));
 });
+
+test("창 자체가 초점을 받아도 테두리는 그리지 않는다(창 모습은 그대로 — 11/2)", async () => {
+  const { readFileSync } = await import("node:fs");
+  // jsdom에서는 import.meta.url이 파일 주소가 아니다 — 시험은 저장소 뿌리에서 돈다
+  const css = readFileSync("src/studio.css", "utf8");
+  expect(css).toContain(".generate-failure-dialog:focus { outline: none; }");
+});

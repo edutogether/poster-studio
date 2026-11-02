@@ -311,6 +311,8 @@ main.app {
 .generate-failure-backdrop { position: fixed; inset: 0; z-index: 55; display: grid; place-items: center; padding: 16px; background: #111a; }
 /* 2026-10-17 Bumm님: 창 크기는 종류와 상관없이 같다 · 문구는 모두 한 줄 · 단추 두 개는 같은 크기. 상태 줄(인터넷 확인 중)은 비어 있어도 자리를 둔다. */
 .generate-failure-dialog { box-sizing: border-box; width: min(520px, 100%); padding: 30px; border-radius: 14px; background: #fff; color: #1c1c1c; box-shadow: 0 18px 48px #0004; }
+/* 창 자체는 초점을 받아도(주 단추가 꺼진 동안 — GenerateFailureDialog.tsx, 11/2) 테두리를 그리지 않는다 — Tab은 창 안 단추로 가고 거기서 테두리가 보인다 */
+.generate-failure-dialog:focus { outline: none; }
 .generate-failure-dialog h2, .generate-failure-dialog > p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .generate-failure-dialog h2 { margin: 0 0 12px; font-size: 24px; line-height: 1.35; font-weight: 800; }
 .generate-failure-dialog > p { margin: 0; font-size: 17px; line-height: 1.6; }
