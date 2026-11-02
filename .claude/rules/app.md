@@ -597,7 +597,7 @@
   - 올릴 자리(제안 · 별도 승인)는 intent «올릴 자리»에 있다. 주소는 `src/downloads.ts` 한 줄이다.
 
 ## 명령
-- 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(537개) — 둘 다 vitest(2026-11-02)
+- 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(539개) — 둘 다 vitest(2026-11-02)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
 - 빌드: 루트에서 `npm run build` → `dist/`
