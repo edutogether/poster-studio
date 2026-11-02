@@ -1293,3 +1293,18 @@ html.ps-canvas #cameraWorkspace, html.ps-canvas #resultView #resultWorkspace, ht
 @media (min-width: 1100px) and (min-height: 1760px) {
   #cameraWorkspace .camera-ticket { flex: none; aspect-ratio: 2 / 3; }
 }
+
+/* 휴대폰 가로(2026-11-02 해상도 점검): 휴대폰은 폭을 390에 맞추므로(public/device-canvas.js) 가로로 들면 보이는 높이가 180~219px뿐이라
+   2단계 카메라 칸이 0×0, 3단계 포스터가 안 보이고 1단계 글이 겹쳤다(640×360 · 932×430). 가로 배치는 따로 두지 않고 세로로 돌려 달라는 안내로 화면을 덮는다 —
+   세로로 들면 사라지고 하던 화면 그대로다. 태블릿 · PC(data-device가 phone이 아님)는 그대로. */
+.rotate-notice { display: none; }
+@media (orientation: landscape) {
+  html[data-device="phone"] .rotate-notice {
+    display: flex; position: fixed; inset: 0; z-index: 1000;
+    flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    padding: 16px 24px; background: #fff; color: #191919; text-align: center;
+  }
+  html[data-device="phone"] .rotate-notice p { margin: 0; }
+  html[data-device="phone"] .rotate-notice-title { font-size: 20px; font-weight: 800; line-height: 1.35; }
+  html[data-device="phone"] .rotate-notice-text { font-size: 14px; color: #555; line-height: 1.5; }
+}

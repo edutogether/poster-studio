@@ -15,7 +15,7 @@ import {
 import { buildPosters, preparePosterAssets } from "./poster.js";
 import { boothCodeHeaders, saveBoothCode, verifyBoothCode } from "./boothCode.js";
 import { classifyGenerateFailure, type GenerateFailure } from "./generateFailure.js";
-import StudioView from "./studio/StudioView.js";
+import StudioView, { FIRST_GENRE } from "./studio/StudioView.js";
 import { afterWaitingVideos } from "./studio/waitingNetwork.js";
 import { SCENE_MS, type SceneEnd } from "./studio/GenerationWait.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
@@ -416,7 +416,7 @@ export default function PosterStudio() {
       if (el) el.value = "";
     }
     const genre = document.getElementById("genre") as HTMLSelectElement | null;
-    if (genre) genre.selectedIndex = 0;
+    if (genre) genre.value = FIRST_GENRE;
     setMode("solo");
     setResetKey((key) => key + 1);
     setPosters([]);

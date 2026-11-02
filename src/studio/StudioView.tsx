@@ -39,6 +39,8 @@ const choices = [
 type Action = () => void | Promise<void>;
 /** 휴대폰 흐름(2026-10-17)을 켜는 기준 — studio.css의 @media (max-width: 760px)와 같은 값이다. */
 export const PHONE_QUERY = "(max-width: 760px)";
+// 처음 고른 장르(10/1 확정 화면) — 처음 열 때와 «다음 주인공»으로 되돌릴 때 같다(11/2: 되돌리면 첫 항목 «애니메이션»이 골라졌다).
+export const FIRST_GENRE = "sf";
 // 휴대폰 판정은 기기 갈래(data-device — 비율 기준 전환 10/23)로. 갈래가 없거나(시험 · 옛 판) PC 캔버스가 꺼진 PC(창 크기로 고르는 라이브 배치 —
 // 760보다 좁은 PC 창은 휴대폰 화면)는 예전처럼 창 폭으로
 const isPhone = () => { const d = deviceKind(); return d && (d !== "pc" || pcCanvas()) ? d === "phone" : window.matchMedia?.(PHONE_QUERY)?.matches ?? false; };
@@ -173,7 +175,7 @@ export default function StudioView(p: StudioViewProps) {
   const [camAspect, setCamAspect] = useState<number | null>(null);
   const readAspect = (w: number, h: number) => { if (w > 0 && h > 0) setCamAspect(w / h); };
   const [captureNoticeVisible, setCaptureNoticeVisible] = useState(false);
-  const [genre, setGenre] = useState("sf");
+  const [genre, setGenre] = useState(FIRST_GENRE);
   const [preview, setPreview] = useState({
     title: "",
     name: "",
@@ -253,7 +255,7 @@ export default function StudioView(p: StudioViewProps) {
     if (p.resetKey === prevReset.current) return;
     prevReset.current = p.resetKey;
     setPreview({ title: "", name: "", group: "", members: "" });
-    setGenre("animation");
+    setGenre(FIRST_GENRE);
     setCompletionVisible(false);
     setStep(1);
   }, [p.resetKey]);
@@ -605,7 +607,7 @@ export default function StudioView(p: StudioViewProps) {
               <select
                 id="genre"
                 hidden
-                defaultValue="sf"
+                defaultValue={FIRST_GENRE}
                 aria-label="영화 장르"
                 onChange={(event) => setGenre(event.target.value)}
               >
@@ -892,6 +894,11 @@ export default function StudioView(p: StudioViewProps) {
         {/* 휴대폰은 단추가 «내 휴대폰에 저장»이라 «저장하세요»(10/25 Bumm님) */}
         <p><span className="label-pc">마음에 드는 버전을 고르고 인쇄하세요.</span><span className="label-phone">마음에 드는 버전을 고르고 저장하세요.</span></p>
       </div>}
+      {/* 휴대폰을 가로로 들면 덮는 안내(studio.css «휴대폰 가로») — 세로로 돌리면 사라지고 하던 화면 그대로다 */}
+      <div className="rotate-notice">
+        <p className="rotate-notice-title">휴대폰을 세로로 돌려 주세요</p>
+        <p className="rotate-notice-text">세로로 들면 지금 화면에서 이어서 할 수 있어요</p>
+      </div>
       <div className="studio-status" hidden={p.spinning || !p.status}>
         <p id="status" role="status">
           {p.status}
