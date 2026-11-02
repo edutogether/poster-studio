@@ -91,3 +91,29 @@ test("인터넷 끊김: 확인하는 동안 점이 돌고, 연결될 때까지 �
   expect(buttons()).toEqual(["다시 찍기", "다시 만들기"]);
   expect(state()).toBe("인터넷이 다시 연결됐어요.");
 });
+
+test("창이 떠 있는 동안 뒤 화면은 inert이고, 주 단추가 꺼져 있으면 초점은 창에 있다(11/2 — Tab으로 기다림을 건너뛰었다)", () => {
+  // 앱처럼 뒤 화면 단추와 창이 같은 부모 아래에 있다
+  const host = document.createElement("div");
+  const behind = document.createElement("button");
+  behind.textContent = "이 사진으로 포스터 만들기";
+  host.append(behind);
+  document.body.append(host);
+  const failure: GenerateFailure = { action: "wait", waitSeconds: 3, message: "지금 만드는 사람이 많아요." };
+  const handlers = { onRetry: vi.fn(), onRetake: vi.fn(), onEditInputs: vi.fn(), onHome: vi.fn() };
+  const view = render(<GenerateFailureDialog failure={failure} online {...handlers} />, { container: host.appendChild(document.createElement("div")) });
+  const dialog = view.container.querySelector(".generate-failure-dialog")!;
+  expect(behind.hasAttribute("inert")).toBe(true);
+  expect(document.activeElement).toBe(dialog);
+  // 기다림이 끝나도 뒤 화면은 그대로 막혀 있고, 창이 닫히면 풀린다
+  act(() => vi.advanceTimersByTime(3_000));
+  expect(behind.hasAttribute("inert")).toBe(true);
+  view.rerender(<GenerateFailureDialog failure={null} online {...handlers} />);
+  expect(behind.hasAttribute("inert")).toBe(false);
+  host.remove();
+});
+
+test("주 단추가 켜져 있으면 초점은 주 단추에 있다", () => {
+  const { view } = show({ action: "retry", message: "그림을 다 그리지 못했어요." });
+  expect(document.activeElement).toBe(view.container.querySelector(".primary-button"));
+});

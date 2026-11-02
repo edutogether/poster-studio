@@ -842,7 +842,9 @@ describe('다음 주인공', () => {
     for (const id of ['studentName', 'groupName', 'members', 'movieTitle']) {
       expect(el<HTMLInputElement>(id).value).toBe('');
     }
-    expect(el<HTMLSelectElement>('genre').selectedIndex).toBe(0);
+    // 장르는 처음 열 때와 같은 SF(10/1 확정 화면)로 — 11/2까지는 첫 항목(애니메이션)으로 돌아갔다
+    expect(el<HTMLSelectElement>('genre').value).toBe('sf');
+    expect(document.querySelector('.genre-option[aria-pressed="true"]')?.getAttribute('data-genre')).toBe('sf');
     expect(document.querySelectorAll('.gallery .thumb').length).toBe(0);
     expect(el('modeSeg').querySelector('[data-mode="solo"]')!.className).toContain('active');
     expect(el('status').textContent).toBe('');

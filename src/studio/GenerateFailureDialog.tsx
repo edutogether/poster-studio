@@ -20,6 +20,7 @@ type Button = { label: string; icon: DialogIconName; onClick: () => void; primar
 // 부스 코드 실패(booth)는 이 창이 아니라 부스 코드 입력 창이 맡는다 — 부모가 그쪽을 연다.
 export default function GenerateFailureDialog({ failure, online, onRetry, onRetake, onEditInputs, onHome }: Props) {
   const primary = useRef<HTMLButtonElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const [left, setLeft] = useState(0);
   const [dots, setDots] = useState(0);
 
@@ -39,10 +40,26 @@ export default function GenerateFailureDialog({ failure, online, onRetry, onReta
     const timer = window.setInterval(() => setDots(value => (value + 1) % 4), 500);
     return () => window.clearInterval(timer);
   }, [checking]);
+  // 초점은 주 단추에 — 그 단추가 꺼질 창(«다시 만들기 (N초)» 기다림 · 인터넷 확인 중)이면 창 자체에. 꺼진 단추에 주면(첫 그림에서는 남은 초가 아직 0이라 켜져 있다가
+  // 곧 꺼진다) 초점이 창 밖(body)으로 빠져 Tab이 뒤 화면 단추로 갔다(11/2 기능 전수 점검 — 429 창에서 Tab 9번 · Enter로 기다림을 건너뛰고 새 생성 요청).
+  const holds = failure?.action === "wait" ? (failure.waitSeconds ?? 20) > 0 : checking;
   useEffect(() => {
     if (failure?.staffNote) console.warn("[포스터 생성 실패]", failure.staffNote);
-    primary.current?.focus();
+    (holds ? box.current : primary.current ?? box.current)?.focus();
+    // 초점은 창이 새로 뜰 때만 옮긴다 — 인터넷이 돌아와 단추가 켜질 때 초점을 빼앗지 않는다
   }, [failure]);
+  // 창이 떠 있는 동안 뒤 화면은 누를 수도 · Tab으로 닿을 수도 없게(inert) — 창(div)은 <dialog>가 아니라 브라우저가 막아 주지 않는다.
+  const open = !!failure && failure.action !== "booth";
+  useEffect(() => {
+    if (!open) return;
+    const changed: Element[] = [];
+    for (let el = box.current?.parentElement ?? null; el && el !== document.body; el = el.parentElement) {
+      for (const sibling of Array.from(el.parentElement?.children ?? [])) {
+        if (sibling !== el && !sibling.hasAttribute("inert")) { sibling.setAttribute("inert", ""); changed.push(sibling); }
+      }
+    }
+    return () => { for (const sibling of changed) sibling.removeAttribute("inert"); };
+  }, [open]);
 
   if (!failure || failure.action === "booth") return null;
   const { action } = failure;
@@ -55,7 +72,7 @@ export default function GenerateFailureDialog({ failure, online, onRetry, onReta
     : [retake, retry];
   const state = action !== "offline" ? "" : online ? "인터넷이 다시 연결됐어요." : `인터넷 연결을 확인하는 중${".".repeat(dots)}`;
   return <div className="generate-failure-backdrop">
-    <div className="generate-failure-dialog" role="alertdialog" aria-modal="true" aria-labelledby="generateFailureTitle" aria-describedby="generateFailureMessage">
+    <div ref={box} tabIndex={-1} className="generate-failure-dialog" role="alertdialog" aria-modal="true" aria-labelledby="generateFailureTitle" aria-describedby="generateFailureMessage">
       <h2 id="generateFailureTitle">포스터를 만들지 못했어요</h2>
       <p id="generateFailureMessage">{failure.message}</p>
       <p className="generate-failure-state" role="status">{state}</p>
