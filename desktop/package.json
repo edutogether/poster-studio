@@ -26,6 +26,7 @@
     "files": [
       "main.mjs",
       "guards.mjs",
+      "recovery.mjs",
       "preload.cjs",
       "package.json",
       "web/**/*",

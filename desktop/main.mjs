@@ -9,17 +9,21 @@
    - 카메라는 앱 화면(app://studio)이 «영상만» 달라고 할 때만 허락한다. 마이크 · 위치 등 다른 권한은 모두 거절한다.
    - 앱 밖 주소로 이동하지 않는다. 새 창은 앱 안 주소(개인정보처리방침)만 연다.
    - 저장은 Windows 저장 창으로 위치를 묻는다. 인쇄는 4×6 인화지 · 여백 없음으로 Windows 인쇄 창을 연다(미리보기는 화면이 먼저 보인다).
+   - 화면이 죽거나 · 멈추거나 · 앱 화면을 못 읽으면 첫 화면을 다시 읽는다. 짧은 간격에 되풀이되면 «다시 시작» 안내 창을 띄운다(recovery.mjs, 11/2).
+     원인은 %APPDATA%\Poster Studio\logs\desktop.log에 남긴다(앱 데이터 폴더라 제거할 때 함께 지워진다 · 사진 · 이름은 적지 않는다).
 
    확인 도구(scripts/verify/desktop-*.mjs)만 쓰는 환경 변수 — 사람이 쓰는 설치판에서는 비어 있다:
      POSTER_STUDIO_TEST_SAVE_DIR   저장 창 없이 이 폴더에 저장한다
      POSTER_STUDIO_TEST_PRINT_PDF  인쇄 창 대신 같은 규격(4×6 · 여백 없음)으로 이 PDF 파일에 «인쇄»한다
      POSTER_STUDIO_TEST_WINDOW     창 자리 — «x,y»면 그 점의 모니터에서 최대화, «hidden»이면 창을 보이지 않는다(아래 readTestWindow) */
-import { app, BrowserWindow, Menu, ipcMain, protocol, screen, session, shell } from 'electron';
+import { app, BrowserWindow, Menu, dialog, ipcMain, protocol, screen, session, shell } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 // 방어 판정(앱 주소 서빙 · 바깥 요청 차단 · 권한 · 이동 · 새 창)은 guards.mjs에 있다 — Electron 없이 시험한다(test/desktop-guards.test.js)
 import { ORIGIN, createAppServer, isAppUrl, lockDownSession, windowOpenAction } from './guards.mjs';
+// 화면이 죽거나 멈췄을 때 다시 읽기(test/desktop-recovery.test.js)
+import { watchRenderer } from './recovery.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(HERE, 'web');
@@ -30,6 +34,17 @@ const PAGE_4X6 = { width: 101600, height: 152400 };
 // 앱 데이터(캐시 · 화면 저장소) 폴더를 설치기의 앱 폴더 이름(electron-builder APP_FILENAME = «Poster Studio»)과 같게 둔다 —
 // 제거할 때 %APPDATA%\Poster Studio를 지운다. 두 이름이 어긋나면 제거한 뒤에도 앱 데이터가 남는다(2026-10-27 설치 · 제거 확인에서 실측).
 app.setPath('userData', path.join(app.getPath('appData'), 'Poster Studio'));
+
+// 원인 기록(11/2) — 화면이 죽거나 멈춘 까닭을 행사 뒤에도 볼 수 있게 앱 데이터 폴더에 한 줄씩 남긴다. 기록을 못 써도 앱은 그대로 돈다.
+const LOG_FILE = path.join(app.getPath('userData'), 'logs', 'desktop.log');
+function log(line) {
+  console.error(`[Poster Studio] ${line}`);
+  void fs.mkdir(path.dirname(LOG_FILE), { recursive: true })
+    .then(() => fs.appendFile(LOG_FILE, `${new Date().toISOString()} ${line}\n`))
+    .catch(() => {});
+}
+// 인쇄 창이 열려 있는 동안은 화면이 «응답 없음»이어도 끊지 않는다(recovery.mjs isBusy)
+let printing = 0;
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
@@ -55,16 +70,21 @@ function handleSaves(ses) {
 ipcMain.handle('poster-studio:print', async (event) => {
   if (!isAppUrl(event.senderFrame?.url)) return { ok: false, reason: 'not-app' };
   const contents = event.sender;
-  const testPdf = process.env.POSTER_STUDIO_TEST_PRINT_PDF;
-  if (testPdf) {
-    const pdf = await contents.printToPDF({ printBackground: true, margins: { marginType: 'none' }, pageSize: { width: 4, height: 6 } });
-    await fs.writeFile(testPdf, pdf);
-    return { ok: true, reason: 'test-pdf' };
+  printing += 1;
+  try {
+    const testPdf = process.env.POSTER_STUDIO_TEST_PRINT_PDF;
+    if (testPdf) {
+      const pdf = await contents.printToPDF({ printBackground: true, margins: { marginType: 'none' }, pageSize: { width: 4, height: 6 } });
+      await fs.writeFile(testPdf, pdf);
+      return { ok: true, reason: 'test-pdf' };
+    }
+    return await new Promise((resolve) => {
+      contents.print({ silent: false, printBackground: true, margins: { marginType: 'none' }, pageSize: PAGE_4X6 },
+        (ok, reason) => resolve(ok ? { ok } : { ok, reason }));
+    });
+  } finally {
+    printing -= 1;
   }
-  return new Promise((resolve) => {
-    contents.print({ silent: false, printBackground: true, margins: { marginType: 'none' }, pageSize: PAGE_4X6 },
-      (ok, reason) => resolve(ok ? { ok } : { ok, reason }));
-  });
 });
 
 // 시험용 창 자리(2026-10-28 팀장 — 자동 시험 창은 아래 작은 모니터에만, 위 모니터에는 한순간도 뜨지 않게. 시험 도구가 줄 때만 켜지고 사용자 PC에는 영향이 없게).
@@ -109,6 +129,11 @@ function createWindow() {
     win.show();
   });
   win.on('page-title-updated', (event) => event.preventDefault());
+  // 화면이 죽거나(render-process-gone) · 멈추거나(unresponsive) · 앱 첫 화면을 못 읽으면(did-fail-load) 첫 화면을 다시 연다(11/2 종합감사 — 예전에는 빈 창이 남았다).
+  // 읽기 실패는 did-fail-load가 받으므로 loadURL의 거부는 여기서 버린다.
+  const home = `${ORIGIN}/`;
+  const open = () => win.loadURL(home).catch(() => {});
+  watchRenderer(win.webContents, { home, reload: open, giveUp: () => giveUp(win), log, isBusy: () => printing > 0 });
   // F11: 전체 화면(부스 노트북) — 메뉴를 없앴으므로 단축키만 남긴다.
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type === 'keyDown' && input.key === 'F11') {
@@ -116,7 +141,26 @@ function createWindow() {
       event.preventDefault();
     }
   });
-  void win.loadURL(`${ORIGIN}/`);
+  void open();
+}
+
+/* 짧은 간격에 여러 번 다시 읽어도 같으면 더 읽지 않고 안내한다(recovery.mjs). «다시 시작»은 앱을 새로 띄운다 — 진행자가 바탕화면 아이콘을 찾지 않아도 된다. */
+function giveUp(win) {
+  if (TEST_WINDOW?.hidden) { app.exit(1); return; }   // 숨긴 창 확인 도구: 안내 창도 띄우지 않고 끝낸다(도구가 앱이 끝난 것을 잡는다)
+  const options = {
+    type: 'error',
+    title: 'Poster Studio',
+    message: '화면을 열지 못했어요.',
+    detail: '여러 번 다시 열어 봤지만 같은 문제가 되풀이됐어요. «다시 시작»을 눌러 주세요. 그래도 같으면 노트북을 다시 켠 뒤 Poster Studio를 열어 주세요.',
+    buttons: ['다시 시작', '끝내기'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  };
+  void (win.isVisible() ? dialog.showMessageBox(win, options) : dialog.showMessageBox(options)).then(({ response }) => {
+    if (response === 0) app.relaunch();
+    app.exit(0);
+  });
 }
 
 if (!app.requestSingleInstanceLock()) {

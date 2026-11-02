@@ -106,7 +106,7 @@ export default [
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',
-      globals: { console: 'readonly', process: 'readonly', Buffer: 'readonly', URL: 'readonly', Response: 'readonly' }
+      globals: { console: 'readonly', process: 'readonly', Buffer: 'readonly', URL: 'readonly', Response: 'readonly', setTimeout: 'readonly', clearTimeout: 'readonly' }
     },
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
