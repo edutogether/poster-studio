@@ -177,7 +177,8 @@
 !macroend
 ; 바깥 창의 상표 글 칸(1256 · 1028)을 글 폭으로 줄인다(psZOrder). 칸은 창 폭(705)인데 글은 앞부분뿐이라, 칸이 아래 줄 선(1035)을 통째로 덮어
 ; 선이 칸 자리를 칠하지 않게 하자(WS_CLIPSIBLINGS) 선이 하나도 안 그려졌다(2fabd75 — 11/2 Bumm님). 칸은 글 뒤만 칠하므로(MUI SetCtlColors /BRANDING — 빈 붓)
-; 줄여도 글은 그대로이고, 선은 예전처럼 글 바로 뒤(1256 끝 빈칸 다음)부터 보인다. $0 ~ $5를 쓴다
+; 줄여도 글은 그대로이고, 선은 예전처럼 글 바로 뒤(1256 끝 빈칸 다음)부터 보인다. 흐린 글 칸(WS_DISABLED — 1028)은 Windows가 흰 글을 1화소 오른쪽 아래에
+; 한 번 더 그리므로 1화소 더 둔다(글 폭에 딱 맞추면 마지막 글자 오른쪽 흰 테가 잘렸다 — 11/2 a39dafe). $0 ~ $5를 쓴다
 !macro psFitBrand ID
   GetDlgItem $0 $HWNDPARENT ${ID}
   System::Call "user32::GetWindowTextW(p r0, w .r1, i ${NSIS_MAX_STRLEN}) i .r2"
@@ -190,6 +191,11 @@
   System::Call "user32::ReleaseDC(p r0, p r4)"
   System::Call "*$5(i .r1)"
   System::Free $5
+  System::Call "user32::GetWindowLongW(p r0, i -16) i .r2"
+  IntOp $2 $2 & 0x08000000
+  ${If} $2 <> 0
+    IntOp $1 $1 + 1
+  ${EndIf}
   System::Call "*(i 0, i 0, i 0, i 0) p .r5"
   System::Call "user32::GetWindowRect(p r0, p r5)"
   System::Call "*$5(i, i .r2, i, i .r3)"
