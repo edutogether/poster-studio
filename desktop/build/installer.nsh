@@ -246,7 +246,6 @@
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE psFreeze
   !macroend
   !macro customPageAfterChangeDir
-    !include StrContains.nsh
     !define MUI_PAGE_CUSTOMFUNCTION_PRE psDirPre
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW psDirShow
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE psDirLeave
