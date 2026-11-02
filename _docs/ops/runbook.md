@@ -202,6 +202,8 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    ```
    - functions도 낼 때는 지금 라이브 함수의 지문을 적어 둔다: `firebase functions:list --project inky-poster-studio --json`(`posterStudio`·`keepWarm`·`cleanupOldCountersSchedule`의 해시).
      되돌릴 곳은 `base` 사본(지금 라이브와 같은 커밋)이다.
+   - 🟠 채널을 만들자마자 연 주소는 CDN이 그 순간의 404(«Site Not Found»)를 잠깐 기억한다(11/2 실측 — 쿼리를 붙인 주소는 200 · 같은 바이트, 20분 뒤에는 그대로 200).
+     대조는 만든 뒤 몇 분 지나서 하거나 주소에 `?nc=1`을 붙인다. 404만 보고 복제가 실패했다고 읽지 않는다.
    - 이미 만든 되돌림 채널이 아직 살아 있고 `base` 빌드와 같으면 새로 만들지 않고 그것을 쓴다(`rollback-20261016-night`는 11/15까지 — 10/17 대조 323개 같음).
    - 2026-10-17 연습: 하루짜리 채널 `rehearsal-1017`에 새 판(미리보기 채널)을 `hosting:clone`으로 올렸다가 되돌림 채널을 다시 `hosting:clone`해
      되돌렸다 — 두 번 다 `dist-vs-live.mjs`로 바이트까지 같았다(300개 · 323개). 9번의 hosting 되돌리기와 같은 명령 꼴이다. 라이브는 건드리지 않았다.

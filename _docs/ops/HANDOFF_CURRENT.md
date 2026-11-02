@@ -1,11 +1,15 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
-## 2026-11-02(월) 오후 — 최종검토판 준비 끝: 웹 고침 · 감사 고침 · 설명서 · 최종 설치 파일 `d7714f4` — 교체 · 배포는 팀장 승인 뒤
+## 2026-11-02(월) 16:45 — 라이브: **웹 = master `f610154`**(CI 배포) · **공개 설치 파일 = `d7714f4`** (팀장 승인 «둘 다»)
 
-- 무엇을 했는지는 CHANGELOG 11/2 오후. 최종검토판(Bumm님이 저녁에 보심): `D:Projects_sharedopsposter-studio-20261017index.html`, 캡처 · 점검 기록은 같은 폴더 `final-20261102`.
+- 무엇을 했는지는 CHANGELOG 11/2 15:59~16:45(배포) · 11/2 오후(준비). 최종검토판(Bumm님이 저녁에 보심): `D:\Projects\_shared\ops\poster-studio-20261017\index.html`,
+  캡처 · 점검 기록은 같은 폴더 `final-20261102`. 파일로 여는 페이지라 서버가 필요 없다.
+- 되돌리기: 웹 `firebase hosting:clone poster-studio:rollback-20261102 poster-studio:live --project inky-poster-studio`(= 11/1 `174346e` 배포분, 12/2까지) ·
+  설치 파일 작업 폴더 `납품-이전판-2fabd75-1102`를 app.md «파일을 바꿀 때» 명령으로.
 - Bumm님 결정 대기: ① 단체 아치 프레임 위 흐린 띠(146px — 그대로 / 꽉 채움 / 지시문) ② 11/12에도 서버 깨워 두기 ③ 설치판 가지를 master에 합치는 시점 ④ 웹 인쇄 때 화면 밀림.
+- 팀장 판단 대기: 가지 `verify-same-button-20261102`(`aea097a`, `download-live --button-same`)를 master에 합칠지 — 합치면 CI가 같은 빌드를 다시 배포한다.
 - `CLAUDE.md`의 시험 수(438 → 443)와 «PNG 저장» 줄(84)은 Bumm님 직접 지시로만 고친다 — 고칠 것으로 보고했다.
-- 검사 모니터(아래)는 `D:Projects_sharedopsmonitor-lock.txt` 잠금 안에서만 — Voice Cinema와 같이 쓴다.
+- 검사 모니터(아래)는 `D:\Projects\_shared\ops\monitor-lock.txt` 잠금 안에서만 — Voice Cinema와 같이 쓴다. 창 없는 확인도 다른 앱이 녹화 중이면 기다린다.
 
 ## 2026-11-02(월) 09:37 — 라이브: **공개 설치 파일 = `2fabd75`**(Bumm님 «1번으로 교체», 팀장 OK) · Hosting · 함수는 그대로(master `174346e` 배포분)
 
