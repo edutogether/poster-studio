@@ -296,6 +296,51 @@ describe('설치판(AI 없이 사진 그대로)', () => {
   });
 });
 
+/* 샘플 흐름(웹 · 설치판)과 설치판 «포스터 만들기»는 같은 순서(PosterStudio.tsx composeWhileWaiting)를 쓴다(11/2 종합감사 — 예전 샘플은 오류를 삼켰다).
+   조판이 실패하면 원인을 콘솔에 남기고 화면 알림을 띄우며, 로딩 화면은 닫히고 2단계에 남는다. */
+describe('조판 실패 — 샘플 · 설치판 포스터 만들기', () => {
+  const failBuild = () => {
+    vi.spyOn(posterModule, 'buildPosters').mockRejectedValue(new Error('조판 실패'));
+    return vi.spyOn(console, 'error').mockImplementation(() => {});
+  };
+  // 웹 샘플은 원화를 동적으로 불러온 뒤 조판한다 — 알림이 뜨거나 2초가 될 때까지 기다린다
+  const flush = () => act(async () => { for (let i = 0; i < 200 && !el('status').textContent; i++) await new Promise((r) => setTimeout(r, 10)); });
+
+  test.each([['웹', false], ['설치판', true]])('%s «샘플 포스터 보기»', async (_name, desktop) => {
+    flags.desktop = desktop;
+    const error = failBuild();
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('shotBtn').click(); });
+    await flush();
+    expect(el('status').textContent).toBe('샘플 포스터를 불러오지 못했어요. 다시 눌러주세요.');
+    expect(error).toHaveBeenCalledWith('[샘플 포스터 실패]', expect.any(Error));
+    expect(document.getElementById('spinner')).toBeNull();
+    expect(document.body.dataset.step).toBe('2');
+    expect(el<HTMLButtonElement>('shotBtn').disabled).toBe(false);   // 다시 누를 수 있다(생성 중 표시가 풀림)
+  });
+
+  test('설치판 «이 사진으로 포스터 만들기»', async () => {
+    flags.desktop = true;
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    makeVideoReady(el<HTMLVideoElement>('video'));
+    vi.useFakeTimers();
+    await act(async () => { el<HTMLButtonElement>('shotBtn').click(); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    vi.useRealTimers();
+    const error = failBuild();
+    await act(async () => { el<HTMLButtonElement>('generateBtn').click(); });
+    await flush();
+    expect(el('status').textContent).toBe('포스터를 만들지 못했어요. 다시 눌러 주세요.');
+    expect(error).toHaveBeenCalledWith('[포스터 만들기 실패] 로컬 합성', expect.any(Error));
+    expect(document.getElementById('spinner')).toBeNull();
+    expect(document.body.dataset.step).toBe('2');
+    expect(net.calls).toEqual([]);
+  });
+});
+
 describe('설치판 화면 규칙(src/desktop.css)', () => {
   const css = fs.readFileSync('src/desktop.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   test('인쇄용 그림(#printArea)은 화면에서 자리를 차지하지 않는다 — 인쇄 때만(studio.css @media print) 보인다', () => {

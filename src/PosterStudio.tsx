@@ -558,20 +558,40 @@ export default function PosterStudio() {
   };
   const verifyBooth = (code: string) => verifyBoothCode(code, { apiBase: API_BASE, boothToken });
 
-  /* 샘플 모드: 촬영 대신 같은 원화 한 장으로 8개 틀을 만든다. 진짜 생성과 같은 로딩 화면을 장면 5개 동안
-     보인 뒤 결과로 간다. 조판은 로딩 화면 뒤에서 같이 돌린다 — 진짜 생성도 응답을 받은 뒤 로딩 화면이 떠 있는
-     동안 조판한다. 원화는 샘플 모드에서 이 단추를 누를 때만 받는다. */
-  const onSample = async () => {
-    if (!(sampleMode || sampleChoice) || isGeneratingRef.current) return;
-    stopCamera();
+  /* 로딩 화면을 장면 `scenes`개 동안 보이며 그 뒤에서 `build`로 8종을 조판하고 결과로 간다 — 샘플 흐름과 설치판 «포스터 만들기»가
+     같은 순서를 쓴다(2026-11-02 종합감사 — 두 벌이 한쪽만 오류를 삼키며 갈라져 있었다). 진짜 생성은 서버 응답이 끝을 정해 따로다.
+     조판은 장면 시계와 함께 돌고, 재생 중인 대기 영상은 끝까지 보여 준다(10/20). 실패하면 원인을 콘솔에 남기고 화면 알림을 띄운다. */
+  const composeWhileWaiting = async (scenes: number, build: () => Promise<Poster[]>, failLog: string, failMessage: string) => {
     isGeneratingRef.current = true;
     setGenerating(true);
     setStatus("");
     setFailure(null);
     setSpinning(true);
     const stopElapsed = startElapsed();
-    const waited = new Promise((resolve) => setTimeout(resolve, (DESKTOP ? DESKTOP_WAIT_SCENES : SAMPLE_WAIT_SCENES) * SCENE_MS));
+    const waited = new Promise((resolve) => setTimeout(resolve, scenes * SCENE_MS));
     try {
+      const built = await build();
+      await waited;
+      await sceneEndRef.current?.();
+      applyPosters(built);
+      setCompletionId(value => value + 1);
+    } catch (e) {
+      console.error(failLog, e);
+      setStatus(failMessage);
+    } finally {
+      stopElapsed();
+      isGeneratingRef.current = false;
+      setGenerating(false);
+      setSpinning(false);
+    }
+  };
+
+  /* 샘플 모드: 촬영 대신 같은 원화 한 장으로 8개 틀을 만든다. 진짜 생성과 같은 로딩 화면을 장면 SAMPLE_WAIT_SCENES개 동안
+     보인 뒤 결과로 간다. 원화는 샘플 모드에서 이 단추를 누를 때만 받는다. */
+  const onSample = async () => {
+    if (!(sampleMode || sampleChoice) || isGeneratingRef.current) return;
+    stopCamera();
+    await composeWhileWaiting(DESKTOP ? DESKTOP_WAIT_SCENES : SAMPLE_WAIT_SCENES, async () => {
       // 설치판 샘플은 설치판이 실제로 만드는 모습이어야 한다(10/28 Bumm님) — 웹의 AI 원화 대신 화면의 «촬영 구도 예시» 사진(지금 고른 개인 · 단체)을
       // 로컬 합성 그대로 8종에 넣는다. 예시가 승인된 영상이면 «찰칵» 뒤 마지막 장면, 아니면 정지 그림이다(CameraExample.tsx와 같은 규칙).
       const { default: sampleArt } = DESKTOP
@@ -579,19 +599,8 @@ export default function PosterStudio() {
         : await import("./studio/design-sample.webp");
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
-      const built = await buildPosters([sampleArt], meta);
-      await waited;
-      await sceneEndRef.current?.();   // 진짜 생성과 같이 재생 중인 대기 영상은 끝까지(10/20)
-      applyPosters(built);
-      setCompletionId(value => value + 1);
-    } catch {
-      setStatus("샘플 포스터를 불러오지 못했어요. 다시 눌러주세요.");
-    } finally {
-      stopElapsed();
-      isGeneratingRef.current = false;
-      setGenerating(false);
-      setSpinning(false);
-    }
+      return buildPosters([sampleArt], meta);
+    }, "[샘플 포스터 실패]", "샘플 포스터를 불러오지 못했어요. 다시 눌러주세요.");
   };
 
   useEffect(() => {
@@ -654,28 +663,9 @@ export default function PosterStudio() {
     }
     // 로컬 합성은 1~2초면 끝나 예전에는 왼쪽 아래 «포스터를 만들고 있어요» 한 줄만 스쳤다(10/27 Bumm님 «성의 없다»). 웹과 같은 로딩 화면(승인된 대기 영상)을
     // 무작위 장면 둘(DESKTOP_WAIT_SCENES × 8초) 동안 보인 뒤 결과로 간다 — 장면 넘김이 이 화면의 애니메이션이라 «최소 두 바퀴»(COMMON_STANDARDS §27)다.
-    // 조판은 로딩 화면 뒤에서 같이 돌리고, 재생 중인 대기 영상은 끝까지 보여 준다(샘플 흐름과 같은 방식).
-    isGeneratingRef.current = true;
-    setGenerating(true);
-    setStatus("");
-    setSpinning(true);
-    const stopElapsed = startElapsed();
-    const waited = new Promise((resolve) => setTimeout(resolve, DESKTOP_WAIT_SCENES * SCENE_MS));
-    try {
-      const built = await buildPosters([photoURL], getMeta(mode));
-      await waited;
-      await sceneEndRef.current?.();   // 웹 · 샘플 흐름과 같이 재생 중인 대기 영상은 끝까지(10/20)
-      applyPosters(built);
-      setCompletionId(value => value + 1);
-    } catch (e) {
-      console.error("[포스터 만들기 실패] 로컬 합성", e);
-      setStatus("포스터를 만들지 못했어요. 다시 눌러 주세요.");
-    } finally {
-      stopElapsed();
-      isGeneratingRef.current = false;
-      setGenerating(false);
-      setSpinning(false);
-    }
+    // 조판은 로딩 화면 뒤에서 같이 돌리고, 재생 중인 대기 영상은 끝까지 보여 준다(샘플 흐름과 같은 composeWhileWaiting).
+    await composeWhileWaiting(DESKTOP_WAIT_SCENES, () => buildPosters([photoURL], getMeta(mode)),
+      "[포스터 만들기 실패] 로컬 합성", "포스터를 만들지 못했어요. 다시 눌러 주세요.");
   };
 
   const stopCamera = () => {
