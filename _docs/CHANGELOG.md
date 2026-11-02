@@ -1,5 +1,15 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-02(월) — `CLAUDE.md` 최신화(Bumm님 직접 지시) · 공개 설치 파일을 `2fabd75`로 교체(Bumm님 결정 «1번», 팀장 OK)
+
+- **`CLAUDE.md`**(`099b997`, 문서만 — CI test 성공 · 배포 둘 다 건너뜀): 시험 수 438 · Windows 설치판 · npx 배포 도구 · 폴더 구조 · `security-notes.md` 설명 ·
+  «`CLAUDE.md`만은 Bumm님 직접 지시로» · 100줄. `README.md` · app.md 시험 수도. 저장소 폴더 체크아웃을 10/17 `release-20261018`에서 master로 옮겼다(세션이 10/17 `CLAUDE.md`를 읽고 있었다).
+- **설치판 녹화 18차**(가지 `desktop-20261027` CHANGELOG 11/2): «끝났습니다»는 막대가 다 찬 뒤로 고쳐졌고, 화면 넘김의 덜 그려진 장 1~2장(0.03~0.07초)은 남았다.
+- **공개 설치 파일 09:37**: `e58b65c`(159,415,288바이트) → `2fabd75`(160,330,723바이트 · SHA-256 `b8fce857c1b5f05c070040c6200cec7bd2942cd62b24593c14a8b830752e7ac0`).
+  Hosting · 함수는 그대로. `download-live.mjs` 28건 통과. 되돌림 파일 `납품-이전판-e58b65c-1028`(SHA 확인). 전달 폴더(설치 파일 · 진행요원 매뉴얼 · README)도 이 판.
+- 🟠 교체 뒤 찾음: `2fabd75` 설치기 아래 «Poster Studio 1.0.0» 오른쪽 가로 구분선이 없다(`14d2583`에는 있음 — `d570c48` 칸 겹침 순서). 둘지 · 고칠지 팀장 판단 대기.
+- app.md: 공개 설치 파일 줄을 `2fabd75`로, «master에는 이 단추와 연결이 없다»(10/31부터 틀림)를 바로잡았다. 넘김 빈 장 0은 행사 뒤 과제(인계).
+
 ## 2026-11-01(일) 16:36~16:46 — Dependabot 알림 6건을 고친 판으로: 루트 · functions overrides · 배포 도구는 잠금 파일 밖 `npx firebase-tools@15.32.1` — CI 배포, 열린 알림 0 (대표님 지시 · 결정, 팀장 승인)
 
 - **배포**: PR #24(`cb271ba`)를 팀장 승인(«gh pr merge 해»)으로 세션이 `gh pr merge --merge` → master `174346e`. CI(headSha `174346e`, 실행 41285483144) test · changes · deploy-functions · deploy-hosting 전부 성공.
