@@ -15,7 +15,9 @@
         글자 없이 lucide download 아이콘 · 화면 읽기용 이름(aria-label) · 툴팁 없음 · PC에서 마우스를 올리면 커서만 손가락(색 · 밑줄 그대로)
      ④ 네트워크 기록(1920×1080에서): 접속 · 새로고침 · 2단계로 갔다 돌아오기까지 설치 파일 요청 0건,
         단추를 누르면 그때 첫 요청 · 내려받기 시작
-     ⑤ 첫 화면에만 있다(2단계에는 없다) */
+     ⑤ 첫 화면에만 있다(2단계에는 없다)
+   «0건» · «전부»는 본 것이 있을 때만 통과다(download-judge.mjs, 2026-11-02): ④는 그동안 이 페이지 요청을 하나 이상 봤어야 하고,
+   «바깥 주소는 /health뿐»은 가로챈 /health가 하나 이상 있어야 한다. */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -23,6 +25,7 @@ import http from 'node:http';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { spawn } from 'node:child_process';
 import { loadImage, createCanvas } from '@napi-rs/canvas';
+import { sawPage, onlyHealth } from './download-judge.mjs';
 
 const args = process.argv.slice(2);
 const [dist, out] = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--compare');
@@ -209,7 +212,10 @@ if (!before) {
   steps.push(['2단계로 감', count()]);
   await evaluate(`document.querySelectorAll('.stepper button')[0].click()`); await sleep(800); steps.push(['1단계로 돌아옴', count()]);
   const beforeClick = count();
-  check('누르기 전 설치 파일 요청 0건(접속 · 새로고침 · 화면 전환)', beforeClick.requests === 0 && beforeClick.downloads === 0 && beforeClick.server === 0 && beforeClick.outsideSetup === 0, steps);
+  // «0건»은 그동안 요청 기록이 이 페이지 요청을 봤을 때만 증거다(download-judge.mjs — 기록이 죽어 있어도 0건이 나온다)
+  const watched = sawPage(log.requests, base);
+  check('누르기 전 설치 파일 요청 0건(접속 · 새로고침 · 화면 전환)', watched && beforeClick.requests === 0 && beforeClick.downloads === 0 && beforeClick.server === 0 && beforeClick.outsideSetup === 0,
+    watched ? steps : { unwatched: '이 페이지 요청을 하나도 못 봤다 — 요청 기록이 돌지 않았다', steps });
   // 사람이 누르는 것처럼 실제 마우스로 누른다
   const press = async (sel) => {
     const r = await evaluate(RECT(sel));
@@ -222,7 +228,8 @@ if (!before) {
   check('단추를 누르면 그때 요청 · 내려받기가 시작된다(메뉴 없이 한 번에)', afterPs.server === 1 && afterPs.downloads >= 1, afterPs);
   check('누른 뒤에도 첫 화면 그대로(다른 페이지로 넘어가지 않음)', await evaluate(`document.body.dataset.step === '1' && location.pathname === '/'`));
   report.network = { steps, requests: log.requests.filter((u) => SETUP.test(u)), downloads: log.downloads, outside: log.outside };
-  check('바깥 주소 요청은 AI 서버 확인뿐(이 도구가 대신 답함 — 실제로 나간 것 0)', log.outside.every((u) => /\/health$/.test(u)), log.outside);
+  // 가로챈 것이 0건이면 실패 — 두 단추 판은 열 때마다 /health를 부르므로, 0건은 가로채기가 앱의 요청을 못 본 것이다(download-judge.mjs)
+  check('바깥 주소 요청은 AI 서버 확인뿐(이 도구가 대신 답함 — 실제로 나간 것 0)', onlyHealth(log.outside), log.outside);
 }
 
 ws.close(); chrome.kill(); server.close();

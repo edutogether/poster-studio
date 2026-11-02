@@ -19,7 +19,9 @@
         큰 장르 그림 한 장을 줄여 그리는 결과가 시각에 따라 갈릴 수 있다(2026-10-27 실측: 같은 836b1b9 판끼리 PC 2560에서 «애니메이션» 그림
         107,650화소 · 최대 61단계 — 같은 시각 되돌림 채널 대 새 라이브는 0).
           node scripts/verify/download-live.mjs <채널 결과> --before --site <되돌림 채널 주소>
-          node scripts/verify/download-live.mjs <결과> --sha256 <해시> --compare <채널 결과> */
+          node scripts/verify/download-live.mjs <결과> --sha256 <해시> --compare <채널 결과>
+   «0건» · «전부» · «같다»는 본 것이 있을 때만 통과다(download-judge.mjs, 2026-11-02): ③의 0건은 그동안 이 페이지 요청을 하나 이상 봤어야 하고,
+   «함수 주소는 /health뿐»은 가로챈 /health가 하나 이상, ②의 «번들이 같다»는 세 주소 모두 번들 이름을 읽었어야 한다. */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,6 +29,7 @@ import crypto from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { spawn } from 'node:child_process';
 import { loadImage, createCanvas } from '@napi-rs/canvas';
+import { sawPage, onlyHealth, sameBundle } from './download-judge.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
@@ -80,7 +83,8 @@ for (const host of HOSTS) {
   }
   report.http[host.name] = r;
 }
-if (!before) check('세 주소의 본 번들이 같다', new Set(HOSTS.map((h) => report.http[h.name].home.bundle)).size === 1, HOSTS.map((h) => report.http[h.name].home.bundle));
+// 셋 다 번들 이름을 읽었을 때만 «같다»(download-judge.mjs — 셋 다 못 읽으면 null 하나로 같아졌다)
+if (!before) check('세 주소의 본 번들이 같다', sameBundle(HOSTS.map((h) => report.http[h.name].home.bundle)), HOSTS.map((h) => report.http[h.name].home.bundle));
 
 // 헤드리스 크롬 — 빈 프로필(로그인 · 쿠키 없음)
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'dl-live-'));
@@ -194,7 +198,10 @@ for (const s of SIZES) {
   await evaluate(`document.querySelectorAll('.stepper button')[0].click()`); await sleep(1000); steps.push(['1단계로 돌아옴', count()]);
   const pre = count();
   check(`${main.name} ${s.name}: 2단계에는 단추가 없다`, onStep2.step === '2' && !onStep2.link, onStep2);
-  check(`${main.name} ${s.name}: 누르기 전 설치 파일 요청 0건(접속 · 새로고침 · 화면 전환)`, pre.requests === 0 && pre.begins === 0, steps);
+  // «0건»은 그동안 요청 기록이 이 페이지 요청을 봤을 때만 증거다(download-judge.mjs — 기록이 죽어 있어도 0건이 나온다)
+  const watched = sawPage(log.requests, main.url);
+  check(`${main.name} ${s.name}: 누르기 전 설치 파일 요청 0건(접속 · 새로고침 · 화면 전환)`, watched && pre.requests === 0 && pre.begins === 0,
+    watched ? steps : { unwatched: '이 페이지 요청을 하나도 못 봤다 — 요청 기록이 돌지 않았다', steps });
   const r = await linkRect();
   const x = r.x + r.w / 2, y = r.y + r.h / 2;
   if (s.mobile) {
@@ -228,7 +235,8 @@ if (!before) {
     report.browser[`${host.name}-${SIZES[0].name}`] = { state };
     check(`${host.name} ${SIZES[0].name}: 앱이 뜨고 단추가 하나`, state.ready && state.step === '1' && state.links === 1 && state.privacy, state);
   }
-  check('함수 주소로 나간 것은 AI 서버 확인뿐(이 도구가 대신 답함 — 실제로 나간 것 0)', log.fn.every((u) => /\/health$/.test(u)), [...new Set(log.fn)]);
+  // 가로챈 것이 0건이면 실패 — 함수 주소가 가로채기 무늬(cloudfunctions.net · run.app) 밖으로 바뀌면 0건인 채 실제로 나간다(download-judge.mjs)
+  check('함수 주소로 나간 것은 AI 서버 확인뿐(이 도구가 대신 답함 — 실제로 나간 것 0)', onlyHealth(log.fn), [...new Set(log.fn)]);
 }
 
 ws.close(); chrome.kill();

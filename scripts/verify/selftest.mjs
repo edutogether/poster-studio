@@ -21,6 +21,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { diffSnapshots, summarize } from './compare.mjs';
+import { SEL, REQUIRED, diffKeys, compareIssues } from './step2-geometry-judge.mjs';
+import { sawPage, onlyHealth, sameBundle } from './download-judge.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -231,6 +233,64 @@ check('high가 있으면 summarize가 high>0을 보고한다', () => {
   } finally {
     fs.rmSync(top, { recursive: true, force: true });
   }
+}
+
+// 9) step2-geometry.mjs(2026-11-02 종합감사): 두 빌드 모두 요소를 0개 재면 diffKeys가 []라 «같음»으로 통과했다 — 못 잰 측정은 걸림
+{
+  const names = ['전', '후'];
+  const filled = (dx = 0) => Object.fromEntries(Object.keys(SEL).map((k) => [k, [[10 + dx, 20, 300, 40]]]));
+  const empty = () => Object.fromEntries(Object.keys(SEL).map((k) => [k, []]));
+  check('step2-geometry: 필수 요소 목록이 비어 있지 않고 모두 재는 요소(SEL) 이름이다', () => {
+    assert.ok(REQUIRED.length > 0, '필수 요소 0개 — 못 잰 측정을 하나도 못 잡는다');
+    for (const k of REQUIRED) assert.ok(Object.hasOwn(SEL, k), `SEL에 없는 이름: ${k}`);
+  });
+  check('step2-geometry: 다 잰 같은 측정 → 걸림 0(오탐 없음)', () => assert.deepEqual(compareIssues(filled(), filled(), null, false, names).issues, []));
+  check('step2-geometry: 두 빌드 모두 요소 0개면 걸린다(비교만으로는 [] — 예전엔 통과)', () => {
+    assert.deepEqual(diffKeys(empty(), empty()), [], '비교 자체는 원래 []를 낸다');
+    const { issues } = compareIssues(empty(), empty(), null, false, names);
+    assert.equal(issues.length, 2, JSON.stringify(issues));
+    for (const n of names) assert.ok(issues.some((x) => x.startsWith(`${n} 빌드에서 못 잰 요소`)), `${n} 빌드가 안 잡혔다`);
+  });
+  check('step2-geometry: 필수 요소가 하나만 0개여도(이름 하나가 바뀐 경우) 그 이름으로 걸린다 — 필수 요소마다', () => {
+    assert.ok(REQUIRED.length > 0, '필수 요소 0개 — 돌 것이 없다');
+    for (const k of REQUIRED) {
+      const a = filled(), b = filled();
+      a[k] = []; b[k] = [];
+      const { issues } = compareIssues(a, b, null, false, names);
+      assert.ok(issues.length === 2 && issues.every((x) => x.endsWith(`: ${k}`)), `${k}: ${JSON.stringify(issues)}`);
+    }
+  });
+  check('step2-geometry: --same-as 빌드가 요소 0개면 걸린다', () => {
+    const { issues } = compareIssues(filled(), filled(), empty(), false, names);
+    assert.ok(issues.some((x) => x.startsWith('--same-as 빌드에서 못 잰 요소')), JSON.stringify(issues));
+  });
+  check('step2-geometry: 바뀌어야 하는 크기(--changed)가 요소 0개로 «같으면» 못 잰 것까지 걸린다', () => {
+    const { issues } = compareIssues(empty(), empty(), null, true, names);
+    assert.ok(issues.includes('«전»과 «후»가 같다(고친 것이 먹지 않음)') && issues.length === 3, JSON.stringify(issues));
+  });
+  check('step2-geometry: 자리가 1px 달라지면 «전»과 다름으로 잡는다', () => {
+    const { issues } = compareIssues(filled(), filled(1), null, false, names);
+    assert.ok(issues.length === 1 && issues[0].startsWith('«전»과 다름: '), JSON.stringify(issues));
+  });
+}
+
+// 10) download-button-probe.mjs · download-live.mjs(2026-11-02 종합감사): «0건» · «전부» · «같다»는 본 것이 있을 때만 통과
+{
+  const page = 'https://poster.edutogether.kr', fn = 'https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio';
+  check('download: 요청 기록이 0건이면 «누르기 전 0건»의 근거가 아니다', () => assert.equal(sawPage([], page), false));
+  check('download: 다른 주소 요청만 봤으면 이 페이지를 본 것이 아니다(앞부분만 같은 주소 포함)', () =>
+    assert.equal(sawPage([`${fn}/health`, `${page}.evil.example/`, 'http://127.0.0.1:5500/'], page), false));
+  check('download: 이 페이지 요청을 봤으면 기록이 살아 있다', () => assert.equal(sawPage([`${page}/`, `${page}/assets/main-x.js`], page), true));
+  check('download: 가로챈 요청이 0건이면 «/health뿐»이 아니다(빈 목록 every — 예전엔 통과)', () => assert.equal(onlyHealth([]), false));
+  check('download: /health만 가로챘으면 통과', () => assert.equal(onlyHealth([`${fn}/health`, `${fn}/health`]), true));
+  check('download: /health 밖의 요청이 하나라도 있으면 실패', () => assert.equal(onlyHealth([`${fn}/health`, `${fn}/generate`]), false));
+  check('download-live: 세 주소 번들을 하나도 못 읽으면 «같다»가 아니다(null 하나 — 예전엔 통과)', () => assert.equal(sameBundle([null, null, null]), false));
+  check('download-live: 번들을 못 읽은 주소가 하나라도 있으면 실패', () => assert.equal(sameBundle(['/assets/main-a.js', '/assets/main-a.js', null]), false));
+  check('download-live: 세 주소 번들이 같으면 통과 · 하나라도 다르면 실패', () => {
+    assert.equal(sameBundle(['/assets/main-a.js', '/assets/main-a.js', '/assets/main-a.js']), true);
+    assert.equal(sameBundle(['/assets/main-a.js', '/assets/main-b.js', '/assets/main-a.js']), false);
+  });
+  check('download-live: 주소 목록이 비면 «같다»가 아니다', () => assert.equal(sameBundle([]), false));
 }
 
 console.log(failures === 0
