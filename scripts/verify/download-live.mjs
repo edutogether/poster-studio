@@ -20,6 +20,8 @@
         107,650화소 · 최대 61단계 — 같은 시각 되돌림 채널 대 새 라이브는 0).
           node scripts/verify/download-live.mjs <채널 결과> --before --site <되돌림 채널 주소>
           node scripts/verify/download-live.mjs <결과> --sha256 <해시> --compare <채널 결과>
+        단추가 이미 있던 판끼리(설치 파일 교체 · 단추와 상관없는 배포)는 --button-same을 붙인다 — 단추 안도 차이 0이어야 통과다.
+        붙이지 않으면 단추를 넣거나 바꾼 배포로 보고 단추 안에 차이가 있어야 통과다(2026-10-27 단추 배포 — 11/2에 단추 그대로인 교체를 이 판정으로 재다 «걸림» 2건).
    «0건» · «전부» · «같다»는 본 것이 있을 때만 통과다(download-judge.mjs, 2026-11-02): ③의 0건은 그동안 이 페이지 요청을 하나 이상 봤어야 하고,
    «함수 주소는 /health뿐»은 가로챈 /health가 하나 이상, ②의 «번들이 같다»는 세 주소 모두 번들 이름을 읽었어야 한다. */
 import fs from 'node:fs';
@@ -39,8 +41,9 @@ const expectSha = opt('--sha256');
 const compareDir = opt('--compare');
 // --site <주소>: 첫 화면 캡처를 대표 주소 대신 이 주소에서 찍는다(파일 이름 site-<크기>.png) — 같은 시각에 되돌림 채널(배포 전 판)을 찍어 견줄 때
 const site = opt('--site');
+const buttonSame = args.includes('--button-same');
 if (!out || (!before && !/^[0-9a-f]{64}$/.test(expectSha ?? ''))) {
-  console.error('사용: download-live.mjs <결과 폴더> (--before | --sha256 <기대 해시> [--compare <전 결과 폴더>])');
+  console.error('사용: download-live.mjs <결과 폴더> (--before | --sha256 <기대 해시> [--compare <전 결과 폴더> [--button-same]])');
   process.exit(2);
 }
 fs.mkdirSync(out, { recursive: true });
@@ -184,7 +187,8 @@ for (const s of SIZES) {
       }
     }
     report.browser[`${main.name}-${s.name}`].pixels = best;
-    check(`${main.name} ${s.name}: 전/후 화소 — 단추 밖 차이 0`, pres.length > 0 && best && best.outside === 0 && best.inside > 0, best ?? pres);
+    check(`${main.name} ${s.name}: 전/후 화소 — ${buttonSame ? '단추 안 · 밖 차이 0' : '단추 밖 차이 0 · 단추 안은 바뀜'}`,
+      pres.length > 0 && best && best.outside === 0 && (buttonSame ? best.inside === 0 : best.inside > 0), best ?? pres);
   }
   // ③ 누르기 전 0건 → 눌러서 끝까지 받기
   log.requests.length = 0; log.begins.length = 0; log.progress.clear();
