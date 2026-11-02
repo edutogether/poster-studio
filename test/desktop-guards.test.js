@@ -1,6 +1,6 @@
 /* 설치판 방어층(desktop/guards.mjs, 2026-11-02 종합감사) — Electron 없이 판정을 그대로 시험한다.
    앱 주소 서빙(web 밖 경로 404 · 부분 요청 206 · 416), 바깥 요청 차단, 권한(카메라 영상만), 이동 · 새 창.
-   각 방어를 일부러 빼면 아래 시험이 빨간불이 되는 것을 확인했다(CHANGELOG 11/2). */
+   각 방어를 일부러 빼면 아래 시험이 빨간불이 되는 것을 확인했다(11/2 — 16가지, 커밋 메시지에 목록). */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

@@ -406,6 +406,12 @@
 ## Windows 설치판 · 첫 화면 다운로드 단추 (2026-10-27 Bumm님, 팀장 전달 — `_docs/intents/2026-10-27-desktop-installer`)
 - 🔴 **설치판에는 AI가 없다.** 찍은 사진을 그대로 8종 틀에 넣는다(로컬 합성 — `buildPosters` 그대로).
   - 부스 토큰 0 · 서버 요청 0이다. 화면 정책은 `connect-src 'self'`이고, `desktop/main.mjs`가 http · https · ws를 전부 끊는다.
+  - 🟠 **방어 판정은 `desktop/guards.mjs`에 있다**(11/2 종합감사 — 앱 주소 서빙의 web 밖 경로 404 · Range 206/416, 바깥 요청 차단, 권한 = 앱 화면의 카메라 영상만, 이동 · 새 창).
+    Electron 없이 `test/desktop-guards.test.js`가 시험하고 `main.mjs`는 걸기만 한다. `main.mjs`가 불러오는 같은 폴더 파일은 `desktop/package.json`의 `build.files`에 있어야 한다
+    (빠지면 설치판이 켜지지 않는다 — 같은 시험이 본다).
+  - 🟠 **화면이 죽거나 · 멈추거나 · 첫 화면을 못 읽으면 다시 읽는다**(`desktop/recovery.mjs`, 11/2): 1초 뒤 첫 화면, «응답 없음»은 10초 더 기다린 뒤 끊고 다시(인쇄 창이 열려 있으면 계속 기다림).
+    60초 안에 3번 다시 읽고도 또 실패하면 «화면을 열지 못했어요.» 창(«다시 시작» · «끝내기»). 원인은 `%APPDATA%\Poster Studio\logs\desktop.log`(제거할 때 함께 지워진다 · 사진 · 이름 없음).
+  - 저장 · 인쇄가 실패하면 화면 알림(`.studio-status`)을 띄운다 — 사람이 저장 · 인쇄 창을 닫은 것은 알리지 않는다(11/2, `src/desktop.ts` `printFailed` · preload `onSaveDone`).
   - 머리글에 «설치판 · AI 없이 사진 그대로»를 늘 띄운다.
   - 2단계 빨간 단추는 카메라를 켜기 전 «샘플 포스터 보기», 켜면 «3초 뒤 사진 찍기»다(10/28 Bumm님, `studioMode.ts` 설치판 = «both»).
     샘플은 웹의 AI 원화가 아니라 화면의 «촬영 구도 예시» 사진(지금 고른 개인 · 단체, 승인된 예시 영상이면 «찰칵» 뒤 마지막 장면)을 같은 로컬 합성으로 8종에 넣는다 —
@@ -591,7 +597,7 @@
   - 올릴 자리(제안 · 별도 승인)는 intent «올릴 자리»에 있다. 주소는 `src/downloads.ts` 한 줄이다.
 
 ## 명령
-- 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(437개) — 둘 다 vitest(2026-10-27)
+- 테스트: `cd functions && npm test`(118개) / 저장소 루트에서 `npm test`(533개) — 둘 다 vitest(2026-11-02)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
 - 빌드: 루트에서 `npm run build` → `dist/`
