@@ -95,10 +95,13 @@ const MEASURE = `(() => {
   const overlaps = [];
   for (let a = 0; a < ctrls.length; a++) for (let b = a + 1; b < ctrls.length; b++) {
     const A = ctrls[a], B = ctrls[b]; if (A.contains(B) || B.contains(A)) continue;
+    // 3단계 넘김 화살표는 포스터 줄 가장자리에 일부러 얹었다(10/19 — mobile-layout-probe · desktop-window-sweep과 같은 예외)
+    if ((A.classList.contains('carousel-arrow') && B.classList.contains('poster-slide')) || (B.classList.contains('carousel-arrow') && A.classList.contains('poster-slide'))) continue;
     const p = rect(A), q = rect(B);
     if (Math.min(p.right, q.right) - Math.max(p.left, q.left) > 1 && Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 1) overlaps.push(name(A) + ' × ' + name(B));
   }
-  const offside = ctrls.filter((e) => { const b = rect(e); return b.left < -0.5 || b.right > innerWidth + 0.5; }).map(name);
+  // 휴대폰 배치(760 이하)의 포스터 넘기기(.poster-slide)는 가로로 넘겨 보는 줄이라 화면 옆 밖으로 세지 않는다(11/2 최소 창을 낮추며 끌기가 그 폭에 닿음)
+  const offside = ctrls.filter((e) => { const b = rect(e); return (b.left < -0.5 || b.right > innerWidth + 0.5) && !e.classList.contains('poster-slide'); }).map(name);
   const d = document.documentElement;
   const res = { iw: innerWidth, ih: innerHeight, dpr: devicePixelRatio, over: d.scrollWidth > d.clientWidth + 0.5, overlaps, offside };
   if (FULL) res.clipped = [...document.querySelectorAll('body *')].filter((e) => {

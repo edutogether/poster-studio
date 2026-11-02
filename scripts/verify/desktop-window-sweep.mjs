@@ -231,7 +231,8 @@ for (const [w, h] of FORCE ? [] : DPI_SIZES) {   // 배율을 강제했으면 12
   await resize(D, hD, w, h, 1); const a = await D.ev(MEASURE);
   await resize(D, hD, w, h, 1.25); const b = await D.ev(MEASURE);
   await resize(D, hD, w, h, 1); const c = await D.ev(MEASURE);
-  const diff = (x, y) => Object.keys(x.rects).filter((k) => !y.rects[k] || x.rects[k].some((v, i) => Math.abs(v - y.rects[k][i]) > 1.6));
+  // 예시 칸 영상 · 정지 그림은 재생 시점에 따라 서로 바뀐다 — 배율 비교에서도 뺀다(웹 비교의 EXCLUDE_ALWAYS와 같은 까닭, 11/2 한 번 걸림)
+  const diff = (x, y) => Object.keys(x.rects).filter((k) => !/camera-example-(video|still)/.test(k) && (!y.rects[k] || x.rects[k].some((v, i) => Math.abs(v - y.rects[k][i]) > 1.6)));
   const d125 = diff(a, b), back = diff(a, c);
   const bad = [...(b.dpr !== 1.25 ? [`125% 자리에서 배율 ${b.dpr}`] : []), ...(d125.length ? [`125%에서 자리 다름 ${d125.length}곳: ${d125.slice(0, 3).join(' | ')}`] : []),
     ...(back.length ? [`돌아온 뒤 자리 다름 ${back.length}곳`] : []), ...(b.overlaps.length || b.clipped.length || b.sw > b.cw + 0.5 ? ['125%에서 겹침 · 잘림 · 넘침'] : [])];
