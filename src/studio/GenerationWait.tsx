@@ -22,7 +22,6 @@ function shuffled(length: number) {
 // 설치판(AI 없이 사진 그대로)은 «AI가 …» 제목 장면만 뺀다 — AI가 없는데 그렇게 쓰면 거짓 표시다. 나머지 장면 · 승인된 대기 영상 · 디자인은 웹 그대로다
 // (10/27 Bumm님 «승인된 영상과 디자인을 그대로 · 로딩 품질을 떨어뜨리지 않는다»).
 const setsForBuild = () => (DESKTOP ? waitingSets.filter((set) => !set.title.includes("AI")) : waitingSets);
-const videoFor = approvedWaitingVideo;
 // 그림·제목·상식을 한 세트로 섞는다. 포스터 조판의 Math.random과 독립적이다.
 export function createWaitSequence() {
   let previous = lastOpeningId;
@@ -104,7 +103,7 @@ export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextR
   useEffect(() => { current.current = sceneIndex; }, [sceneIndex]);
   const onSceneLoaded = () => {
     const at = sceneIndex;
-    const video = reduced ? undefined : videoFor(scenes[(at + 1) % scenes.length].id);
+    const video = reduced ? undefined : approvedWaitingVideo(scenes[(at + 1) % scenes.length].id);
     if (at > 0 || !video) waitingVideosReady();
     void backgroundIdle().then(() => (video && alive.current && current.current === at ? prefetchWaitingVideo(video) : undefined));
   };
@@ -113,7 +112,7 @@ export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextR
     <dialog ref={dialog} id="spinner" className="generation-wait spinner" data-paused={still} data-scene={sceneIndex} data-set-id={scene.id} aria-labelledby="generationTitle" onCancel={event => event.preventDefault()}>
       <div className="generation-content">
         <div className="generation-film waiting-art-frame" data-art={scene.id}>
-          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={videoFor(scene.id)} paused={still} reduced={reduced} onLoaded={onSceneLoaded} />
+          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} paused={still} reduced={reduced} onLoaded={onSceneLoaded} />
         </div>
         <h1 ref={heading} tabIndex={-1} id="generationTitle" className="generation-copy-stack">
           {scenes.map(({ id, title }, index) => <span key={id} className="generation-copy" data-active={index === sceneIndex} aria-hidden={index !== sceneIndex}>{title}</span>)}
