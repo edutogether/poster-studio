@@ -2,13 +2,13 @@
   {
     "mode": "solo",
     "status": "approved",
-    "src": "/studio/camera-v1/solo-26d7a4d22e9a.mp4",
-    "sha256": "26d7a4d22e9a02e87b02e431541a2e535dc1853f3e3ace0ef3be5c31cc7902ad",
-    "bytes": 3934676,
+    "src": "/studio/camera-v1/solo-2cc55628af2d.mp4",
+    "sha256": "2cc55628af2dc9edfe13b91b5ef59c979bffe989ba3a842160ef9331e50c9b4b",
+    "bytes": 2909911,
     "still": "/studio/camera-v1/solo.webp",
-    "stillSha256": "a89d6a9ef1939ab8a5413124059a4ee6a221113bad821d7a5a6391f1be161e48",
+    "stillSha256": "1b43019bce6bae82d86b7031cc5e5846ed5f425bb4ff9bde3f0149596d50ba34",
     "endStill": "/studio/camera-v1/solo-end.webp",
-    "endStillSha256": "f227fd201a0ee04c188b0de731a228597370cc3301d0b723dad6979994fab16e",
+    "endStillSha256": "f9a1b42f199b3f09913c19e666c16bf266581bbeec9a79c2e38cf56eb2f6750e",
     "duration": 8.05,
     "cues": [
       {
@@ -34,13 +34,13 @@
   {
     "mode": "group",
     "status": "approved",
-    "src": "/studio/camera-v1/group-45c9b0b5dac6.mp4",
-    "sha256": "45c9b0b5dac651e7c231bac4f36ce10c07c953761806546567604ed86404d01e",
-    "bytes": 4854179,
+    "src": "/studio/camera-v1/group-23040397b1a0.mp4",
+    "sha256": "23040397b1a09239455941d2e730d893e0608b8a3d8d327365f39825b4f29215",
+    "bytes": 4120285,
     "still": "/studio/camera-v1/group.webp",
-    "stillSha256": "0b63e38430c8297c992051d4faa59db496d9dd529b8c5810bc9c42cc88f60102",
+    "stillSha256": "f9f64ddaddc4172a79b159dcb3021d1e2e27618aa265592bbefe8d77d4e23857",
     "endStill": "/studio/camera-v1/group-end.webp",
-    "endStillSha256": "3155ad5bbe20f87c35e038323224eaafb56d3ad7d136a55c60a1ea0d77c379e9",
+    "endStillSha256": "6e0e94419debf88adc2abd4241da17369aee44696467651a430b45ff50e7e5c2",
     "duration": 8.05,
     "cues": [
       {

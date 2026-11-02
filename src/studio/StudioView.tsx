@@ -14,6 +14,7 @@ import { savePlatform, savePoster } from "../savePoster.js";
 import { designName } from "../designNames.js";
 import { deviceKind, pcCanvas } from "../deviceCanvas.js";
 import DownloadLink from "./DownloadLink.js";
+import StatusToast from "./StatusToast.js";
 // 장르 그림은 빌드가 이름에 해시를 붙여 내는 자산이다(1년 캐시). 원래 PNG 두 장(판타지 · 뮤지컬)은 무손실 WebP로 바꿨다 — 화소 그대로(10/24 와이파이 최적화).
 // public/studio의 옛 파일 8장(reference-*.* · parasite-en · director · rocky-title-edited)은 지우지 않는다 — 이미 나간 옛 주소가 200으로 남게(2026-10-26 Bumm님).
 import sfArt from "./genre/sf.jpg";
@@ -62,6 +63,8 @@ export interface StudioViewProps {
   onBoothCodeClose: Action;
   verifyBooth: (code: string) => Promise<BoothCodeCheck>;
   status: string;
+  /** 같은 글을 다시 내도 알림이 다시 뜨게 하는 번호(PosterStudio의 setStatus가 글마다 올린다) */
+  statusId: number;
   completionId: number;
   posters: Poster[];
   selected: number;
@@ -72,6 +75,8 @@ export interface StudioViewProps {
   videoRef: RefObject<HTMLVideoElement | null>;
   spinTextRef: RefObject<HTMLParagraphElement | null>;
   sceneEndRef?: { current: SceneEnd | null };
+  /** 로딩 화면이 넘길 장면 수(샘플 포스터 보기는 2 — GenerationWait sceneLimit). 없으면 끝없이 돈다 */
+  waitSceneLimit?: number;
   onStart: Action;
   onStop: Action;
   cameraReadyId: number;
@@ -188,7 +193,6 @@ export default function StudioView(p: StudioViewProps) {
   const swipeTimer = useRef(0);
   const hinted = useRef(false);
   const [hint, setHint] = useState(false);
-  const posterURLs = useMemo(() => p.posters.map(poster => poster.canvas.toDataURL("image/png")), [p.posters]);
   const shownPosters = useRef<Poster[]>([]);
   const prevReset = useRef(p.resetKey);
   const previousStep = useRef(step);
@@ -802,7 +806,7 @@ export default function StudioView(p: StudioViewProps) {
                 <button type="button" key={poster.label + i} className="poster-slide" aria-current={i === p.selected || undefined}
                   aria-label={i === p.selected ? `${designName(poster.label)} 크게 보기` : `${designName(poster.label)} 보기`}
                   onClick={() => (i === p.selected ? openDialog() : p.select(i))}>
-                  <img src={posterURLs[i]} alt="" />
+                  <img src={p.posters[i].url} alt="" />
                 </button>
               ))}
             </div>
@@ -849,7 +853,7 @@ export default function StudioView(p: StudioViewProps) {
                   onClick={() => p.select(i)}
                 >
                   <span className="style-image">
-                    <img src={posterURLs[i]} alt="" />
+                    <img src={p.posters[i].url} alt="" />
                     <span className="style-check" aria-hidden="true">
                       ✓
                     </span>
@@ -869,7 +873,7 @@ export default function StudioView(p: StudioViewProps) {
           </div>
         </div>
       </section>
-      {p.spinning && <GenerationWait spinTextRef={p.spinTextRef} sceneEndRef={p.sceneEndRef}/>}
+      {p.spinning && <GenerationWait spinTextRef={p.spinTextRef} sceneEndRef={p.sceneEndRef} sceneLimit={p.waitSceneLimit}/>}
       {saveHint && step === 3 && <p className="save-hint" role="status">공유 창에서 ‘이미지 저장’을 누르세요</p>}
       {completionVisible && step === 3 && !p.generating && <div className="completion-notice" role="status">
         <span className="completion-notice-mark" aria-hidden="true">✓</span>
@@ -882,11 +886,7 @@ export default function StudioView(p: StudioViewProps) {
         <p className="rotate-notice-title">휴대폰을 세로로 돌려 주세요</p>
         <p className="rotate-notice-text">세로로 들면 지금 화면에서 이어서 할 수 있어요</p>
       </div>
-      <div className="studio-status" hidden={p.spinning || !p.status}>
-        <p id="status" role="status">
-          {p.status}
-        </p>
-      </div>
+      <StatusToast text={p.status} id={p.statusId} step={step} suppressed={p.spinning}/>
       {!p.spinning && <GenerateFailureDialog failure={p.failure} online={p.online}
         onRetry={p.onRetryFailure} onRetake={p.onRetakeFailure} onEditInputs={() => { void p.onDismissFailure(); go(1); }} onHome={() => void p.onHome()} />}
       <BoothCodeDialog open={p.boothOpen && !p.spinning} verify={p.verifyBooth} onSaved={p.onBoothCodeSaved} onClose={() => void p.onBoothCodeClose()} />
@@ -905,13 +905,13 @@ export default function StudioView(p: StudioViewProps) {
         </button>
         {p.posters[p.selected] && (
           <img
-            src={posterURLs[p.selected]}
+            src={p.posters[p.selected].url}
             alt="선택한 완성 포스터"
           />
         )}
         {/* ⑩ 휴대폰: 크게 보기 창 안에서도 좌우로 넘긴다(PC에서는 숨김 — 위 한 장이 그대로 보인다) */}
         <div className="dialog-carousel" ref={dialogCarouselRef} onScroll={(event) => onSwipe(event.currentTarget)}>
-          {p.posters.map((poster, i) => <img key={poster.label + i} src={posterURLs[i]} alt={`${designName(poster.label)} 포스터`} />)}
+          {p.posters.map((poster, i) => <img key={poster.label + i} src={poster.url} alt={`${designName(poster.label)} 포스터`} />)}
         </div>
       </dialog>
     </>

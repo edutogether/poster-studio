@@ -4,8 +4,9 @@
 
    https 요청을 막아 /health 확인을 실패시키면 앱이 실제로 알림을 띄운다(행사장 와이파이가 흔들릴 때와 같은 화면).
    1단계·2단계(카메라 차단)·3단계(개발 서버 ?preview=posters — 서버 확인을 안 해 같은 문구를 알림 칸에 넣어 잼)에서 화면에 보이는 단추·입력칸마다 알림과 겹치는 넓이를 재고, 하나라도 겹치면 종료코드 1.
-   알림이 화면 안에 다 보이지 않아도 실패다. 휴대폰(폭 768 미만, 화면이 스크롤된다)만은 단추 없는 빈자리가 없어, 알림이 손가락 입력을
-   흘려보낼 때(pointer-events: none) 겹침을 허용하고 목록으로만 적는다.
+   알림이 화면 안에 다 보이지 않아도 실패다. 2026-11-03부터 알림은 화면 · 사진 칸 가운데에 잠깐 떴다가 사라진다(Bumm님 실기기 확인 — StatusToast.tsx).
+   그래서 알림이 입력을 흘려보낼 때(pointer-events: none)는 크기와 상관없이 겹침을 허용하고 목록으로만 적는다. 대신 실제로 사라지는지 본다 —
+   2단계에서 잰 뒤 8초 안에 알림이 숨지 않으면 실패다(예전 «PC는 겹침 0 · 휴대폰만 허용»은 알림이 늘 떠 있던 때의 규칙).
    알림이 뜨지 않거나 잴 단추가 0개면 그것도 실패다(빈 검사가 되지 않게). 캡처는 원본 해상도 PNG(<크기>-<단계>.png). */
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -70,7 +71,7 @@ try {
         await delay(800);
         // 미리보기 주소는 서버 확인을 하지 않아 알림이 뜨지 않는다 — 같은 알림 칸에 같은 문구를 넣어 자리만 잰다(규칙은 그대로 CSS가 정한다).
         await evaluate(`(() => { const t = document.querySelector('.studio-status'); t.hidden = false;
-          document.getElementById('status').textContent = '⚠ AI 서버 연결을 확인할 수 없습니다. 와이파이를 확인해 주세요. (촬영은 가능하지만 포스터 생성이 실패할 수 있어요)'; return true; })()`);
+          document.getElementById('status').innerHTML = '<span class="status-line">⚠ AI 서버 연결을 확인할 수 없습니다.</span><span class="status-line"> 와이파이를 확인해 주세요.</span>'; return true; })()`);
       }
       let m = null;
       for (let i = 0; i < 100 && !m; i++) { m = await measure(); if (!m) await delay(100); }
@@ -78,11 +79,17 @@ try {
       if (!m) { fails.push(`${tag} ${step}: 알림이 뜨지 않았다(https 차단이 안 먹었거나 알림 자리가 바뀜)`); continue; }
       if (!m.count) fails.push(`${tag} ${step}: 잴 단추가 0개`);
       if (!m.onScreen) fails.push(`${tag} ${step}: 알림이 화면 안에 다 보이지 않는다(${m.toast.join(',')})`);
-      const phone = w < 768;
-      if (m.hits.length && !(phone && m.passThrough)) fails.push(`${tag} ${step}: 알림이 덮는 것 — ${m.hits.join(', ')}`);
-      console.log(`${tag} ${step}: 알림 ${m.toast.join(',')} · 단추·입력칸 ${m.count}개 · 겹침 ${m.hits.length}${m.hits.length && m.passThrough ? ' (입력은 아래로 통과: ' + m.hits.join(', ') + ')' : ''}`);
+      if (m.hits.length && !m.passThrough) fails.push(`${tag} ${step}: 알림이 덮는 것 — ${m.hits.join(', ')}`);
+      let gone = '';
+      if (step === 'step2') {
+        let hidden = false;
+        for (let i = 0; i < 80 && !hidden; i++) { hidden = await evaluate("document.querySelector('.studio-status').hidden"); if (!hidden) await delay(100); }
+        if (!hidden) fails.push(`${tag} ${step}: 알림이 8초 안에 사라지지 않았다`);
+        gone = hidden ? ' · 8초 안에 사라짐' : ' · 사라지지 않음';
+      }
+      console.log(`${tag} ${step}: 알림 ${m.toast.join(',')} · 단추·입력칸 ${m.count}개 · 겹침 ${m.hits.length}${m.hits.length && m.passThrough ? ' (입력은 아래로 통과: ' + m.hits.join(', ') + ')' : ''}${gone}`);
     }
   }
 } finally { try { socket?.close(); } catch {} chrome.kill(); await delay(500); await fs.rm(profile, { recursive: true, force: true }).catch(() => {}); }
 if (fails.length) { console.error('실패:\n- ' + fails.join('\n- ')); process.exit(1); }
-console.log('통과 — 알림이 화면 안에 보이고, PC에서는 어떤 단추·입력칸과도 겹치지 않는다(휴대폰 겹침은 입력이 아래로 통과하는 것만)');
+console.log('통과 — 알림이 화면 안에 보이고, 겹치는 단추 · 입력칸은 입력이 아래로 통과하며, 몇 초 뒤 사라진다');

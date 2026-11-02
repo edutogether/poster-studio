@@ -291,6 +291,10 @@ function drawBlurred(c: Ctx, px: number, saturate: number, paint: (t: Ctx) => vo
     blurPixels(id, px / k, saturate);
     sc.putImageData(id, 0, 0);
     c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingQuality = 'high'; c.drawImage(small, 0, 0, cw, ch); c.restore();
+    // 다 쓴 화면 밖 캔버스의 메모리를 바로 놓는다(2026-11-03) — 아이폰 사파리는 캔버스 메모리를 늦게 돌려줘, 포스터 8장 × 흐림 여러 번이면
+    // 1200×1800 캔버스가 수십 장 쌓여 한도(캔버스 메모리)에 닿을 수 있다. 그리는 결과는 같다.
+    big.width = big.height = 0;
+    small.width = small.height = 0;
   } catch {
     paint(c);
   }

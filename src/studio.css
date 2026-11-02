@@ -153,30 +153,33 @@ main.app {
 .result-secondary .quiet-button {
   font-size: 14px;
 }
-/* 알림은 단추 없는 그림 칸 위에 띄운다(2026-10-17). 가운데 아래였을 때 «AI 서버 연결» 알림이 1366×768 2단계 «이전»을 통째로,
-   1단계 주 단추 일부를 덮었다(scripts/verify/status-toast-probe.mjs). PC는 왼쪽 40%가 단추 없는 그림 칸(1단계 극장 그림 · 2단계 촬영 칸
-   왼쪽 · 3단계 고른 포스터)이라 왼쪽 아래에 그 폭 안으로 묶는다. */
+/* 알림(StatusToast.tsx, 2026-11-03 Bumm님 실기기 확인): 2단계는 사진 칸 가운데 · 목과 어깨 높이, 그 밖은 화면 가운데에 잠깐 띄운다.
+   자리(left · top)는 StatusToast가 재서 넣고, 상자의 가운데를 그 점에 맞춘다. 예전 «왼쪽 아래 구석»(10/17 — 단추를 덮지 않으려고)은
+   «구석은 보이지 않는다»로 걷었다. 누르는 것이 없는 알림이라 입력은 아래로 흘려보낸다 — 가운데에 떠도 덮인 단추가 그대로 눌린다. */
 .studio-status {
   position: fixed;
-  left: 16px;
-  bottom: 18px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   width: max-content;
-  max-width: calc(40vw - 32px);
+  max-width: calc(100vw - 48px);
   z-index: 30;
   background: #222;
   color: #fff;
-  padding: 14px 20px;
+  padding: 14px 22px;
   border-radius: 12px;
   box-shadow: 0 6px 28px #0003;
   font-size: 15px;
   line-height: 1.5;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.studio-status[data-leaving] {
+  opacity: 0;
 }
 .studio-status p {
   margin: 0;
-  max-width: 640px;
-}
-.studio-status button {
-  margin-top: 10px;
 }
 .completion-notice {
   position: fixed;
@@ -285,11 +288,14 @@ main.app {
   }
   /* 휴대폰은 한 줄로 쌓여 스크롤되므로 단추 없는 빈자리가 따로 없다 — 늘 보이게 화면 아래에 고정하고, 알림은 누르는 것이 없으니
      손가락 입력을 아래로 흘려보내 덮인 입력칸·단추도 그대로 눌리게 한다(문서 위에 붙이면 3단계처럼 스크롤된 화면에서 안 보였다). */
+  /* 휴대폰은 문장마다 줄을 바꾼다 — 이어 쓰면 폭에 따라 어색한 곳에서 잘렸다(11/3 Bumm님 «잇다가 잘리지 말고 줄바꿈»). */
   .studio-status {
-    bottom: 8px;
-    max-width: calc(100vw - 32px);
-    pointer-events: none;
+    max-width: calc(100vw - 24px);
+    padding: 14px 18px;
     font-size: 14px;
+  }
+  .studio-status .status-line {
+    display: block;
   }
   .result-actions {
     padding-bottom: 22px;
@@ -323,13 +329,17 @@ main.app {
   .generate-failure-dialog { padding: 24px 20px; }
   .generate-failure-dialog h2 { font-size: 21px; }
   .generate-failure-dialog > p { font-size: 16px; }
-  .generate-failure-actions { grid-template-columns: 1fr; }
+  /* 휴대폰도 단추 둘을 한 줄에 좌우로(11/3 Bumm님 «한 줄을 줄여») — 왼쪽 회색 · 오른쪽 빨강. 반쪽 폭에 가장 긴 «제목 · 문구 고치기»까지 들어가게 글자 · 여백을 줄인다. */
+  .generate-failure-actions { gap: 8px; }
+  .generate-failure-actions button { gap: 6px; padding: 0 8px; font-size: 15px; }
+  .generate-failure-actions .studio-icon { width: 18px; height: 18px; }
 }
 /* 부스 코드 입력 창(2026-10-16, src/studio/BoothCodeDialog.tsx) — 생성 요청이 «부스 코드» 거절을 받았을 때만 뜬다. */
 .booth-code-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: #111a; }
 .booth-code-dialog { width: min(480px, 100%); padding: 28px; border-radius: 14px; background: #fff; color: #1c1c1c; box-shadow: 0 18px 48px #0004; }
 .booth-code-dialog h2 { margin: 0 0 10px; font-size: 22px; font-weight: 800; }
 .booth-code-dialog > p { margin: 0 0 18px; font-size: 15px; line-height: 1.6; color: #555; }
+.booth-code-lead span { display: block; }
 .booth-code-dialog label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 700; }
 .booth-code-dialog input { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #c9c9c9; border-radius: 8px; font-size: 18px; letter-spacing: .04em; }
 .booth-code-dialog input[aria-invalid="true"] { border-color: #ed3124; }
@@ -530,6 +540,15 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
     margin: 0;
   }
 }
+/* 인쇄용 그림(#printArea — PosterStudio.tsx onPrint가 body 끝에 붙이는 1200×1800 포스터)은 화면에는 그리지 않는다.
+   화면 규칙이 없어 문서 끝에 그대로 그려져 문서가 1440 → 3247px로 길어지고 세로 스크롤바가 생겼다 — 그만큼 화면 폭이 줄어
+   «이 포스터로 출력하기»를 누르면 화면 전체가 15px 밀렸다(11/2 결정 카드 F-4: 2560 창에서 누른 뒤 147만 화소가 달라짐, 11/3 Bumm님 «그대로 하자 — 오케이»).
+   설치판(desktop.css)과 같은 규칙이다. 인쇄 때는 위 @media print가 이 그림만 보이게 하므로 화면(@media screen)에서만 숨긴다. */
+@media screen {
+  #printArea {
+    display: none;
+  }
+}
 
 /* ───── 휴대폰 배열(2026-10-17 Bumm님: «요즘 애들은 다 핸드폰으로 본다. 모바일판 배열이 엉망인 것 손봐야 한다») ─────
    760px 이하에서만 — PC 화면은 바꾸지 않는다. 앞의 여러 겹(style·atelier·cinema·compact) 뒤에 두어 여기서 정리한다.
@@ -675,7 +694,10 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   #cameraView:has(.camera-instructions[data-review="true"]) { display: flex; flex-direction: column; min-height: calc(100svh - var(--phone-header-h)); }
   #cameraView:has(#video:not(.hidden)) .camera-large,
   #cameraView:has(.camera-instructions[data-review="true"]) .camera-large { flex: none; width: auto; max-width: 100%; aspect-ratio: 3 / 4; }
-  #cameraView:has(#video:not(.hidden)) .camera-large { height: min(calc((100vw - 44px) * 4 / 3), calc(100svh - var(--phone-header-h) - 114px)); margin-top: auto; }
+  /* 켠 화면 · 숫자 3 · 2 · 1의 칸은 찍은 뒤와 같은 크기 · 자리다(11/3 Bumm님 «처음 사진 찍을 때 너무 내려와 있어 — 어차피 그 뒤에 밑이 올라와서
+     다시 찍기가 생길 거면 처음부터 그 공간을 만들어»). 예전에는 켠 화면 칸이 더 커서(− 114px) 남는 높이만큼 아래로 내려가 있다가, 찍는 순간 작아지며 위로 올라갔다
+     (390×664: 320×427 → 245×326). 이제 켠 화면도 − 215px이고, 찍은 뒤 회색 띠가 들어설 높이(215 − 114 = 101px)를 칸 아래에 비워 둔다. */
+  #cameraView:has(#video:not(.hidden)) .camera-large { height: min(calc((100vw - 44px) * 4 / 3), calc(100svh - var(--phone-header-h) - 215px)); margin-top: auto; margin-bottom: 101px; }
   #cameraView:has(.camera-instructions[data-review="true"]) .camera-large { height: min(calc((100vw - 44px) * 4 / 3), calc(100svh - var(--phone-header-h) - 215px)); margin-top: auto; }
   #cameraView:has(#video:not(.hidden)) .camera-guides,
   #cameraView:has(.camera-instructions[data-review="true"]) .camera-guides { inset: 18% 14% 8%; }

@@ -10,6 +10,8 @@
 export interface Poster {
   label: string;
   canvas: HTMLCanvasElement;
+  /** 화면에 보이는 그림(PNG 개체 주소, poster.ts buildPosters) — 인쇄 · 저장은 canvas에서 만든다 */
+  url: string;
 }
 export interface Meta {
   mode: string;

@@ -3,12 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- 휴대폰은 앱과 같은 기준 화면(폭 390)으로 그린다(2026-11-03) — 양쪽 맞춤 줄바꿈을 390에서 맞춘 문구가 어느 휴대폰에서나 그대로 나뉜다. 인라인 금지(CSP) -->
+  <script src="/device-canvas.js"></script>
   <title>개인정보처리방침 — Poster Studio</title>
   <link rel="icon" type="image/png" sizes="64x64" href="/favicon-inky.png?v=20261008">
   <style>
-    @font-face{font-family:Privacy;src:url('/fonts/subset/Pretendard-Regular.woff2?v=850f62bfe1') format('woff2');font-weight:400;font-display:optional}
-    @font-face{font-family:Privacy;src:url('/fonts/subset/Pretendard-SemiBold.woff2?v=850f62bfe1') format('woff2');font-weight:600;font-display:optional}
-    @font-face{font-family:Privacy;src:url('/fonts/subset/Pretendard-Bold.woff2?v=850f62bfe1') format('woff2');font-weight:700;font-display:optional}
+    @font-face{font-family:Privacy;src:url('/fonts/subset/Pretendard-Regular.woff2?v=850f62bfe1') format('woff2');font-weight:400;font-display:block}
+    @font-face{font-family:Privacy;src:url('/fonts/subset/Pretendard-SemiBold.woff2?v=850f62bfe1') format('woff2');font-weight:600;font-display:block}
+    @font-face{font-family:Privacy;src:url('/fonts/subset/Pretendard-Bold.woff2?v=850f62bfe1') format('woff2');font-weight:700;font-display:block}
     *{box-sizing:border-box}
     html{color-scheme:light}
     body{margin:0;padding:40px 24px 56px;background:#f5f6f8;color:#25282d;font-family:Privacy,"Malgun Gothic",sans-serif;font-size:16px;line-height:1.6;word-break:keep-all;overflow-wrap:break-word}
@@ -27,6 +29,7 @@
     .section-number{flex:0 0 22px;font-variant-numeric:tabular-nums}
     .section-body{margin-left:32px}
     p{margin:0}
+    .nobr{white-space:nowrap}
     .intro,.section-body p{text-align:justify;text-align-last:start;text-justify:inter-word}
     .intro{text-indent:1em}
     .section-body p{text-indent:0}
@@ -60,8 +63,9 @@
       .transfer{grid-template-columns:minmax(0,1fr);font-size:15px}
       .transfer dt{padding-bottom:4px;border-bottom:0}
       .transfer dd{padding:0 0 11px}
-      /* 휴대폰은 한 줄이 짧아 양쪽 맞춤이면 «Poster      Studio는      제4회»처럼 낱말 사이가 크게 벌어진다(2026-10-17) — 왼쪽 맞춤 */
-      .intro,.section-body p{text-align:start}
+      /* 휴대폰도 양쪽 맞춤(2026-11-03 Bumm님 — 10/17의 왼쪽 맞춤을 되돌림). 한 줄이 짧아 낱말 사이가 크게 벌어지던 것은 문구로 풀었다:
+         기준 화면 390(device-canvas.js)에서 줄마다 남는 폭 ÷ 띄어쓰기가 5px 이하가 되게 문구를 조금씩 다듬었다. 글꼴을 block으로 기다리는 것도
+         그 때문이다 — 대체 글꼴로 그리면 줄이 다르게 나뉜다(작은 서브셋이고 앱 첫 화면이 미리 받아 두므로 보통 곧바로 있다). */
     }
   </style>
 </head>
@@ -79,15 +83,15 @@
       <h1>개인정보처리방침</h1>
       <p class="updated"><span>최종 수정일</span><time datetime="2026-09-30">2026년 9월 30일</time></p>
     </header>
-    <p class="intro">Poster Studio는 제4회 인천어린이청소년영화제 체험부스에서 촬영한 사진으로 AI 영화 포스터를 제작하고 현장에서 인쇄하는 서비스입니다. 본 방침은 서비스 이용 과정에서 처리하는 정보의 항목, 이용 목적, 보관 기간 및 삭제 방법을 안내합니다.</p>
+    <p class="intro">Poster Studio는 제4회 인천어린이청소년영화제 체험부스에서 직접 촬영한 사진으로 AI 영화 포스터를 제작하고 현장에서 인쇄하는 서비스입니다. 본 방침은 서비스를 이용하는 과정에서 처리하는 정보의 항목, 이용 목적, 보관 기간 및 삭제 방법을 안내합니다.</p>
 
     <section aria-labelledby="collection">
       <h2 id="collection"><span class="section-number">1.</span><span>처리하는 정보</span></h2>
       <div class="section-body">
         <ul>
           <li><strong>촬영 사진</strong><p>웹캠으로 촬영한 사진을 포스터 이미지 제작에 사용합니다.</p></li>
-          <li><strong>영화 제작 정보</strong><p>영화 제목, 홍보 문구, 장르 및 개인 · 단체 구분을 포스터의 내용과 분위기를 정하는 데 사용합니다. 홍보 문구를 입력하지 않은 경우에는 선택한 장르에 맞는 문구를 자동으로 적용합니다.</p></li>
-          <li><strong>이름 · 단체명 · 출연진</strong><p>이름 · 단체명 · 출연진은 선택적으로 입력할 수 있으며, 실명 대신 별명을 사용할 수 있습니다. <strong>정보는 서버로 전송하지 않으며,</strong> 브라우저 내에서 포스터에 이름과 출연진을 표시하는 데만 사용합니다.</p></li>
+          <li><strong>영화 제작 정보</strong><p>영화 제목, 홍보 문구, 장르 및 개인 · 단체 구분은 포스터 내용과 분위기를 정하는 데 사용합니다. 홍보 문구를 입력하지 않은 경우, 선택한 장르에 맞는 문구를 자동으로 적용합니다.</p></li>
+          <li><strong>이름 · 단체명 · 출연진</strong><p>이름 · 단체명 · 출연진은 선택적으로 입력할 수 있으며, 실명 대신 별명을 사용할 수 있습니다. <strong>해당 정보는 서버로 전송하지 않으며,</strong> 브라우저 안에서 포스터에 이름과 출연진을 표시하는 데만 사용합니다.</p></li>
 </ul>
       </div>
     </section>
@@ -97,7 +101,7 @@
       <div class="section-body">
         <ul>
           <li><strong>AI 포스터 이미지 제작</strong><p>촬영한 사진과 영화 제목 · 홍보 문구 · 장르 · 개인 및 단체 구분은 AI 포스터 이미지 생성에만 사용합니다.</p></li>
-          <li><strong>포스터의 이름 및 출연진 표시</strong><p>이름 · 단체명 · 출연진은 완성된 포스터에 글자를 배치하는 데만 사용합니다.</p></li>
+          <li><strong>포스터의 이름 및 출연진 표시</strong><p>이름 · 단체명 · 출연진은 완성된 포스터 위에 글자를 배치하는 데만 사용합니다.</p></li>
           <li><strong>서비스 남용 및 과도한 비용 발생 방지</strong><p>사진의 지문값(SHA-256 해시)과 요청 횟수는 동일 사진의 반복 생성 및 특정 접속 환경에서의 요청 집중을 제한하는 용도로만 사용합니다.</p></li>
 </ul>
       </div>
@@ -107,10 +111,10 @@
       <h2 id="retention"><span class="section-number">3.</span><span>정보의 보관 및 삭제</span></h2>
       <div class="section-body">
         <ul>
-          <li><strong>서비스 서버의 사진 파일 처리</strong><p>업로드한 사진은 포스터 생성 중에만 임시 파일로 처리합니다. 생성 성공 · 실패 또는 요청 차단 여부와 관계없이 처리가 종료되면 삭제하며, 서비스 서버에 별도로 보관하지 않습니다.</p></li>
-          <li><strong>데이터베이스의 이용 기록</strong><p>데이터베이스에는 요청 횟수, 사진의 지문값(SHA-256 해시) 등 이용 제한을 위한 기록과 마지막 갱신 시각을 저장하며, <strong>사진 원본이나 이름은 저장하지 않습니다.</strong> 마지막 갱신 시각으로부터 30일이 지난 기록은 자동으로 삭제됩니다.</p></li>
-          <li><strong>브라우저에서 처리하는 정보</strong><p>촬영 및 생성 과정의 정보는 브라우저 내의 메모리에서 처리하며, 페이지를 새로고침하거나 닫으면 사라집니다. 다만, 아래와 같이 별도로 다운로드한 포스터 파일은 예외입니다.</p></li>
-          <li><strong>다운로드한 포스터 파일 보관</strong><p>완성된 포스터를 다운로드하면 참여자의 얼굴과 이름이 포함된 파일이 저장됩니다. 해당 파일은 <strong>향후 재다운로드 목적으로 2026년 12월 31일까지 보관한 뒤 삭제</strong>합니다.</p></li>
+          <li><strong>서비스 서버의 사진 파일 처리</strong><p>업로드한 사진은 포스터를 생성하는 동안에만 임시 파일로 처리합니다. 생성 성공 · 실패 또는 요청의 차단 여부와 관계없이 처리가 종료되면 삭제하며, 서비스 서버에 보관하지 않습니다.</p></li>
+          <li><strong>데이터베이스의 이용 기록</strong><p>데이터베이스에는 이용 제한을 위한 기록으로 요청 횟수, 사진의 <span class="nobr">지문값(SHA-256 해시)</span> 등과 마지막 갱신 시각을 저장하며, <strong>사진 원본이나 이름은 저장하지 않습니다.</strong> 마지막 갱신일로부터 30일이 지난 기록은 자동으로 삭제됩니다.</p></li>
+          <li><strong>브라우저에서 처리하는 정보</strong><p>촬영 및 포스터 생성 과정의 정보는 브라우저의 메모리에서 처리하며, 페이지를 새로고침하거나 닫으면 모두 사라집니다. 다만, 아래처럼 별도로 다운로드한 포스터 파일은 예외입니다.</p></li>
+          <li><strong>다운로드한 포스터 파일 보관</strong><p>완성된 포스터를 다운로드하면 참여자의 얼굴과 이름이 포함된 파일이 저장됩니다. 해당 파일은 <strong>재다운로드 목적으로 2026년 12월 31일까지 보관한 뒤 삭제</strong>합니다.</p></li>
 </ul>
       </div>
     </section>
@@ -139,7 +143,7 @@
     <section aria-labelledby="contact">
       <h2 id="contact"><span class="section-number">6.</span><span>문의 안내</span></h2>
       <div class="section-body">
-        <p>개인정보 처리에 관한 문의는 행사 현장 <strong>부스 운영 교사</strong>에게, 종료 후에는 <strong><a class="contact-link" href="https://www.instagram.com/edutogether_/" target="_blank" rel="noopener noreferrer" aria-label="같이교육 인스타그램 (새 탭)">같이교육 인스타그램</a></strong>으로 DM 부탁드립니다.</p>
+        <p>개인정보 처리에 관한 문의는 행사 중에는 <strong>부스 운영 교사</strong>에게, 행사가 끝난 뒤에는 <strong><a class="contact-link" href="https://www.instagram.com/edutogether_/" target="_blank" rel="noopener noreferrer" aria-label="같이교육 인스타그램 (새 탭)">같이교육 인스타그램</a></strong> DM으로 부탁드립니다.</p>
       </div>
     </section>
   </main>

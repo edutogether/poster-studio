@@ -1,7 +1,7 @@
 /* 확정된 3단계 디자인은 StudioView가 표시한다.
    촬영·AI 요청·조판·저장·인쇄는 기존 핸들러를 재사용하며 출력 규격과
    개인정보 FormData 경계는 바꾸지 않는다. 입력 id를 유지해 getMeta를 재사용한다. */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
   $,
   val,
@@ -12,7 +12,7 @@ import {
   W,
   H,
 } from "./constants.js";
-import { buildPosters, preparePosterAssets } from "./poster.js";
+import { buildPosters, preparePosterAssets, releasePosters } from "./poster.js";
 import { boothCodeHeaders, saveBoothCode, verifyBoothCode } from "./boothCode.js";
 import { classifyGenerateFailure, type GenerateFailure } from "./generateFailure.js";
 import StudioView, { FIRST_GENRE } from "./studio/StudioView.js";
@@ -99,8 +99,10 @@ export default function PosterStudio() {
   const [mode, setMode] = useState("solo");
   /* 초기 문구("카메라를 켜고 사진을 촬영해 주세요.")는 페이지 맨 아래 ※ 영역으로
      옮겼다(2026-09-09 대표 지시). **요소는 남긴다** — 오류·진행 상황이 뜨는 자리다.
-     비어 있을 때는 CSS(.status:empty)가 줄을 통째로 접는다. */
-  const [status, setStatus] = useState("");
+     비어 있을 때는 CSS(.status:empty)가 줄을 통째로 접는다.
+     알림은 잠깐 보였다 사라지므로(StatusToast, 2026-11-03) 같은 글을 다시 내도 다시 떠야 한다 — 그래서 글마다 번호를 붙인다.
+     글 안의 «\n»은 문장 나눔이다(휴대폰은 문장마다 줄을 바꾼다). */
+  const [status, setStatus] = useReducer((prev: { text: string; id: number }, text: string) => ({ text, id: prev.id + 1 }), { text: "", id: 0 });
   const [completionId, setCompletionId] = useState(0);
   const [cameraReadyId, setCameraReadyId] = useState(0);
   /* 촬영 영역의 3상태. 원본의 classList 조작을 그대로 옮긴 것이다:
@@ -118,8 +120,18 @@ export default function PosterStudio() {
   const [online, setOnline] = useState(true);
   const [boothOpen, setBoothOpen] = useState(false);
   const failCountRef = useRef(0);
-  const [posters, setPosters] = useState<Poster[]>([]);
+  const [posters, setPostersState] = useState<Poster[]>([]);
+  /* 포스터를 바꿀 때 앞 포스터의 그림 주소 · 캔버스 메모리를 놓는다(poster.ts releasePosters, 2026-11-03 — 아이폰 사파리는 캔버스 메모리를
+     늦게 돌려줘, 여러 번 만들면 한도에 닿아 조판이 실패하거나 멈출 수 있다). 화면이 새 포스터를 그린 뒤 놓는다. */
+  const postersRef = useRef<Poster[]>([]);
+  const setPosters = (next: Poster[]) => {
+    const old = postersRef.current;
+    postersRef.current = next;
+    setPostersState(next);
+    if (old.length && old !== next) window.setTimeout(() => releasePosters(old), 0);
+  };
   const [selected, setSelected] = useState(0);
+  const [waitSceneLimit, setWaitSceneLimit] = useState<number | undefined>(undefined);
   const [generating, setGenerating] = useState(false);
 
   const [resetKey, setResetKey] = useState(0);
@@ -206,13 +218,13 @@ export default function PosterStudio() {
         // 실제로 죽어있어도 경고가 안 떴다 — 응답 본문의 openaiReachable도 확인한다.
         if (alive && data.openaiReachable === false) {
           setStatus(
-            "⚠ AI(OpenAI) 서버에 연결할 수 없습니다. 잠시 후 다시 열어보거나 담당자에게 알려주세요. (촬영은 가능하지만 포스터 생성이 실패할 수 있어요)",
+            "⚠ OpenAI 서버에 연결할 수 없습니다.\n관리자에게 안내 후 잠시 후 다시 열어보세요.",
           );
         }
       } catch {
         if (alive)
           setStatus(
-            "⚠ AI 서버 연결을 확인할 수 없습니다. 와이파이를 확인해 주세요. (촬영은 가능하지만 포스터 생성이 실패할 수 있어요)",
+            "⚠ AI 서버 연결을 확인할 수 없습니다.\n와이파이를 확인해 주세요.",
           );
       }
     })();
@@ -295,7 +307,7 @@ export default function PosterStudio() {
 
       const video = videoRef.current;
       if (!video || !video.videoWidth) {
-        setStatus("카메라가 아직 준비 중이에요. 1~2초 후 다시 촬영해 주세요.");
+        setStatus("카메라가 아직 준비 중이에요.\n1~2초 후 다시 촬영해 주세요.");
         return;
       }
       const MAXW = 1024; // 전송용 축소(AI가 스타일을 새로 그리므로 화질 손해 없음)
@@ -312,7 +324,7 @@ export default function PosterStudio() {
       );
       if (!videoRef.current) return;
       if (!blob) {
-        setStatus("촬영에 실패했어요. 다시 시도해 주세요.");
+        setStatus("촬영에 실패했어요.\n다시 시도해 주세요.");
         return;
       }
       capturedBlobRef.current = blob;
@@ -406,7 +418,7 @@ export default function PosterStudio() {
     }
     if (genCountRef.current >= MAX_GENERATIONS_PER_PHOTO) {
       setStatus(
-        "이 사진으로는 재생성 횟수를 모두 사용했어요. 다시 촬영하면 새로 만들 수 있어요.",
+        "이 사진으로는 재생성 횟수를 모두 사용했어요.\n다시 촬영하면 새로 만들 수 있어요.",
       );
       return;
     }
@@ -422,7 +434,7 @@ export default function PosterStudio() {
     setGenerating(true);
     setFailure(null);
     setSpinning(true);
-    setStatus("AI가 영화 포스터를 그리고 있어요. 완성되면 자동으로 보여드릴게요.");
+    setStatus("AI가 영화 포스터를 그리고 있어요.\n완성되면 자동으로 보여드릴게요.");
 
     const form = new FormData();
     form.append("photo", photo, "capture.jpg");
@@ -537,6 +549,7 @@ export default function PosterStudio() {
     setGenerating(true);
     setStatus("");
     setFailure(null);
+    setWaitSceneLimit(SAMPLE_WAIT_SCENES);
     setSpinning(true);
     const stopElapsed = startElapsed();
     const waited = new Promise((resolve) => setTimeout(resolve, SAMPLE_WAIT_SCENES * SCENE_MS));
@@ -550,12 +563,13 @@ export default function PosterStudio() {
       applyPosters(built);
       setCompletionId(value => value + 1);
     } catch {
-      setStatus("샘플 포스터를 불러오지 못했어요. 다시 눌러주세요.");
+      setStatus("샘플 포스터를 불러오지 못했어요.\n다시 눌러주세요.");
     } finally {
       stopElapsed();
       isGeneratingRef.current = false;
       setGenerating(false);
       setSpinning(false);
+      setWaitSceneLimit(undefined);
     }
   };
 
@@ -647,7 +661,8 @@ export default function PosterStudio() {
       onBoothCodeSaved={onBoothCodeSaved}
       onBoothCodeClose={onBoothCodeCancel}
       verifyBooth={verifyBooth}
-      status={status}
+      status={status.text}
+      statusId={status.id}
       completionId={completionId}
       posters={posters}
       selected={selected}
@@ -658,6 +673,7 @@ export default function PosterStudio() {
       videoRef={videoRef}
       spinTextRef={spinTextRef}
       sceneEndRef={sceneEndRef}
+      waitSceneLimit={waitSceneLimit}
       onStart={onStart}
       cameraReadyId={cameraReadyId}
       onStop={() => { stopCamera(); setPhase("idle"); setStatus(""); }}

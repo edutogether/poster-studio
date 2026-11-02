@@ -41,7 +41,7 @@ test("틀림·형식·오프라인·오류는 넘기지 않고 이유를 보인�
 
 test("«취소» 단추와 Esc는 취소(onClose)를 부른다 — 문구는 10/17 Bumm님 확정 문구", async () => {
   const { view, onClose } = setup(async () => "ok");
-  expect(view.getByRole("dialog").textContent).toContain("행사 부스 진행용 기기에서만 접속할 수 있어요. 운영자에게 받은 코드를 한 번만 넣으면 이 기기를 기억할게요.");
+  expect(view.getByRole("dialog").textContent).toContain("행사 부스 진행용 기기에서만 접속할 수 있어요. 코드를 한 번만 넣으면 이 기기를 기억할게요.");
   const [cancel, ok] = [...view.container.querySelectorAll(".booth-code-actions button")];
   expect([cancel.textContent, ok.textContent]).toEqual(["취소", "확인"]);   // 왼쪽 취소 · 오른쪽 확인
   fireEvent.click(view.getByText("취소"));
