@@ -1309,4 +1309,9 @@ html.ps-canvas #cameraWorkspace, html.ps-canvas #resultView #resultWorkspace, ht
   html[data-device="phone"] .rotate-notice p { margin: 0; }
   html[data-device="phone"] .rotate-notice-title { font-size: 20px; font-weight: 800; line-height: 1.35; }
   html[data-device="phone"] .rotate-notice-text { font-size: 14px; color: #555; line-height: 1.5; }
+  /* 로딩 화면 · 포스터 크게 보기는 showModal() 창이라 브라우저 맨 위 층에 떠 z-index로는 덮을 수 없다(11/2 라이브 — 로딩 글이 가로에서 잘려 보였다).
+     안내가 떠 있는 동안만 창 · 배경 · 안쪽 전부를 숨긴다(로딩 문구는 스스로 visibility: visible을 걸어 창만 숨기면 남는다). 창은 열린 채라 세로로 돌리면 그대로 보인다. */
+  html[data-device="phone"] dialog[open],
+  html[data-device="phone"] dialog[open] *,
+  html[data-device="phone"] dialog[open]::backdrop { visibility: hidden !important; }
 }

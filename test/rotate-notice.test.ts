@@ -14,6 +14,16 @@ test("안내는 평소 숨기고, 휴대폰 갈래 · 가로일 때만 화면 �
   expect(css.match(/\.rotate-notice \{[^}]*display: flex/g)).toHaveLength(1);
 });
 
+// 11/2 라이브 다시 찍기: 로딩 화면 · 포스터 크게 보기는 showModal() 창이라 브라우저 맨 위 층에 떠 z-index와 상관없이 안내 위에 보였다(로딩 글은 가로에서 잘림).
+// 안내가 떠 있는 조건에서만 열린 창 · 그 배경 · 창 안 전부를 숨긴다 — 창 안에 visibility: visible을 스스로 거는 글(로딩 문구)이 있어 창만 숨기면 그 글이 남는다.
+test("휴대폰 가로에서는 맨 위 층 창(<dialog>)과 그 배경 · 안쪽까지 숨겨 안내가 보이게 한다", () => {
+  const landscape = css.slice(css.lastIndexOf("@media (orientation: landscape) {"));
+  const block = landscape.slice(0, landscape.indexOf("\n}\n"));
+  expect(block).toMatch(/html\[data-device="phone"\] dialog\[open\],\s*html\[data-device="phone"\] dialog\[open\] \*,\s*html\[data-device="phone"\] dialog\[open\]::backdrop \{ visibility: hidden !important; \}/);
+  // 창 숨기기는 이 가로 블록 한 곳뿐이다 — 세로 · 태블릿 · PC에서는 창이 그대로 보인다
+  expect(css.match(/dialog\[open\]::backdrop \{ visibility: hidden/g)).toHaveLength(1);
+});
+
 test("안내 글은 화면에 있고 «!» «?» 앞 띄어쓰기 규칙에 걸리는 기호가 없다", () => {
   expect(view).toContain("휴대폰을 세로로 돌려 주세요");
   expect(view).toContain("세로로 들면 지금 화면에서 이어서 할 수 있어요");
