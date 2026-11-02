@@ -175,6 +175,28 @@
   IntOp $1 $1 | 0x04000000
   System::Call "user32::SetWindowLongW(p r0, i -16, i r1)"
 !macroend
+; 바깥 창의 상표 글 칸(1256 · 1028)을 글 폭으로 줄인다(psZOrder). 칸은 창 폭(705)인데 글은 앞부분뿐이라, 칸이 아래 줄 선(1035)을 통째로 덮어
+; 선이 칸 자리를 칠하지 않게 하자(WS_CLIPSIBLINGS) 선이 하나도 안 그려졌다(2fabd75 — 11/2 Bumm님). 칸은 글 뒤만 칠하므로(MUI SetCtlColors /BRANDING — 빈 붓)
+; 줄여도 글은 그대로이고, 선은 예전처럼 글 바로 뒤(1256 끝 빈칸 다음)부터 보인다. $0 ~ $5를 쓴다
+!macro psFitBrand ID
+  GetDlgItem $0 $HWNDPARENT ${ID}
+  System::Call "user32::GetWindowTextW(p r0, w .r1, i ${NSIS_MAX_STRLEN}) i .r2"
+  SendMessage $0 ${WM_GETFONT} 0 0 $3
+  System::Call "user32::GetDC(p r0) p .r4"
+  System::Call "gdi32::SelectObject(p r4, p r3) p .r3"
+  System::Call "*(i 0, i 0) p .r5"
+  System::Call "gdi32::GetTextExtentPoint32W(p r4, w r1, i r2, p r5)"
+  System::Call "gdi32::SelectObject(p r4, p r3)"
+  System::Call "user32::ReleaseDC(p r0, p r4)"
+  System::Call "*$5(i .r1)"
+  System::Free $5
+  System::Call "*(i 0, i 0, i 0, i 0) p .r5"
+  System::Call "user32::GetWindowRect(p r0, p r5)"
+  System::Call "*$5(i, i .r2, i, i .r3)"
+  System::Free $5
+  IntOp $3 $3 - $2
+  System::Call "user32::SetWindowPos(p r0, p 0, i 0, i 0, i r1, i r3, i 0x16)"   ; NOMOVE | NOZORDER | NOACTIVATE — 폭만(높이 그대로)
+!macroend
 ; «머리말: 경로» 한 줄 — 상자 칸보다 길면 경로 가운데를 줄인다(psFit)
 !macro psLine WORD PATH
   Push $R0
@@ -660,9 +682,20 @@
   ; 보통 그리기는 겹침 위 칸부터 칠해 아래 칸이 이기고, 합성 그리기는 아래 칸부터 칠해 위 칸이 이긴다. NSIS 화면 틀(modern_headerbmpr)은 바탕 · 선이 글 · 그림보다 위라
   ; 합성으로 그리면 머리가 비고(978973e · 10/28 실험 C) 완료 화면 위가 흰 띠로 덮였다(a63fa02). 그래서 보일 칸을 위에 두고, 가려질 칸(1034 · 1035 · 1036 · 1256)은
   ; 위 칸 자리를 칠하지 않게 한다(WS_CLIPSIBLINGS) — 두 방식 모두 지금 보이는 모습과 같다. 새 화면은 psThaw(제거기 첫 화면은 SHOW)가 맨 위로 올린다.
+  ; 상표 글 칸은 먼저 글 폭으로 줄인다(psFitBrand) — 창 폭 그대로 두면 선이 통째로 가려진다(2fabd75).
   Function ${PSF}psZOrder
     Push $0
     Push $1
+    Push $2
+    Push $3
+    Push $4
+    Push $5
+    !insertmacro psFitBrand 1256
+    !insertmacro psFitBrand 1028
+    Pop $5
+    Pop $4
+    Pop $3
+    Pop $2
     GetDlgItem $0 $HWNDPARENT 1035
     System::Call "user32::SetWindowPos(p r0, p 1, i 0, i 0, i 0, i 0, i 0x13)"   ; HWND_BOTTOM
     GetDlgItem $0 $HWNDPARENT 1034
