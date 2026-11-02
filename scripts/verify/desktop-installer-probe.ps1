@@ -736,7 +736,9 @@ if ($Step -eq 'install') {
     Check "«설치된 앱»에 «Poster Studio»로 등록($hive)" ($null -ne $props -and $props.UninstallString -like "*Uninstall Poster Studio.exe*") $(if ($props) { "$($props.DisplayName) · $($props.Publisher) · $($props.DisplayVersion) · $($props.UninstallString)" })
     Check "«설치된 앱»의 판 번호가 $version 이다(DisplayVersion)" ($null -ne $props -and $props.DisplayVersion -eq $version) $(if ($props) { $props.DisplayVersion })
     $fileVer = if (Test-Path $exe) { (Get-Item $exe).VersionInfo } else { $null }
-    Check "실행 파일 속성의 판 번호가 $version 이다" ($fileVer -and $fileVer.ProductVersion -eq $version -and $fileVer.FileVersion -like "$version*") $(if ($fileVer) { "제품 $($fileVer.ProductVersion) · 파일 $($fileVer.FileVersion)" })
+    # 실행 파일 판 정보는 네 자리로 적히기도 한다(11/3 실측 — 제품 «1.6.0.0» · 파일 «1.6.0»)
+    $sameVer = { param($v) $v -eq $version -or $v -eq "$version.0" }
+    Check "실행 파일 속성의 판 번호가 $version 이다(제품 · 파일 판)" ($fileVer -and (& $sameVer $fileVer.ProductVersion) -and (& $sameVer $fileVer.FileVersion)) $(if ($fileVer) { "제품 $($fileVer.ProductVersion) · 파일 $($fileVer.FileVersion)" })
     $guid = if ($entry) { Split-Path $entry.PSPath -Leaf } else { '' }
     $stub = if ($guid) { (Get-ItemProperty "HKCU:\Software\$guid" -ErrorAction SilentlyContinue).InstallLocation } else { $null }
     Check '설치 뒤 예전 «나만» 위치 메모(HKCU)가 남지 않는다' (-not $stub) $stub
