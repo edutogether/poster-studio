@@ -1,5 +1,12 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-11-02(월) 오후 — 최종검토판 준비 끝: 웹 고침 · 감사 고침 · 설명서 · 최종 설치 파일 `d7714f4` — 교체 · 배포는 팀장 승인 뒤
+
+- 무엇을 했는지는 CHANGELOG 11/2 오후. 최종검토판(Bumm님이 저녁에 보심): `D:Projects_sharedopsposter-studio-20261017index.html`, 캡처 · 점검 기록은 같은 폴더 `final-20261102`.
+- Bumm님 결정 대기: ① 단체 아치 프레임 위 흐린 띠(146px — 그대로 / 꽉 채움 / 지시문) ② 11/12에도 서버 깨워 두기 ③ 설치판 가지를 master에 합치는 시점 ④ 웹 인쇄 때 화면 밀림.
+- `CLAUDE.md`의 시험 수(438 → 443)와 «PNG 저장» 줄(84)은 Bumm님 직접 지시로만 고친다 — 고칠 것으로 보고했다.
+- 검사 모니터(아래)는 `D:Projects_sharedopsmonitor-lock.txt` 잠금 안에서만 — Voice Cinema와 같이 쓴다.
+
 ## 2026-11-02(월) 09:37 — 라이브: **공개 설치 파일 = `2fabd75`**(Bumm님 «1번으로 교체», 팀장 OK) · Hosting · 함수는 그대로(master `174346e` 배포분)
 
 - 공개 객체를 `e58b65c` → `2fabd75`(160,330,723바이트 · SHA-256 `b8fce857…7ac0`)로 덮었다. `download-live.mjs` 28건 통과(세 주소 · PC 2560 · 휴대폰 3배).
