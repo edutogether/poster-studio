@@ -79,7 +79,7 @@ async function serve(dir) {
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'step2-geometry-'));
 const port = 9700 + Math.floor(Math.random() * 200);
-const chrome = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' });
+const chrome = spawn(process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', '--no-first-run', '--mute-audio', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' });
 process.on('exit', () => chrome.kill());
 
 async function openPage(base) {
