@@ -1,7 +1,7 @@
 {
   "name": "poster-studio-desktop",
   "productName": "Poster Studio",
-  "version": "1.0.0",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "main": "main.mjs",
@@ -61,8 +61,7 @@
     },
     "nsis": {
       "oneClick": false,
-      "perMachine": false,
-      "selectPerMachineByDefault": true,
+      "perMachine": true,
       "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,

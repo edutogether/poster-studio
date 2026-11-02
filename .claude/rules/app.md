@@ -432,12 +432,18 @@
   3. `node node_modules/electron/install.js` — npm 12는 설치 스크립트를 막아 Electron 실행 파일이 안 받아진다.
   4. `npx electron-builder --win nsis --x64 --publish never`
   - 판: electron 44.7.0 · electron-builder 26.17.0.
+  - 🟠 **설치판 판 번호는 `desktop/package.json`의 `version`(과 package-lock 맨 위 두 곳)이다**(11/3 Bumm님 «업데이트한 만큼 버전 고쳐야지»). 첫 전달판 `28dc59d`가 1.0.0이고,
+    전달 · 공개하는 판마다 올린다 — 기능이 바뀌면 1.x.0, 고침만이면 1.x.y. 판마다의 표(커밋 · 크기 · SHA-256 · 근거)는 `_docs/CHANGELOG.md` 11/3 절에 잇는다.
+    보이는 곳: 설치기 아래 상표 글 «Poster Studio 1.x.x» · «설치된 앱»(DisplayVersion) · 실행 파일 속성. 앱에는 메뉴 · «정보» 화면이 없다(`Menu.setApplicationMenu(null)`).
   - 서명은 없다. 그래서 인터넷에서 받은 설치 파일은 Windows SmartScreen이 «PC 보호» 창을 띄운다(«추가 정보» → «실행»).
     현장 주소는 poster.edutogether.kr 하나이고, USB 배포 · 파일 출처 표시를 지우는 방식은 쓰지 않는다(10/27 Bumm님 방침). 서명 · Store(MSIX)는 하지 않고 EXE 그대로 낸다(10/27 Bumm님 A안) — 진행요원 · 교사용 매뉴얼에 «경고가 떠도 정상»과 실제 창 두 장을 넣었다.
-- 🟠 **설치 모양은 Bumm님 기준이다**(10/27 정정, 팀장 전달 — 바꾸지 않는다):
-  - «나만 / 모든 사용자» 고르는 화면과 위치 바꾸기 화면을 둔다. 기본은 «모든 사용자»다(`selectPerMachineByDefault`).
-  - 모든 사용자: `C:\Program Files\InKY Film Festival\Poster Studio`(관리자 승인 창이 한 번 뜬다).
-    나만: `%LOCALAPPDATA%\Programs\InKY Film Festival\Poster Studio` — electron-builder는 이 범위에 `menuCategory`를 붙이지 않아 `desktop/build/installer.nsh`가 기본 위치를 적어 준다.
+- 🟠 **설치 모양은 Bumm님 기준이다**(10/27 정정 · 11/3 Bumm님 직접 지시, 팀장 전달 — 바꾸지 않는다):
+  - 🔴 **설치 위치는 언제나 `C:\Program Files\InKY Film Festival\Poster Studio` 하나다**(11/3 «설치 폴더는 무조건 …»). 모든 사용자 설치만 한다(`nsis.perMachine: true`) —
+    «나만 / 모든 사용자» 화면은 없고 설치기는 처음부터 관리자 권한으로 뜬다(다른 PC에서는 승인 창이 한 번). 위치 화면은 위치를 보여 주기만 한다(폴더 칸 읽기 전용 · «찾아보기» 꺼짐 — `psDirShow`).
+    예전 설치 위치(HKLM 등록 값) · `/D`도 따르지 않는다(`customInit`이 템플릿 뒤에 기준 위치로 다시 정한다) — 화면 설치 · 조용한 설치(`/S`) 모두.
+  - 예전 판(1.5.0 이하)을 «나만»(`%LOCALAPPDATA%\Programs\InKY Film Festival\Poster Studio` · HKCU)으로 깐 PC: 화면 설치는 «이미 설치되어 있습니다 · 지우고 새로 설치할까요?» → «확인»이면
+    그 판의 파일 · 바로가기 · 등록을 지우고(«삭제: …» 줄, `psRemoveScope HKCU current`) 새 판을 Program Files에 깐다 · «취소»면 아무것도 바꾸지 않는다. 조용한 설치는 템플릿이 그 판의 제거기를 «/currentuser --updated»로 부른다.
+    ⚠ 설치기를 돌리는 계정의 HKCU만 본다 — 표준 사용자가 다른 관리자 계정으로 승인하면 그 사람의 «나만» 판은 못 찾아 남는다(새 판만 깔린다).
   - 실행 파일은 `Poster Studio.exe`, 바탕화면 `Poster Studio`, 시작 메뉴 `InKY Film Festival` 폴더에 `Poster Studio`와 `Uninstall Poster Studio`.
   - «설정 › 앱 › 설치된 앱»(제어판 프로그램 추가/제거)에 `Poster Studio`로 나오고 거기서 지워진다. 시작 메뉴 `Uninstall Poster Studio`로도 지워진다.
   - 지우면 설치 폴더 · 바로가기 · 시작 메뉴 폴더 · 비게 된 `InKY Film Festival` 폴더 · 앱 데이터(`%APPDATA%\Poster Studio`)가 남지 않는다.
@@ -447,8 +453,7 @@
   - `installer.nsh`는 설치기 머리에 먼저 들어간다. LogicLib · 등록 키 이름을 그 파일에서 직접 불러야 하고(`!include LogicLib.nsh`, `!define /ifndef`), 경고가 곧 빌드 실패다.
     그 파일의 함수 안에서 `${isUpdated}`를 쓰면 StdUtils 플러그인을 못 찾아 빌드가 깨진다(매크로 `customUnInstall` 안은 된다).
   - 제거 단계(`customUnInstallSection`)를 더하면 «구성 요소 선택» 화면이 끼어 제거 흐름이 돈다. 빈 상위 폴더는 `un.onUninstSuccess`에서 지운다.
-  - `$LOCALAPPDATA`는 `SetShellVarContext`를 따른다. «모든 사용자»가 기본인 화면에서 읽으면 `C:\ProgramData`가 나온다(«나만» 설치가 거기 깔렸다). 잠깐 `current`로 바꿔 읽는다.
-  - «나만» 기본 위치는 설치 범위 화면이 열릴 때 적는다. 설치기 시작에서 적으면 첫 설치인데 «이미 사용자별 설치가 있습니다»가 뜬다. 끝까지 «나만»으로 설치하지 않으면 창이 닫힐 때 지운다.
+  - `$LOCALAPPDATA`는 `SetShellVarContext`를 따른다. «모든 사용자»에서 읽으면 `C:\ProgramData`가 나온다(10/27 «나만» 설치가 거기 깔렸다 — 11/3 «나만» 갈래와 함께 그 코드는 걷었다).
   - 리액트 `autoFocus`는 HTML 속성으로 나가지 않는다. `<dialog>.showModal()`이 첫 단추에 초점을 주므로, 열고 나서 직접 `focus()`한다.
   - `SetBrandingImage`를 쓰는 함수는 MUI 화면 정의 뒤에 컴파일돼야 한다(앞이면 «no branding image found»). 그래서 `customFinishPage` · `customUninstallPage` 매크로 안에 둔다.
   - 켜진 앱 확인은 nsProcess로 한다(닫기 5초 → 강제 종료 3초). 템플릿의 PowerShell 찾기(`getProcessInfo` · `$pid`)는 쓰지 않는다 — 진행 중 막대가 4초쯤 멈췄다.
@@ -466,13 +471,12 @@
       이중 버퍼(`LVS_EX_DOUBLEBUFFER`)는 줄이지 못했고 그리기 멈춤(`WM_SETREDRAW`)은 5~7번으로 늘려 둘 다 넣지 않았다(10/28 녹화 · `installer-list-tear.mjs`).
   - 🟠 **묻는 창**(10/28 Bumm님): 설치 위치 화면을 떠날 때(«설치») 「이미 설치되어 있습니다 · 지우고 새로 설치할까요?」(위치 · 범위가 달라도) → 「켜져 있습니다 · 끄고 계속할까요?」.
     제거는 첫 화면 «다음»에서 켜진 앱만 묻는다. «취소»면 그 화면에 남고 아무것도 바꾸지 않는다. 안 꺼지면 «다시 시도».
-    - 템플릿 위치 화면에는 떠나는 순간을 걸 수 없다 — 앞의 설치 범위 화면이 `MUI_PAGE_CUSTOMFUNCTION_*` 정의를 먼저 가져간다. 그래서 `allowToChangeInstallationDirectory: false`로 끄고
-      `customPageAfterChangeDir`에 위치 화면을 직접 넣는다(PRE/LEAVE, 진행 화면 PRE는 템플릿의 경로 정리를 그대로 옮김). 진행 화면 SHOW에서 «뒤로»는 설치 스레드가 그대로 돌아 못 쓴다(시제품 실측).
-    - «확인»이면 «예전 Poster Studio를 지우는 중입니다 …»와 «삭제: …» 줄 → «설치: …» 줄(막대는 한 방향). 같은 범위 · «나만»은 이 설치기가 폴더 이름 · 실행 파일을 확인하고 직접 지운다.
-      일반 권한 설치기가 «모든 사용자» 판을 지울 때만 이 설치기에 든 **새 제거기**(`UNINSTALLER_OUT_FILE`)를 관리자 권한(runas)으로 «/S /allusers _?=<그 폴더>» 부른다 —
-      예전 판의 제거기는 켜진 앱을 PowerShell로 찾는다(10/28 324b3da). 다 지우지 못하면 되돌리고 멈춘다(«다 지우지 못했습니다»).
+    - 템플릿 위치 화면은 `allowToChangeInstallationDirectory: false`로 끄고 `customPageAfterChangeDir`에 위치 화면을 직접 넣는다(PRE/SHOW/LEAVE — 떠나는 순간 «설치»에 묻는 창을 건다).
+      진행 화면 SHOW에서 «뒤로»는 설치 스레드가 그대로 돌아 못 쓴다(시제품 실측). 위치 화면은 그 «설치» 단추 · 묻는 창 자리라 11/3에도 남겼다(위치는 바꿀 수 없게 잠금).
+    - «확인»이면 «예전 Poster Studio를 지우는 중입니다 …»와 «삭제: …» 줄 → «설치: …» 줄(막대는 한 방향). 두 범위(HKLM · 예전 «나만» HKCU) 모두 이 설치기가 폴더 이름 · 실행 파일을 확인하고 직접 지운다
+      (설치기가 처음부터 관리자 권한이다 — 예전 일반 권한 설치기가 runas로 새 제거기를 부르던 `psRemoveAllElevated`는 11/3에 걷었다). 다 지우지 못하면 되돌리고 멈춘다(«다 지우지 못했습니다»).
       ⚠ 템플릿은 `/KEEP_APP_DATA`를 읽지 않는다 — 앱 데이터를 남기는 것은 `--updated`뿐이다(그 경로는 앱 데이터를 지운다, 같은 범위 덮어쓰기는 남긴다).
-  - 🔴 **설치 · 제거에 PowerShell을 쓰지 않는다**(10/28 Bumm님 «관리자: Windows PowerShell 창이 뜬다»): 켜진 앱 확인은 nsProcess, 예전 «모든 사용자» 판 지우기는 새 제거기.
+  - 🔴 **설치 · 제거에 PowerShell을 쓰지 않는다**(10/28 Bumm님 «관리자: Windows PowerShell 창이 뜬다»): 켜진 앱 확인은 nsProcess, 예전 판 지우기는 이 설치기가 직접.
     템플릿 검사(10/28 이전 판)는 nsExec로 PowerShell 프로세스를 만들지만 창은 0번이었다(e58b65c 창 기록). 보인 창은 확인 도구가 `Start-Process -Verb RunAs`로 띄운
     관리자 PowerShell이었다 — 이 PC는 기본 콘솔이 Windows 터미널이라 숨김 요청(SW_HIDE · -WindowStyle Hidden)도 터미널 창으로 위 모니터에 뜬다(10/28 자기검사).
     확인 도구는 `scripts/verify/run-hidden.ps1`(창 없는 실행 파일이 CREATE_NO_WINDOW로 PowerShell을 돌림, 관리자 권한)로 돌리고,
@@ -497,17 +501,16 @@
     바탕화면 아이콘이 예전 것으로 보였다(제품 icon.ico는 그대로였다 — 셸 아이콘 화소 대조).
     - `allowToChangeInstallationDirectory: false`면 템플릿이 `isTryToKeepShortcuts`를 참으로 읽는다 — `KeepShortcuts` 값을 잠깐 치워 두지 않으면 새 바로가기가 안 생긴다(`psStash`).
   - 🟠 **화면 안내문은 문장마다 새 줄, 줄은 칸 안에**(10/28 Bumm님): NSIS · electron-builder 한국어 기본 문구는 여러 문장이 한 덩어리로 흘러 낱말 중간에서 꺾였다(한국어는 글자 사이에서도 꺾인다).
-    칸 글꼴은 굴림 9pt(-12px), 100%에서 칸 폭은 위치 안내 525 · 설치 범위 위 525 · 아래 490 · 머리 설명 368 · 제거 시작 안내 341px다.
+    칸 글꼴은 굴림 9pt(-12px), 100%에서 칸 폭은 위치 안내 525 · 머리 설명 368 · 제거 시작 안내 341px다.
     고친 문구는 `installer.nsh`의 `customHeader`(언어 문구가 다 정해진 뒤)에서 같은 이름의 `LangString`으로 다시 정한다 — 같은 이름을 두 번 정하면 경고 6030이 빌드를 멈추므로
     그 몇 줄만 `!pragma warning disable 6030`으로 감싼다(나중 값이 이긴다 — 시험 스크립트로 확인). 위치 화면 안내만 MUI 설정 `MUI_DIRECTORYPAGE_TEXT_TOP`이다.
-    «설치 범위» 아래 안내는 설치기가 «$(…Exists)(경로)$\r$\n$(reinstallUpgrade)»로 이으므로 앞 문장 끝에 줄바꿈을 넣어 경로를 제 줄로 보낸다. 칸보다 긴 한 문장은 문구를 그대로 두고 낱말 사이에서 나눈다.
+    칸보다 긴 한 문장은 문구를 그대로 두고 낱말 사이에서 나눈다. 위치 화면 머리는 «설치 위치» · «Poster Studio를 설치할 폴더입니다.», 안내는 «… 아래 폴더에 설치합니다. / 설치를 시작하려면 …»(11/3 — 고르는 말을 뺐다).
     문구를 바꾸면 탐침의 «화면 글» 검사(칸 넘침 · 한 줄 두 문장 · 조사 표기 · «\n» 글자 · 줄 간격)를 돌린다. 이 PC 100% 화면 기준이고, 다른 배율에서는 실측하지 않았다.
-    - 🟠 **줄 간격**(10/28 오후 팀장 «윗줄과 아랫줄 글자가 거의 맞닿아 보인다»): 글 칸 하나 안의 줄은 굴림 9pt 줄 높이 그대로(글자 높이와 같다)다. 여러 줄 안내(위치 · 설치 범위 위 · 아래 · 제거 범위)는
-      `psSpread`가 줄마다 칸을 나눠 글자 높이의 0.6배를 띄운다(줄 칸 ID 2101~ · 2110~ · 2120~). 설치 범위 아래 안내는 단추를 고를 때마다 템플릿 `InstModeChange`가 바꾸므로
-      그 단추에 `psModeClick`을 걸어 템플릿 함수를 부른 뒤 다시 나눈다. 탐침은 한 칸 안 붙은 줄과 이어지는 줄 간격 1.3배 미만을 잡는다(알림 창은 Windows 글꼴이라 빼고 잰다).
-      템플릿 설치 범위 화면에 SHOW를 거는 자리는 `customWelcomePage`(설치기 — 화면은 넣지 않고 정의만) · `customUnWelcomePage`의 첫 화면 뒤(제거기)다.
-    - 문구: 범위 이름은 설명서와 같이 «나만» · «모든 사용자», 단추는 «'…' 단추». 번역투(«~할 예정입니다 · ~하십시오 · ~하였습니다 · ~주시기 바랍니다 · ~됨 · 성공적으로»)를 쓰지 않는다(10/28 오후 팀장).
-    - 🟠 띄운 줄 전체가 칸 아래를 넘으면 넘는 만큼 위에서 시작한다 — «이미 '나만'으로 설치되어 있습니다. / (폴더) / 다시 설치합니다.» 셋째 줄이 브랜드 줄에 가려졌다(10/28 저녁). 탐침 «화면 칸 아래로 넘침».
+    - 🟠 **줄 간격**(10/28 오후 팀장 «윗줄과 아랫줄 글자가 거의 맞닿아 보인다»): 글 칸 하나 안의 줄은 굴림 9pt 줄 높이 그대로(글자 높이와 같다)다. 여러 줄 안내(위치 화면)는
+      `psSpread`가 줄마다 칸을 나눠 글자 높이의 0.6배를 띄운다(줄 칸 ID 2101~). 탐침은 한 칸 안 붙은 줄과 이어지는 줄 간격 1.3배 미만을 잡는다(알림 창은 Windows 글꼴이라 빼고 잰다).
+      (설치 · 제거 범위 화면의 줄 간격 · 단추 고를 때 다시 나누기 `psModeShow` · `psModeClick` · `psModeNote`는 11/3에 화면과 함께 걷었다.)
+    - 문구: 단추는 «'…' 단추». 번역투(«~할 예정입니다 · ~하십시오 · ~하였습니다 · ~주시기 바랍니다 · ~됨 · 성공적으로»)를 쓰지 않는다(10/28 오후 팀장).
+    - 🟠 띄운 줄 전체가 칸 아래를 넘으면 넘는 만큼 위에서 시작한다 — 예전 설치 범위 아래 안내 셋째 줄이 브랜드 줄에 가려졌다(10/28 저녁). 탐침 «화면 칸 아래로 넘침».
   - 🟠 **진행 상자 경로는 폴더 이름 단위로만 줄인다**(10/28 저녁 팀장 — PathCompactPathW는 «Poster St…» · «InKY Fil…»처럼 낱말 가운데를 잘랐다): 끝(앱 폴더 «Poster Studio»부터,
     없으면 마지막 두 칸)을 남기고 앞에서 가운데 폴더를 통째로 «…» 하나로(`psFitFolders`). 탐침 «경로 줄임이 폴더 이름 단위다». 위치 화면 폴더 칸은 선택 없이 맨 앞부터(EM_SETSEL 0,0).
   - 🟠 **화면 넘김 빈 화면**(10/28 저녁 Bumm님 «깜빡임 0»): 앞 화면을 지우면 Windows가 그 자리를 바로 바탕색으로 칠해, 새 화면이 다 차기 전 빈 화면이 녹화에 잡혔다.
@@ -529,13 +532,10 @@
     탐침이 0.1초 표본마다 시각을 남겨 막대 선 구간 · 그때 뜬 단계 문장 · 막대가 움직이는데 줄이 1초 넘게 늘지 않는 구간을 잰다.
   - 🟠 **Bumm님께 드릴 화면별 캡처는 녹화에서 원본 크기로 뽑는다** — 찍는 도구(PrintWindow) 캡처는 비거나 안내 글 · 상자가 빠진 채 찍혔다(10/28 밤 팀장).
     «이미 설치» 묻는 창은 훅이 모니터 가운데로 옮겨 설치 창 녹화 밖에 뜬다 — 모니터 녹화에서 그 창만 잘라 쓴다(바탕화면이 들어가지 않게).
-      «모든 사용자» 아래 안내의 «관리자 허락을 묻는 창이 뜹니다»는 이미 관리자 권한으로 켠 설치기에서는 뺀다(뜨지 않으므로 — `psModeNote`).
-  - 🟠 **«모든 사용자»로 설치하면 electron-builder가 «나만» 설치를 먼저 지운다**(설계 — `installSection.nsh`의 `uninstallOldVersion HKEY_CURRENT_USER`, 인자 «/currentuser --updated»).
-    그래서 두 범위가 함께 있는 PC는 예전 판(10/28 낮 이전)으로 «모든 사용자» 위에 «나만»을 깔았을 때뿐이다 — 10/28 판부터는 범위가 달라도 묻고 앞 판을 먼저 지운다(아래 «묻는 창»).
-    두 범위가 함께 있을 때 «나만» 제거기를 시작 메뉴로 열면 «제거 옵션 선택» 화면이 뜬다(«설치된 앱»은 «/currentuser»라 안 뜬다).
-    제거기의 «Uninstall Poster Studio» 바로가기는 electron-builder와 같은 조건(`--keep-shortcuts` 없을 때)으로 지운다 — 예전 `--updated` 조건은 그 정리 때 «나만» 시작 메뉴에 대상 없는 바로가기 · 폴더를 남겼다(10/28 실측).
-  - 🟡 **시험 중 설치기를 강제로 끄지 않는다**: 설치 범위 화면이 열리면 «나만» 기본 위치 메모(HKCU `Software\<앱 GUID>` InstallLocation)를 적고 창이 닫힐 때 지운다.
-    프로세스를 죽이면 그 메모가 남아 다음 설치기가 «이미 사용자별 설치가 있습니다»로 읽는다(10/28 — 측정용으로 띄운 창을 죽였다가 남은 값을 지웠다). 닫으려면 «취소»로 닫는다.
+  - 🟠 **모든 사용자 설치는 electron-builder가 «나만» 설치를 먼저 지운다**(설계 — `installSection.nsh`의 `uninstallOldVersion HKEY_CURRENT_USER`, 인자 «/currentuser --updated»).
+    화면 설치에서는 묻는 창 «확인» 뒤 이 설치기가 먼저 지워 그 단계는 할 일이 없고(`psStash`로 비켜 감), 조용한 설치에서는 이 단계가 예전 «나만» 판을 지운다.
+    예전 «나만» 제거기를 부를 때도 «Uninstall Poster Studio» 바로가기를 남기지 않는다 — electron-builder와 같은 조건(`--keep-shortcuts` 없을 때)으로 지운다(10/28 실측 — 예전 `--updated` 조건은 남겼다).
+  - 설치 끝(`customInstall`)에 예전 «나만» 판이 남긴 위치 메모(HKCU `Software\<앱 GUID>` InstallLocation)를 지운다 — 이 판은 HKLM에만 등록한다(탐침 «예전 «나만» 위치 메모가 남지 않는다»).
 - 🟠 **설치기 그림은 화면 배율마다 따로 그린다**(10/27 Bumm님 «머리 로고가 가로로 늘어남 · 고화질»):
   - 한국어 Windows 100%에서 머리 칸은 175×53, 완료 · 첫 화면 옆 칸은 191×290이다(실측). 그 비율 그대로 100~300% 여덟 벌을 `desktop/build/installer-art/`에 굽는다.
   - 설치기가 뜰 때 칸 폭을 재어(`GetClientRect`) 가장 가까운 배율을 골라 넣는다(`installer.nsh`의 `psPickScale` · `psHeaderArt`). 칸과 그림 비율이 같아 늘어나지 않는다.
@@ -543,9 +543,10 @@
   - 설치기 머리 로고는 슬레이트다(아래 «아이콘»). 제거 첫 · 완료 화면 왼쪽 그림은 설치 완료 화면과 같은 극장 그림이다(10/28 — `uninstallerSidebar`도 `installerSidebar.bmp`, 칸 크기에 맞춰 `psSideArt`).
 - **확인**(전부 실제 실행):
   - `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(또는 `--dev`): 가짜 카메라로 한글 입력 → 촬영 → 8종 → PC 저장 → 인쇄 미리보기 → 4×6 PDF → «샘플 포스터 보기»(촬영 구도 예시 사진 · 로컬 합성) → 로고 → 종료.
-  - `powershell -File scripts/verify/desktop-installer-probe.ps1 -Step install|uninstall -Mode user|all -Via startmenu|settings …`: 설치 창을 화면마다 찍으며 단추 누름 메시지로 넘긴다. 키보드 흉내는 없다.
-    «모든 사용자»는 설치기가 관리자 권한으로 다시 뜨므로 이 도구도 관리자 권한으로 돌린다(권한이 낮은 창의 단추 누름 메시지는 Windows가 막는다).
-    묻는 창 시험은 `-Replace`(같은 범위 예전 판) · `-Beside`(다른 범위) · `-AppOn` · `-Answers ok,cancel,…` · `-Decline`, 사람이 두 번 누른 흐름은 `-AsUser`(머리말에 설명).
+  - `powershell -File scripts/verify/desktop-installer-probe.ps1 -Step install|uninstall -Mode all -Via startmenu|settings …`: 설치 창을 화면마다 찍으며 단추 누름 메시지로 넘긴다. 키보드 흉내는 없다.
+    설치기가 관리자 권한으로 뜨므로 이 도구도 관리자 권한으로 돌린다(권한이 낮은 창의 단추 누름 메시지는 Windows가 막는다). 설치는 `-Mode all`만 받는다(11/3) — `-Mode user`는 예전 «나만» 판 제거 확인용.
+    설치 범위 화면 없음 · 위치 기준 · 폴더 칸 읽기 전용 · «찾아보기» 꺼짐 · 판 번호(설치기 상표 글 · «설치된 앱» DisplayVersion · 실행 파일 속성 = `desktop/package.json` version)를 잰다.
+    묻는 창 시험은 `-Replace`(같은 범위 예전 판) · `-Beside`(예전 «나만» 판) · `-AppOn` · `-Answers ok,cancel,…` · `-Decline`, 사람이 두 번 누른 흐름은 `-AsUser`(머리말에 설명).
     진행 화면 녹화는 `installer-screen-record.ps1` + 상자 줄 겹침 `installer-list-tear.mjs`(깜빡임 판정 `installer-flicker-scan.mjs`는 흐르는 줄도 세므로 상자 칸에는 쓰지 않는다).
   - `node scripts/verify/desktop-vs-web.mjs <결과> --exe <설치한 exe> --web-dist <웹 빌드>`: 첫 화면을 같은 엔진으로 찍어 «설치판» 표시 밖 화소 차이 0인지 본다.
     첫 화면 설명 한 줄은 `StudioCaption`(Medium · `font-display: optional`)이라 글꼴이 늦게 온 판은 Regular로 그린다(그 줄만 7,249화소 — 웹 · 설치판 같은 제품 동작).

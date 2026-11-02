@@ -1,11 +1,13 @@
 ﻿# Windows 설치판 설치 · 제거 확인(2026-10-27 Bumm님 기준, 팀장 전달 — _docs/intents/2026-10-27-desktop-installer).
 #
-#   설치:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify/desktop-installer-probe.ps1 -Step install -Mode user|all -Installer <Poster Studio Setup.exe> -Out <결과 폴더>
+#   설치:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify/desktop-installer-probe.ps1 -Step install -Mode all -Installer <Poster Studio Setup.exe> -Out <결과 폴더>
 #          [-Replace | -Beside] [-AppOn] [-Answers ok,cancel,…] [-Decline] [-AsUser] [-NoShots] [-NoRun]
 #   제거:  ... -Step uninstall -Mode user|all -Via startmenu|settings -Out <결과 폴더> [-AppOn] [-Answers …] [-Decline]
+#   설치는 -Mode all만 받는다 — 11/3부터 설치기는 모든 사용자 설치만 한다(Bumm님 «설치 폴더는 무조건 C:\Program Files\InKY Film Festival\Poster Studio»).
+#   -Mode user는 예전 판(1.5.0 이하)을 «나만»으로 깔아 둔 PC의 제거 확인용으로만 남겨 둔다.
 #
 #   -Replace  같은 범위에 예전 판이 있는 PC — «설치»를 누르면 «이미 설치되어 있습니다 · 지우고 새로 설치할까요?»가 뜬다(10/28 Bumm님).
-#   -Beside   다른 범위에만 예전 판이 있는 PC(«나만» 위에 «모든 사용자» 또는 그 반대) — 같은 질문이 뜨고, «확인»이면 그 판이 남김없이 지워져야 한다.
+#   -Beside   예전 판이 «나만»(HKCU · %LOCALAPPDATA%\Programs)에만 있는 PC — 같은 질문이 뜨고, «확인»이면 그 판이 남김없이 지워져야 한다.
 #   -AppOn    그 PC에 깔린 앱을 켜 둔 채 시작한다 — «Poster Studio가 켜져 있습니다 · 끄고 계속할까요?»가 뜬다.
 #   -Answers  묻는 창에 차례로 할 답. ok(확인 · 다시 시도) · cancel(취소 — 그 화면에 남아야 한다, 도구는 다음 단추를 다시 누른다) ·
 #             cancel-exit(취소한 뒤 그 화면에 남았는지 보고 설치기 · 제거기를 «취소» 단추로 끝낸다). 남은 답이 없으면 ok.
@@ -21,13 +23,14 @@
 #
 # 사람이 더블클릭한 것처럼 설치 창을 띄운다(조용한 설치 /S가 아니다). 화면마다 그 창만 따로 찍고(PrintWindow), 창의 단추에 누름 메시지를 보낸다.
 # 다른 창을 가리거나 키보드를 빼앗지 않는다 — 이 PC를 쓰는 사람의 다른 창에 글자가 들어가지 않게.
-#   설치 범위 화면: -Mode에 맞는 단추(«me 전용» = 나만 · «모든 사용자»)를 누른다.
-#   위치 화면: 기본 위치를 그대로 둔다 — 기본값이 기준 위치인지 잰다(바꾸는 화면이 있는지도 찍는다).
-# «모든 사용자»(-Mode all)는 설치기가 관리자 권한으로 다시 뜬다. Windows는 보통 권한 프로그램이 관리자 창에 보내는 메시지를 막으므로,
+#   설치 범위 화면(«나만 / 모든 사용자»)은 없어야 한다(11/3).
+#   위치 화면: 위치가 기준 위치이고, 폴더 칸은 읽기 전용 · «찾아보기»는 꺼져 있는지 잰다(11/3 — 위치를 바꿀 수 없다).
+# 설치기는 처음부터 관리자 권한으로 뜬다. Windows는 보통 권한 프로그램이 관리자 창에 보내는 메시지를 막으므로,
 # 이 확인 도구도 관리자 권한으로 띄워야 단추를 누를 수 있다(Start-Process -Verb RunAs). 다른 PC에서는 관리자 승인 창이 한 번 뜬다(정상).
 #
-# 기준(Bumm님 10/27):
-#   위치 — 모든 사용자: C:\Program Files\InKY Film Festival\Poster Studio · 나만: %LOCALAPPDATA%\Programs\InKY Film Festival\Poster Studio
+# 기준(Bumm님 10/27 · 11/3):
+#   위치 — C:\Program Files\InKY Film Festival\Poster Studio 하나(예전 판의 «나만» 위치는 %LOCALAPPDATA%\Programs\InKY Film Festival\Poster Studio)
+#   판 번호 — «설치된 앱»(DisplayVersion) · 실행 파일 속성 · 설치기 아래 상표 글이 desktop/package.json의 version과 같다
 #   바로가기 — 바탕화면 «Poster Studio», 시작 메뉴 «InKY Film Festival» 폴더 안에 «Poster Studio» · «Uninstall Poster Studio»
 #   «설치된 앱»(제어판 프로그램 추가/제거)에 «Poster Studio» — 거기서도, 시작 메뉴 «Uninstall Poster Studio»로도 제거된다
 #   제거 뒤 — 설치 폴더 · 비게 된 «InKY Film Festival» 폴더 · 바로가기 · 시작 메뉴 폴더 · 등록 · 앱 데이터가 남지 않는다
@@ -57,6 +60,9 @@ param(
   [switch]$NoRun
 )
 $ErrorActionPreference = 'Stop'
+if ($Step -eq 'install' -and $Mode -ne 'all') { throw '설치는 -Mode all만 받는다(11/3 — 설치기는 모든 사용자 설치만 한다)' }
+# 이 판의 판 번호 — 설치기 · «설치된 앱» · 실행 파일에 같은 값이 보여야 한다(11/3 Bumm님 «업데이트한 만큼 버전 고쳐야지»)
+$version = (Get-Content -Raw -Encoding utf8 (Join-Path $PSScriptRoot '..\..\desktop\package.json') | ConvertFrom-Json).version
 New-Item -ItemType Directory -Force $Out | Out-Null
 Add-Type -ReferencedAssemblies System.Drawing @"
 using System; using System.Runtime.InteropServices; using System.Text; using System.Drawing; using System.Drawing.Imaging;
@@ -420,8 +426,8 @@ function TextRules($rows) {
   return $bad
 }
 function TextChecks() {
-  $rows = @($report.pages | ForEach-Object { $_.textLines; $_.pickedTextLines; $_.otherTextLines }) + @($report.messageBoxes | ForEach-Object { $_.textLines }) | Where-Object { $_ }
-  $bad = @($report.pages | ForEach-Object { $_.textProblems; $_.pickedTextProblems; $_.otherTextProblems }) + @($report.messageBoxes | ForEach-Object { $_.textProblems }) | Where-Object { $_ } | Select-Object -Unique
+  $rows = @($report.pages | ForEach-Object { $_.textLines }) + @($report.messageBoxes | ForEach-Object { $_.textLines }) | Where-Object { $_ }
+  $bad = @($report.pages | ForEach-Object { $_.textProblems }) + @($report.messageBoxes | ForEach-Object { $_.textProblems }) | Where-Object { $_ } | Select-Object -Unique
   Check '화면 글: 문장마다 새 줄 · 줄이 칸 안에 든다(낱말 중간 꺾임 없음) · «(을)를» 같은 조사 표기 · «\n» 글자 없음 · 줄 간격(글자 높이 1.3배 이상) · 화면 칸 아래로 넘침 없음'($rows.Count -gt 0 -and $bad.Count -eq 0) $(if ($bad.Count) { $bad -join ' | ' } else { "글 줄 $($rows.Count)개 · 화면 $(@($report.pages).Count)개 · 알림 $(@($report.messageBoxes).Count)개" })
 }
 
@@ -553,26 +559,6 @@ function Walk($prefix) {
     $page.textLines = @([Win]::TextLines($h))
     $page.textProblems = @(TextRules $page.textLines) + @([Win]::Spacing($h))
     if ($progress.Count) { $page.progress = $progress }
-    # 설치 범위 화면 — 기준 단추를 고른다
-    $pick = if ($Mode -eq 'all') { [Win]::FindButton($h, '모든 사용자') } else { [Win]::FindButton($h, '나만') }
-    $other = if ($Mode -eq 'all') { [Win]::FindButton($h, '나만') } else { [Win]::FindButton($h, '모든 사용자') }
-    # 다른 단추를 골랐을 때의 아래 안내도 찍고 잰다(고르기만 — «다음»은 기준 단추로 누른다. 일반 권한 설치기에서 «모든 사용자»의 «관리자 허락» 줄이 이 장면에 나온다)
-    if ($other -ne [IntPtr]::Zero -and $pick -ne [IntPtr]::Zero -and [Win]::IsWindowEnabled($other)) {
-      [Win]::SendMessage($other, $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
-      Start-Sleep -Milliseconds 400
-      $page.otherPicked = [Win]::Text($other)
-      [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-범위-다른단추.png' -f $prefix, $n))) | Out-Null
-      $page.otherTextLines = @([Win]::TextLines($h))
-      $page.otherTextProblems = @(TextRules $page.otherTextLines) + @([Win]::Spacing($h))
-    }
-    if ($pick -ne [IntPtr]::Zero -and $page.text -match '모든 사용자') {
-      [Win]::SendMessage($pick, $BM_CLICK, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
-      Start-Sleep -Milliseconds 400
-      $page.picked = [Win]::Text($pick)
-      [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-범위.png' -f $prefix, $n))) | Out-Null
-      $page.pickedTextLines = @([Win]::TextLines($h))
-      $page.pickedTextProblems = @(TextRules $page.pickedTextLines) + @([Win]::Spacing($h))
-    }
     # 완료 화면 «Poster Studio 실행하기» — 처음 상태를 적고, -NoRun이면 풀고 찍는다(BM_GETCHECK 0xF0: 1 체크)
     $run = [Win]::FindButton($h, '실행하기')
     if ($run -ne [IntPtr]::Zero) {
@@ -584,10 +570,12 @@ function Walk($prefix) {
         [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-실행-끔.png' -f $prefix, $n))) | Out-Null
       }
     }
-    # 위치 화면 — 기본값을 읽어 둔다(바꾸지 않는다)
+    # 위치 화면 — 위치를 읽어 둔다(바꾸지 않는다). 폴더 칸이 읽기 전용(ES_READONLY 0x800)인지 · «찾아보기»(1001)가 꺼져 있는지도 잰다(11/3)
     $dir = [Win]::FindChildById($h, 1019)
     if ($dir -ne [IntPtr]::Zero) {
       $page.defaultDir = [Win]::EditText($dir); $report.defaultDir = $page.defaultDir
+      $browse = [Win]::FindChildById($h, 1001)
+      $report.dirLock = [ordered]@{ readOnly = (([Win]::GetWindowLong($dir, -16)) -band 0x800) -ne 0; browseFound = $browse -ne [IntPtr]::Zero; browseEnabled = ($browse -ne [IntPtr]::Zero) -and [Win]::IsWindowEnabled($browse) }
       # 폴더 칸이 전체 선택(파란색)된 채 끝으로 밀려 앞이 잘려 보이지 않는가(10/28 팀장): 선택 시작 = 끝 · 첫 글자의 x ≥ 0
       $sel = [Win]::SendMessage($dir, 0x00B0, [IntPtr]::Zero, [IntPtr]::Zero).ToInt64()   # EM_GETSEL → 아래 16비트 시작 · 위 16비트 끝
       $pos = [Win]::SendMessage($dir, 0x00D6, [IntPtr]::Zero, [IntPtr]::Zero).ToInt64()   # EM_POSFROMCHAR(0) → 아래 16비트 x(부호 있음)
@@ -684,7 +672,7 @@ function PromptChecks($kind) {
   $unknown = @($boxes | Where-Object { $_.text -notmatch '이미 설치되어 있습니다|켜져 있습니다|끄지 못했습니다' })
   $installed = @($boxes | Where-Object { $_.text -match '이미 설치되어 있습니다' })
   $running = @($boxes | Where-Object { $_.text -match '켜져 있습니다' })
-  $pageMark = if ($kind -eq '설치') { '\[1037\]설치 위치 선택' } else { '\[1201\]' }   # 위치 화면 머리 제목 · 제거 첫 화면 제목(경로 칸 글은 다른 프로세스에서 이 방법으로 안 읽힌다)
+  $pageMark = if ($kind -eq '설치') { '\[1037\]설치 위치' } else { '\[1201\]' }   # 위치 화면 머리 제목 · 제거 첫 화면 제목(경로 칸 글은 다른 프로세스에서 이 방법으로 안 읽힌다)
   $stayBad = @($boxes | Where-Object { $_.answer -like 'cancel*' -and ($_.after -notmatch $pageMark -or ($_.text -match '켜져 있습니다' -and -not $_.appAlive)) })
   $ok = $boxes.Count -gt 0 -and $unknown.Count -eq 0 -and $stayBad.Count -eq 0 -and (-not ($Replace -or $Beside) -or $installed.Count -ge 1) -and (-not $AppOn -or $running.Count -ge 1)
   Check "$kind 묻는 창이 뜨고(이미 설치 $($installed.Count) · 켜진 앱 $($running.Count)), «취소»면 그 화면에 남고 앱도 켜진 채다" $ok $desc
@@ -718,8 +706,14 @@ if ($Step -eq 'install') {
     Remember
     ProgressChecks '설치' '설치 위치' '프로그램 파일을 설치하는 중' '설치' '설치가 끝났습니다.'
     for ($i = 0; $i -lt 120 -and -not (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
-    Check '설치 범위 화면(«me 전용» · «모든 사용자»)이 있고 기준 단추를 골랐다' (@($report.pages | Where-Object { $_.picked }).Count -eq 1) (@($report.pages | Where-Object { $_.picked }) | ForEach-Object { $_.picked })
-    Check '위치 바꾸는 화면이 있고 기본 위치가 기준이다' ($report.defaultDir -eq $appDir) "$($report.defaultDir)"
+    $scopePages = @($report.pages | Where-Object { $_.text -match '나만' })
+    Check '설치 범위 화면(«나만 / 모든 사용자»)이 없다(11/3)' ($scopePages.Count -eq 0) $(if ($scopePages.Count) { ($scopePages | ForEach-Object { $_.shot }) -join ' · ' })
+    Check '위치 화면의 위치가 기준이다' ($report.defaultDir -eq $appDir) "$($report.defaultDir)"
+    $lock = $report.dirLock
+    Check '위치 화면: 폴더 칸은 읽기 전용이고 «찾아보기»는 눌리지 않는다(11/3)' ($lock -and $lock.readOnly -and $lock.browseFound -and -not $lock.browseEnabled) $(if ($lock) { $lock | ConvertTo-Json -Compress } else { '위치 화면 없음' })
+    $brand = @($report.pages | Where-Object { $_.text -match ('\[1028\]' + [regex]::Escape("Poster Studio $version") + ' ') })
+    $brandOther = @($report.pages | Where-Object { $_.text -match '\[1028\]Poster Studio ' -and $_.text -notmatch ('\[1028\]' + [regex]::Escape("Poster Studio $version") + ' ') })
+    Check "설치기 아래 상표 글이 «Poster Studio $version»이다(보이는 화면 모두 · 다른 판 번호 0)" ($brand.Count -ge 1 -and $brandOther.Count -eq 0) "$($brand.Count)/$(@($report.pages).Count) 화면에 보임 · 다른 판 번호 $($brandOther.Count)"
     $df = $report.dirField
     Check '위치 화면 폴더 칸: 선택 없이 맨 앞부터 보인다' ($df -and $df.selStart -eq $df.selEnd -and $df.firstCharX -ge 0) $(if ($df) { "선택 $($df.selStart)~$($df.selEnd) · 첫 글자 x $($df.firstCharX)" } else { '폴더 칸 없음' })
     Check "기준 위치에 설치된다($appDir)" (Test-Path $exe) $exe
@@ -740,11 +734,12 @@ if ($Step -eq 'install') {
     $entry = Entry $hive
     $props = if ($entry) { Get-ItemProperty $entry.PSPath } else { $null }
     Check "«설치된 앱»에 «Poster Studio»로 등록($hive)" ($null -ne $props -and $props.UninstallString -like "*Uninstall Poster Studio.exe*") $(if ($props) { "$($props.DisplayName) · $($props.Publisher) · $($props.DisplayVersion) · $($props.UninstallString)" })
-    if ($Mode -eq 'all') {
-      $guid = if ($entry) { Split-Path $entry.PSPath -Leaf } else { '' }
-      $stub = if ($guid) { (Get-ItemProperty "HKCU:\Software\$guid" -ErrorAction SilentlyContinue).InstallLocation } else { $null }
-      Check '«모든 사용자» 설치 뒤 «나만» 위치 메모(HKCU)가 남지 않는다' (-not $stub) $stub
-    }
+    Check "«설치된 앱»의 판 번호가 $version 이다(DisplayVersion)" ($null -ne $props -and $props.DisplayVersion -eq $version) $(if ($props) { $props.DisplayVersion })
+    $fileVer = if (Test-Path $exe) { (Get-Item $exe).VersionInfo } else { $null }
+    Check "실행 파일 속성의 판 번호가 $version 이다" ($fileVer -and $fileVer.ProductVersion -eq $version -and $fileVer.FileVersion -like "$version*") $(if ($fileVer) { "제품 $($fileVer.ProductVersion) · 파일 $($fileVer.FileVersion)" })
+    $guid = if ($entry) { Split-Path $entry.PSPath -Leaf } else { '' }
+    $stub = if ($guid) { (Get-ItemProperty "HKCU:\Software\$guid" -ErrorAction SilentlyContinue).InstallLocation } else { $null }
+    Check '설치 뒤 예전 «나만» 위치 메모(HKCU)가 남지 않는다' (-not $stub) $stub
     $d = LnkInfo $desktopLnk; $s = LnkInfo $startLnk; $u = LnkInfo $uninstallLnk
     Check "바탕화면 «Poster Studio»($desktopDir)" ($d -and $d.target -ieq $exe) ($d | ConvertTo-Json -Compress)
     Check '시작 메뉴 «InKY Film Festival» 폴더 안 «Poster Studio»' ($s -and $s.target -ieq $exe) ($s | ConvertTo-Json -Compress)

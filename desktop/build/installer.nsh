@@ -1,20 +1,19 @@
 ; Poster Studio 설치기 추가 단계(2026-10-27 Bumm님 기준, 팀장 전달) — electron-builder가 이 파일을 설치기에 넣는다(package.json build.nsis.include).
 ;
-; 설치 범위 화면(«나만 / 모든 사용자»)은 그대로 둔다. 위치는 둘 다 «InKY Film Festival\Poster Studio» 모양이다.
-;   모든 사용자: C:\Program Files\InKY Film Festival\Poster Studio — electron-builder가 menuCategory를 붙여 만든다(관리자 승인 창이 한 번 뜬다).
-;   나만:       %LOCALAPPDATA%\Programs\InKY Film Festival\Poster Studio — electron-builder는 «나만» 위치에는 menuCategory를 붙이지 않는다(multiUser.nsh).
-;               «나만»을 고르면 설치기는 HKCU InstallLocation(이전 설치 위치)을 기본 위치로 쓰므로, 이전 설치가 없을 때만 그 값을 미리 적어 둔다.
-;               적는 때는 설치 범위 화면이 열릴 때다 — 설치기 시작(.onInit)에서 이전 설치를 다 살펴본 뒤라 «이미 사용자별 설치가 있습니다»가 잘못 뜨지 않는다
-;               (처음엔 preInit에서 적었더니 첫 설치인데 그 문구가 떴다 — 10/27 실측). «나만»으로 끝까지 설치하지 않으면(취소 · 모든 사용자) 창이 닫힐 때 지운다.
+; 설치 위치는 언제나 C:\Program Files\InKY Film Festival\Poster Studio 하나다(11/3 Bumm님 직접 지시 «설치 폴더는 무조건 …»).
+;   모든 사용자 설치만 한다(package.json nsis.perMachine) — «나만 / 모든 사용자» 화면은 없고, 설치기는 처음부터 관리자 권한으로 뜬다(관리자 승인 창이 한 번 뜬다).
+;   위치 화면은 그 위치를 보여 주기만 한다 — 폴더 칸 · «찾아보기»는 잠근다(psDirShow). 예전 설치 위치(등록 값) · /D도 따르지 않는다(customInit).
+;   예전에 «나만»(%LOCALAPPDATA%\Programs\…)으로 깐 판이 있으면 «지우고 새로 설치할까요?» 뒤 그 판을 먼저 지운다(psRemoveOldInstalls — 관리자 권한 설치기의 HKCU,
+;   조용한 설치는 템플릿 uninstallOldVersion HKEY_CURRENT_USER).
 ; 시작 메뉴 «InKY Film Festival» 폴더에는 «Poster Studio»(electron-builder)와 «Uninstall Poster Studio»(아래)를 둔다.
 ; 제거하면 그 바로가기와, 비게 된 «InKY Film Festival» 폴더(설치 폴더 쪽)까지 지운다. 시작 메뉴 폴더는 electron-builder가 비면 지운다.
 ;
-; 화면 흐름(10/28 Bumm님, 팀장 전달):
-;   설치기  설치 범위 → 설치 위치(«설치»를 누르면: 이미 깔려 있으면 «지우고 새로 설치할까요?», 앱이 켜져 있으면 «끄고 계속할까요?» — «취소»면 이 화면에 남는다)
+; 화면 흐름(10/28 Bumm님, 팀장 전달 · 11/3 설치 범위 화면 걷음):
+;   설치기  설치 위치(«설치»를 누르면: 이미 깔려 있으면 «지우고 새로 설치할까요?», 앱이 켜져 있으면 «끄고 계속할까요?» — «취소»면 이 화면에 남는다)
 ;           → 진행(예전 판을 «삭제: …» 줄과 함께 지움 → 프로그램 파일 → «설치: …» 줄 → 바로가기 · 등록 → «설치가 끝났습니다.» · 100% 1초) → 완료
 ;   제거기  첫 화면(«다음»을 누르면 앱이 켜져 있을 때 «끄고 계속할까요?») → 진행(«삭제: …» 줄 → «제거가 끝났습니다.» · 100% 1초) → 완료
-; 설치 위치 화면은 이 파일이 직접 넣는다(customPageAfterChangeDir). 템플릿의 위치 화면은 그 앞 화면(설치 범위)이 MUI 콜백 자리를 먼저 가져가
-; «떠날 때» 확인을 붙일 수 없어, package.json에서 allowToChangeInstallationDirectory를 끄고 같은 MUI 위치 화면을 여기서 넣는다(모양 · «설치» 단추 그대로).
+; 설치 위치 화면은 이 파일이 직접 넣는다(customPageAfterChangeDir). 템플릿의 위치 화면에는 «떠날 때» 확인을 붙일 수 없었다(10/28 — 앞의 설치 범위 화면이
+; MUI 콜백 자리를 먼저 가져갔다. 그 화면은 11/3에 걷었지만 같은 방식을 그대로 둔다). 그래서 package.json에서 allowToChangeInstallationDirectory를 끄고 같은 MUI 위치 화면을 여기서 넣는다(모양 · «설치» 단추 그대로).
 
 ; 이 파일은 설치기 머리에 먼저 들어간다 — 아래 함수가 쓰는 ${If} 등(LogicLib)을 여기서 불러 둔다(이미 불렀으면 다시 읽지 않는다).
 !include LogicLib.nsh
@@ -32,12 +31,13 @@
 
 ; ── 화면 안내문: 문장마다 새 줄, 줄은 칸 안에, «(을)를» 같은 조사 표기 없이(10/28 Bumm님, 팀장 전달) ──
 ; NSIS · electron-builder 한국어 기본 문구는 여러 문장이 한 덩어리로 흘러 칸 끝에서 낱말 중간에 끊겼다(«설치를 시 / 작하시려면» — 한국어는 글자마다 줄이 바뀔 수 있다).
-; 칸 글꼴은 굴림 9pt(-12px), 칸 폭은 100%에서 위치 안내 525px · 설치 범위 아래 안내 490px · 머리 설명 368px · 제거 첫 화면 안내 341px다(desktop-installer-probe.ps1로 잼).
+; 칸 글꼴은 굴림 9pt(-12px), 칸 폭은 100%에서 위치 안내 525px · 머리 설명 368px · 제거 첫 화면 안내 341px다(desktop-installer-probe.ps1로 잼).
 ; 칸보다 긴 한 문장은 문구를 그대로 두고 낱말 사이에서 줄을 나눈다. 고친 문구는 아래 customHeader에 모았다.
 ; 번역투(«~할 예정입니다 · ~하십시오 · ~하였습니다 · ~주시기 바랍니다 · ~됨 · 성공적으로 완료되었습니다»)는 쉬운 말로 바꿨다(10/28 오후 팀장). 단추 이름은 «'…' 단추».
 ; 위치 화면 안내만 MUI 설정으로 바꾼다 — 그 화면(MUI_PAGE_DIRECTORY)보다 먼저 정해야 해서 여기 둔다. 여러 줄 안내의 줄 간격은 psSpread가 띄운다.
 !ifndef BUILD_UNINSTALLER
-  !define MUI_DIRECTORYPAGE_TEXT_TOP "${PRODUCT_NAME}를 아래 폴더에 설치합니다.$\r$\n다른 폴더에 설치하려면 '찾아보기' 단추를 눌러 폴더를 골라 주세요.$\r$\n설치를 시작하려면 '설치' 단추를 눌러 주세요."
+  ; 위치는 바꿀 수 없다(11/3 Bumm님) — 예전 둘째 줄 «다른 폴더에 설치하려면 '찾아보기' …»는 걷었다
+  !define MUI_DIRECTORYPAGE_TEXT_TOP "${PRODUCT_NAME}를 아래 폴더에 설치합니다.$\r$\n설치를 시작하려면 '설치' 단추를 눌러 주세요."
 !endif
 
 ; ── 설치 화면 그림: 칸 크기에 맞춘 판 고르기(10/27 Bumm님 «오른쪽 위 로고가 가로로 늘어나 깨져 보인다», 팀장 전달) ──
@@ -142,7 +142,7 @@
 ; (두 번 눌러 «모든 사용자»로 덮어쓸 때 50% → 5% → 80%, 그대로 완료 화면 — 10/28 설치 창 녹화).
 ; 그래서 원래 막대 자리에 막대를 하나 더 두고 이 파일만 그것을 움직인다(앞으로만 — psAt). 원래 막대는 숨긴다(NSIS는 계속 숨은 막대에 쓴다).
 ;   ① 창이 뜰 때(화면 스레드, .onGUIInit) 숨은 막대를 만든다 — 창은 만든 스레드가 그리므로 설치 스레드에서 만들면 그려지지 않는다.
-;   ② 진행 화면이 열리면 그 자리로 옮겨 원래 막대를 가린다(설치기는 진행 화면 SHOW, 제거기는 제거 단계 맨 앞 — 제거기 진행 화면 SHOW 자리는 템플릿 제거 범위 화면이 가져간다).
+;   ② 진행 화면이 열리면 그 자리로 옮겨 원래 막대를 가린다(설치기는 진행 화면 SHOW, 제거기는 제거 단계 맨 앞 — 11/3 이전에는 제거기 진행 화면 SHOW 자리를 템플릿 제거 범위 화면이 가져갔다. 그 화면은 걷었지만 같은 자리를 그대로 쓴다).
 ;   ID는 맞바꾸지 않는다 — Nsis7z(ExtractWithCallback)도 ID 1004 막대를 제 기준으로 움직여 막대가 뒤로 갔다(a63fa02). 새 막대는 이 파일(psAt)만 움직인다.
 !macro psBarCreate
   System::Call 'user32::CreateWindowExW(i 0, w "msctls_progress32", w "", i 0x40000000, i 0, i 0, i 10, i 10, p $HWNDPARENT, p 0, p 0, p 0) p.r0'
@@ -239,18 +239,12 @@
   Var psHasAll
 
   !define MUI_CUSTOMFUNCTION_GUIINIT psGuiInit
-  ; 설치 범위 화면(템플릿 PAGE_INSTALL_MODE)이 띄우기 직전(SHOW) — 아래 안내 줄 간격(psModeShow). 템플릿이 이 매크로 바로 뒤에 그 화면을 넣으므로 여기서 정해 둔다(화면은 넣지 않는다).
-  !macro customWelcomePage
-    !define MUI_PAGE_CUSTOMFUNCTION_SHOW psModeShow
-    ; 떠날 때(«다음», 관리자 권한으로 다시 뜨지 않는 길만 — 템플릿 LEAVE 맨 끝) 그리기를 멈춘다: nsDialogs가 다음 화면 PRE보다 먼저 이 화면을 지운다
-    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE psFreeze
-  !macroend
+  ; 설치기 첫 화면이 위치 화면이다(설치 범위 화면은 11/3에 걷었다 — perMachine이라 템플릿이 넣지 않는다)
   !macro customPageAfterChangeDir
     !define MUI_PAGE_CUSTOMFUNCTION_PRE psDirPre
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW psDirShow
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE psDirLeave
     !insertmacro MUI_PAGE_DIRECTORY
-    !define MUI_PAGE_CUSTOMFUNCTION_PRE psInstFilesPre
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW psInstFilesShow
   !macroend
 
@@ -288,13 +282,11 @@
 
   !define MUI_CUSTOMFUNCTION_UNGUIINIT un.psGuiInit
   ; 제거기 첫 화면: 왼쪽 극장 그림(SHOW) · «다음»을 누르면 켜진 앱 확인(LEAVE — «취소»면 이 화면에 남는다)
+  ; 다음 화면은 진행 화면이다(제거 범위 화면은 «나만» 갈래와 함께 11/3에 걷었다 — perMachine이라 템플릿이 넣지 않는다)
   !macro customUnWelcomePage
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psWelcomeShow
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psWelcomeLeave
     !insertmacro MUI_UNPAGE_WELCOME
-    ; 다음 화면 = 템플릿 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 안내 줄 간격 · 떠날 때(진행 화면으로) 합성
-    !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.psModeShow
-    !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.psCompOn
   !macroend
   ; 제거기 완료 화면 왼쪽 그림 — 템플릿이 이 자리 바로 뒤에 완료 화면(MUI_UNPAGE_FINISH)을 넣는다
   !macro customUninstallPage
@@ -306,7 +298,7 @@
 !ifndef BUILD_UNINSTALLER
   ; 진행 화면이 열릴 때(설치 단계 시작 전, 화면 스레드): 막대를 가리고, 지울 예전 판이 있으면 템플릿의 «예전 판 조용히 지우기»(uninstallOldVersion)가 비켜 가게
   ; 그 판의 제거 명령 값을 다른 이름(psUninstallString)으로, «바로가기 그대로 두기» 값을 psKeepShortcuts로 옮겨 둔다 — 지우기는 설치 첫 단계에서 이 파일이 줄을 적으며 한다.
-  ; (KeepShortcuts가 남아 있으면 템플릿이 새 바로가기를 만들지 않는다.) 템플릿은 «모든 사용자»면 HKLM · HKCU, «나만»이면 HKCU만 본다.
+  ; (KeepShortcuts가 남아 있으면 템플릿이 새 바로가기를 만들지 않는다.) 템플릿은 HKLM(이 설치기의 범위)과 HKCU(예전 «나만» 판)를 본다.
   !macro psStash ROOT
     ReadRegStr $R0 ${ROOT} "${UNINSTALL_REGISTRY_KEY}" UninstallString
     ${If} $R0 != ""
@@ -332,7 +324,7 @@
     ${EndIf}
   !macroend
 
-  ; 설치 단계 맨 앞(일반 권한 설치기는 customCheckAppRunning, 관리자 권한으로 다시 뜬 «모든 사용자» 설치기는 customUnInstallCheck가 처음이다): 설치 위치를 적는다.
+  ; 설치 단계 맨 앞(customCheckAppRunning — 예전에 관리자 권한으로 다시 뜨던 «모든 사용자» 설치기에서는 customUnInstallCheck가 처음이었다): 설치 위치를 적는다.
   ; 막대 ID는 맞바꾸지 않는다 — 예전 풀기(Nsis7z::Extract)가 ID 1004로 찾는 막대를 이 막대로 하려고 맞바꿨는데, 지금 풀기(ExtractWithCallback, ps-extract.nsh)도
   ; 제 기준으로 그 막대를 움직여 이 파일의 몫과 엇갈려 막대가 뒤로 갔다(10/28 7a6ee97 — 842 → 760‰ 등). 이제 그 막대는 숨은 원래 막대다.
   !macro psInstallStart
@@ -342,7 +334,7 @@
     ${EndIf}
   !macroend
 
-  ; 예전 판 한 범위(ROOT · CONTEXT) 지우기 — 이 설치기가 그 범위를 쓸 수 있을 때(«나만»은 늘, «모든 사용자»는 관리자 권한일 때).
+  ; 예전 판 한 범위(ROOT · CONTEXT) 지우기 — 설치기가 처음부터 관리자 권한이라 두 범위(«모든 사용자» HKLM · 예전 «나만» HKCU) 모두 직접 지운다.
   ;   파일을 하나씩 지우며 «삭제: …»(psDeleteDir) → 바로가기 · 시작 메뉴 · 등록(예전 제거기가 지우는 것과 같은 것) → 비게 된 위 폴더.
   ;   예전 제거기는 부르지 않는다 — 조용히 돌아 줄을 남기지 못하고, 켜진 앱 찾기(PowerShell)로 4초쯤 막대가 멈췄다. 앱 데이터(%APPDATA%\Poster Studio)는 둔다.
   ;   위치는 등록된 InstallLocation이고, 그 폴더에 «Poster Studio.exe»나 제거기가 있고 이름이 «Poster Studio»일 때만 파일을 지운다(엉뚱한 폴더를 지우지 않게).
@@ -396,31 +388,22 @@
 ; 언어 문구가 다 정해진 뒤(설치기 본문의 MUI_LANGUAGE 다음) 고친 문구를 같은 이름으로 다시 정하고, 이 파일의 함수 몸을 둔다 — 함수가 쓰는 템플릿 변수 · 플러그인 경로가
 ; 이 자리에서는 다 정해져 있다(이 파일 맨 앞에서 정의하면 «no branding image found» · StdUtils를 못 찾아 빌드가 멈췄다 — 10/27).
 ; 같은 이름을 두 번 정하면 NSIS가 «자리 낭비» 경고(6030)를 내고 electron-builder는 경고를 오류로 다룬다(-WX) — 이 몇 줄에서만 그 경고를 끈다.
-; «설치 범위» 아래 안내는 설치기가 «$(…Exists)(경로)$\r$\n$(reinstallUpgrade)»로 잇는다 — 앞 문장 끝에 줄바꿈을 넣어 경로가 제 줄에 오게 한다.
 !macro customHeader
   !pragma warning push
   !pragma warning disable 6030
-  ; 10/28 오후 팀장: 설치 범위 화면은 쉬운 말로 줄인다(결정 2번) · 제거 쪽 번역투 · 모든 화면 머리글 · 안내문을 다시 훑어 «~하십시오 · ~하였습니다 · ~주시기 바랍니다 · ~됨»을 없앤다.
-  ; 범위 이름은 설명서와 같이 «나만» · «모든 사용자»다. 바꾼 문구 목록은 _docs/CHANGELOG.md 10/28 오후 절.
+  ; 10/28 오후 팀장: 제거 쪽 번역투 · 모든 화면 머리글 · 안내문을 다시 훑어 «~하십시오 · ~하였습니다 · ~주시기 바랍니다 · ~됨»을 없앤다.
+  ; 바꾼 문구 목록은 _docs/CHANGELOG.md 10/28 오후 절. 설치 범위 · 제거 범위 화면 문구는 11/3에 화면과 함께 걷었다(모든 사용자 설치만).
   !ifndef BUILD_UNINSTALLER
     ShowInstDetails show
-    LangString MUI_TEXT_DIRECTORY_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치할 폴더를 골라 주세요."
+    ; 위치 화면 머리 — 위치는 고를 수 없다(11/3 Bumm님): 기본 «설치 위치 선택» · «… 폴더를 골라 주세요.»를 바꿨다
+    LangString MUI_TEXT_DIRECTORY_TITLE ${LANG_KOREAN} "설치 위치"
+    LangString MUI_TEXT_DIRECTORY_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치할 폴더입니다."
     LangString MUI_TEXT_INSTALLING_TITLE ${LANG_KOREAN} "설치 중"
     LangString MUI_TEXT_INSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치하는 동안 잠시 기다려 주세요."
     LangString MUI_TEXT_FINISH_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치했습니다."
     LangString MUI_TEXT_ABORT_SUBTITLE ${LANG_KOREAN} "설치를 마치지 못했습니다."
     LangString MUI_TEXT_FINISH_INFO_TEXT ${LANG_KOREAN} "${PRODUCT_NAME}를 설치했습니다.$\r$\n$\r$\n마치려면 '마침' 단추를 눌러 주세요."
     LangString installing ${LANG_KOREAN} "설치하는 중입니다. 잠시 기다려 주세요."
-    ; 설치 범위 화면 — 아래 안내는 고른 단추마다 템플릿이 바꾼다(관리자 권한으로 켠 설치기에서는 허락 창 줄을 뺀다 — psModeNote)
-    LangString selectUserMode ${LANG_KOREAN} "이 컴퓨터에서 누가 ${PRODUCT_NAME}를 쓸지 골라 주세요."
-    LangString forAll ${LANG_KOREAN} "모든 사용자 (이 컴퓨터를 쓰는 모든 사람)"
-    LangString onlyForMe ${LANG_KOREAN} "나만"
-    LangString freshInstallForAll ${LANG_KOREAN} "모든 사용자가 쓸 수 있게 설치합니다.$\r$\n'다음' 단추를 누르면 관리자 허락을 묻는 창이 뜹니다."
-    LangString psFreshForAllAdmin ${LANG_KOREAN} "모든 사용자가 쓸 수 있게 설치합니다."
-    LangString freshInstallForCurrent ${LANG_KOREAN} "나만 쓸 수 있게 설치합니다."
-    LangString perUserInstallExists ${LANG_KOREAN} "이미 '나만'으로 설치되어 있습니다.$\r$\n"
-    LangString perMachineInstallExists ${LANG_KOREAN} "이미 '모든 사용자'로 설치되어 있습니다.$\r$\n"
-    LangString reinstallUpgrade ${LANG_KOREAN} "다시 설치합니다."
   !else
     ShowUninstDetails show
     ; 제거 첫 화면 — 번역투(«당신의 컴퓨터에서 … 제거할 것입니다», «종료하여 주시기 바랍니다»)를 쉬운 문장으로(10/28 Bumm님, 팀장 예시 문구)
@@ -434,14 +417,6 @@
     LangString MUI_UNTEXT_ABORT_SUBTITLE ${LANG_KOREAN} "제거를 마치지 못했습니다."
     ; 제거 완료 화면 — 기본 문구는 «완료 되었습니다»(띄어쓰기) · 제거기인데 «설치 프로그램을 마치려면»이었다
     LangString MUI_UNTEXT_FINISH_INFO_TEXT ${LANG_KOREAN} "${PRODUCT_NAME}를 지웠습니다.$\r$\n$\r$\n마치려면 '마침' 단추를 눌러 주세요."
-    ; 제거 범위 화면(두 범위가 함께 깔렸을 때만 뜸) — 기본 번역의 «\n»은 줄바꿈이 아니라 글자 그대로 찍혔다
-    LangString whichInstallationShouldBeRemoved ${LANG_KOREAN} "어느 쪽을 지울까요?"
-    LangString whichInstallationRemove ${LANG_KOREAN} "${PRODUCT_NAME}가 '모든 사용자'와 '나만'으로 함께 설치되어 있습니다.$\r$\n지울 쪽을 골라 주세요."
-    LangString forAll ${LANG_KOREAN} "모든 사용자 (이 컴퓨터를 쓰는 모든 사람)"
-    LangString onlyForMe ${LANG_KOREAN} "나만"
-    LangString perUserInstall ${LANG_KOREAN} "'나만'으로 설치되어 있습니다.$\r$\n"
-    LangString perMachineInstall ${LANG_KOREAN} "'모든 사용자'로 설치되어 있습니다.$\r$\n"
-    LangString uninstall ${LANG_KOREAN} "이 설치를 지웁니다."
   !endif
   ; 실패할 때만 뜨는 알림 — 템플릿 한국어가 없거나(영어로 떴다) 번역투였다
   LangString loginWithAdminAccount ${LANG_KOREAN} "관리자 계정으로 허락해야 계속할 수 있습니다."
@@ -457,177 +432,145 @@
   ; 그래서 칸의 글을 줄(«\r\n»)마다 따로 된 칸으로 나눠 줄 사이를 글자 높이의 0.6배 띄운다(줄 간격 160%). 줄 칸은 원래 칸과 같은 부모 · 글꼴 · 왼쪽 · 폭이고
   ; 원래 칸은 숨긴다(글은 그대로 두어 템플릿이 바꾸면 다시 부른다). 한 줄이 폭보다 길면 그 칸 안에서 꺾고 그만큼 높인다(DrawText로 잰 높이).
   ; 스택: 칸 HWND → 줄 칸 ID 바탕(줄 칸 ID = 바탕 + 0~3, 이미 있으면 다시 쓴다). 줄은 넷까지.
-  ; 띄운 줄 전체가 부모(화면 칸) 아래를 넘으면 넘는 만큼 위에서 시작한다 — 설치 범위 아래 안내 «이미 '나만'으로 설치되어 있습니다. / (폴더) / 다시 설치합니다.»
-  ; 세 줄이 화면 밑(브랜드 줄)에 잘렸다(10/28 녹화). 그 칸은 단추(아래 끝 70u)보다 한참 아래(110u)라 올려도 단추에 닿지 않는다. 다른 칸(화면 맨 위 안내)은 넘지 않는다.
-  Var psSpGap
-  Var psSpN
-  Var psSpI
-  Var psSpLen
-  Var psSpLine
-  Var psSpH
-  Var psSpTotal
-  Var psSpText
-  ; $R8의 첫 줄을 $psSpLine에, 나머지를 $R8에 둔다(줄 끝 «\r\n»). $0을 쓴다.
-  Function ${PSF}psSpNext
-    StrLen $psSpLen $R8
-    StrCpy $psSpI 0
-    StrCpy $psSpLine $R8
-    ${DoWhile} $psSpI < $psSpLen
-      StrCpy $0 $R8 2 $psSpI
-      ${If} $0 == "$\r$\n"
-        StrCpy $psSpLine $R8 $psSpI
-        IntOp $psSpI $psSpI + 2
-        ${Break}
-      ${EndIf}
-      IntOp $psSpI $psSpI + 1
-    ${Loop}
-    StrCpy $R8 $R8 "" $psSpI
-  FunctionEnd
-  Function ${PSF}psSpread
-    Exch $R0
-    Exch
-    Exch $R1
-    Push $R2
-    Push $R3
-    Push $R4
-    Push $R5
-    Push $R6
-    Push $R7
-    Push $R8
-    Push $R9
-    Push $0
-    System::Call "user32::GetParent(p R1) p.R2"
-    System::Call "*(i 0, i 0, i 0, i 0) p.R3"
-    System::Call "user32::GetWindowRect(p R1, p R3)"
-    System::Call "user32::MapWindowPoints(p 0, p R2, p R3, i 2)"
-    System::Call "*$R3(i .R4, i .R5, i .R6, i)"
-    IntOp $R6 $R6 - $R4
-    SendMessage $R1 ${WM_GETFONT} 0 0 $R7
-    System::Call "user32::GetWindowTextW(p R1, w .R8, i ${NSIS_MAX_STRLEN})"
-    ShowWindow $R1 ${SW_HIDE}
-    System::Call "user32::GetDC(p R2) p.R9"
-    System::Call "gdi32::SelectObject(p R9, p R7) p.s"
-    ; 글자 높이(한 줄) → 줄 사이
-    System::Call "*$R3(i 0, i 0, i R6, i 0)"
-    Push "가"
-    System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C00) i.r0"
-    IntOp $psSpGap $0 * 6
-    IntOp $psSpGap $psSpGap / 10
-    ; 띄운 줄 전체 높이 → 부모 아래를 넘으면 그만큼 위에서 시작
-    StrCpy $psSpText $R8
-    StrCpy $psSpN 0
-    StrCpy $psSpTotal 0
-    ${Do}
-      Call ${PSF}psSpNext
-      ${If} $psSpLine != ""
-        System::Call "*$R3(i 0, i 0, i R6, i 0)"
-        Push $psSpLine
-        System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C10) i.r0"
-        ${If} $psSpN > 0
-          IntOp $psSpTotal $psSpTotal + $psSpGap
+  ; 띄운 줄 전체가 부모(화면 칸) 아래를 넘으면 넘는 만큼 위에서 시작한다 — 예전 설치 범위 아래 안내 세 줄이 화면 밑(브랜드 줄)에 잘렸다(10/28 녹화).
+  ; 그 화면은 11/3에 걷었고, 지금 쓰는 칸(화면 맨 위 안내)은 넘지 않는다 — 넘으면 올리는 장치는 그대로 둔다.
+  ; 위치 화면(설치기)만 쓴다 — 제거기에는 여러 줄 안내 칸이 없다(11/3 제거 범위 화면을 걷은 뒤 제거기 쪽 사본은 아무도 부르지 않아 «not referenced» 경고 6010이 빌드를 멈췄다).
+  !ifndef BUILD_UNINSTALLER
+    Var psSpGap
+    Var psSpN
+    Var psSpI
+    Var psSpLen
+    Var psSpLine
+    Var psSpH
+    Var psSpTotal
+    Var psSpText
+    ; $R8의 첫 줄을 $psSpLine에, 나머지를 $R8에 둔다(줄 끝 «\r\n»). $0을 쓴다.
+    Function psSpNext
+      StrLen $psSpLen $R8
+      StrCpy $psSpI 0
+      StrCpy $psSpLine $R8
+      ${DoWhile} $psSpI < $psSpLen
+        StrCpy $0 $R8 2 $psSpI
+        ${If} $0 == "$\r$\n"
+          StrCpy $psSpLine $R8 $psSpI
+          IntOp $psSpI $psSpI + 2
+          ${Break}
         ${EndIf}
-        IntOp $psSpTotal $psSpTotal + $0
-        IntOp $psSpN $psSpN + 1
+        IntOp $psSpI $psSpI + 1
+      ${Loop}
+      StrCpy $R8 $R8 "" $psSpI
+    FunctionEnd
+    Function psSpread
+      Exch $R0
+      Exch
+      Exch $R1
+      Push $R2
+      Push $R3
+      Push $R4
+      Push $R5
+      Push $R6
+      Push $R7
+      Push $R8
+      Push $R9
+      Push $0
+      System::Call "user32::GetParent(p R1) p.R2"
+      System::Call "*(i 0, i 0, i 0, i 0) p.R3"
+      System::Call "user32::GetWindowRect(p R1, p R3)"
+      System::Call "user32::MapWindowPoints(p 0, p R2, p R3, i 2)"
+      System::Call "*$R3(i .R4, i .R5, i .R6, i)"
+      IntOp $R6 $R6 - $R4
+      SendMessage $R1 ${WM_GETFONT} 0 0 $R7
+      System::Call "user32::GetWindowTextW(p R1, w .R8, i ${NSIS_MAX_STRLEN})"
+      ShowWindow $R1 ${SW_HIDE}
+      System::Call "user32::GetDC(p R2) p.R9"
+      System::Call "gdi32::SelectObject(p R9, p R7) p.s"
+      ; 글자 높이(한 줄) → 줄 사이
+      System::Call "*$R3(i 0, i 0, i R6, i 0)"
+      Push "가"
+      System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C00) i.r0"
+      IntOp $psSpGap $0 * 6
+      IntOp $psSpGap $psSpGap / 10
+      ; 띄운 줄 전체 높이 → 부모 아래를 넘으면 그만큼 위에서 시작
+      StrCpy $psSpText $R8
+      StrCpy $psSpN 0
+      StrCpy $psSpTotal 0
+      ${Do}
+        Call psSpNext
+        ${If} $psSpLine != ""
+          System::Call "*$R3(i 0, i 0, i R6, i 0)"
+          Push $psSpLine
+          System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C10) i.r0"
+          ${If} $psSpN > 0
+            IntOp $psSpTotal $psSpTotal + $psSpGap
+          ${EndIf}
+          IntOp $psSpTotal $psSpTotal + $0
+          IntOp $psSpN $psSpN + 1
+        ${EndIf}
+        ${If} $psSpN >= 4
+          ${Break}
+        ${EndIf}
+      ${LoopUntil} $R8 == ""
+      System::Call "user32::GetClientRect(p R2, p R3)"
+      System::Call "*$R3(i, i, i, i .r0)"
+      IntOp $0 $0 - $psSpTotal
+      ${If} $R5 > $0
+        StrCpy $R5 $0
       ${EndIf}
-      ${If} $psSpN >= 4
-        ${Break}
-      ${EndIf}
-    ${LoopUntil} $R8 == ""
-    System::Call "user32::GetClientRect(p R2, p R3)"
-    System::Call "*$R3(i, i, i, i .r0)"
-    IntOp $0 $0 - $psSpTotal
-    ${If} $R5 > $0
-      StrCpy $R5 $0
-    ${EndIf}
-    StrCpy $R8 $psSpText
-    StrCpy $psSpN 0
-    ${Do}
-      ; 다음 줄을 떼어 낸다
-      Call ${PSF}psSpNext
-      ${If} $psSpLine != ""
-        ; 이 줄 높이(폭 안에서 꺾이면 그만큼)
-        System::Call "*$R3(i 0, i 0, i R6, i 0)"
-        Push $psSpLine
-        System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C10) i.r0"
-        StrCpy $psSpH $0
+      StrCpy $R8 $psSpText
+      StrCpy $psSpN 0
+      ${Do}
+        ; 다음 줄을 떼어 낸다
+        Call psSpNext
+        ${If} $psSpLine != ""
+          ; 이 줄 높이(폭 안에서 꺾이면 그만큼)
+          System::Call "*$R3(i 0, i 0, i R6, i 0)"
+          Push $psSpLine
+          System::Call "user32::DrawTextW(p R9, w s, i -1, p R3, i 0x0C10) i.r0"
+          StrCpy $psSpH $0
+          IntOp $0 $R0 + $psSpN
+          GetDlgItem $0 $R2 $0
+          ${If} $0 = 0
+            IntOp $0 $R0 + $psSpN
+            Push $psSpLine
+            System::Call "user32::CreateWindowExW(i 0, w 'STATIC', w s, i 0x50000080, i $R4, i $R5, i $R6, i $psSpH, p $R2, p $0, p 0, p 0) p.r0"
+            SendMessage $0 ${WM_SETFONT} $R7 1
+          ${Else}
+            SendMessage $0 ${WM_SETTEXT} 0 "STR:$psSpLine"
+            System::Call "user32::SetWindowPos(p r0, p 0, i $R4, i $R5, i $R6, i $psSpH, i 0x0054)"   ; NOZORDER | NOACTIVATE | SHOWWINDOW
+          ${EndIf}
+          IntOp $R5 $R5 + $psSpH
+          IntOp $R5 $R5 + $psSpGap
+          IntOp $psSpN $psSpN + 1
+        ${EndIf}
+        ${If} $psSpN >= 4
+          ${Break}
+        ${EndIf}
+      ${LoopUntil} $R8 == ""
+      ; 앞서 쓰다 남은 줄 칸은 숨긴다(글이 줄었을 때)
+      ${DoWhile} $psSpN < 4
         IntOp $0 $R0 + $psSpN
         GetDlgItem $0 $R2 $0
-        ${If} $0 = 0
-          IntOp $0 $R0 + $psSpN
-          Push $psSpLine
-          System::Call "user32::CreateWindowExW(i 0, w 'STATIC', w s, i 0x50000080, i $R4, i $R5, i $R6, i $psSpH, p $R2, p $0, p 0, p 0) p.r0"
-          SendMessage $0 ${WM_SETFONT} $R7 1
-        ${Else}
-          SendMessage $0 ${WM_SETTEXT} 0 "STR:$psSpLine"
-          System::Call "user32::SetWindowPos(p r0, p 0, i $R4, i $R5, i $R6, i $psSpH, i 0x0054)"   ; NOZORDER | NOACTIVATE | SHOWWINDOW
+        ${If} $0 <> 0
+          ShowWindow $0 ${SW_HIDE}
         ${EndIf}
-        IntOp $R5 $R5 + $psSpH
-        IntOp $R5 $R5 + $psSpGap
         IntOp $psSpN $psSpN + 1
-      ${EndIf}
-      ${If} $psSpN >= 4
-        ${Break}
-      ${EndIf}
-    ${LoopUntil} $R8 == ""
-    ; 앞서 쓰다 남은 줄 칸은 숨긴다(글이 줄었을 때)
-    ${DoWhile} $psSpN < 4
-      IntOp $0 $R0 + $psSpN
-      GetDlgItem $0 $R2 $0
-      ${If} $0 <> 0
-        ShowWindow $0 ${SW_HIDE}
-      ${EndIf}
-      IntOp $psSpN $psSpN + 1
-    ${Loop}
-    System::Call "gdi32::SelectObject(p R9, p s)"
-    System::Call "user32::ReleaseDC(p R2, p R9)"
-    System::Free $R3
-    Pop $0
-    Pop $R9
-    Pop $R8
-    Pop $R7
-    Pop $R6
-    Pop $R5
-    Pop $R4
-    Pop $R3
-    Pop $R2
-    Pop $R1
-    Pop $R0
-  FunctionEnd
-
-  ; 설치 · 제거 범위 화면(템플릿)을 띄우기 직전: 위 · 아래 안내 줄 간격. 아래 안내는 단추를 고를 때마다 템플릿(InstModeChange)이 바꾸므로
-  ; 그 자리에 이 파일의 함수를 걸어 템플릿 함수를 부른 뒤 다시 나눈다(템플릿과 같은 조건 — 두 단추를 다 고를 수 있을 때만).
-  Function ${PSF}psModeShow
-    Push $MultiUser.InstallModePage.Text
-    Push 2110
-    Call ${PSF}psSpread
-    Call ${PSF}psModeNote
-    ${If} $HasTwoAvailableOptions == "1"
-      ${NSD_OnClick} $MultiUser.InstallModePage.CurrentUser ${PSF}psModeClick
-      ${NSD_OnClick} $MultiUser.InstallModePage.AllUsers ${PSF}psModeClick
-    ${EndIf}
-    Push $MultiUser.InstallModePage
-    Call ${PSF}psFreezeUntilShown
-  FunctionEnd
-  Function ${PSF}psModeClick
-    Call ${PSF}InstModeChange   ; 스택의 단추를 템플릿이 꺼내 아래 안내 글을 바꾼다
-    Call ${PSF}psModeNote
-  FunctionEnd
-  Function ${PSF}psModeNote
-    !ifndef BUILD_UNINSTALLER
-      ; 이미 관리자 권한인 설치기는 «모든 사용자»를 골라도 허락 창이 뜨지 않는다 — 그 줄을 뺀다(화면에 쓴 것은 일어나야 한다)
-      ${If} ${UAC_IsAdmin}
-        Push $R0
-        System::Call "user32::GetWindowTextW(p $RadioButtonLabel1, w .R0, i ${NSIS_MAX_STRLEN})"
-        ${If} $R0 == "$(freshInstallForAll)"
-          SendMessage $RadioButtonLabel1 ${WM_SETTEXT} 0 "STR:$(psFreshForAllAdmin)"
-        ${EndIf}
-        Pop $R0
-      ${EndIf}
-    !endif
-    Push $RadioButtonLabel1
-    Push 2120
-    Call ${PSF}psSpread
-  FunctionEnd
+      ${Loop}
+      System::Call "gdi32::SelectObject(p R9, p s)"
+      System::Call "user32::ReleaseDC(p R2, p R9)"
+      System::Free $R3
+      Pop $0
+      Pop $R9
+      Pop $R8
+      Pop $R7
+      Pop $R6
+      Pop $R5
+      Pop $R4
+      Pop $R3
+      Pop $R2
+      Pop $R1
+      Pop $R0
+    FunctionEnd
+  !endif
 
   ; ── 화면 넘김 깜빡임 0(10/28 Bumm님 «깜빡임 0», 팀장 전달) ──
   ; 화면을 바꾸면 Windows가 지운 자리를 바로 바탕색으로 칠한다 — 새 화면이 다 차기 전(줄 칸 만들기 · 그림 꺼내기)의 빈 화면이 녹화에 2~3장 잡혔다
@@ -672,8 +615,8 @@
     ${EndIf}
     Pop $0
   FunctionEnd
-  ; 진행 화면으로 넘어갈 때(위치 · 제거 첫 화면 · 제거 범위 LEAVE): 바깥 창을 합성으로 둬 진행 화면이 처음 그려질 때 한 장에 그려지게 한다 — 다음 psThaw(완료 화면)가 끈다.
-  ; 멈춤으로는 안 된다 — 진행 화면에는 SHOW 자리가 없고(제거기 — 템플릿 제거 범위 화면이 가져간다), MUI가 첫 화면을 닫으며 LockWindow off로 그리기를 다시 켠다
+  ; 진행 화면으로 넘어갈 때(위치 · 제거 첫 화면 LEAVE): 바깥 창을 합성으로 둬 진행 화면이 처음 그려질 때 한 장에 그려지게 한다 — 다음 psThaw(완료 화면)가 끈다.
+  ; 멈춤으로는 안 된다 — 진행 화면에는 SHOW 자리가 없고(제거기 — 11/3 이전에는 템플릿 제거 범위 화면이 가져갔다), MUI가 첫 화면을 닫으며 LockWindow off로 그리기를 다시 켠다
   ; (10/28 14d2583: 위치 → 진행 04 프레임 145 · 09 프레임 146 몸통 빔, 제거 첫 화면 → 진행 03 프레임 16 · 17). 진행 화면은 합성으로 그려도 상자 줄 · 막대가 그대로다(10/28 실험 C).
   Function ${PSF}psCompOn
     Push $0
@@ -715,7 +658,7 @@
     Pop $1
     Pop $0
   FunctionEnd
-  ; nsDialogs 화면(설치 범위 · 완료)은 SHOW 뒤에 nsDialogs가 앞 화면을 지우고 새 화면을 띄운다 — 그 뒤 첫 타이머에서 다시 켠다
+  ; nsDialogs 화면(완료 — 11/3 이전에는 설치 범위 화면도)은 SHOW 뒤에 nsDialogs가 앞 화면을 지우고 새 화면을 띄운다 — 그 뒤 첫 타이머에서 다시 켠다
   Function ${PSF}psFreezeUntilShown
     Exch $0
     StrCpy $psThawPage $0
@@ -852,7 +795,7 @@
   FunctionEnd
 
   ; 상자 한 줄이 칸보다 길면 경로 가운데 폴더를 «…»로 줄여 파일 이름이 끝까지 보이게 한다 — 상자 글꼴로 실제 폭을 잰다(psFitFolders).
-  ; «나만» 위치(C:\Users\<이름>\AppData\Local\Programs\…)는 줄마다 «…\Poster Stu…»에서 잘려 어느 파일인지 안 보였다(10/28 녹화). «모든 사용자» 위치는 거의 그대로 들어간다.
+  ; «나만» 위치(C:\Users\<이름>\AppData\Local\Programs\… — 11/3부터는 예전 «나만» 판을 지울 때만 나온다)는 줄마다 «…\Poster Stu…»에서 잘려 어느 파일인지 안 보였다(10/28 녹화). «모든 사용자» 위치는 거의 그대로 들어간다.
   ; 스택에 경로 → 머리말 순으로 넣고 부르면 맨 위에 적을 줄이 남는다. 상자가 없으면(조용한 실행) 그대로 붙인다.
   ; 폴더 이름 단위로만 줄인다(10/28 팀장 — PathCompactPathW는 낱말 가운데를 잘랐다: «Poster St…» · «InKY Fil…» · «Microsof…», 줄마다 다른 곳).
   ; 끝(앱 폴더 «Poster Studio»부터, 없으면 마지막 두 칸)을 남기고 앞에서 가운데 폴더를 뒤쪽부터 하나씩 떼어 «…» 하나로 — 칸에 드는 가장 긴 것.
@@ -1103,6 +1046,10 @@
       GetDlgItem $R0 $R1 1019
       SendMessage $R0 ${EM_SETSEL} 0 0
       SendMessage $R0 ${EM_SCROLLCARET} 0 0
+      ; 위치는 바꿀 수 없다(11/3 Bumm님 «설치 폴더는 무조건 …») — 폴더 칸은 읽기 전용(글은 그대로 읽힌다), «찾아보기»는 누를 수 없게 한다
+      SendMessage $R0 ${EM_SETREADONLY} 1 0
+      GetDlgItem $R0 $R1 1001
+      EnableWindow $R0 0
       Push $R1
       Call psThaw
       Pop $R1
@@ -1154,38 +1101,15 @@
       Call psCompOn   ; 진행 화면이 처음 그려질 때 한 장에(완료 화면 psThaw가 끈다)
     FunctionEnd
 
-    ; 설치 위치가 우리 폴더인지 — 아니면 «Poster Studio» 하위 폴더를 붙인다. 템플릿은 경로에 «Poster Studio» 글자가 들어 있기만 하면 그대로 써서,
-    ; D:\Poster Studio 사진을 고르면 그 폴더에 바로 깔리고 제거기가 그 폴더를 통째로 지웠다(11/2 종합감사). 그대로 쓰는 것은 마지막 폴더 이름이
-    ; 정확히 «Poster Studio»이고 그 폴더가 없거나 · 비었거나 · 우리 설치(앱 또는 제거기가 있음)일 때뿐이다. $0 · $1을 지켜 둔다.
-    Function psSafeInstDir
-      Push $0
-      Push $1
-      ${GetFileName} "$INSTDIR" $0
-      ${DirState} "$INSTDIR" $1
-      ${If} $0 != "${APP_FILENAME}"
-        StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
-      ${ElseIf} $1 == 1
-      ${AndIfNot} ${FileExists} "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
-      ${AndIfNot} ${FileExists} "$INSTDIR\${UNINSTALL_FILENAME}"
-        StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
-      ${EndIf}
-      Pop $1
-      Pop $0
-    FunctionEnd
-
-    ; 위치 화면 다음(PRE) — 고른 위치가 우리 폴더가 아니면 «Poster Studio» 하위 폴더를 붙인다(LEAVE에서는 $INSTDIR을 바꿔도 되돌아간다 — 템플릿 주석). 조용한 설치는 customInit이 같은 판정을 부른다.
-    Function psInstFilesPre
-      Call psSafeInstDir
-    FunctionEnd
-
+    ; 진행 화면을 띄우기 직전 — 예전 판을 지우기로 했으면 두 범위(예전 «나만» HKCU · «모든 사용자» HKLM)의 제거 명령을 옮겨 둔다(psStash).
+    ; 설치기는 처음부터 관리자 권한이라 HKLM도 늘 옮길 수 있다.
+    ; (11/2 감사의 psSafeInstDir — 고른 폴더가 우리 폴더가 아니면 하위 폴더를 붙이던 판정 — 는 걷었다: 위치를 고를 수 없고 customInit이 늘 기준 위치로 정한다.)
     Function psInstFilesShow
       Push $R0
       ${If} $psRemoveOld == "1"
         StrCpy $psExtractFrom 330
         !insertmacro psStash HKCU
-        ${If} $installMode == "all"
-          !insertmacro psStash HKLM
-        ${EndIf}
+        !insertmacro psStash HKLM
       ${Else}
         StrCpy $psExtractFrom 40
       ${EndIf}
@@ -1193,70 +1117,9 @@
       Pop $R0
     FunctionEnd
 
-
-
-    ; «나만» 설치기가 «모든 사용자» 판을 지울 때 — 일반 권한으로는 Program Files · 공용 시작 메뉴 · HKLM을 못 지운다. 예전 제거기를 관리자 권한으로 부른다
-    ; (다른 PC에서는 승인 창이 한 번 뜬다). 지운 파일 줄은 끝난 뒤에 적는다(미리 적어 둔 목록 가운데 없어진 것). 승인을 안 하면 그대로 남아 아래 확인이 잡는다.
-    Function psRemoveAllElevated
-      ReadRegStr $R5 HKLM "${INSTALL_REGISTRY_KEY}" InstallLocation
-      ${GetFileName} "$R5" $R6
-      ${If} $R6 != "${APP_FILENAME}"
-      ${OrIf} $R5 == ""
-        Return
-      ${EndIf}
-      ${IfNot} ${FileExists} "$R5\${UNINSTALL_FILENAME}"
-        Return
-      ${EndIf}
-      FileOpen $R8 "$PLUGINSDIR\ps-old-all.txt" w
-      Push $R5
-      Call psWriteFileList
-      FileClose $R8
-      ; 예전 판의 제거기가 아니라 이 설치기에 든 새 제거기를 쓴다 — 10/28 이전 제거기는 켜진 앱을 PowerShell로 찾는다(템플릿 nsExec).
-      ; 새 제거기는 nsProcess로 찾아 PowerShell을 띄우지 않는다. 앱 데이터는 제거기 기본대로 지운다
-      ; (템플릿은 --updated가 아니면 지우고, /KEEP_APP_DATA는 읽지 않는다 — 예전 제거기를 부를 때와 같다).
-      File "/oname=$PLUGINSDIR\ps-all-uninstaller.exe" "${UNINSTALLER_OUT_FILE}"
-      ExecShellWait "runas" "$PLUGINSDIR\ps-all-uninstaller.exe" "/S /allusers _?=$R5" SW_HIDE
-      FileOpen $R8 "$PLUGINSDIR\ps-old-all.txt" r
-      ${Do}
-        ClearErrors
-        FileReadUTF16LE $R8 $R6
-        ${If} ${Errors}
-          ${ExitDo}
-        ${EndIf}
-        StrCpy $R6 $R6 -2   ; 줄 끝 \r\n
-        ${IfNot} ${FileExists} "$R6"
-          !insertmacro psLine "삭제" "$R6"
-          Call psStep
-        ${EndIf}
-      ${Loop}
-      FileClose $R8
-    FunctionEnd
-    ; 폴더 안 파일 경로를 $R8(열린 파일)에 한 줄씩 적는다
-    Function psWriteFileList
-      Exch $R0
-      Push $R1
-      Push $R2
-      FindFirst $R1 $R2 "$R0\*.*"
-      ${DoWhile} $R2 != ""
-        ${If} $R2 != "."
-        ${AndIf} $R2 != ".."
-          ${If} ${FileExists} "$R0\$R2\*.*"
-            Push "$R0\$R2"
-            Call psWriteFileList
-          ${Else}
-            FileWriteUTF16LE $R8 "$R0\$R2$\r$\n"
-          ${EndIf}
-        ${EndIf}
-        FindNext $R1 $R2
-      ${Loop}
-      FindClose $R1
-      Pop $R2
-      Pop $R1
-      Pop $R0
-    FunctionEnd
-
     ; 예전 판 지우기(설치 첫 단계) — 위치 화면에서 «지우고 새로 설치»를 고른 경우만. 0~300‰를 지운 파일 수로 나눠 막대를 옮긴다.
-    ; 다 지운 뒤 예전 판 등록이 남아 있으면(파일을 못 지움 · 승인 거절) 옮겨 둔 값을 되돌리고 알린 뒤 설치를 멈춘다 — 예전 판은 «설치된 앱»에 남아 다시 지울 수 있다.
+    ; 다 지운 뒤 예전 판 등록이 남아 있으면(파일을 못 지움) 옮겨 둔 값을 되돌리고 알린 뒤 설치를 멈춘다 — 예전 판은 «설치된 앱»에 남아 다시 지울 수 있다.
+    ; 예전 «나만» 판은 이 설치기를 돌리는 계정(관리자 권한)의 HKCU에서 찾는다 — 표준 사용자가 다른 관리자 계정으로 승인하면 그 계정의 HKCU라 못 찾는다(그때는 새 판만 깔린다).
     Function psRemoveOldInstalls
       ${If} $psRemoveOld != "1"
         Return
@@ -1290,25 +1153,15 @@
         !insertmacro psRemoveScope HKCU current
       ${EndIf}
       ${If} $psHasAll == "1"
-        ${If} ${UAC_IsAdmin}
-          !insertmacro psRemoveScope HKLM all
-        ${Else}
-          Call psRemoveAllElevated
-        ${EndIf}
+        !insertmacro psRemoveScope HKLM all
       ${EndIf}
-      ${If} $installMode == "all"
-        SetShellVarContext all
-      ${Else}
-        SetShellVarContext current
-      ${EndIf}
+      SetShellVarContext all
       !insertmacro psAt 300
       Call psFindInstalls
       ${If} $psHasUser == "1"
       ${OrIf} $psHasAll == "1"
         !insertmacro psUnstash HKCU
-        ${If} ${UAC_IsAdmin}
-          !insertmacro psUnstash HKLM
-        ${EndIf}
+        !insertmacro psUnstash HKLM
         !insertmacro psStage "예전 ${PRODUCT_NAME}를 다 지우지 못했습니다."
         MessageBox MB_OK|MB_ICONEXCLAMATION "예전 ${PRODUCT_NAME}를 다 지우지 못했습니다.$\r$\n${PRODUCT_NAME}를 모두 끈 뒤 다시 설치해 주세요." /SD IDOK
         Pop $R8
@@ -1571,66 +1424,21 @@
 !macroend
 
 !ifndef BUILD_UNINSTALLER
-  Var psUserDefaultWritten
-
-  ; $LOCALAPPDATA는 셸 범위(SetShellVarContext)를 따른다 — 이 화면이 열릴 때는 기본값 «모든 사용자»라 C:\ProgramData를 가리켰다(10/27 실측:
-  ; «나만» 설치가 C:\ProgramData\Programs에 깔렸다). 그래서 «현재 사용자»로 잠깐 바꿔 읽고, 지금 범위($installMode)로 되돌린다.
-  !macro customInstallMode
-    Push $0
-    ReadRegStr $0 HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
-    ${If} $0 == ""
-      SetShellVarContext current
-      WriteRegExpandStr HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation "$LOCALAPPDATA\Programs\${MENU_FILENAME}\${APP_FILENAME}"
-      ${If} $installMode == "all"
-        SetShellVarContext all
-      ${EndIf}
-      StrCpy $psUserDefaultWritten "1"
-    ${EndIf}
-    Pop $0
-  !macroend
-
-  ; 조용한 설치(/S)도 «나만» 기본 위치를 화면 설치와 같게(…\Programs\InKY Film Festival\Poster Studio, 10/28 저녁 팀장) — 위 기본 위치는 범위 화면(PRE)에서 정하는데
-  ; 조용한 설치는 그 화면을 거치지 않아 템플릿 기본(…\Programs\Poster Studio)에 깔렸다. 예전 설치 위치(등록 값)와 /D는 그대로 따른다. «모든 사용자»는 템플릿이 이미 같은 모양이다.
+  ; 설치 위치는 언제나 «Program Files\InKY Film Festival\Poster Studio» 하나다(11/3 Bumm님 «설치 폴더는 무조건 …»).
+  ; 템플릿(setInstallModePerAllUsers)은 예전 설치 위치(HKLM 등록 값)나 /D가 있으면 그것을 따르는데, 그 뒤에 여기서 기준 위치로 다시 정한다 —
+  ; 화면 설치 · 조용한 설치(/S) 모두 같다. 위치 화면의 폴더 칸 · «찾아보기»는 psDirShow가 잠근다.
   !macro customInit
-    ${If} ${Silent}
-    ${AndIf} $installMode == "CurrentUser"
-      Push $0
-      Push $1
-      ReadRegStr $0 HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
-      !insertmacro GetDParameter $1
-      ${If} $0 == ""
-      ${AndIf} $1 == ""
-        ${GetParent} "$INSTDIR" $0
-        StrCpy $INSTDIR "$0\${MENU_FILENAME}\${APP_FILENAME}"
-      ${EndIf}
-      Pop $1
-      Pop $0
-    ${EndIf}
-    ; 조용한 설치는 위치 화면이 없다 — /D로 사용자 폴더를 줘도 그 폴더에 바로 깔지 않게 같은 판정을 한다(psSafeInstDir, 11/2 종합감사)
-    ${If} ${Silent}
-      Call psSafeInstDir
-    ${EndIf}
+    StrCpy $INSTDIR "$PROGRAMFILES64\${MENU_FILENAME}\${APP_FILENAME}"
   !macroend
-
-  Function .onGUIEnd
-    ${If} $psUserDefaultWritten == "1"
-      ReadRegStr $0 HKCU "${UNINSTALL_REGISTRY_KEY}" UninstallString
-      ${If} $0 == ""
-        DeleteRegValue HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
-        DeleteRegKey /ifempty HKCU "${INSTALL_REGISTRY_KEY}"
-      ${EndIf}
-    ${EndIf}
-  FunctionEnd
 !endif
 
 ; 등록 · 바로가기를 마친 뒤(템플릿의 마지막 자리): 제거기 줄 · 한 일 · «설치가 끝났습니다.» → 100%를 1초 보인 뒤 완료 화면
 !macro customInstall
   !insertmacro psLine "설치" "$INSTDIR\${UNINSTALL_FILENAME}"
   CreateShortCut "$SMPROGRAMS\${MENU_FILENAME}\Uninstall ${PRODUCT_NAME}.lnk" "$INSTDIR\${UNINSTALL_FILENAME}"
-  ${If} $installMode == "all"
-    DeleteRegValue HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
-    DeleteRegKey /ifempty HKCU "${INSTALL_REGISTRY_KEY}"
-  ${EndIf}
+  ; 예전 «나만» 판이 남긴 설치 위치 기억(HKCU)을 지운다 — 이 판은 HKLM에만 등록한다
+  DeleteRegValue HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
+  DeleteRegKey /ifempty HKCU "${INSTALL_REGISTRY_KEY}"
   !insertmacro psAt 950
   !insertmacro psNote "바탕화면에 «${PRODUCT_NAME}» 바로가기를 만들었습니다."
   !insertmacro psAt 965
@@ -1738,9 +1546,7 @@
     StrCpy $R2 "1"
   ${EndIf}
   ${If} $R2 == "1"
-    ${If} $installMode == "all"
-      SetShellVarContext current   ; 앱 데이터는 늘 사람마다(템플릿과 같다)
-    ${EndIf}
+    SetShellVarContext current   ; 앱 데이터는 늘 사람마다(템플릿과 같다)
     ${For} $R1 1 10
       RMDir /r "$APPDATA\${APP_FILENAME}"
       ${IfNot} ${FileExists} "$APPDATA\${APP_FILENAME}\*.*"
@@ -1748,9 +1554,7 @@
       ${EndIf}
       Sleep 300
     ${Next}
-    ${If} $installMode == "all"
-      SetShellVarContext all
-    ${EndIf}
+    SetShellVarContext all   ; 모든 사용자 설치만 한다(11/3)
   ${EndIf}
   Pop $R2
   Pop $R1
