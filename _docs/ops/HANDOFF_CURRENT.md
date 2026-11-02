@@ -1,5 +1,14 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-11-02(월) 오전 — `CLAUDE.md` 최신화(Bumm님 직접 지시) · 설치판 `2fabd75` 녹화 18차 · 라이브 그대로(master `174346e` 배포분)
+
+- `CLAUDE.md`를 지금 master에 맞췄다 — 시험 수 438(11/1) · Windows 설치판 줄 · npx 배포 도구 · 폴더 구조 · `security-notes.md` 설명 · «`CLAUDE.md`만은 Bumm님 직접 지시», 100줄.
+  `README.md` · app.md의 시험 수 435도 438로. 11/1 OPEN ④는 끝났다.
+- 저장소 폴더 `D:\Projects\inky-festival\poster-studio`의 체크아웃을 `release-20261018`(10/17)에서 master로 옮겼다 — 이 폴더에서 연 세션이 10/17의 `CLAUDE.md`(샘플 모드 · 11/7 전환)를 읽고 있었다. 옛 가지는 그대로 남아 있다.
+- 설치판 `2fabd75` 녹화 18차 끝(아래 모니터) — «끝났습니다» 고침 확인, 화면 넘김마다 덜 그려진 장 1~2장은 남음. 자세히는 가지 `desktop-20261027`(`76bae02`) CHANGELOG 11/2. 공개 설치 파일 교체는 팀장 판단 대기(공개 객체 = `e58b65c` 그대로).
+- 11/1 절의 «운영자 전달 PDF가 E:로 옮겨졌다»는 바로잡는다: 원래 폴더는 `C:\Users\817be\Documents\자료보관\Projects\20-29 앱개발\26 InKY Film Festival\26.11 영화제와제작도구 작업자료\poster-studio-운영자-전달-20261026`에 있고, E: 쪽은 SHA-256까지 같은 사본이다(두 경로 모두 맞다).
+- OPEN: ① 라이브 로그의 칸 · 판 필드는 첫 실제 생성 요청 때(11/2 09:26까지 0건) ② 설치 파일 교체 결정(팀장) ③ 현장 OPEN(11/12 포토프린터 · 교육청 노트북 설치 권한 · SmartScreen) 그대로.
+
 ## 2026-11-01(일) 16:46 — 라이브: **master `174346e` = CI 배포** · Hosting 판 `2ae4c35140bac538`(파일은 앞 판과 같음) · 함수 `posterstudio-00045-sub` · 공개 설치 파일 = `e58b65c` 빌드 그대로
 
 - 무엇: Dependabot 알림 정리(PR #24) — 루트 · functions `overrides`(qs 6.16.2 · glob 14.0.3 · minimatch 11.0.3) · `tools/deploy/` 지우고 배포 도구는 `npx --yes firebase-tools@15.32.1`(`deploy.yml` 맨 위 `FIREBASE_TOOLS`).
