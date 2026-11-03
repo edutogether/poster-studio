@@ -195,15 +195,19 @@ try {
       const dockL = btns.length ? Math.round(Math.min(...btns.map((b) => b.left))) : null, dockR = btns.length ? Math.round(innerWidth - Math.max(...btns.map((b) => b.right))) : null;
       // 촬영 단추 개수(원형 · 아래 줄 «3초 뒤 사진 찍기»/«샘플 포스터 보기») — 켠 뒤에는 하나만
       const shooters = ['phoneShotBtn', 'shotBtn'].map((id) => document.getElementById(id)).filter((b) => b && !b.hidden && vis(b)).length;
-      // 찍은 뒤 세로 여백: 사진 아래 → 회색 띠 위 → 물음 → «다시 찍기» → 회색 띠 아래(= 단추 줄 위)
-      const ws = document.getElementById('cameraWorkspace'), q = document.querySelector('#cameraView .photo-review p'), rb = document.getElementById('retakeBtn'), dockEl = document.querySelector('#cameraView .camera-actions');
-      const gaps = q && vis(q) && rb && vis(rb) && ws && dockEl ? [ws.getBoundingClientRect().top - br.bottom, q.getBoundingClientRect().top - ws.getBoundingClientRect().top, rb.getBoundingClientRect().top - q.getBoundingClientRect().bottom, dockEl.getBoundingClientRect().top - rb.getBoundingClientRect().bottom].map(Math.round) : null;
-      camBox = { ratio: +(br.width / br.height).toFixed(3), w: Math.round(br.width), h: Math.round(br.height), overGuide, shotOver, done, heading: !!(head && vis(head) && head.getBoundingClientRect().height > 0), dockL, dockR, shooters, gaps };
+      // 찍은 뒤(11/3 Bumm님): «다시 찍기»는 사진 위 동그라미(칸 안에 다 들어옴) · 칸 아래 물음 글은 휴대폰에서 없음
+      const q = document.querySelector('#cameraView .photo-review p'), rb = document.getElementById('retakeBtn');
+      const rr = rb && vis(rb) && !rb.hidden ? rb.getBoundingClientRect() : null;
+      const retake = rr ? (rr.left >= br.left && rr.right <= br.right && rr.top >= br.top && rr.bottom <= br.bottom ? 'in' : 'out') : null;
+      // 칸 위 빈 곳: 머리말 아래 끝에서 칸 위 끝까지(개인정보 줄 34px뿐이어야 한다)
+      const hd = document.querySelector('.app-header');
+      const above = hd ? Math.round(br.top - hd.getBoundingClientRect().bottom) : null;
+      camBox = { ratio: +(br.width / br.height).toFixed(3), w: Math.round(br.width), h: Math.round(br.height), overGuide, shotOver, done, heading: !!(head && vis(head) && head.getBoundingClientRect().height > 0), dockL, dockR, shooters, retake, question: !!(q && vis(q) && q.getBoundingClientRect().height > 0), above, full: Math.round(innerWidth - 44) };
     }
     // 단추 줄 아래 빈 곳: 문서가 한 화면을 넘지 않을 때, 보이는 단추 줄(.camera-actions) 아래 끝에서 화면 끝까지(px)
     const ca = document.querySelector('#cameraView:not([hidden]) .camera-actions');
     const blankBelow = ca && vis(ca) && document.documentElement.scrollHeight <= innerHeight + 1 ? Math.round(innerHeight - ca.getBoundingClientRect().bottom) : null;
-    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, shotBottom, tipsBottom, dockBottom, camGap, blankBelow, camBox, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
+    return { overflowX, offscreen: offscreen.slice(0, 20), overlaps, small, endTight, clipped: clipped.slice(0, 20), height: document.documentElement.scrollHeight, vh: innerHeight, vw: innerWidth, shotBottom, tipsBottom, dockBottom, camGap, blankBelow, camBox, scrollY: Math.round(scrollY), focus: document.activeElement && document.activeElement !== document.body ? name(document.activeElement) : 'body' };
   })()`;
   // fit: 휴대폰 3단계는 스크롤 없이 한 화면(팀장 설계 ⑬).
   // shotInView · tips: 휴대폰 2단계 도착 화면에 원형 촬영 단추 · 안내 1~3이 다 보인다(⑤ · ⑥) — 못 찾으면 걸린다(빈 검사가 되지 않게).
@@ -221,20 +225,28 @@ try {
     // 휴대폰 카메라 화면 정리(10/20 밤) — 하나라도 어긋나면 걸린다
     const cb = m.camBox, tidy = [];
     if (cam && cb) {
-      if (Math.abs(cb.ratio - 0.75) > 0.01) tidy.push(`칸 비율 ${cb.w}×${cb.h}(3:4 아님)`);
+      // 칸(11/3 Bumm님 «세로로 크게, 좌우를 잘라서»): 3:4이거나(높이가 모자란 화면) 화면 폭(− 44)을 다 쓰며 3:4 ~ 9:16 사이, 칸 위에 빈 곳 없음, 켠 화면 ↔ 찍은 뒤 같은 크기
+      const fullW = Math.abs(cb.w - cb.full) <= 2;
+      if (cb.ratio > 0.76 || cb.ratio < 0.5525 || (!fullW && Math.abs(cb.ratio - 0.75) > 0.01)) tidy.push(`칸 ${cb.w}×${cb.h}(비율 ${cb.ratio} — 3:4도, 폭을 다 쓴 세로 칸도 아님)`);
+      if (cb.above !== null && cb.above > 36) tidy.push(`칸 위 빈 곳 ${cb.above}px`);
+      const prev = camSize.get(tag);
+      if (prev && (Math.abs(prev.w - cb.w) > 1 || Math.abs(prev.h - cb.h) > 1)) tidy.push(`칸 크기가 바뀜 ${prev.w}×${prev.h}(${prev.screen}) → ${cb.w}×${cb.h}`);
+      if (!prev) camSize.set(tag, { w: cb.w, h: cb.h, screen });
       if (cb.overGuide.length) tidy.push(`구도 선과 겹침: ${cb.overGuide.join(', ')}`);
       if (cb.shotOver) tidy.push(`원형 단추가 칸에 ${cb.shotOver}px 걸침`);
       if (cb.done > (screen.endsWith('after-shot') ? 0 : 1)) tidy.push(`«촬영 완료» ${cb.done}개`);
       if (screen.endsWith('after-shot') && cb.heading) tidy.push('찍은 뒤 제목이 보임');
       if (cb.dockL !== null && (Math.abs(cb.dockL - cb.dockR) > 2 || cb.dockR < 8)) tidy.push(`단추 줄 여백 왼쪽 ${cb.dockL} · 오른쪽 ${cb.dockR}`);
       if (!screen.includes('shot') && cb.shooters !== 1) tidy.push(`촬영 단추 ${cb.shooters}개`);
-      // 찍은 뒤 여백 넷(사진 → 회색 띠 → 물음 → «다시 찍기» → 띠 끝)은 모두 10~18px이고 서로 4px 안
-      if (screen.includes('shot') && cb.gaps) { if (cb.gaps.some((g) => g < 10 || g > 18) || Math.max(...cb.gaps) - Math.min(...cb.gaps) > 4) tidy.push(`찍은 뒤 여백 ${cb.gaps.join(' · ')}px`); }
-      else if (screen.includes('shot')) tidy.push('찍은 뒤 물음 · 다시 찍기를 못 찾음');
+      // 찍은 뒤: 다시 찍기 동그라미가 사진 안에 있고, 칸 아래 물음 글은 없다. 찍기 전 · 켠 화면에는 동그라미가 없다
+      if (screen.includes('shot')) { if (cb.retake !== 'in') tidy.push(cb.retake ? '다시 찍기가 사진 밖' : '다시 찍기 동그라미를 못 찾음'); if (cb.question) tidy.push('칸 아래 물음 글이 보임'); }
+      else if (cb.retake) tidy.push('찍기 전에 다시 찍기가 보임');
     } else if (cam) tidy.push('카메라 칸을 못 찾음');
     m.camTidy = tidy.length ? tidy.join(' / ') : 0;
-    // 찍기 전 예시 영상 칸은 16:9 그대로(10/23 Bumm님 «비율을 절대 깨지 않게») — 가로 ÷ 세로 1.778 ± 0.01
-    m.exBox = tips && m.camBox && Math.abs(m.camBox.ratio - 16 / 9) > 0.01 ? `예시 칸 ${m.camBox.w}×${m.camBox.h}(비율 ${m.camBox.ratio}, 16:9 아님)` : 0;
+    // 찍기 전 예시 영상 칸은 16:9 그대로(10/23 Bumm님 «비율을 절대 깨지 않게») — 가로 ÷ 세로 1.778 ± 0.01.
+    // 단 높이 790 이상 · 세로가 폭의 두 배 이상(높이 700 이상)인 화면은 10/24 Bumm님 «좌우를 잘라 세로로 키워라»로 칸이 더 높다(studio.css) — 그 화면은 보지 않는다
+    const tallEx = m.vh >= 790 || (m.vh >= 700 && m.vw * 2 <= m.vh);
+    m.exBox = tips && m.camBox && !tallEx && Math.abs(m.camBox.ratio - 16 / 9) > 0.01 ? `예시 칸 ${m.camBox.w}×${m.camBox.h}(비율 ${m.camBox.ratio}, 16:9 아님)` : 0;
     const v = await call('Page.captureScreenshot', { format: 'png' });
     await fs.writeFile(path.join(out, `${tag}-${screen}-view.png`), Buffer.from(v.data, 'base64'));
     const metrics = await call('Page.getLayoutMetrics');
@@ -245,6 +257,7 @@ try {
     const bad = m.overflowX > 0 || m.offscreen.length || m.overlaps.length || m.small.length || m.endTight !== null || m.clipped.length || m.arrivalScroll || m.notFit || m.shotCut || m.tipsCut || m.dockCut || m.camBand || m.blank || m.camTidy || m.exBox;
     console.log(`${tag} ${screen}: 높이 ${m.height} · 가로 넘침 ${m.overflowX} · 화면 밖 ${m.offscreen.length} · 겹침 ${m.overlaps.length} · 작은 단추 ${m.small.length} · 잘린 글자 ${m.clipped.length}${m.endTight !== null ? ` · 맨 아래 단추가 끝에서 ${m.endTight}px` : ''}${m.arrivalScroll ? ` · 도착 때 ${m.arrivalScroll}px 내려간 채 시작` : ''}${m.notFit ? ` · 한 화면보다 ${m.notFit}px 김` : ''}${m.tipsCut ? (typeof m.tipsCut === 'number' ? ` · 안내 1~3이 ${m.tipsCut}px 잘림` : ' · 안내 1~3을 못 찾음') : ''}${m.dockCut ? (typeof m.dockCut === 'number' ? ` · 빨간 단추가 ${m.dockCut}px 잘림` : ' · 빨간 단추를 못 찾음') : ''}${m.shotCut ? (typeof m.shotCut === 'number' ? ` · 원형 촬영 단추가 ${m.shotCut}px 잘림` : ' · 원형 촬영 단추를 못 찾음') : ''}${m.camBand ? ` · 카메라 칸 띠 ${m.camBand}` : ''}${m.blank ? ` · 단추 줄 아래 ${m.blank}px 빔` : ''}${m.camTidy ? ` · ${m.camTidy}` : ''}${m.exBox ? ` · ${m.exBox}` : ''}${m.camBox && cam ? ` · 칸 ${m.camBox.w}×${m.camBox.h}` : ''}${bad ? '  ← 확인' : ''}`);
   };
+  const camSize = new Map();   // 크기별 켠 화면 칸 크기(찍은 뒤와 견준다)
   const fail = (tag, what) => { blocked = true; console.error(`${tag}: ${what}에서 흐름이 막힘`); };
 
   for (const { w, h } of sizes) {

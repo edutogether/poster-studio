@@ -71,6 +71,12 @@ describe("기기 판정(public/device-canvas.js)", () => {
     expect(run({ ua: IPHONE, tp: 5, coarse: true, screen: [390, 844] })).toMatchObject({ device: "phone", meta: "width=390, viewport-fit=cover" });
     expect(run({ ua: GALAXY, tp: 5, coarse: true, screen: [360, 780] })).toMatchObject({ device: "phone" });
   });
+  // 11/3 Bumm님 «휴대폰 가로면 그냥 PC 버전 보여 주면 되는 거 아니야 ?» — 가로로 들면 PC 화면(폭 1440). 11/2의 «세로로 돌려 주세요» 안내를 대신한다
+  test("휴대폰 가로 → PC 화면, viewport 폭 1440(세로로 돌리면 다시 휴대폰 390)", () => {
+    expect(run({ ua: IPHONE, tp: 5, coarse: true, landscape: true, screen: [430, 932], win: [932, 380] })).toMatchObject({ device: "pc", meta: "width=1440", zoom: "" });
+    expect(run({ ua: GALAXY, tp: 5, coarse: true, landscape: true, screen: [360, 780] })).toMatchObject({ device: "pc", meta: "width=1440" });
+    expect(run({ ua: IPHONE, tp: 5, coarse: true, screen: [430, 932] })).toMatchObject({ device: "phone", meta: "width=390, viewport-fit=cover" });
+  });
   test("아이패드 사파리(맥 이름표 + 터치) → 태블릿, 세로 1024 · 가로 1366", () => {
     expect(run({ ua: IPAD_SAFARI, tp: 5, coarse: true, screen: [820, 1180] })).toMatchObject({ device: "tablet-p", meta: "width=1024, viewport-fit=cover" });
     expect(run({ ua: IPAD_SAFARI, tp: 5, coarse: true, landscape: true, screen: [820, 1180] })).toMatchObject({ device: "tablet-l", meta: "width=1366, viewport-fit=cover" });

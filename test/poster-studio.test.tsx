@@ -1244,13 +1244,19 @@ describe('휴대폰 흐름', () => {
     expect(action).toHaveBeenCalledTimes(2);   // 막힌 단추
   });
 
-  test('첫 페이지 단추(10/20 저녁 · 10/24 Bumm님): 모든 해상도 같은 글 — 아이콘 + «주인공이 될 순간 보러 가기» · 찍은 뒤 휴대폰 문구는 한 줄', async () => {
+  test('첫 페이지 단추(10/20 저녁 · 10/24 Bumm님): 모든 해상도 같은 글 — 아이콘 + «주인공이 될 순간 보러 가기» · 다시 찍기는 사진 위 동그라미(11/3)', async () => {
     await act(async () => { renderApp(); });
     const btn = el('prepareNextBtn');
     expect(btn.textContent).toBe('주인공이 될 순간 보러 가기');
     expect(btn.querySelector('.next-label svg')).not.toBeNull();
-    expect(document.querySelector('.photo-review .label-phone')!.textContent).toBe('표정과 구도가 마음에 드나요 ?');
-    expect(document.querySelector('.photo-review .label-pc')!.textContent).toBe('표정과 구도가 마음에 드나요 ?다시 찍어도 괜찮아요.');
+    // 11/3 Bumm님: 다시 찍기는 찍은 사진(사진 틀) 위 반투명 동그라미 — 물음 글(PC)은 원래 자리, 그 아래 단추는 없다
+    expect(document.querySelector('.photo-review p')!.textContent).toBe('표정과 구도가 마음에 드나요 ?다시 찍어도 괜찮아요.');
+    expect(document.querySelector('.photo-review button')).toBeNull();
+    const retake = el<HTMLButtonElement>('retakeBtn');
+    expect(retake.closest('.camera-frame')).not.toBeNull();
+    expect(retake.className).toBe('retake-overlay');
+    expect(retake.getAttribute('aria-label')).toBe('다시 찍기');
+    expect(retake.hidden).toBe(true);   // 찍기 전에는 없다
   });
 
   test('3단계 썸네일 이름은 한글(10/23 Bumm님 «아이들 대상이라») — 읽기 도구가 읽는 이름도 보이는 이름과 같다', async () => {

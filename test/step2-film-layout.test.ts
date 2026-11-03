@@ -17,7 +17,7 @@ const block = (start: string, end: string) => {
    한쪽만 고쳐 두 티켓 모양이 갈리지 않게, 규칙(선택자 · 선언)이 하나도 빠짐없이 같은지 본다. */
 test('세로형 티켓 규칙 = 태블릿 세로 배치의 규칙 그대로', () => {
   const tablet = rules(block('@media (min-width: 761px) and (max-width: 1099px) and (min-height: 960px) and (orientation: portrait)', '#cameraWorkspace .camera-actions {'));
-  const band = rules(block('@media (min-width: 1100px) and (min-height: 680px) and (max-height: 869px), (min-width: 1100px) and (min-height: 1760px)', '\n}\n'));
+  const band = rules(block('@media (min-width: 1100px) and (min-height: 560px) and (max-height: 869px), (min-width: 1100px) and (min-height: 1760px)', '\n}\n'));
   expect(tablet.length).toBe(16);
   expect(band).toEqual(tablet);
 });

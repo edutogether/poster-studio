@@ -190,7 +190,7 @@ export default function StudioView(p: StudioViewProps) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const dialogCarouselRef = useRef<HTMLDivElement>(null);
   const galleryRef = useRef<HTMLDivElement>(null);
-  const swipeTimer = useRef(0);
+  const swipingEl = useRef<HTMLElement | null>(null);
   const hinted = useRef(false);
   const [hint, setHint] = useState(false);
   const shownPosters = useRef<Poster[]>([]);
@@ -302,18 +302,21 @@ export default function StudioView(p: StudioViewProps) {
     if (!isPhone()) return;
     document.getElementById("prepareWorkspace")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
   };
-  /* ⑧~⑩ 휴대폰 3단계: 큰 포스터 줄(과 크게 보기 창의 줄)을 밀어 멈추면 가운데 장이 선택된다. 썸네일을 누르면 거꾸로 줄이 그 장으로 간다. */
+  /* ⑧~⑩ 휴대폰 3단계: 큰 포스터 줄(과 크게 보기 창의 줄)을 밀면 가운데에 온 장이 그 자리에서 선택된다. 썸네일을 누르면 거꾸로 줄이 그 장으로 간다.
+     11/3 Bumm님 «다른 걸 골랐을 때 불이 들어오는 게 많이 느리다»: 예전에는 줄이 멈춘 뒤(자석 정렬 끝 + 0.09초) 골랐다 — 이제 밀어서 반을 넘는 순간 고른다.
+     민 줄은 손가락 · 관성을 따라가게 두고(swipingEl), 다른 줄 · 썸네일만 고른 장으로 옮긴다. */
   const onSwipe = (el: HTMLDivElement) => {
-    window.clearTimeout(swipeTimer.current);
-    swipeTimer.current = window.setTimeout(() => {
-      const first = el.firstElementChild as HTMLElement | null;
-      const i = slideAt(el.scrollLeft, first?.offsetWidth ?? 0, parseFloat(getComputedStyle(el).columnGap) || 0, p.posters.length);
-      if (i !== p.selected) p.select(i);
-    }, 90);
+    const first = el.firstElementChild as HTMLElement | null;
+    const i = slideAt(el.scrollLeft, first?.offsetWidth ?? 0, parseFloat(getComputedStyle(el).columnGap) || 0, p.posters.length);
+    if (i === p.selected) return;
+    swipingEl.current = el;
+    p.select(i);
   };
   const showSelected = (behavior: ScrollBehavior) => {
+    const swiped = swipingEl.current;
+    swipingEl.current = null;
     for (const el of [carouselRef.current, dialogCarouselRef.current]) {
-      if (!el) continue;
+      if (!el || el === swiped) continue;
       const left = p.selected * slideStep(el);
       if (Math.abs(el.scrollLeft - left) > 2) el.scrollTo({ left, behavior });
     }
@@ -705,6 +708,8 @@ export default function StudioView(p: StudioViewProps) {
             <div className="camera-guides" aria-hidden="true"><i/><i/><i/><i/></div>
             {p.phase === "shot" && captureNoticeVisible && <span className="captured-badge">✓ 촬영 완료</span>}   {/* 10/20 저녁 Bumm님 «잠깐 떴다가 사라지게» — 가운데 알림과 함께(2.4초), PC도 */}
             <div id="countdown" className={p.countdown === null ? "countdown hidden" : "countdown"} aria-live="assertive">{p.countdown}</div>
+            {/* 11/3 Bumm님 «찍은 뒤 사진을 작게 줄이지 말고 크게 둔 채, 거의 투명한 검은 동그라미 + 동그란 화살표로 다시 찍기» — PC · 휴대폰 · 설치판 모두 */}
+            <button id="retakeBtn" type="button" className="retake-overlay" hidden={p.phase !== "shot"} disabled={locked || p.phase !== "shot"} aria-label="다시 찍기" onClick={p.onRetake}><StudioIcon name="reset"/></button>
             </div>
           </div>
           {/* ⑥ 휴대폰: 엄지 자리 빨간 원형 촬영 단추(PC에서는 숨김) — 아래 «3초 뒤 사진 찍기»와 같은 일을 한다. 휴대폰 2단계에는
@@ -728,11 +733,7 @@ export default function StudioView(p: StudioViewProps) {
             </ul>
 
             <div className="photo-review" aria-hidden={p.phase !== "shot"}>
-              <p>
-                <span className="label-pc">표정과 구도가 마음에 드나요 ?<br/>다시 찍어도 괜찮아요.</span>
-                <span className="label-phone">표정과 구도가 마음에 드나요 ?</span>
-              </p>
-              <button id="retakeBtn" type="button" className="quiet-button" disabled={locked || p.phase !== "shot"} onClick={p.onRetake}><StudioIcon name="reset"/>다시 찍기</button>
+              <p>표정과 구도가 마음에 드나요 ?<br/>다시 찍어도 괜찮아요.</p>
             </div>
             </div>
             <div className="camera-film-heading"><h2>오늘 촬영할 <span className="camera-heading-accent">영화</span></h2></div>
@@ -881,11 +882,6 @@ export default function StudioView(p: StudioViewProps) {
         {/* 휴대폰은 단추가 «내 휴대폰에 저장»이라 «저장하세요»(10/25 Bumm님) */}
         <p><span className="label-pc">마음에 드는 버전을 고르고 인쇄하세요.</span><span className="label-phone">마음에 드는 버전을 고르고 저장하세요.</span></p>
       </div>}
-      {/* 휴대폰을 가로로 들면 덮는 안내(studio.css «휴대폰 가로») — 세로로 돌리면 사라지고 하던 화면 그대로다 */}
-      <div className="rotate-notice">
-        <p className="rotate-notice-title">휴대폰을 세로로 돌려 주세요</p>
-        <p className="rotate-notice-text">세로로 들면 지금 화면에서 이어서 할 수 있어요</p>
-      </div>
       <StatusToast text={p.status} id={p.statusId} step={step} suppressed={p.spinning}/>
       {!p.spinning && <GenerateFailureDialog failure={p.failure} online={p.online}
         onRetry={p.onRetryFailure} onRetake={p.onRetakeFailure} onEditInputs={() => { void p.onDismissFailure(); go(1); }} onHome={() => void p.onHome()} />}
