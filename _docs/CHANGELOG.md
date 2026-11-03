@@ -1,5 +1,22 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-03(화) 18:21 라이브 — master `2d8d957` CI 배포 (배포 승인 Bumm 11/3, 팀장 전달)
+
+- **올린 것**: `1c2049d` → `2d8d957` 빨리감기 push(커밋 4개 — `1a2f4a6` 휴대폰 실기기 고침 · `b8316ee` 기록 · `001fb9c` 서버 매일 깨우기 · `2d8d957` 오후 2차 고침). F-3 설치판 합치기는 넣지 않았다.
+- **되돌릴 자리**: 채널 한도 50개가 차 있어 Bumm님 R 1번대로 가장 오래된 `rollback-20261015`(10/15 판)만 지우고, 배포 전 라이브(`6b1ef9c`)를 `rollback-20261103`으로 복제했다 — 채널 `/`가 그때 라이브와 바이트까지 같다(200).
+- **CI** 41609883627(headSha `2d8d957`): changes · test · deploy-functions · deploy-hosting 모두 success.
+- **확인**
+  - `dist-vs-live.mjs`: `poster.edutogether.kr` · `poster-studio.web.app` 모두 621/621 같음.
+  - `waiting-videos-live.mjs --url https://poster.edutogether.kr`: 종료코드 0, 12편 재생.
+  - 깨우기 예약: `firebase-schedule-keepWarm-asia-northeast3` = `*/5 9-18 3-14 11 *` · Asia/Seoul · ENABLED, 마지막 실행 18:30 정상(gcloud 읽기 전용).
+  - `mobile-layout-probe.mjs --url https://poster.edutogether.kr`(아이폰 390×844 샘플 흐름): 10화면 결함 0 · 생성 요청 0건.
+  - 라이브 «생성» · 유료 AI 호출 0건.
+- **합칠 때(F-3) 쓸 Bumm님 답(11/3 18:16)**
+  - F-3-2 2번 — 설치판만 고친 커밋에도 웹을 다시 배포한다. 단, «건너뜀은 행사 당일에만»: 행사 당일(11/14)에만 `desktop/`만 고친 커밋의 웹 배포를 건너뛰는 방법을 합칠 때 제안한다.
+  - F-5 A — 판 번호는 앱이 바뀐 커밋만 센다(큰 변경 · feat · fix 등, 문서 · 시험 · CI 제외). 11/3 기준 17.2.5, 합치는 날까지의 커밋으로 다시 세서 확정.
+  - 최소 창 1번 — 1 · 2 · 3단계 · 인쇄 미리보기에서 창을 줄여 가며 재고, 겹침 · 잘림 0인 가장 작은 폭 · 높이를 최소 크기로 둔다(지금 600×480).
+  - 앞서 정한 것: F-3-1 2번(실패 알림도 웹처럼 잠깐) · F-3-3 1번(`CLAUDE.md` 설치판 문장 같이 고침) · F-6(위치 바꿀 수 있게, 기본값 `C:\Program Files\InKY Film Festival\Poster Studio`).
+
 ## 2026-11-03(화) 오후 2차 — 아이폰 실기기 A-1 · 웹 해상도 B-1 (Bumm님이 이 창에 직접 지시, 가지 `mobile-fix-20261103`)
 
 - **휴대폰 카메라 칸**(«숫자 2 화면 크기가 시원해 좋다 — 찍은 뒤에도 그대로»): 켠 화면 · 숫자 · 찍은 뒤가 같은 칸이다.
