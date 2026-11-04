@@ -37,7 +37,7 @@ cd functions && npm ci && npm test    # vitest 118개(2026-11-01)
 cd functions && npm run lint          # eslint
 cd functions && npm run format        # prettier (functions에만 있음)
 
-npm ci && npm test                    # vitest 438개(2026-11-01) (저장소 루트 = 프론트엔드 루트)
+npm ci && npm test                    # vitest 558개(2026-11-04) (저장소 루트 = 프론트엔드 루트)
 npm run lint                          # eslint
 npm run typecheck                     # TS strict — src와 test/*.ts(x)
 npm run build                         # -> dist/ (배포되는 것)
@@ -62,7 +62,7 @@ src/          프론트엔드 소스(TypeScript + React 19)
 public/       정적 자산. Vite가 dist/ 루트로 그대로 복사한다
               splash-font-gate.js(스플래시 글꼴 게이트) boot-splash.js fonts/ studio/ logo-*.png favicon-inky.png
 dist/         빌드 산출물 = 배포 폴더(firebase.json의 public). 커밋하지 않는다
-test/         vitest 438개(2026-11-01) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
+test/         vitest 558개(2026-11-04) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/    Cloud Functions — index.js 하나에 전부(미들웨어 체인·프롬프트·OpenAI·Firestore 카운터·스케줄러)
 scripts/      verify/(확인·대조 도구) ci/(배포 단계 도구) media/(대기·예시 영상) fonts/(서브셋) docs/(설명서) editor/(화면 편집판) build/ qa/ loadtest.mjs
 _docs/        저장소 문서(배포 대상 아님) — ops/ intents/ CHANGELOG.md
@@ -76,7 +76,7 @@ desktop/      Windows 설치판(Electron · 2026-10-27) — 웹 프론트를 `np
 - 🔴 **라이브는 «두 단추» — 행사 날(11/14)도 그대로**(10/20 Bumm님 — 11/7 전환 없음). 스위치는 `src/studioMode.ts`의 `LIVE_MODE`(`both` · `sample` · `real`,
   10/20 밤 `.env.production`에서 옮기고 지움). 부스 코드는 **쓰지 않는다(10/23 확정)** — 막는 것은 서버 한도뿐. 자세히는 app.md «라이브 동작 스위치».
 - **Windows 설치판**: 첫 화면 다운로드 아이콘 → `/download/PosterStudio-Setup.exe`(302) → Cloud Storage 공개 객체 하나(app.md «첫 화면 다운로드 아이콘 · 설치 파일 공개»).
-  설치판 코드 · 화면 시험 · 인계 문서는 가지 `desktop-20261027`에 있다(master에 없음). 공개 파일 교체는 «배포 직전 한 줄» → 팀장 OK 뒤에만.
+  설치판 코드(`desktop/`) · 화면 시험 · 인계 문서는 master에 있다(11/4 합침). 판 번호는 `node scripts/build/app-version.mjs HEAD`로 센 값(11/4 17.4.0 — app.md «Windows 설치판»). 공개 파일 교체는 «배포 직전 한 줄» → 팀장 OK 뒤에만.
 - **실비용 발생**: OpenAI 이미지 생성 API가 장당 약 $0.05(gpt-image-2 medium — 2026-10-26 실측 $0.049~0.050). API 키는 Firebase Secret Manager 보관 — 절대 코드/커밋에 직접 작성 금지.
 - **인터넷 필수** — AI 생성에 필요, 끊기면 생성 자체가 안 됨(로컬 폴백 없음). 실패하면 «포스터를 만들지 못했어요» 창이 종류별로 «다시 만들기»·«다시 찍기» 등을 보이고, 인터넷이 끊겼으면 연결이 돌아올 때까지 기다린다(2026-10-16 — 예전 «AI 없이 계속하기» 빈 그라데이션 인쇄는 없앴다).
 - **운영 규모**: 노트북 6대(가동 4 + 대기 2) · 포토프린터 3대 · 공인 IP 3개. 🔴 프린터 대수는 행사 처리량 계산의 입력값이다(인쇄 2분이면 3대로 충분, 3분이면 60장 모자람).
