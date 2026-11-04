@@ -22,7 +22,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { diffSnapshots, summarize } from './compare.mjs';
 import { SEL, REQUIRED, diffKeys, compareIssues } from './step2-geometry-judge.mjs';
-import { sawPage, onlyHealth, sameBundle } from './download-judge.mjs';
+import { sawPage, onlyHealth, sameBundle, pixelsPass } from './download-judge.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -291,6 +291,24 @@ check('high가 있으면 summarize가 high>0을 보고한다', () => {
     assert.equal(sameBundle(['/assets/main-a.js', '/assets/main-b.js', '/assets/main-a.js']), false);
   });
   check('download-live: 주소 목록이 비면 «같다»가 아니다', () => assert.equal(sameBundle([]), false));
+  // 전/후 화소(11/5 master로 — 가지 verify-same-button-20261102): 단추 배포는 단추 안이 바뀌어야, 단추 그대로인 교체는 단추 안도 같아야 통과
+  const px = (outside, inside) => ({ outside, inside });
+  check('download-live: 견줄 «전»이 없으면(best 없음) 어느 판정이든 실패', () => {
+    assert.equal(pixelsPass(null, false), false);
+    assert.equal(pixelsPass(null, true), false);
+  });
+  check('download-live: 단추 밖이 다르면 어느 판정이든 실패', () => {
+    assert.equal(pixelsPass(px(1, 30), false), false);
+    assert.equal(pixelsPass(px(107650, 0), true), false);
+  });
+  check('download-live: 단추 배포 판정 — 단추 안이 바뀌어야 통과(안 · 밖 0이면 단추가 안 그려진 것)', () => {
+    assert.equal(pixelsPass(px(0, 412), false), true);
+    assert.equal(pixelsPass(px(0, 0), false), false);
+  });
+  check('download-live: --button-same — 단추 안 · 밖 모두 0이어야 통과(11/5 설치 파일 교체)', () => {
+    assert.equal(pixelsPass(px(0, 0), true), true);
+    assert.equal(pixelsPass(px(0, 1), true), false);
+  });
 }
 
 console.log(failures === 0

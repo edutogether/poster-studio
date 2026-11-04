@@ -15,3 +15,10 @@ export const onlyHealth = (urls) => urls.length > 0 && urls.every((u) => /\/heal
 
 // 번들 이름을 하나도 빠짐없이 읽었고(빈 값 없음), 모두 같다
 export const sameBundle = (bundles) => bundles.length > 0 && bundles.every((b) => typeof b === 'string' && b.length > 0) && new Set(bundles).size === 1;
+
+// 전/후 첫 화면 화소(download-live.mjs ④) — 단추 상자 밖 차이 0은 언제나 조건이다. 단추 안은 배포 종류로 갈린다:
+//   buttonSame = false(단추를 넣거나 바꾼 배포 — 10/27): 단추 안에 차이가 있어야 한다(단추가 실제로 그려졌다).
+//   buttonSame = true(설치 파일 교체 · 단추와 상관없는 배포 — 11/2 · 11/5): 단추 안도 차이 0이어야 한다.
+// 견줄 «전» 캡처가 없거나(best 없음) 크기가 맞는 짝이 하나도 없으면 실패다.
+export const pixelsPass = (best, buttonSame) =>
+  Boolean(best) && best.outside === 0 && (buttonSame ? best.inside === 0 : best.inside > 0);

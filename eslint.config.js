@@ -139,12 +139,10 @@ export default [
        3단계에서 들어온 .tsx는 아래 ignores에 없지만, 이 설정의 어떤 블록도
        .tsx를 files로 잡지 않아 애초에 검사 대상이 아니다(eslint -f json으로 확인함).
        역시 typecheck가 받는다. */
-    // 출력 픽셀 대조용 수정 전 빌드도 배포 번들의 사본이다. 원본 소스·검증 도구는 계속 검사한다.
-    // 다운로드한 Blender 런타임은 외부 배포물이다. 저장소의 scripts/ 검사는 그대로 유지한다.
-    // 배경 분리 도구를 격리 설치한 파이썬 가상환경(.cache/tools/rembg-venv)도 외부 패키지 묶음이다(안에 urllib3의 JS가 있다).
-    // 대기 영상 실화면 확인(scripts/verify/waiting-videos-live.mjs)이 띄운 크롬의 프로필 폴더에는 크롬이 받은 구성요소 JS가 쌓인다.
-    // 포스터 다시 설계 작업 폴더(.cache/poster-redesign-20261014)도 같다 — 확인용 크롬 프로필과 일회용 실험 스크립트가 쌓인다(2026-10-14).
+    // .cache/는 저장소에 없는(.gitignore) 이 컴퓨터의 작업 폴더다 — 빌드 사본 · 대조용 수정 전 빌드 · Blender 런타임 · 파이썬 가상환경 ·
+    // 확인용 크롬 프로필 · 일회용 실험 스크립트가 쌓인다. 예전엔 하위 폴더를 하나씩 더했는데 새 폴더가 생길 때마다 린트가 걸렸다
+    // (2026-11-05 .cache/mobile-pc-20261019/dist-real*의 번들 사본 — 팀장 전달). 통째로 뺀다. 원본 소스 · 검증 도구(scripts/)는 계속 검사한다.
     // 설치판의 웹 빌드 사본(desktop/web)과 설치 파일 산출물(desktop/out — 안에 Electron 묶음 JS)도 빌드 산출물이다.
-    ignores: ['dist/**', 'desktop/web/**', 'desktop/out/**', '.cache/integration-baseline/dist/**', '.cache/blender-runtime/**', '.cache/tools/rembg-venv/**', '.cache/waiting-videos-live/**', '.cache/poster-redesign-20261014/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
+    ignores: ['dist/**', 'desktop/web/**', 'desktop/out/**', '.cache/**', '.claude/worktrees/**', 'functions/**', 'public/fonts/**', 'src/**/*.ts']
   }
 ];
