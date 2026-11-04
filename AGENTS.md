@@ -74,7 +74,8 @@ Windows 설치판(`desktop/`, 2026-10-27)은 AI가 없는 비상판이다. 웹�
 `scripts/verify/desktop-installer-probe.ps1 -Mode all -Via startmenu|settings`(설치 · 제거 창 · 남은 것 0 · 판 번호, 관리자 권한으로 — 설치는 모든 사용자만, `-Mode user`는 예전 «나만» 판 제거 확인용) ·
 `node scripts/verify/desktop-vs-web.mjs <결과> --exe <exe> --web-dist <웹 빌드>`(첫 화면 화소 대조) · `node scripts/verify/desktop-print-shift.mjs <결과> --exe <exe>`(«인쇄하기» 때 화면이 움직이지 않는지 — 진짜 인쇄 창 · 연속 캡처) · `node scripts/verify/desktop-layout-sweep.mjs <desktop/web> <dist> <결과> --prev <직전 설치판 화면 빌드>`(2단계 오른쪽 칸 528개 창 크기 — 바꾸지 않은 구간은 직전 판 · 웹과 같음, 세로형 티켓 구간은 겹침 · 넘침 · 글자 잘림 없음) · `node scripts/verify/download-button-probe.mjs <dist> <결과> --compare <전>`(첫 화면 다운로드 단추 — 전/후 화소 · 누르기 전 요청 0)다.
 설치 위치 · 바로가기 · 아이콘(Poster Studio 슬레이트 — 설치 파일 · 설치기 · 제거기 모두) · 설치 화면 그림(배율마다 따로) 모양은 Bumm님 기준이라 바꾸지 않는다(app.md «Windows 설치판»).
-설치 위치는 언제나 `C:\Program Files\InKY Film Festival\Poster Studio` 하나다(11/3 Bumm님 — `nsis.perMachine`, «나만» 설치 · 위치 바꾸기 · `/D` 없음). 판 번호는 `desktop/package.json`의 version이고, 전달 · 공개하는 판마다 올린다(기능이 바뀌면 1.x.0 · 고침만이면 1.x.y — 표는 `_docs/CHANGELOG.md` 11/3 절).
+설치는 모든 사용자만(`nsis.perMachine`)이고, 위치 기본값은 `C:\Program Files\InKY Film Festival\Poster Studio`이며 위치 화면에서 바꿀 수 있다(11/3 Bumm님 F-6). 최소 창은 안쪽 1100×648(`desktop/main.mjs`, 11/4).
+판 번호는 `desktop/package.json`의 version이고 `node scripts/build/app-version.mjs HEAD`로 센 값을 쓴다(앱이 바뀐 커밋만 — 큰 변경 · feat · 고침, 11/3 Bumm님 F-5 «A» · 11/4 17.4.0).
 설치판 갈래는 `src/desktop.ts`의 `DESKTOP`으로 웹 번들에서 빠진다. `src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양은 CI가 정규식으로 읽으므로 바꾸지 않는다. 설치 파일은 저장소 · Hosting에 넣지 않는다(app.md «Windows 설치판»).
 
 ## 공용 절차·보고·도구 인계
