@@ -259,6 +259,23 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     unmount();
     expect(off).toHaveBeenCalledTimes(1);
   });
+
+  // 실패 알림도 웹 알림처럼 잠깐 보였다가 사라진다(11/3 Bumm님 F-3-1 «실패하면 다시 하겠지» — 붙박이로 남기지 않는다)
+  test('저장 실패 알림은 몇 초 뒤 저절로 사라진다', async () => {
+    let listener: ((ok: boolean) => void) | null = null;
+    (window as any).posterStudioDesktop = { print: vi.fn(), onSaveDone: (l: (ok: boolean) => void) => { listener = l; return () => {}; } };
+    await act(async () => { renderApp(); });
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await composeWithLoading('shotBtn');
+    vi.useFakeTimers();
+    await act(async () => { listener!(false); });
+    expect(toast()).toEqual({ text: SAVE_FAILED, shown: true });
+    await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
+    expect(toast().shown).toBe(true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(4_000); });
+    expect(toast().shown).toBe(false);
+    vi.useRealTimers();
+  });
 });
 
 /* 샘플 흐름(웹 · 설치판)과 설치판 «포스터 만들기»는 같은 순서(PosterStudio.tsx composeWhileWaiting)를 쓴다(11/2 종합감사 — 예전 샘플은 오류를 삼켰다).
