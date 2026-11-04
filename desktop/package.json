@@ -82,5 +82,8 @@
         "ko_KR"
       ]
     }
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
   }
 }

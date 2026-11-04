@@ -175,6 +175,9 @@
   - 닿지 않는 근거(동작 변화 0의 근거): functions의 glob · minimatch는 rimraf만 끌어오는데 rimraf를 부르는 코드가 없다(firebase-admin · Firestore · firebase-functions를 불러와도 glob · minimatch · rimraf 모듈 0개).
     qs는 express가 불러오지만 앱은 `query parser`(express 5 기본 `simple`)도 urlencoded 본문 해석도 쓰지 않는다. 루트는 eslint만 쓰고, minimatch 10과 11에서 린트 대상 98 · 5개와 결과가 같다.
   - 위쪽이 새 범위를 적으면 그 override는 할 일이 없어진다. 그때 지우고 같은 확인(시험 · 린트 대조 · 에뮬레이터)을 돌린다.
+  - **설치판 `desktop/`도 `minimatch ^11.0.1`(11.0.4)**(2026-11-04, 알림 #92). 끌어오는 것은 빌드 도구뿐이다(electron-builder 26.18.0 최신판도 `@electron/asar` 3.4.1 → minimatch 3 · glob 7을 적는다).
+    설치판에는 들어가지 않는다 — `package.json`에 `dependencies`가 없어 `app.asar`의 node_modules 0개. 덮은 판과 안 덮은 판으로 `--win dir` · `--win nsis`를 둘 다 만들어 `app.asar` 안 591개 파일이 `package.json` 하나 빼고 같았다.
+    🟠 덮으면 깨지는 것이 하나 있다: `dir-compare`(minimatch 3의 기본 내보내기를 부름 — 11에는 없다)는 «not a function». `@electron/universal`(맥 universal 빌드)만 쓰므로 윈도 설치판 빌드는 닿지 않는다. 맥 빌드를 더하면 이 override부터 다시 본다.
 - **테스트에서 실제 OpenAI·Firestore를 호출하지 않는다.** 주입 지점이 이미 있다(`_setClientForTesting` 등).
 - **촬영 후 카메라 스트림을 켜둔 채 두지 않는다.** 최소수집 원칙 위반이고 아동 대상이라 더 중요하다
   (`camera.js`의 `getTracks().stop()` — 6차 감사에서 고친 것).

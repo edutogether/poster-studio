@@ -1,5 +1,11 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-04(수) 밤 — 설치판 빌드 도구 minimatch를 11로 끌어올림(Dependabot 알림 #92 · 갱신 실패, 팀장 전달 11/4)
+
+- `desktop/package.json` `overrides` `minimatch ^11.0.1` → 잠금 파일의 minimatch 여섯 벌(3.1.5 셋 · 5.1.9 · 9.0.9 · 10.2.6)이 11.0.4 하나로. Dependabot 갱신은 위쪽(electron-builder 최신판도)이 옛 범위를 적어 3.1.5에서 멈춰 실패했다(567b926 · 35db7e0).
+- 공개 설치 파일 영향 없음: minimatch는 빌드 도구만 쓰고 설치판 `app.asar`에 node_modules가 0개다. 덮은 판 · 안 덮은 판 `--win nsis` 둘 다 만들어짐, `app.asar` 591개 파일 중 다른 것은 `package.json`(overrides 줄) 하나. 다시 만들 필요 없음.
+- 덮으면 `dir-compare`(맥 universal 빌드 전용)만 깨진다 — 윈도 빌드는 닿지 않는다(app.md). 루트 시험 558개 통과.
+
 ## 2026-11-04(수) 저녁 — 행사 당일 설치판만 바뀐 커밋은 배포 건너뛰기(`EVENT_DAY`) (결정 3 ①, 팀장 전달 11/4)
 
 - `deploy.yml` changes 잡 «배포 여부 판정»: 한국 시간 2026-11-14이고 바뀐 파일이 전부 `desktop/`이면 배포 잡 둘만 건너뛴다(시험은 돈다). 하나라도 밖이면 배포 —
