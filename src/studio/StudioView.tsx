@@ -14,6 +14,8 @@ import { savePlatform, savePoster } from "../savePoster.js";
 import { designName } from "../designNames.js";
 import { deviceKind, pcCanvas } from "../deviceCanvas.js";
 import DownloadLink from "./DownloadLink.js";
+import FeedbackLink from "./FeedbackLink.js";
+import { FEEDBACK_OPEN } from "../feedback.js";
 import StatusToast from "./StatusToast.js";
 import { DESKTOP } from "../desktop.js";
 // 장르 그림은 빌드가 이름에 해시를 붙여 내는 자산이다(1년 캐시). 원래 PNG 두 장(판타지 · 뮤지컬)은 무손실 WebP로 바꿨다 — 화소 그대로(10/24 와이파이 최적화).
@@ -446,6 +448,8 @@ export default function StudioView(p: StudioViewProps) {
                 InKY <strong>Film Festival</strong>
               </span>
             </button>
+            {/* 첫 화면 «의견 보내기»(2026-11-05 Bumm님 9 ①) — 다운로드 아이콘 왼쪽(휴대폰은 방침 바로 왼쪽). 설치판에는 없다(서버 요청 0). 다 받으면 FEEDBACK_OPEN으로 뺀다. */}
+            {!DESKTOP && FEEDBACK_OPEN && step === 1 && <FeedbackLink step={step}/>}
             {/* 첫 화면에만 다운로드 아이콘(2026-10-27 — 메뉴 없이 바로 받기) — 설치판에서는 그 자리에 «설치판 · AI 없이» 표시를 늘 둔다(웹의 AI 포스터와 헷갈리지 않게). */}
             {DESKTOP ? <span className="desktop-badge">설치판 · AI 없이 사진 그대로</span> : step === 1 && <DownloadLink/>}
             {/* 10/20 저녁 Bumm님: «사진은 OpenAI(미국)로 전송돼요» 줄은 휴대폰 · PC 모두 뺀다 — 개인정보처리방침 링크만 예전 자리 그대로. */}

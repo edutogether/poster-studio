@@ -1053,6 +1053,302 @@ async function generateHandler(req, res) {
   res.status(result.status).json(result.body);
 }
 
+/* ──────────────────────────────────────────────────────────
+   현장 의견 받기(2026-11-05 Bumm님 9 ① · 10 A · 11 ②, 팀장 전달 — _docs/intents/2026-11-05-field-feedback)
+   첫 화면 «의견 보내기» → POST /feedback → Firestore feedback에 저장 + Bumm님 카카오톡 «나에게 보내기» 알림.
+   - 받는 칸은 이름 · 의견 · 판 번호 · 화면 크기 · 기기 · 단계 여섯뿐이다. 그 밖의 칸이 오면 거절한다(사진은 받지 않는다).
+   - 🔴 «Firestore에는 순수 숫자 카운터만»(app.md)의 예외다 — 이름 · 의견 글은 feedback에만 두고, 의견 받기를 마치면 내려받아 넘긴 뒤 지운다.
+     잊어도 매일 04시 정리 작업이 받은 지 90일 지난 것을 지운다(FEEDBACK_TTL_MS).
+   - 카카오 앱 키 두 개는 Secret Manager(Bumm님이 직접 넣음). 리프레시 토큰은 서버 전용 문서 kakaoAuth/owner에만 둔다 —
+     보안 규칙이 화면의 모든 읽기 · 쓰기를 막고 서버(Admin SDK)만 쓴다. 토큰 · 키 · 이름 · 글은 기록(로그)에 남기지 않는다.
+   - 카카오가 실패해도 저장은 남고 화면은 «보냈어요»다(알림은 덤). */
+const KAKAO_REST_API_KEY = defineSecret('KAKAO_REST_API_KEY');
+const KAKAO_CLIENT_SECRET = defineSecret('KAKAO_CLIENT_SECRET');
+const KAKAO_REDIRECT_URI = 'https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/kakao/callback';
+const KAKAO_LINK_URL = 'https://poster.edutogether.kr';   // 메시지 템플릿의 링크 — 카카오 앱 [제품 링크 관리] › 웹 도메인에 등록한 주소
+const KAKAO_MEMO_MAX = 200;                                // 텍스트 템플릿 글자 상한(카카오 문서) — 넘치면 줄여 보낸다(저장은 원문 그대로)
+const KAKAO_TIMEOUT_MS = 8_000;
+const KAKAO_STATE_TTL_MS = 10 * 60 * 1000;
+const FEEDBACK_COLLECTION = 'feedback';
+const KAKAO_COLLECTION = 'kakaoAuth';
+const FEEDBACK_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+const FEEDBACK_MAX_BYTES = 8 * 1024;
+const FEEDBACK_NAME_MAX = 40;
+const FEEDBACK_TEXT_MAX = 1000;
+// 같은 곳(공인 IP)에서 10분에 10건 · 하루 전체 300건 — 현장 의견은 하루 수십 건이라 넉넉하고, 공개 토큰으로 마구 보내도 저장 · 알림이 이 안에서 멈춘다.
+// 카운터는 이미 있는 두 컬렉션을 «feedback:» 접두 문서로 쓴다(정리 작업 · 보관 기간이 그대로 따라온다).
+const FEEDBACK_IP_MAX = 10;
+const FEEDBACK_DAILY_MAX = 300;
+const FEEDBACK_FIELDS = ['name', 'text', 'version', 'screen', 'device', 'step'];
+const FEEDBACK_DEVICES = ['phone', 'tablet-p', 'tablet-l', 'pc', 'unknown'];
+
+let feedbackDb = db;
+let kakaoFetch = (...args) => fetch(...args);
+function _setFeedbackDbForTesting(fake) {
+  feedbackDb = fake || db;
+}
+function _setKakaoFetchForTesting(fake) {
+  kakaoFetch = fake || ((...args) => fetch(...args));
+}
+
+// 글자 수는 코드 포인트로 센다(이모지 하나 = 1). 줄바꿈은 의견 글에만 남기고, 그 밖의 제어 문자는 지운다.
+const charCount = (s) => [...s].length;
+function cleanLine(value) {
+  return String(value).normalize('NFC').replace(/[\p{Cc}\p{Cf}]/gu, ' ').replace(/\s+/g, ' ').trim();
+}
+function cleanText(value) {
+  return String(value)
+    .normalize('NFC')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[^\P{Cc}\n]|\p{Cf}/gu, '')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim();
+}
+
+function validateFeedback(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const keys = Object.keys(body);
+  if (keys.length !== FEEDBACK_FIELDS.length || !FEEDBACK_FIELDS.every((k) => Object.hasOwn(body, k))) return null;
+  const { name, text, version, screen, device, step } = body;
+  if (![name, text, version, screen, device].every((v) => typeof v === 'string') || !Number.isInteger(step)) return null;
+  const value = { name: cleanLine(name), text: cleanText(text), version, screen, device, step };
+  if (!value.name || charCount(value.name) > FEEDBACK_NAME_MAX) return null;
+  if (!value.text || charCount(value.text) > FEEDBACK_TEXT_MAX) return null;
+  if (!/^[A-Za-z0-9._-]{1,80}$/.test(version)) return null;
+  if (!/^\d{2,5}x\d{2,5}@\d{1,2}(\.\d{1,3})?$/.test(screen)) return null;
+  if (!FEEDBACK_DEVICES.includes(device)) return null;
+  if (step < 1 || step > 3) return null;
+  return value;
+}
+
+// 본문은 플랫폼이 미리 읽어 둔 req.rawBody에서 직접 읽는다(parseMultipart와 같은 이유 — 원본 스트림은 이미 끝나 있다).
+function readFeedbackBody(req) {
+  if (!/^application\/json\b/i.test(req.headers['content-type'] || '')) return { status: 415 };
+  if (Buffer.isBuffer(req.rawBody)) {
+    if (req.rawBody.length > FEEDBACK_MAX_BYTES) return { status: 413 };
+    try {
+      return { body: JSON.parse(req.rawBody.toString('utf8')) };
+    } catch {
+      return { status: 400 };
+    }
+  }
+  return req.body && typeof req.body === 'object' ? { body: req.body } : { status: 400 };
+}
+
+// 카카오 응답의 오류는 상태 · 오류 코드만 남긴다(본문에 토큰이 실릴 수 있어 통째로 남기지 않는다).
+function kakaoError(where, status, json) {
+  const code = json?.error_code ?? json?.code ?? json?.error ?? '';
+  return Object.assign(new Error(`카카오 ${where} 실패: HTTP ${status}${code === '' ? '' : ` · ${code}`}`), { status, kakaoCode: code });
+}
+async function kakaoCall(url, { where, form, token } = {}) {
+  const headers = {};
+  if (form) headers['content-type'] = 'application/x-www-form-urlencoded;charset=utf-8';
+  if (token) headers.authorization = `Bearer ${token}`;
+  const res = await kakaoFetch(url, {
+    method: form ? 'POST' : 'GET',
+    headers,
+    body: form ? new URLSearchParams(form).toString() : undefined,
+    signal: AbortSignal.timeout(KAKAO_TIMEOUT_MS)
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) throw kakaoError(where, res.status, json);
+  return json || {};
+}
+
+function kakaoKeys() {
+  const clientId = KAKAO_REST_API_KEY.value();
+  const clientSecret = KAKAO_CLIENT_SECRET.value();
+  if (!clientId || !clientSecret) throw new Error('카카오 앱 키(Secret Manager)가 비어 있습니다');
+  return { clientId, clientSecret };
+}
+const ownerRef = () => feedbackDb.collection(KAKAO_COLLECTION).doc('owner');
+const pendingRef = () => feedbackDb.collection(KAKAO_COLLECTION).doc('pending');
+
+// 토큰 응답을 저장할 모양으로 — 리프레시 토큰은 남은 기간이 1개월 이하일 때만 새로 온다(카카오 문서). 안 오면 예전 값을 그대로 둔다.
+function tokenFields(json, now) {
+  const fields = { accessToken: json.access_token, accessExpiresAt: now + (Number(json.expires_in) || 0) * 1000 };
+  if (json.refresh_token) {
+    fields.refreshToken = json.refresh_token;
+    fields.refreshExpiresAt = now + (Number(json.refresh_token_expires_in) || 0) * 1000;
+  }
+  return fields;
+}
+
+async function refreshKakaoToken(now = Date.now()) {
+  const snap = await ownerRef().get();
+  if (!snap.exists) return null;
+  const owner = snap.data();
+  const { clientId, clientSecret } = kakaoKeys();
+  const json = await kakaoCall('https://kauth.kakao.com/oauth/token', {
+    where: '토큰 갱신',
+    form: { grant_type: 'refresh_token', client_id: clientId, refresh_token: owner.refreshToken, client_secret: clientSecret }
+  });
+  const fields = { ...tokenFields(json, now), refreshedAt: new Date(now) };
+  await ownerRef().set(fields, { merge: true });
+  return { ...owner, ...fields };
+}
+
+async function sendKakaoMemo(text, now = Date.now()) {
+  const snap = await ownerRef().get();
+  if (!snap.exists) return false;   // 아직 연결 전 — 저장만 한다
+  let owner = snap.data();
+  if (!owner.accessToken || !(owner.accessExpiresAt > now + 60_000)) owner = await refreshKakaoToken(now);
+  const send = (token) =>
+    kakaoCall('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
+      where: '나에게 보내기',
+      token,
+      form: {
+        template_object: JSON.stringify({
+          object_type: 'text',
+          text: charCount(text) > KAKAO_MEMO_MAX ? `${[...text].slice(0, KAKAO_MEMO_MAX - 1).join('')}…` : text,
+          link: { web_url: KAKAO_LINK_URL, mobile_web_url: KAKAO_LINK_URL }
+        })
+      }
+    });
+  try {
+    await send(owner.accessToken);
+  } catch (err) {
+    if (err.status !== 401) throw err;
+    owner = await refreshKakaoToken(now);   // 저장한 만료 시각보다 먼저 끊긴 토큰 — 한 번만 새로 받아 다시 보낸다
+    await send(owner.accessToken);
+  }
+  return true;
+}
+
+function feedbackMemo(v) {
+  return `[Poster Studio 의견] ${v.name}\n${v.text}\n— 판 ${v.version} · ${v.screen} · ${v.device} · ${v.step}단계`;
+}
+
+async function feedbackCounter(collectionName, docId, limit) {
+  try {
+    return (await checkCounter(collectionName, docId, limit)).allowed;
+  } catch (err) {
+    console.error('[feedback] 카운터 오류 — 통과:', err?.message || err);
+    return true;
+  }
+}
+
+async function feedbackHandler(req, res) {
+  const read = readFeedbackBody(req);
+  if (read.status) return res.status(read.status).json({ error: '의견 형식이 올바르지 않습니다.', code: 'feedback_invalid' });
+  const value = validateFeedback(read.body);
+  if (!value) return res.status(400).json({ error: '의견 형식이 올바르지 않습니다.', code: 'feedback_invalid' });
+
+  const now = Date.now();
+  const bucket = Math.floor(now / RATE_LIMIT_WINDOW_MS);
+  const ipOk = await feedbackCounter('ipRateLimitBuckets', `feedback:${bucket}:${ipKey(clientIpForRateLimit(req))}`, FEEDBACK_IP_MAX);
+  const dayOk = ipOk && (await feedbackCounter('dailyBudgetBuckets', `feedback:${kstDateKey(now)}`, FEEDBACK_DAILY_MAX));
+  if (!ipOk || !dayOk) return res.status(429).json({ error: '잠시 뒤에 다시 보내 주세요.', code: 'feedback_busy' });
+
+  let id;
+  try {
+    id = (await feedbackDb.collection(FEEDBACK_COLLECTION).add({ ...value, createdAt: new Date(now) })).id;
+  } catch (err) {
+    console.error('[feedback] 저장 실패:', err?.message || err);
+    return res.status(503).json({ error: '지금은 보낼 수 없어요. 잠시 뒤에 다시 해 주세요.', code: 'feedback_store' });
+  }
+  let notified = false;
+  try {
+    notified = await sendKakaoMemo(feedbackMemo(value), now);
+  } catch (err) {
+    console.error('[feedback] 카카오 알림 실패(저장은 됨):', err?.message || err);
+  }
+  console.log(`[feedback] 저장 ${id} · 알림 ${notified ? '보냄' : '못 보냄'}`);
+  res.json({ ok: true });
+}
+
+app.post('/feedback', checkBoothToken, (req, res) => feedbackHandler(req, res));
+
+/* 카카오 연결(처음 한 번 — Bumm님이 /kakao/start를 열어 로그인 · «카카오톡 메시지 전송» 동의).
+   state는 한 번만 쓰고(받으면 바로 지움) 10분 뒤 만료된다. 처음 연결한 카카오 계정 하나에 묶는다 —
+   다른 계정이 연결을 시도하면 덮어쓰지 않는다(바꾸려면 Firestore 콘솔에서 kakaoAuth/owner를 지운다). */
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+function kakaoPage(res, status, title, lines) {
+  res
+    .status(status)
+    .set('cache-control', 'no-store')
+    .type('html')
+    .send(
+      `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title></head>` +
+        `<body style="font-family:sans-serif;max-width:560px;margin:48px auto;padding:0 20px;line-height:1.6"><h1 style="font-size:22px">${escapeHtml(title)}</h1>` +
+        lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
+        '</body></html>'
+    );
+}
+const sha256Hex = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+
+app.get('/kakao/start', async (req, res) => {
+  let clientId;
+  try {
+    ({ clientId } = kakaoKeys());
+  } catch {
+    return kakaoPage(res, 503, '카카오 앱 키가 아직 없어요', ['Secret Manager에 두 키를 넣은 뒤 다시 열어 주세요.']);
+  }
+  const state = crypto.randomBytes(16).toString('hex');
+  try {
+    await pendingRef().set({ stateHash: sha256Hex(state), expiresAt: Date.now() + KAKAO_STATE_TTL_MS });
+  } catch (err) {
+    console.error('[kakao] 연결 준비 실패:', err?.message || err);
+    return kakaoPage(res, 503, '지금은 연결할 수 없어요', ['잠시 뒤에 다시 열어 주세요.']);
+  }
+  const q = new URLSearchParams({ client_id: clientId, redirect_uri: KAKAO_REDIRECT_URI, response_type: 'code', scope: 'talk_message', state });
+  res.set('cache-control', 'no-store').redirect(302, `https://kauth.kakao.com/oauth/authorize?${q}`);
+});
+
+app.get('/kakao/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) return kakaoPage(res, 400, '연결하지 않았어요', ['카카오 로그인 · 동의를 마치지 않았습니다. 처음부터 다시 열어 주세요.']);
+  if (typeof code !== 'string' || typeof state !== 'string' || !/^[0-9a-f]{32}$/.test(state)) {
+    return kakaoPage(res, 400, '연결할 수 없어요', ['주소가 올바르지 않습니다. 처음부터 다시 열어 주세요.']);
+  }
+  try {
+    // state는 한 번만 — 맞든 틀리든 읽은 뒤 지운다(같은 주소를 다시 열어도 통하지 않게)
+    const pending = await feedbackDb.runTransaction(async (tx) => {
+      const snap = await tx.get(pendingRef());
+      if (snap.exists) tx.delete(pendingRef());
+      return snap.exists ? snap.data() : null;
+    });
+    const expected = Buffer.from(String(pending?.stateHash || ''), 'hex');
+    const ok =
+      pending &&
+      pending.expiresAt > Date.now() &&
+      expected.length === 32 &&
+      crypto.timingSafeEqual(Buffer.from(sha256Hex(state), 'hex'), expected);
+    if (!ok) return kakaoPage(res, 400, '연결 시간이 지났어요', ['10분 안에 마치지 못했거나 이미 쓴 주소입니다. 처음부터 다시 열어 주세요.']);
+
+    const now = Date.now();
+    const { clientId, clientSecret } = kakaoKeys();
+    const token = await kakaoCall('https://kauth.kakao.com/oauth/token', {
+      where: '토큰 받기',
+      form: { grant_type: 'authorization_code', client_id: clientId, redirect_uri: KAKAO_REDIRECT_URI, code, client_secret: clientSecret }
+    });
+    const me = await kakaoCall('https://kapi.kakao.com/v2/user/me', { where: '사용자 확인', token: token.access_token });
+    const userId = String(me.id ?? '');
+    if (!userId) throw new Error('카카오 사용자 번호가 비어 있습니다');
+    const ownerSnap = await ownerRef().get();
+    if (ownerSnap.exists && ownerSnap.data().userId !== userId) {
+      return kakaoPage(res, 403, '이미 다른 카카오 계정이 연결돼 있어요', ['처음 연결한 계정만 알림을 받습니다. 바꾸려면 운영자에게 알려 주세요.']);
+    }
+    await ownerRef().set({ userId, ...tokenFields(token, now), connectedAt: new Date(now) });
+    let sent = false;
+    try {
+      sent = await sendKakaoMemo('Poster Studio 의견 알림이 연결됐어요. 앞으로 «의견 보내기»로 들어온 의견이 여기로 옵니다.', now);
+    } catch (err) {
+      console.error('[kakao] 시험 메시지 실패:', err?.message || err);
+    }
+    console.log(`[kakao] 연결 완료 · 시험 메시지 ${sent ? '보냄' : '못 보냄'}`);
+    return kakaoPage(
+      res,
+      200,
+      '카카오톡 알림 연결 완료',
+      sent ? ['카카오톡 «나와의 채팅»에 시험 메시지를 보냈습니다. 이 창은 닫아도 됩니다.'] : ['연결은 저장했지만 시험 메시지를 보내지 못했습니다. 팀장에게 알려 주세요.']
+    );
+  } catch (err) {
+    console.error('[kakao] 연결 실패:', err?.message || err);
+    return kakaoPage(res, 502, '연결하지 못했어요', ['잠시 뒤에 처음부터 다시 열어 주세요.']);
+  }
+});
+
 // 업로드/기타 오류도 항상 JSON으로 응답(브라우저가 HTML 오류를 받아 이상한 문구가 뜨는 것 방지)
 app.use((err, req, res, _next) => {
   console.error('[error]', err?.message || err);
@@ -1144,7 +1440,18 @@ export {
   _setBoothCodeForTesting,
   markRequestStart,
   generateHandler,
-  ALLOWED_ORIGINS
+  ALLOWED_ORIGINS,
+  validateFeedback,
+  feedbackHandler,
+  sendKakaoMemo,
+  refreshKakaoToken,
+  cleanupOldFeedback,
+  _setFeedbackDbForTesting,
+  _setKakaoFetchForTesting,
+  FEEDBACK_TTL_MS,
+  FEEDBACK_IP_MAX,
+  FEEDBACK_DAILY_MAX,
+  KAKAO_REDIRECT_URI
 };
 
 export const posterStudio = onRequest(
@@ -1165,7 +1472,7 @@ export const posterStudio = onRequest(
     // 상한 자체는 비용이 붙지 않는다(실제 생성 건수만 과금) — 진짜 비용 상한은
     // OpenAI 조직의 강제 한도($250, 2026-10-05 확인)가 맡는다.
     maxInstances: 25,
-    secrets: [OPENAI_API_KEY, BOOTH_TOKEN],
+    secrets: [OPENAI_API_KEY, BOOTH_TOKEN, KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET],
     cors: ALLOWED_ORIGINS
   },
   app
@@ -1212,10 +1519,10 @@ const COUNTER_TTL_OVERRIDES_MS = { ipRateLimitBuckets: 24 * 60 * 60 * 1000 };
 // dbInstance를 인자로 받는 이유: 테스트에서 진짜 Firestore를 두드리지 않고
 // Firestore와 같은 모양(collection/where/limit/get/batch)의 가짜 객체를 주입하기 위함
 // (_setCounterImplForTesting과 같은 취지 — 실비용 없이 삭제 로직 자체만 검증한다).
-async function _deleteOldDocsInCollection(dbInstance, collectionName, cutoffDate) {
+async function _deleteOldDocsInCollection(dbInstance, collectionName, cutoffDate, field = 'updatedAt') {
   let deleted = 0;
   for (;;) {
-    const snap = await dbInstance.collection(collectionName).where('updatedAt', '<', cutoffDate).limit(500).get();
+    const snap = await dbInstance.collection(collectionName).where(field, '<', cutoffDate).limit(500).get();
     if (snap.empty) break;
     const batch = dbInstance.batch();
     snap.docs.forEach((doc) => batch.delete(doc.ref));
@@ -1237,12 +1544,23 @@ async function cleanupOldCounters(dbInstance = db, now = Date.now()) {
   return total;
 }
 
+// 현장 의견은 받은 지 90일이 지나면 지운다(2026-11-05 Bumm님 9 ① — 받기를 마치면 내려받아 넘긴 뒤 먼저 지우고, 이것은 잊었을 때의 안전장치다).
+async function cleanupOldFeedback(dbInstance = db, now = Date.now()) {
+  const deleted = await _deleteOldDocsInCollection(dbInstance, FEEDBACK_COLLECTION, new Date(now - FEEDBACK_TTL_MS), 'createdAt');
+  if (deleted) console.log(`[cleanupOldFeedback] ${FEEDBACK_COLLECTION}: ${deleted}건 삭제`);
+  return deleted;
+}
+
+// 세 일은 서로 막지 않는다 — 하나가 실패해도 나머지는 돈다.
+// 카카오 토큰 갱신(10 A): 매일 한 번 갱신하면 리프레시 토큰의 남은 기간이 1개월 이하가 되는 날 카카오가 새 토큰을 주고 함수가 덮어쓴다 —
+// 의견이 뜸해도 만료되지 않아 다시 동의할 일이 없다. 연결 전이면 아무것도 하지 않는다.
 export const cleanupOldCountersSchedule = onSchedule(
   {
     region: 'asia-northeast3',
     timeoutSeconds: 120,
     schedule: '0 4 * * *',
-    timeZone: 'Asia/Seoul'
+    timeZone: 'Asia/Seoul',
+    secrets: [KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET]
   },
   async () => {
     try {
@@ -1250,6 +1568,17 @@ export const cleanupOldCountersSchedule = onSchedule(
       console.log(`[cleanupOldCounters] 완료, 총 ${total}건 삭제`);
     } catch (err) {
       console.error('[cleanupOldCounters] 실패:', err?.message || err);
+    }
+    try {
+      await cleanupOldFeedback();
+    } catch (err) {
+      console.error('[cleanupOldFeedback] 실패:', err?.message || err);
+    }
+    try {
+      const owner = await refreshKakaoToken();
+      console.log(`[kakao] 토큰 갱신 ${owner ? '완료' : '— 아직 연결 전'}`);
+    } catch (err) {
+      console.error('[kakao] 토큰 갱신 실패:', err?.message || err);
     }
   }
 );

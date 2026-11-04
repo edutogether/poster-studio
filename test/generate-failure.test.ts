@@ -16,6 +16,8 @@ test("서버가 주는 code는 전부 이 함수가 안다(모르는 code가 «�
       if (m) codes.add(m[1]);
     }
   }
+  // 의견 받기(/feedback, 2026-11-05)의 code는 생성 실패 창과 상관없다 — 이름이 모두 feedback_으로 시작하고 의견 창이 따로 가른다(test/feedback.test.tsx)
+  for (const code of [...codes]) if (code.startsWith("feedback_")) codes.delete(code);
   expect(codes.size, "서버에서 code를 거의 못 찾으면 이 검사는 빈 게이트다").toBeGreaterThanOrEqual(15);
   for (const code of codes) expect(FAILURE_CODES, `서버 code «${code}»를 판정 함수가 모른다`).toContain(code);
   for (const code of FAILURE_CODES) expect(classifyGenerateFailure({ status: 500, body: { code, error: "원인" } }).staffNote, code).toBe("원인");

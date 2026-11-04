@@ -1,5 +1,24 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-05(목) — 첫 화면 «의견 보내기» · Firestore 저장 · 카카오톡 «나에게» 알림 (Bumm님 9 ① · 10 A · 11 ②, 팀장 전달 11/5 — 아직 배포 전)
+
+- 화면: 1단계 머리글, 개인정보처리방침과 같은 줄 · 같은 글자 «의견 보내기»(PC · 태블릿 다운로드 아이콘 왼쪽 16px · 휴대폰 방침 왼쪽 14px · 설치판에는 없음). 창은 11/4 시안 그대로 —
+  이름(그 기기에 기억) · 의견(1000자) · «사진은 보내지 않아요» · «함께 보내는 것: 판 번호 · 화면 크기 · 기기 · 단계». 스위치 `src/feedback.ts` `FEEDBACK_OPEN`. 개인정보처리방침 문구는 그대로(11 ②).
+- 서버: `POST /feedback`(부스 토큰 · 여섯 칸만 · IP당 10분 10건 · 하루 300건) → Firestore `feedback` → 카카오 «나에게 보내기»(실패해도 저장). `/kakao/start` · `/kakao/callback`으로 한 번 연결,
+  처음 연결한 계정에 묶음 · state 해시 10분 한 번. 키 두 개는 Secret Manager(`KAKAO_REST_API_KEY` · `KAKAO_CLIENT_SECRET` — Bumm님이 넣음), 토큰은 `kakaoAuth/owner`, 매일 04시 갱신 · 90일 지난 의견 삭제.
+  🔴 비밀이 없으면 functions 배포가 실패한다 — 비밀을 먼저 만든다. 끝나면 `scripts/ops/feedback-export.mjs`로 내보내고 내보낸 것만 지운다.
+- 서브셋 글꼴 498자(새 글자 것 견 낼 냈 던 맙 점) · 주소 판 `?v=1aedabe1dd`(14곳).
+- 확인: functions 시험 118 → 137개(돌연변이 6가지 모두 잡음) · 루트 558 → 570개(내보내기 도구 돌연변이 3가지 잡음) · 린트 · 타입 · `fonts:check` · `verify:selftest`.
+  `scripts/verify/feedback-link-probe.mjs`(새로 만듦) 8크기 56건 통과 — 기능 넣기 전 빌드(1084bdc)와 첫 화면 화소 대조에서 링크 밖 차이 0, 창 화면 안 · 잘림 0, 누르기 전 `/feedback` 0건 → 보내면 1건.
+  링크를 흐름 속에 넣는 돌연변이에서 21건 걸림. `mobile-layout-probe.mjs` 60개 화면 결함 0. 실제 서버 · 카카오 호출 0건.
+
+## 2026-11-05(목) 새벽 — 설치판 Electron 44.7.0 → 44.9.3 · 판 번호 2.7.4 (Bumm님 12 ①, 팀장 전달 11/5 — 아직 push · 공개 파일 교체 전)
+
+- `1084bdc`: 보안 알림 #91(44.9.1부터 고침). 판 번호를 2.7.4에서 다시 셈(시작점 `4728a45`, `app-version.mjs`).
+- 설치 파일 `build-1084bdc` 158,676,751바이트 · SHA-256 `833d8d7e7b9a4e0d23cdb8114efafe70be332d578e48c55b40920eefc0b0d7d4`.
+  덮어 설치 확인: 같은 범위 예전 판 34/34 · 예전 «나만» 판 옆 34/34 · 조용한 설치 · 앱 탐침 38/38 · 창 크기 훑기(콘솔 창 0 · 검사 모니터 밖 창 0).
+- 이 뒤 웹 기능 커밋(feat)이 더해져 `app-version.mjs HEAD`는 2.8.0을 센다 — 공개할 설치 파일은 `1084bdc` 빌드라 2.7.4가 맞다.
+
 ## 2026-11-04(수) 밤 — 설치판 빌드 도구 minimatch를 11로 끌어올림(Dependabot 알림 #92 · 갱신 실패, 팀장 전달 11/4)
 
 - `desktop/package.json` `overrides` `minimatch ^11.0.1` → 잠금 파일의 minimatch 여섯 벌(3.1.5 셋 · 5.1.9 · 9.0.9 · 10.2.6)이 11.0.4 하나로. Dependabot 갱신은 위쪽(electron-builder 최신판도)이 옛 범위를 적어 3.1.5에서 멈춰 실패했다(567b926 · 35db7e0).

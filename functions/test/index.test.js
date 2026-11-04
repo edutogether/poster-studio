@@ -63,7 +63,14 @@ import {
   _setBoothCodeForTesting,
   markRequestStart,
   generateHandler,
-  _setReleaseImplForTesting
+  _setReleaseImplForTesting,
+  validateFeedback,
+  cleanupOldFeedback,
+  _setFeedbackDbForTesting,
+  _setKakaoFetchForTesting,
+  FEEDBACK_TTL_MS,
+  FEEDBACK_IP_MAX,
+  KAKAO_REDIRECT_URI
 } from '../index.js';
 
 // 레이트리밋/사진별 생성한도는 이제 Firestore 트랜잭션으로 전역 강제되는데(5차
@@ -2084,4 +2091,449 @@ test('화면 장르 8개(src/constants.ts GENRES · 1단계 장르 칸) = 서버
 
 test('시험은 이 실행만의 OS 임시 폴더를 쓴다 — 공용 임시 폴더의 uploads를 다른 프로세스와 나눠 쓰지 않는다', () => {
   expect(path.basename(path.dirname(UPLOAD_DIR))).toMatch(/^poster-fn-test-/);
+});
+
+/* ── 현장 의견 받기(2026-11-05 Bumm님 9 ① · 10 A · 11 ②) ─────────────────
+   진짜 Firestore · 카카오는 부르지 않는다. Firestore는 쓰는 모양(add · doc get/set/delete · runTransaction · where/limit/get · batch)만 흉내 낸
+   인메모리 가짜를, 카카오는 주소별로 답을 정해 둔 가짜 fetch를 주입한다. */
+process.env.KAKAO_REST_API_KEY = 'test-kakao-rest-key';
+process.env.KAKAO_CLIENT_SECRET = 'test-kakao-client-secret';
+
+function makeFeedbackDb({ failAdd = false } = {}) {
+  const cols = new Map();   // name -> Map(id -> data)
+  const col = (name) => {
+    if (!cols.has(name)) cols.set(name, new Map());
+    return cols.get(name);
+  };
+  let nextId = 1;
+  const docRef = (name, id) => ({
+    _name: name,
+    id,
+    async get() {
+      const d = col(name).get(id);
+      return { exists: d !== undefined, data: () => (d ? { ...d } : undefined) };
+    },
+    async set(data, opts) {
+      col(name).set(id, opts?.merge ? { ...(col(name).get(id) || {}), ...data } : { ...data });
+    },
+    async delete() {
+      col(name).delete(id);
+    }
+  });
+  return {
+    collection(name) {
+      return {
+        doc: (id) => docRef(name, id),
+        async add(data) {
+          if (failAdd) throw new Error('시뮬레이션: Firestore 저장 실패');
+          const id = `fb${nextId++}`;
+          col(name).set(id, { ...data });
+          return { id };
+        },
+        where(field, op, value) {
+          if (op !== '<') throw new Error(`이 가짜 db는 '<'만 지원한다: ${op}`);
+          return {
+            limit: (n) => ({
+              async get() {
+                const docs = [...col(name).entries()]
+                  .filter(([, d]) => d[field] < value)
+                  .slice(0, n)
+                  .map(([id]) => ({ ref: docRef(name, id) }));
+                return { empty: docs.length === 0, size: docs.length, docs };
+              }
+            })
+          };
+        }
+      };
+    },
+    async runTransaction(fn) {
+      return fn({ get: (ref) => ref.get(), delete: (ref) => { col(ref._name).delete(ref.id); }, set: (ref, d) => { col(ref._name).set(ref.id, d); } });
+    },
+    batch() {
+      const refs = [];
+      return { delete: (ref) => refs.push(ref), commit: async () => refs.forEach((r) => col(r._name).delete(r.id)) };
+    },
+    _docs: (name) => [...col(name).entries()],
+    _get: (name, id) => col(name).get(id),
+    _put: (name, id, data) => col(name).set(id, { ...data })
+  };
+}
+
+// 주소별로 정한 답을 차례대로 돌려주는 가짜 카카오. 부른 기록(주소 · 헤더 · 본문)을 남긴다.
+function makeKakao(routes) {
+  const calls = [];
+  const fake = async (url, opts = {}) => {
+    const body = opts.body ? Object.fromEntries(new URLSearchParams(opts.body)) : null;
+    calls.push({ url, headers: opts.headers || {}, body });
+    const key = Object.keys(routes).find((k) => url.startsWith(k));
+    const queue = routes[key];
+    if (!queue) throw new Error(`가짜 카카오에 없는 주소: ${url}`);
+    const answer = typeof queue === 'function' ? queue(body, opts) : Array.isArray(queue) ? queue.shift() ?? queue.last : queue;
+    return { ok: answer.status < 400, status: answer.status, json: async () => answer.json ?? {} };
+  };
+  fake.calls = calls;
+  return fake;
+}
+const TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
+const MEMO_URL = 'https://kapi.kakao.com/v2/api/talk/memo/default/send';
+const ME_URL = 'https://kapi.kakao.com/v2/user/me';
+
+const goodFeedback = () => ({
+  name: '3번 부스 김진행',
+  text: '2단계에서 카메라를 켜면 가끔 화면이 어두워요.\n노트북 4번 자리예요.',
+  version: 'index-AbC12_x.js',
+  screen: '2560x1440@1',
+  device: 'pc',
+  step: 1
+});
+const connectedOwner = (now, over = {}) => ({
+  userId: '777',
+  accessToken: 'acc-old',
+  accessExpiresAt: now + 3600_000,
+  refreshToken: 'ref-old',
+  refreshExpiresAt: now + 50 * 86400_000,
+  ...over
+});
+
+async function withFeedbackServer({ db, kakao, counter }, body) {
+  _setFeedbackDbForTesting(db);
+  _setKakaoFetchForTesting(kakao);
+  if (counter) _setCounterImplForTesting(counter);
+  const server = await startTestServer();
+  try {
+    return await body(`http://127.0.0.1:${server.address().port}`);
+  } finally {
+    server.close();
+    _setFeedbackDbForTesting(null);
+    _setKakaoFetchForTesting(null);
+    useSharedCounterImpl();
+  }
+}
+const postFeedback = (base, payload, headers = {}) =>
+  fetch(`${base}/feedback`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-booth-token': 'test-booth-token', ...headers },
+    body: typeof payload === 'string' ? payload : JSON.stringify(payload)
+  });
+
+test('의견 칸 확인: 여섯 칸이 맞으면 받고, 이름 · 글의 앞뒤 공백 · 제어 문자는 지우되 글의 줄바꿈은 남긴다', () => {
+  const v = validateFeedback({ ...goodFeedback(), name: '  김\u0000진행\t ', text: ' 첫 줄\r\n둘째 줄​ \u0007' });
+  expect(v).toEqual({ ...goodFeedback(), name: '김 진행', text: '첫 줄\n둘째 줄' });
+});
+
+test('의견 칸 확인: 사진 · 모르는 칸이 끼거나 칸이 빠지거나 값이 틀리면 거절한다', () => {
+  const bad = [
+    { ...goodFeedback(), photo: 'data:image/png;base64,AAAA' },
+    { ...goodFeedback(), studentName: '아이 이름' },
+    (({ step: _s, ...rest }) => rest)(goodFeedback()),
+    { ...goodFeedback(), name: '   ' },
+    { ...goodFeedback(), name: '가'.repeat(41) },
+    { ...goodFeedback(), text: '\n\n' },
+    { ...goodFeedback(), text: '가'.repeat(1001) },
+    { ...goodFeedback(), version: '../etc/passwd' },
+    { ...goodFeedback(), screen: '2560x1440' },
+    { ...goodFeedback(), device: 'tv' },
+    { ...goodFeedback(), step: 4 },
+    { ...goodFeedback(), step: '1' },
+    { ...goodFeedback(), name: 42 },
+    [goodFeedback()],
+    null
+  ];
+  for (const b of bad) expect(validateFeedback(b), JSON.stringify(b)).toBe(null);
+  // 경계: 이름 40자 · 글 1000자는 받는다(이모지 하나는 한 글자)
+  expect(validateFeedback({ ...goodFeedback(), name: '가'.repeat(40), text: '🙂'.repeat(1000) })).not.toBe(null);
+});
+
+test('POST /feedback: 부스 토큰이 없으면 401이고 아무것도 저장하지 않는다', async () => {
+  const db = makeFeedbackDb();
+  await withFeedbackServer({ db, kakao: makeKakao({}) }, async (base) => {
+    const res = await postFeedback(base, goodFeedback(), { 'x-booth-token': '' });
+    expect(res.status).toBe(401);
+  });
+  expect(db._docs('feedback')).toEqual([]);
+});
+
+test('POST /feedback: 받은 여섯 칸 + 받은 시각만 저장하고, 연결된 카카오로 «나에게 보내기»를 한 번 보낸다', async () => {
+  const db = makeFeedbackDb();
+  const now = Date.now();
+  db._put('kakaoAuth', 'owner', connectedOwner(now));
+  const kakao = makeKakao({ [MEMO_URL]: { status: 200, json: { result_code: 0 } } });
+  await withFeedbackServer({ db, kakao }, async (base) => {
+    const res = await postFeedback(base, goodFeedback());
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  });
+  const saved = db._docs('feedback');
+  expect(saved).toHaveLength(1);
+  const [, doc] = saved[0];
+  expect(Object.keys(doc).sort()).toEqual(['createdAt', 'device', 'name', 'screen', 'step', 'text', 'version']);
+  expect(doc.createdAt).toBeInstanceOf(Date);
+  expect(kakao.calls).toHaveLength(1);
+  const call = kakao.calls[0];
+  expect(call.headers.authorization).toBe('Bearer acc-old');
+  const template = JSON.parse(call.body.template_object);
+  expect(template.object_type).toBe('text');
+  expect(template.text).toContain('3번 부스 김진행');
+  expect(template.text).toContain('노트북 4번 자리예요.');
+  expect(template.text).toContain('판 index-AbC12_x.js · 2560x1440@1 · pc · 1단계');
+  expect(template.link).toEqual({ web_url: 'https://poster.edutogether.kr', mobile_web_url: 'https://poster.edutogether.kr' });
+});
+
+test('POST /feedback: 카카오 글은 200자를 넘으면 줄여 보내고, 저장은 원문 그대로다', async () => {
+  const db = makeFeedbackDb();
+  db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
+  const kakao = makeKakao({ [MEMO_URL]: { status: 200 } });
+  const long = '가'.repeat(1000);
+  await withFeedbackServer({ db, kakao }, async (base) => {
+    expect((await postFeedback(base, { ...goodFeedback(), text: long })).status).toBe(200);
+  });
+  const text = JSON.parse(kakao.calls[0].body.template_object).text;
+  expect([...text]).toHaveLength(200);
+  expect(text.endsWith('…')).toBe(true);
+  expect(db._docs('feedback')[0][1].text).toBe(long);
+});
+
+test('POST /feedback: 카카오가 실패하거나 아직 연결 전이어도 저장은 남고 화면에는 200이다', async () => {
+  for (const connected of [true, false]) {
+    const db = makeFeedbackDb();
+    if (connected) db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
+    const kakao = makeKakao({ [MEMO_URL]: { status: 500, json: { code: -1 } } });
+    await withFeedbackServer({ db, kakao }, async (base) => {
+      expect((await postFeedback(base, goodFeedback())).status).toBe(200);
+    });
+    expect(db._docs('feedback'), `연결 ${connected}`).toHaveLength(1);
+    expect(kakao.calls, `연결 ${connected}`).toHaveLength(connected ? 1 : 0);
+  }
+});
+
+test('POST /feedback: 저장이 실패하면 503이고 카카오도 보내지 않는다', async () => {
+  const db = makeFeedbackDb({ failAdd: true });
+  db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
+  const kakao = makeKakao({ [MEMO_URL]: { status: 200 } });
+  await withFeedbackServer({ db, kakao }, async (base) => {
+    const res = await postFeedback(base, goodFeedback());
+    expect(res.status).toBe(503);
+    expect((await res.json()).code).toBe('feedback_store');
+  });
+  expect(kakao.calls).toHaveLength(0);
+});
+
+test('POST /feedback: 형식이 틀리면 저장하지 않는다 — JSON이 아니면 415 · 8KB가 넘으면 413 · 깨진 JSON · 모르는 칸은 400', async () => {
+  const db = makeFeedbackDb();
+  await withFeedbackServer({ db, kakao: makeKakao({}) }, async (base) => {
+    const plain = await fetch(`${base}/feedback`, {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain', 'x-booth-token': 'test-booth-token' },
+      body: JSON.stringify(goodFeedback())
+    });
+    expect(plain.status).toBe(415);
+    expect((await postFeedback(base, JSON.stringify({ ...goodFeedback(), text: '가'.repeat(3000) }))).status).toBe(413);
+    expect((await postFeedback(base, '{"name":')).status).toBe(400);
+    expect((await postFeedback(base, { ...goodFeedback(), photo: 'x' })).status).toBe(400);
+  });
+  expect(db._docs('feedback')).toEqual([]);
+});
+
+test(`POST /feedback: 같은 곳에서 10분에 ${FEEDBACK_IP_MAX}건까지 받고 그다음은 429 · 저장하지 않는다`, async () => {
+  const db = makeFeedbackDb();
+  await runInSingleRateLimitBucket(async () => {
+    await withFeedbackServer({ db, kakao: makeKakao({}), counter: makeInMemoryCounterImpl() }, async (base) => {
+      for (let i = 0; i < FEEDBACK_IP_MAX; i++) expect((await postFeedback(base, goodFeedback())).status, `${i + 1}번째`).toBe(200);
+      const over = await postFeedback(base, goodFeedback());
+      expect(over.status).toBe(429);
+      expect((await over.json()).code).toBe('feedback_busy');
+    });
+  });
+  expect(db._docs('feedback').length % FEEDBACK_IP_MAX).toBe(0);
+});
+
+test('POST /feedback: 하루 전체 한도에 닿으면 429다', async () => {
+  const db = makeFeedbackDb();
+  const counter = async (collectionName) => ({ allowed: collectionName !== 'dailyBudgetBuckets', count: 0 });
+  await withFeedbackServer({ db, kakao: makeKakao({}), counter }, async (base) => {
+    expect((await postFeedback(base, goodFeedback())).status).toBe(429);
+  });
+  expect(db._docs('feedback')).toEqual([]);
+});
+
+test('POST /feedback: 기록(로그)에 이름 · 글 · 토큰 · 앱 키를 남기지 않는다(카카오가 실패한 경로까지)', async () => {
+  const lines = [];
+  const spies = ['log', 'error', 'warn'].map((m) => vi.spyOn(console, m).mockImplementation((...a) => lines.push(a.join(' '))));
+  try {
+    const db = makeFeedbackDb();
+    db._put('kakaoAuth', 'owner', connectedOwner(Date.now(), { accessExpiresAt: 0 }));
+    const kakao = makeKakao({
+      [TOKEN_URL]: { status: 400, json: { error: 'invalid_grant', error_description: 'refresh token ref-old expired' } }
+    });
+    await withFeedbackServer({ db, kakao }, async (base) => {
+      expect((await postFeedback(base, goodFeedback())).status).toBe(200);
+    });
+  } finally {
+    spies.forEach((s) => s.mockRestore());
+  }
+  const all = lines.join('\n');
+  expect(all).toContain('[feedback]');
+  for (const secret of ['김진행', '노트북 4번', 'ref-old', 'acc-old', 'test-kakao-rest-key', 'test-kakao-client-secret']) {
+    expect(all, secret).not.toContain(secret);
+  }
+});
+
+test('카카오 토큰: 액세스 토큰이 곧 끝나면 먼저 갱신하고, 새 리프레시 토큰이 오면 덮어쓰고 안 오면 예전 것을 둔다', async () => {
+  for (const withNewRefresh of [true, false]) {
+    const db = makeFeedbackDb();
+    const now = Date.now();
+    db._put('kakaoAuth', 'owner', connectedOwner(now, { accessExpiresAt: now + 30_000 }));
+    const kakao = makeKakao({
+      [TOKEN_URL]: {
+        status: 200,
+        json: withNewRefresh
+          ? { access_token: 'acc-new', expires_in: 43199, refresh_token: 'ref-new', refresh_token_expires_in: 5184000 }
+          : { access_token: 'acc-new', expires_in: 43199 }
+      },
+      [MEMO_URL]: { status: 200 }
+    });
+    await withFeedbackServer({ db, kakao }, async (base) => {
+      expect((await postFeedback(base, goodFeedback())).status).toBe(200);
+    });
+    const [refresh, memo] = kakao.calls;
+    expect(refresh.url).toBe(TOKEN_URL);
+    expect(refresh.body).toEqual({
+      grant_type: 'refresh_token',
+      client_id: 'test-kakao-rest-key',
+      refresh_token: 'ref-old',
+      client_secret: 'test-kakao-client-secret'
+    });
+    expect(memo.headers.authorization).toBe('Bearer acc-new');
+    const owner = db._get('kakaoAuth', 'owner');
+    expect(owner.accessToken).toBe('acc-new');
+    expect(owner.refreshToken, `새 리프레시 ${withNewRefresh}`).toBe(withNewRefresh ? 'ref-new' : 'ref-old');
+    expect(owner.userId).toBe('777');
+  }
+});
+
+test('카카오 토큰: 보내기가 401이면 한 번만 갱신해 다시 보내고, 또 401이면 멈춘다(저장은 남음)', async () => {
+  for (const secondStatus of [200, 401]) {
+    const db = makeFeedbackDb();
+    db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
+    const kakao = makeKakao({
+      [MEMO_URL]: [{ status: 401, json: { code: -401 } }, { status: secondStatus }],
+      [TOKEN_URL]: { status: 200, json: { access_token: 'acc-new', expires_in: 43199 } }
+    });
+    await withFeedbackServer({ db, kakao }, async (base) => {
+      expect((await postFeedback(base, goodFeedback())).status).toBe(200);
+    });
+    expect(kakao.calls.map((c) => c.url)).toEqual([MEMO_URL, TOKEN_URL, MEMO_URL]);
+    expect(db._docs('feedback')).toHaveLength(1);
+  }
+});
+
+test('GET /kakao/start: 카카오 로그인으로 보내고, 대기 문서에는 state 원문이 아니라 해시만 둔다', async () => {
+  const db = makeFeedbackDb();
+  await withFeedbackServer({ db, kakao: makeKakao({}) }, async (base) => {
+    const res = await fetch(`${base}/kakao/start`, { redirect: 'manual' });
+    expect(res.status).toBe(302);
+    const to = new URL(res.headers.get('location'));
+    expect(to.origin + to.pathname).toBe('https://kauth.kakao.com/oauth/authorize');
+    expect(to.searchParams.get('client_id')).toBe('test-kakao-rest-key');
+    expect(to.searchParams.get('redirect_uri')).toBe(KAKAO_REDIRECT_URI);
+    expect(to.searchParams.get('response_type')).toBe('code');
+    expect(to.searchParams.get('scope')).toBe('talk_message');
+    expect(to.searchParams.has('client_secret')).toBe(false);
+    const state = to.searchParams.get('state');
+    expect(state).toMatch(/^[0-9a-f]{32}$/);
+    const pending = db._get('kakaoAuth', 'pending');
+    expect(pending.stateHash).toBe(crypto.createHash('sha256').update(state).digest('hex'));
+    expect(JSON.stringify(pending)).not.toContain(state);
+  });
+});
+
+async function startKakaoConnect(base) {
+  const res = await fetch(`${base}/kakao/start`, { redirect: 'manual' });
+  return new URL(res.headers.get('location')).searchParams.get('state');
+}
+const connectRoutes = (userId = 777) => ({
+  [TOKEN_URL]: { status: 200, json: { access_token: 'acc-1', expires_in: 43199, refresh_token: 'ref-1', refresh_token_expires_in: 5184000 } },
+  [ME_URL]: { status: 200, json: { id: userId } },
+  [MEMO_URL]: { status: 200 }
+});
+
+test('GET /kakao/callback: 맞는 state면 토큰을 받아 처음 연결한 계정으로 저장하고 시험 메시지를 보낸다 — 같은 주소는 두 번 통하지 않는다', async () => {
+  const db = makeFeedbackDb();
+  const kakao = makeKakao(connectRoutes());
+  await withFeedbackServer({ db, kakao }, async (base) => {
+    const state = await startKakaoConnect(base);
+    const res = await fetch(`${base}/kakao/callback?code=abc&state=${state}`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('카카오톡 알림 연결 완료');
+    expect(kakao.calls.map((c) => c.url)).toEqual([TOKEN_URL, ME_URL, MEMO_URL]);
+    expect(kakao.calls[0].body).toEqual({
+      grant_type: 'authorization_code',
+      client_id: 'test-kakao-rest-key',
+      redirect_uri: KAKAO_REDIRECT_URI,
+      code: 'abc',
+      client_secret: 'test-kakao-client-secret'
+    });
+    const owner = db._get('kakaoAuth', 'owner');
+    expect(owner).toMatchObject({ userId: '777', accessToken: 'acc-1', refreshToken: 'ref-1' });
+    expect(db._get('kakaoAuth', 'pending')).toBe(undefined);
+    const again = await fetch(`${base}/kakao/callback?code=abc&state=${state}`);
+    expect(again.status).toBe(400);
+  });
+});
+
+test('GET /kakao/callback: 틀린 · 지난 state, 로그인 취소는 연결하지 않고 카카오도 부르지 않는다', async () => {
+  for (const kind of ['wrong', 'expired', 'denied', 'malformed']) {
+    const db = makeFeedbackDb();
+    const kakao = makeKakao(connectRoutes());
+    await withFeedbackServer({ db, kakao }, async (base) => {
+      const state = await startKakaoConnect(base);
+      if (kind === 'expired') db._put('kakaoAuth', 'pending', { ...db._get('kakaoAuth', 'pending'), expiresAt: Date.now() - 1 });
+      const q = {
+        wrong: `code=abc&state=${'0'.repeat(32)}`,
+        expired: `code=abc&state=${state}`,
+        denied: `error=access_denied&state=${state}`,
+        malformed: `code=abc&state=${state}x`
+      }[kind];
+      expect((await fetch(`${base}/kakao/callback?${q}`)).status, kind).toBe(400);
+    });
+    expect(kakao.calls, kind).toEqual([]);
+    expect(db._get('kakaoAuth', 'owner'), kind).toBe(undefined);
+  }
+});
+
+test('GET /kakao/callback: 이미 다른 카카오 계정이 연결돼 있으면 덮어쓰지 않는다(403)', async () => {
+  const db = makeFeedbackDb();
+  const owner = connectedOwner(Date.now(), { userId: '111' });
+  db._put('kakaoAuth', 'owner', owner);
+  const kakao = makeKakao(connectRoutes(999));
+  await withFeedbackServer({ db, kakao }, async (base) => {
+    const state = await startKakaoConnect(base);
+    expect((await fetch(`${base}/kakao/callback?code=abc&state=${state}`)).status).toBe(403);
+  });
+  expect(db._get('kakaoAuth', 'owner')).toEqual(owner);
+  expect(kakao.calls.map((c) => c.url)).toEqual([TOKEN_URL, ME_URL]);
+});
+
+test('GET /kakao/start: 앱 키가 비어 있으면 카카오로 보내지 않고 503 안내 화면이다', async () => {
+  const saved = process.env.KAKAO_CLIENT_SECRET;
+  process.env.KAKAO_CLIENT_SECRET = '';
+  try {
+    await withFeedbackServer({ db: makeFeedbackDb(), kakao: makeKakao({}) }, async (base) => {
+      const res = await fetch(`${base}/kakao/start`, { redirect: 'manual' });
+      expect(res.status).toBe(503);
+    });
+  } finally {
+    process.env.KAKAO_CLIENT_SECRET = saved;
+  }
+});
+
+test('cleanupOldFeedback: 받은 지 90일 지난 의견만 지운다', async () => {
+  const db = makeFeedbackDb();
+  const now = Date.now();
+  db._put('feedback', 'old', { createdAt: new Date(now - FEEDBACK_TTL_MS - 1000) });
+  db._put('feedback', 'edge', { createdAt: new Date(now - FEEDBACK_TTL_MS + 1000) });
+  db._put('feedback', 'new', { createdAt: new Date(now - 1000) });
+  expect(FEEDBACK_TTL_MS).toBe(90 * 24 * 60 * 60 * 1000);
+  expect(await cleanupOldFeedback(db, now)).toBe(1);
+  expect(db._docs('feedback').map(([id]) => id).sort()).toEqual(['edge', 'new']);
 });

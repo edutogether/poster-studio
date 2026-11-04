@@ -16,7 +16,10 @@ export default [
         FormData: 'readonly',
         Request: 'readonly',
         Blob: 'readonly',
-        fetch: 'readonly'
+        fetch: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        AbortSignal: 'readonly'
       }
     },
     rules: {
