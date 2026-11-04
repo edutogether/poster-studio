@@ -1179,6 +1179,10 @@ export const posterStudio = onRequest(
    상시 24시간 켜두면 그만큼 인스턴스를 계속 깨워두는 셈이라 minInstances 거부 취지와
    어긋나므로, 행사 당일(2026-11-14) 시간대에만 동작하도록 cron을 제한했다 — 평상시엔
    완전히 비활성.
+   2026-11-03 Bumm님: 휴대폰 공개 · 11/12 현장 시험까지 오늘부터 행사날(11/3~11/14)까지 매일 09:00~18:55로 넓혔다
+   («별로 안 든다면 매일 깨우지 싶어 행사날까지»). 하루 120번 · 12일 1,440번 — 스케줄러 작업은 그대로 하나라 추가 요금이 없고,
+   /health의 OpenAI 확인은 models.list(토큰 · 이미지 과금 없음, 60초 캐시)이며, 함수 호출 · 실행 시간은 무료 사용량 안이다.
+   cron에는 연도가 없어 해마다 11/3~11/14에 다시 돈다 — 행사 뒤 정리 때 이 함수를 지우거나 날짜를 바꾼다.
    URL은 posterStudio 함수 URL과 같은 프로젝트/리전이어야 한다 — 프로젝트 이전 시
    ALLOWED_ORIGINS·API_BASE와 함께 반드시 같이 고칠 것(_docs/ops/runbook.md 참고).
 
@@ -1254,7 +1258,7 @@ export const keepWarm = onSchedule(
   {
     region: 'asia-northeast3',
     timeoutSeconds: 30,
-    schedule: '*/5 9-18 14 11 *',
+    schedule: '*/5 9-18 3-14 11 *',
     timeZone: 'Asia/Seoul'
   },
   async () => {

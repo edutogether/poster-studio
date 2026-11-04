@@ -29,7 +29,7 @@
 | `scenario-filled.js` | 갤러리 4장 채운 상태를 **결정적으로** 만든다(전/후가 같은 조작을 하도록 파일로 고정) |
 | `capture-server.mjs` | 브라우저가 뽑은 JSON을 `snapshots/`에 저장(포트 5502). 같은 컴퓨터의 페이지(localhost·127.0.0.1)와 도구 요청만 받는다 |
 | `compare.mjs` | 스냅샷 두 개 대조. `high`가 하나라도 있으면 exit 1 |
-| `selftest.mjs` | **compare.mjs가 빈 게이트가 아님을 증명**(§5.4) |
+| `selftest.mjs` | **compare.mjs가 빈 게이트가 아님을 증명**(§5.4). `net-perf-summary.mjs`, `step2-geometry-judge.mjs`(step2-geometry 판정) · `download-judge.mjs`(download-button-probe · download-live 판정)도 «잰 대상 0개면 실패»를 같은 자리에서 본다 |
 | `snapshots/` | 기준선. `before-*`는 freeze 태그 시점의 것이다 |
 
 ## 쓰는 법

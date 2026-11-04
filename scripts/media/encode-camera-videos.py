@@ -5,6 +5,8 @@
 숫자 3·2·1과 대사 말풍선은 영상에 굽지 않는다 — 목록의 cues로 앱이 얹는다(_docs/ops/camera-example-videos.md «숫자 3·2·1»·«대사»).
 
 입력 목록.json = {"solo": {"source": "경로/solo-post.mp4", "cues": [...]}, "group": {...}} — 한쪽만 있어도 된다(없는 쪽은 승인 전으로 남긴다).
+  항목에 "crf"·"preset"을 주면 그 값으로 굽는다(없으면 CRF 20 · slow — 10/19 승인본). 2026-11-03 Bumm님 «화질 저하 없이 용량 다운»으로
+  개인 22 · 단체 21 · veryslow를 쓴다(휴대폰 · PC 보이는 크기에서 지금 판 대비 VMAF 평균 97 · 최저 93 이상, CHANGELOG 11/3).
   cues 항목: {"kind": "count", "from": 7.0, "to": 7.5, "text": "3"} · {"kind": "say", "from": 2.0, "to": 3.5, "text": "…", "x": 40, "y": 12}
   (시각은 영상 초, x·y는 영상 화면 %. 말풍선은 위 20% 띠·가운데 62% 안 — 테스트 test/camera-example.test.tsx가 같은 규칙을 본다)
 출력: <출력 폴더>/<solo|group>-<sha256 앞 12자리>.mp4(H.264 High·yuv420p·BT.709 표기·CRF 20·AAC 128k·faststart, 1920×1080)와
@@ -67,7 +69,7 @@ def encode(mode, item, out):
     tmp = os.path.join(out, f'{mode}.tmp.mp4')
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', src, '-map', '0:v:0', '-map', '0:a:0?', '-map_metadata', '-1',
                     '-vf', 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p',
-                    '-c:v', 'libx264', '-profile:v', 'high', '-preset', 'slow', '-crf', '20', '-pix_fmt', 'yuv420p',
+                    '-c:v', 'libx264', '-profile:v', 'high', '-preset', str(item.get('preset', 'slow')), '-crf', str(item.get('crf', 20)), '-pix_fmt', 'yuv420p',
                     '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv',
                     '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '48000', '-fflags', '+bitexact', '-flags:v', '+bitexact', '-flags:a', '+bitexact',
                     '-movflags', '+faststart', tmp], check=True)

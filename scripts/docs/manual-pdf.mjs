@@ -2,7 +2,7 @@
 
      node scripts/docs/manual-pdf.mjs <설명서.md> <출력.pdf>
 
-   마크다운은 설명서가 쓰는 만큼만 읽는다: 제목(#~###) · 문단 · 목록(-, 1.) · 표 · 인용(>) · 굵게(**) · 코드(`) ·
+   마크다운은 설명서가 쓰는 만큼만 읽는다: 제목(#~###) · 문단 · 목록(-, 1. — 두 칸 이상 들여 쓰면 하위 목록) · 표 · 인용(>) · 굵게(**) · 코드(`) ·
    그림(![설명](경로) — md 파일 기준 상대 경로) · 링크. 모르는 문법은 글자 그대로 둔다(조용히 빼지 않는다).
    같은 폴더에 같은 이름의 .html도 남긴다(브라우저로 미리 보기). 헤드리스 크롬으로 인쇄한다. */
 import fs from 'node:fs/promises';
@@ -22,6 +22,23 @@ const inline = (s) => esc(s)
   .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
   .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
   .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+// 목록 — 두 칸 이상 들여 쓴 «- » · «N. »는 앞 항목 안의 하위 목록이다(2026-11-02: 예전에는 한 줄로 펴서 각자 테스팅 6단계가 1~10번으로 찍혔다).
+const LIST = /^(\s*)(-|\d+\.) /;
+function list(lines, i) {
+  const [, indent, marker] = LIST.exec(lines[i]);
+  const base = indent.length; const items = [];
+  while (i < lines.length) {
+    const m = LIST.exec(lines[i]);
+    if (!m || m[1].length < base) break;
+    if (m[1].length >= base + 2 && items.length) { const [sub, next] = list(lines, i); items[items.length - 1].sub += sub; i = next; continue; }
+    let item = lines[i++].replace(LIST, '');
+    while (i < lines.length && /^\s{2,}\S/.test(lines[i]) && !LIST.test(lines[i])) item += ' ' + lines[i++].trim();
+    items.push({ item, sub: '' });
+  }
+  const tag = /\d/.test(marker) ? 'ol' : 'ul';
+  return [`<${tag}>${items.map((it) => `<li>${inline(it.item)}${it.sub}</li>`).join('')}</${tag}>`, i];
+}
 
 export function toHtml(text) {
   const lines = text.replace(/\r\n/g, '\n').split('\n');
@@ -43,15 +60,7 @@ export function toHtml(text) {
       html.push(`<table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
       continue;
     }
-    if ((m = /^(\s*)(-|\d+\.) /.exec(line))) {
-      const ordered = /\d/.test(m[2]); const items = [];
-      while (i < lines.length && /^\s*(-|\d+\.) /.test(lines[i])) {
-        let item = lines[i++].replace(/^\s*(-|\d+\.) /, '');
-        while (i < lines.length && /^\s{2,}\S/.test(lines[i]) && !/^\s*(-|\d+\.) /.test(lines[i])) item += ' ' + lines[i++].trim();
-        items.push(`<li>${inline(item)}</li>`);
-      }
-      html.push(ordered ? `<ol>${items.join('')}</ol>` : `<ul>${items.join('')}</ul>`); continue;
-    }
+    if (LIST.test(line)) { const [out, next] = list(lines, i); html.push(out); i = next; continue; }
     const para = []; while (i < lines.length && lines[i].trim() && !/^(#{1,3} |>|\||\s*(-|\d+\.) )/.test(lines[i])) para.push(lines[i++].trim());
     html.push(`<p>${inline(para.join(' '))}</p>`);
   }
@@ -65,7 +74,7 @@ ${face(400, 'Pretendard-Regular.woff2')}${face(600, 'Pretendard-SemiBold.woff2')
 @page{size:A4;margin:16mm 15mm}
 body{font-family:Manual,sans-serif;font-size:10.5pt;line-height:1.6;color:#1c1c1c;margin:0}
 h1{font-size:19pt;font-weight:800;margin:0 0 8pt}h2{font-size:13.5pt;font-weight:800;margin:16pt 0 6pt;padding-bottom:3pt;border-bottom:1.5pt solid #ed3124;break-after:avoid}h3{font-size:11.5pt;margin:10pt 0 4pt;break-after:avoid}
-p{margin:0 0 6pt}ul,ol{margin:0 0 6pt;padding-left:16pt}li{margin:0 0 2pt}strong{font-weight:800}
+p{margin:0 0 6pt}ul,ol{margin:0 0 6pt;padding-left:16pt}li{margin:0 0 2pt}li>ul,li>ol{margin:2pt 0 0}strong{font-weight:800}
 blockquote{margin:0 0 10pt;padding:6pt 10pt;background:#f4f4f6;border-radius:4pt;color:#555;font-size:9.5pt}
 table{width:100%;border-collapse:collapse;margin:0 0 8pt;font-size:9.5pt;break-inside:auto}th,td{border:0.6pt solid #cfcfd6;padding:4pt 6pt;text-align:left;vertical-align:top}th{background:#f4f4f6;font-weight:800}tr{break-inside:avoid}
 code{font-family:Consolas,monospace;font-size:9pt}img{max-width:100%;border:0.6pt solid #cfcfd6;border-radius:3pt;margin:4pt 0}a{color:#1c1c1c}

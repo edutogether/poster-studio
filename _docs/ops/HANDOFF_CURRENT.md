@@ -8,6 +8,35 @@
 - 남은 결정: 위치 화면을 잠근 채 둘지 · 아예 걷을지(Bumm님). `/D`로 조용히 깔면 그 자리에 빈 폴더가 생기는 것(템플릿 순서)은 그대로 뒀다.
 - 이 PC에는 1.5.0(`d7714f4`)이 «모든 사용자»로 깔려 있다(시험 뒤 되돌림, «설치된 앱»에는 그때 값 `1.0.0`으로 보인다). Voice Cinema는 건드리지 않았다.
 
+## 2026-11-02(월) 17:45 — 라이브: **웹 = master `6b1ef9c`**(CI 배포 — 16:06 `f610154` 위 휴대폰 가로 창 고침) · **공개 설치 파일 = `d7714f4`** (팀장 승인 «둘 다»)
+
+- 무엇을 했는지는 CHANGELOG 11/2 17:29~17:45(가로 창 고침) · 15:59~16:45(배포) · 11/2 오후(준비). 최종검토판(Bumm님이 저녁에 보심): `D:\Projects\_shared\ops\poster-studio-20261017\index.html`,
+  캡처 · 점검 기록은 같은 폴더 `final-20261102`. 파일로 여는 페이지라 서버가 필요 없다.
+- 되돌리기: 웹 `firebase hosting:clone poster-studio:rollback-20261102-2 poster-studio:live --project inky-poster-studio`(= `f610154`, 가로 창 고침 바로 전) · 11/1 `174346e`로는 `rollback-20261102` — 둘 다 12/2까지 ·
+  설치 파일 작업 폴더 `납품-이전판-2fabd75-1102`를 app.md «파일을 바꿀 때» 명령으로.
+- Bumm님 결정 대기: ① 단체 아치 프레임 위 흐린 띠(146px — 그대로 / 꽉 채움 / 지시문) ② 11/12에도 서버 깨워 두기 ③ 설치판 가지를 master에 합치는 시점 ④ 웹 인쇄 때 화면 밀림.
+- 가지 `verify-same-button-20261102`(`aea097a`, `download-live --button-same`)는 다음 코드 배포 때 master에 함께 합친다(팀장 11/2).
+- `CLAUDE.md`의 시험 수(438 → 444)와 «PNG 저장» 줄(84)은 Bumm님 직접 지시로만 고친다 — 고칠 것으로 보고했다.
+- 검사 모니터(아래)는 `D:\Projects\_shared\ops\monitor-lock.txt` 잠금 안에서만 — Voice Cinema와 같이 쓴다. 창 없는 확인도 다른 앱이 녹화 중이면 기다린다.
+
+## 2026-11-02(월) 09:37 — 라이브: **공개 설치 파일 = `2fabd75`**(Bumm님 «1번으로 교체», 팀장 OK) · Hosting · 함수는 그대로(master `174346e` 배포분)
+
+- 공개 객체를 `e58b65c` → `2fabd75`(160,330,723바이트 · SHA-256 `b8fce857…7ac0`)로 덮었다. `download-live.mjs` 28건 통과(세 주소 · PC 2560 · 휴대폰 3배).
+- 되돌리기: 작업 폴더 `납품-이전판-e58b65c-1028`의 설치 파일을 app.md «파일을 바꿀 때» 명령으로 다시 올린다(덮인 판은 버킷 소프트 삭제로 11/9까지도 남음).
+- 설치판 현장매뉴얼 전달 폴더도 이 판(설치 파일 · 진행요원 매뉴얼 «나만» · `다운로드-단추\README.md`). 운영자 PDF 4종(10/26)에는 설치판 판 · 크기가 없어 그대로.
+- 🟠 `2fabd75`에서 설치기 아래 «Poster Studio 1.0.0» 오른쪽 가로 구분선이 사라졌다(`d570c48` 칸 겹침 순서) — 둘지 · 고칠지 팀장 판단 대기. 자세히는 가지 `desktop-20261027` 인계 11/2.
+- **행사 뒤 과제(11/15~)**: 설치기 화면 넘김의 덜 그려진 장 0 — 화면 방식 새로 짜기(가지 `desktop-20261027`). 지금은 손대지 않는다(팀장 11/2).
+- OPEN: ① 칸 · 판 필드(첫 실제 생성 때) ② 아래 구분선 결정 ③ 현장 OPEN(11/12 포토프린터 · 교육청 노트북 설치 권한 · SmartScreen) 그대로.
+
+## 2026-11-02(월) 오전 — `CLAUDE.md` 최신화(Bumm님 직접 지시) · 설치판 `2fabd75` 녹화 18차 · 라이브 그대로(master `174346e` 배포분)
+
+- `CLAUDE.md`를 지금 master에 맞췄다 — 시험 수 438(11/1) · Windows 설치판 줄 · npx 배포 도구 · 폴더 구조 · `security-notes.md` 설명 · «`CLAUDE.md`만은 Bumm님 직접 지시», 100줄.
+  `README.md` · app.md의 시험 수 435도 438로. 11/1 OPEN ④는 끝났다.
+- 저장소 폴더 `D:\Projects\inky-festival\poster-studio`의 체크아웃을 `release-20261018`(10/17)에서 master로 옮겼다 — 이 폴더에서 연 세션이 10/17의 `CLAUDE.md`(샘플 모드 · 11/7 전환)를 읽고 있었다. 옛 가지는 그대로 남아 있다.
+- 설치판 `2fabd75` 녹화 18차 끝(아래 모니터) — «끝났습니다» 고침 확인, 화면 넘김마다 덜 그려진 장 1~2장은 남음. 자세히는 가지 `desktop-20261027`(`76bae02`) CHANGELOG 11/2. 공개 설치 파일 교체는 팀장 판단 대기(공개 객체 = `e58b65c` 그대로).
+- 11/1 절의 «운영자 전달 PDF가 E:로 옮겨졌다»는 바로잡는다: 원래 폴더는 `C:\Users\817be\Documents\자료보관\Projects\20-29 앱개발\26 InKY Film Festival\26.11 영화제와제작도구 작업자료\poster-studio-운영자-전달-20261026`에 있고, E: 쪽은 SHA-256까지 같은 사본이다(두 경로 모두 맞다).
+- OPEN(09:37 위 절로 옮김): ① 칸 · 판 필드 ~~② 설치 파일 교체 결정~~ → 09:37 교체 ③ 현장 OPEN.
+
 ## 2026-11-02(월) 오후 — 최종 설치 파일 = `d7714f4`(160,332,836바이트 · SHA-256 `f644d43e…39bb`) · 공개 객체 교체는 팀장 OK 대기
 
 - 아래 구분선 · 설치 위치(제거 범위) · 최소 창 600×480 · 3단계 단추 줄 · 종합감사 고침 · 웹 고침이 들어간 판. 자세히는 CHANGELOG 11/2 오후.
@@ -32,6 +61,46 @@
 - 녹화 4편 + 제거 두 번째 표본(`screens\설치-확인-18차-2fabd75`). «끝났습니다» 고침은 확인했고, 화면 넘김마다 덜 그려진 장 1~2장(0.03~0.07초)은 남았다 — CHANGELOG 11/2.
 - 실행 스크립트는 세션 임시 폴더 `i38.ps1` · `i39.ps1`(17차 `i35.ps1`과 같은 단계).
 
+## 2026-11-01(일) 16:46 — 라이브: **master `174346e` = CI 배포** · Hosting 판 `2ae4c35140bac538`(파일은 앞 판과 같음) · 함수 `posterstudio-00045-sub` · 공개 설치 파일 = `e58b65c` 빌드 그대로
+
+- 무엇: Dependabot 알림 정리(PR #24) — 루트 · functions `overrides`(qs 6.16.2 · glob 14.0.3 · minimatch 11.0.3) · `tools/deploy/` 지우고 배포 도구는 `npx --yes firebase-tools@15.32.1`(`deploy.yml` 맨 위 `FIREBASE_TOOLS`).
+  화면 · 함수 동작 변화 0 확인과 배포 뒤 확인은 CHANGELOG 11/1 절. 열린 Dependabot 알림 0.
+- 되돌릴 곳: 함수 판 `posterstudio-00044-gaf`(10/31 판) · Hosting `rollback-20261031-3`(같은 파일, 11/30까지) · 태그 `pre-deps-20261101`(= `adff28b`).
+  함수 되돌리기: `gcloud run services update-traffic posterstudio --to-revisions=posterstudio-00044-gaf=100 --region asia-northeast3 --project inky-poster-studio --account edutogether2015@gmail.com`.
+- 10/31의 «npm 권고는 11/16~11/20에»(팀장 결정 B)는 11/1 대표님 지시로 지금 고치는 쪽으로 바뀌어 끝났다.
+- 결정판(`D:\Projects\_shared\ops\poster-studio-20261017\index.html`)을 11/1 판으로 갱신 — 판정 · Bumm님 최종검토 6개 · 캡처 33장(`final-20261101`).
+  ⑤번(11/12에도 함수 데워 두기)은 팀장이 대표님께 여쭙는다 — 식은 함수 첫 응답 7.9초 대 화면 기다림 6초(«AI 서버 연결을 확인할 수 없습니다»).
+- 경로: 운영자 전달 PDF 4종과 E: 백업 세 폴더는 `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\` 아래다(아래 절들의 경로도 고쳤다).
+- OPEN: ① 라이브 로그의 칸 · 판 필드는 첫 실제 생성 요청 때(11/1 16:46까지 실제 생성 0건) ② 설치판 `2fabd75` 녹화 4편(아래 모니터가 비면) → 팀장 OK → 공개 설치 파일 교체
+  ③ 현장 OPEN(11/12 포토프린터 · 교육청 노트북 설치 권한 · SmartScreen) 그대로 ④ 저장소 `CLAUDE.md`의 낡은 줄(샘플 모드 · 11/7 전환 · 시험 수 97 · 228 → 118 · 438) — Bumm님 직접 지시 대기.
+
+## 2026-10-31(토) 11:18 — 라이브: **master `b26298e` = CI 배포** · Hosting 판 `a51f8feb1b998d71`(파일은 `db8c334`와 같음) · 함수 `posterstudio-00044-gaf`(`ba2915a`의 functions) · 공개 설치 파일 = `e58b65c` 빌드 그대로
+
+- GitHub 복구로 **CI 배포가 다시 정상 경로다** — master push → test → functions → hosting. runbook §9(로컬 배포)는 다시 GitHub가 막힐 때만.
+- master는 이제 `download-20261027` 줄을 품는다(다운로드 단추 · `/download` 리디렉션 포함). 함수에 10/26 보류했던 서버 변경 3건이 나갔다(Bumm님 결정 A).
+- 되돌릴 곳: Hosting `rollback-20261031-3`(= `db8c334`, 11/30까지) · 함수 판 `posterstudio-00043-tof`(= `81a07b4`) — 명령은 CHANGELOG 10/31 10:42 절.
+- OPEN(11/1에 위 절로 옮김): ~~② npm 권고는 11/16~11/20에~~ → 11/1 지금 고침 · ~~③ 알림 64건 확인~~ → 닫힘. 나머지는 위 절.
+
+## 2026-10-31(토) — GitHub 복구: 올릴 것 다 올림 · 🔴 master push 보류(Bumm님 «함께 배포 / 보류» 결정 대기) · 라이브 그대로
+
+- GitHub에 올라간 것: `download-20261027`(로컬 master 331개 포함) · `desktop-20261027` · `mobile-pa-20261019` · `net-perf-20261024` · 태그 10개. origin/master는 아직 `a658d89`(10/15).
+- 🔴 **master를 지금 그대로 push하지 않는다** — 로컬 master `85b1a74`에는 다운로드 단추 · `/download` 리디렉션이 없다. 정렬은 master를 `download-20261027`로 빨리감기(«함께 배포»)
+  또는 그 위에 `functions/` = `81a07b4` 커밋(«보류», 로컬 가지 `master-hold-20261031`). 검사 결과 · 함수 되돌리기 세 길은 CHANGELOG 10/31 «GitHub 복구 뒤 정리».
+- Dependabot #19~#22는 master 정렬 push 뒤에 다룬다(지금 머지하면 옛 master가 배포된다).
+
+## 2026-10-31(토) 03:25 — 라이브: **Hosting = 가지 `download-20261027`(`db8c334`, 판 `862e70d6108f9c5c`) · 함수 `81a07b4`** · 공개 설치 파일 = 설치판 `e58b65c` 빌드 그대로
+
+- 1440×829 제목 맞춤 추가(CHANGELOG 10/31 03:25). 🔴 Bumm님 확정: 1366 · 1600의 20px 어긋남은 그대로 — 다시 올리지 않는다.
+- 되돌릴 곳: `rollback-20261031-2`(= `90e3366`, 판 `e1c6995252e7d19b`) · `rollback-20261031`(= `a1e7104`) — 둘 다 11/30까지.
+- 설치판 가지 `desktop-20261027`도 같은 `studio.css`(`2fabd75`, 설치 파일 `build-2fabd75`).
+
+## 2026-10-31(토) 01:57 — 라이브: **Hosting = 가지 `download-20261027`(`90e3366`, 판 `e1c6995252e7d19b`) · 함수 `81a07b4`** · 공개 설치 파일 = 설치판 `e58b65c` 빌드 그대로
+
+- 2단계 PC 창 크기 배치를 설치판과 같게 하고 1536 폭 «나답게» 제목을 사진 윗선에 맞췄다(CHANGELOG 10/31, app.md «2단계 … PC 창 크기 배치»).
+- 되돌릴 곳: `rollback-20261031`(= `a1e7104`, 판 `4c1674ce6d41d585`, 11/30까지) — `firebase hosting:clone poster-studio:rollback-20261031 poster-studio:live`. 그 전 채널(10/27 셋 · 10/26)도 그대로.
+- 다음 runbook §9 1번의 Hosting 기준은 이 가지 끝 커밋이다(master 아님 — 아래 08:43 항목의 🔴 그대로). 설치판 가지 `desktop-20261027`도 같은 `studio.css`를 갖는다(`1e5a195`).
+- 공개 설치 파일은 바꾸지 않았다(`e58b65c`). 설치판 새 판 `1e5a195`의 녹화 4편 · 교체는 그 가지 인계 문서.
+
 ## 2026-10-31(토) 오전 — 설치 파일 `2fabd75`(1440×829 제목 맞춤 추가) · 녹화 4편은 이 판으로
 
 - `1e5a195` 다음 판. 폭 1440도 «나답게» 제목을 사진 윗선에 맞췄다 — 🔴 Bumm님 확정: 1366 · 1600의 20px 어긋남은 그대로(CHANGELOG 10/31 오전).
@@ -51,6 +120,11 @@
 - 🔴 **화면 녹화로 확인하기 전이다.** 이 PC에 화면이 하나뿐이라(10/30) 검사 도구가 창을 띄우지 않았다. 아래 모니터가 연결되면 17차와 같은 4편(03 · 04 · 05 · 09)을 다시 찍고
   `recording-blank-frames.mjs` · `recording-bar-end.mjs`와 넘김 앞뒤 프레임을 눈으로 본다. 그때까지 «배포 직전 한 줄»을 보내지 않는다.
 - 🔴 **공개 객체는 여전히 `e58b65c`다.** 이 PC에는 `14d2583`이 «모든 사용자»로 깔려 있다(Voice Cinema도 «모든 사용자» — 건드리지 않는다).
+
+## 2026-10-28(수) 00:29 — 라이브: **Hosting = 가지 `download-20261027`(`a1e7104`, 판 `4c1674ce6d41d585`) · 함수 `81a07b4`** · 공개 설치 파일 = 설치판 `e58b65c` 빌드
+
+- 공개 설치 파일을 `e58b65c` 빌드로 바꿨다(SHA-256 `251b2a73afb9d9ea006b3625fc174dca8462e981a57f89204ebe38a9e369a129`, 12:15의 `b2517cc` 판을 덮음 — 소프트 삭제 7일). Hosting · 함수 · 받는 주소는 그대로.
+- `download-live.mjs` 28건 통과. 아래 12:15 항목의 나머지(합칠 때 주의 · 되돌림 채널 · 웹 반영 대기)는 그대로다.
 
 ## 2026-10-28(수) 밤 — 설치 파일 `14d2583` · 화면 시험 17차 끝 · 공개 설치 파일 교체는 팀장 확인 뒤
 
@@ -106,6 +180,26 @@
 - 이 PC에는 `e58b65c`가 «모든 사용자»로 깔려 있다.
 - OPEN: 11/12 실제 프린터 · 현장 장비 시험, 교육청 노트북 설치 권한 · 스마트 앱 컨트롤.
 
+## 2026-10-27(화) 12:15 — 라이브: **Hosting = 가지 `download-20261027`(`a1e7104`, 판 `4c1674ce6d41d585`) · 함수 `81a07b4`** · 공개 설치 파일 = 설치판 `b2517cc` 빌드
+
+- 아이콘 간격 8px · 받는 이름 «Poster Studio Setup.exe»(10:47). 공개 설치 파일은 12:15에 `b2517cc` 빌드로 바꿨다(SHA-256 `31ebefb144ac9adb2893cb391e1c6d7f48bc9fbd0fcb6f60d167721a13435004`, 11:24의 `78c6a7f` 판을 덮음). 받는 주소는 그대로.
+- 되돌릴 곳(11/26까지): `rollback-20261027-3`(08:43 판) · `-2`(08:10 글자 단추) · `rollback-20261027`(`836b1b9`).
+- 아래 08:43 항목의 🔴(master에 없는 커밋 · 합치기 전에 master에서 배포하면 `/download`가 사라짐)은 그대로 유효하다. Hosting 기준은 이 가지 끝 커밋이다.
+- 웹에도 «인쇄 때 화면 밀림»이 있다(설치판에서만 고침) — 웹에 넣을지는 Bumm님 결정 대기.
+
+## 2026-10-27(화) 08:43 — 라이브: **Hosting = 가지 `download-20261027`(`836b1b9` + 첫 화면 다운로드 아이콘 · `/download` 연결) · 함수 `81a07b4`**
+
+- 🔴 **라이브 Hosting은 master에 없는 커밋이다.** Hosting = `download-20261027`(배포한 사본 `6efa1c1`, 판 `5ff1f4ab0f1369af` — 08:10 판 `8bf7bafcabfd3329`의 «↓ 다운로드» 글자를
+  Bumm님 지시로 lucide 아이콘 하나로 바꾼 것), 함수 = `81a07b4` 그대로.
+  master `85b1a74`에는 단추와 `firebase.json` 리디렉션이 없다 — **이 가지를 master로 합치기(빨리감기 가능) 전에 master를 push하거나 master에서 배포하면 단추와 `/download`가 사라진다(404).**
+  다음 runbook §9 1번의 Hosting 기준은 이 가지 끝 커밋이다.
+- 설치 파일: `https://poster.edutogether.kr/download/PosterStudio-Setup.exe` → 302 → `gs://inky-poster-studio-download/PosterStudio-Setup.exe`
+  (서울 · 그 객체 하나만 공개 · SHA-256 `5e24eeff206ce1607b2d4bc4a1397ebef6fb911ffbf6e1e3e8de03d2f9b6bdf4`). 바꾸는 법 · 지켜야 할 것은 app.md «첫 화면 다운로드 아이콘 · 설치 파일 공개».
+- 되돌릴 곳: Hosting `rollback-20261027-2`(= 08:10 글자 단추 판) · `rollback-20261027`(= `836b1b9`, 단추 없음) — 둘 다 11/26까지. 되돌려도 Storage 파일은 남는다.
+- 가지 `desktop-20261027`(설치판)의 다운로드 단추는 메뉴판(미배포)이다. 합칠 때는 이 가지의 단추(메뉴 없는 아이콘 · `DownloadLink.tsx`)를 따르고
+  그쪽 `DownloadMenu.tsx` · `download-menu.css` · 메뉴 시험을 걷는다(그 가지 인계 문서에도 적었다).
+- OPEN(현장): ① 11/12 실제 포토프린터 출력 ② 교육청 노트북의 설치 권한 ③ 코드 서명이 없어 뜨는 Windows 보안 경고(SmartScreen). GitHub CI 정지는 그대로.
+
 ## 2026-10-27(화) 12:20 — 설치판 최종 `b2517cc` · 공개 설치 파일 = 이 빌드 · 웹 반영은 Bumm님 화면 확인 대기
 
 - 최종 설치 파일: `b2517cc` LF 빌드 `Poster Studio Setup.exe` 159,331,577바이트 · SHA-256 `31ebefb1…5004`(로딩에 승인된 대기 영상 포함).
@@ -146,15 +240,26 @@
 - 🔴 다운로드 단추는 배포하지 않는다 — 설치 파일을 올릴 자리(Cloud Storage + `firebase.json` 리디렉션)가 승인 · 업로드된 뒤에 함께 낸다. 설치 파일은 저장소 · Hosting에 넣지 않는다.
 - 대기: Bumm님이 실제 구동 화면에서 손볼 곳 목록(팀장 전달 예정). OPEN: 실제 프린터 · 11/12 장비 시험 · 교육청 노트북 설치 권한 · SmartScreen.
 
+## 2026-10-26(월) 22:24 — 라이브: **Hosting `836b1b9`(release-20261026) · 함수 `81a07b4`** — 온라인판 출시 완료
+
+- 🔴 **라이브 커밋이 둘이다**: Hosting = `836b1b9`, 함수 = `81a07b4`(지문 `posterStudio 20a76909…` · `keepWarm` · `cleanupOldCountersSchedule` `ad325de2…`).
+  다음 runbook §9 1번의 함수 기준은 `81a07b4`다 — `git diff 81a07b4 master -- functions/`에 함수 3건(안전 차단 판정 통합 · 기록 칸 · body-parser 2.4.0)이 보여야 맞다.
+- 로컬 master = `836b1b9` + 기록 커밋들, push 없음(origin/master `a658d89`). 태그: `poster-studio-freeze-20261026-pre-deploy` · `poster-studio-freeze-20261026-audited-100`(둘 다 `836b1b9`).
+- 되돌릴 곳: Hosting `rollback-20261026`(= `81a07b4`, 11/25까지) · 그 전 `rollback-20261025-7`(`7ad0ad5`, 11/24까지). 둘 다 지우지 않는다.
+- 백업: `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026`(출시 · 복원 검증) · `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026-deployed`(배포 기록까지 · 복원 빌드 = 라이브). `-prep`도 그대로.
+- 운영자 전달: `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026-deployed\운영자-전달-PDF`(PDF 4종). 정식 주소 **poster.edutogether.kr**, 옛 주소 poster-studio.web.app도 같은 판.
+- 온라인판 소프트웨어 출시는 **완료**. 승인된 기능(1-A · 2-A · 처리방침 · 16칸 지시문 · 8종 · 인쇄)은 다시 고치지 않는다. 오프라인 비상판은 별도 과제.
+- OPEN 5건(담당 · 날짜)은 CHANGELOG 10/26 22:24 절.
+
 ## 2026-10-26(월) 밤 — 최종 출시 후보 `release-20261026` 완료 · 배포 승인 대기 (라이브는 Hosting · 함수 모두 `81a07b4` 그대로)
 
 - **출시 후보 `release-20261026`**(= `perf-port-20261026`): 7ab4be0 + 대기 영상 1-A + 종합감사 고침. 10개 항목 모두 10/10(이 트리 기준). 로컬만 · push 없음 · master `6ac7dc3` 그대로.
-  동결 태그 `poster-studio-freeze-20261026-pre-deploy`가 이 기록 커밋에 붙는다(되돌릴 큰 작업 = 배포 직전). E: 백업 `E:\poster-studio-backup-20261026`(복원 검증은 그 폴더 `restore-check.txt`).
+  동결 태그 `poster-studio-freeze-20261026-pre-deploy`가 이 기록 커밋에 붙는다(되돌릴 큰 작업 = 배포 직전). E: 백업 `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026`(복원 검증은 그 폴더 `restore-check.txt`).
 - 🔴 **배포 범위 = Hosting만**(함수 3건은 필요 없다고 판단 — CHANGELOG 10/26 밤). 배포한 뒤에는 이 문서 맨 위에 **Hosting = 출시 커밋, 함수 = `81a07b4`를 따로** 적는다 —
   한 커밋으로만 적으면 다음 runbook §9 1번의 `git diff <라이브 커밋> -- functions/`가 비어 보여 함수 3건이 모르는 사이 영영 안 나간다.
 - 배포 절차: «배포 직전 한 줄»(범위 · 되돌림 채널)을 팀장에게 → Bumm님 재승인 → master를 출시 커밋으로 앞으로 옮김(로컬) → runbook §9(LF 사본 · 되돌림 채널 · hosting만 · 두 주소 바이트 대조 · 스모크 · 대기 영상 · 함수 지문 그대로 확인).
 - 라이브 함수 지문(10/26 21시): `posterStudio 20a76909…` · `keepWarm` · `cleanupOldCountersSchedule` `ad325de2…`. 라이브 Hosting 487개 파일 = `81a07b4` 빌드(E: 백업과 바이트 같음).
-- 설명서 최종본 · 운영자 전달: `C:\Users\817be\Documents\poster-studio-운영자-전달-20261026`(PDF 4개).
+- 설명서 최종본 · 운영자 전달: `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026-deployed\운영자-전달-PDF`(PDF 4개).
 - OPEN: ① GitHub CI 미실행 ② 11/12 현장 장비 시험. OpenAI 행사 전 $100 수동 충전은 계획 그대로(지금 안 함).
 
 ### 같은 날 앞선 기록 — Bumm님 최종 결정 반영: 대기 영상 1-A 채택 · 2-A · 처리방침 그대로
@@ -170,7 +275,7 @@
 
 - **라이브는 `81a07b4` 그대로**, 로컬 master `6ac7dc3`, push 없음. 새 가지 `wait-video-20261026`은 `7ab4be0` 위(로컬). master에 넣지 않았다.
 - 보호 태그(로컬만): `poster-studio-live-20261026-81a07b4`(복구용 — 지금 라이브) · `poster-studio-cand-20261026-perf`(보호용 — 7ab4be0, 배포 전).
-  E: 백업 준비 `E:\poster-studio-backup-20261026-prep`(저장소 묶음 · 라이브/후보 빌드 · 체크섬 — 복원해 트리 같음 확인). **최종 동결은 1번 결정 뒤.**
+  E: 백업 준비 `E:\자료보관\Archives\20-29 앱개발\26 InKY Film Festival\26.91 Poster Studio 이전빌드\poster-studio-backup-20261026-prep`(저장소 묶음 · 라이브/후보 빌드 · 체크섬 — 복원해 트리 같음 확인). **최종 동결은 1번 결정 뒤.**
 - 가지 내용(대표님 지시 1번): 받기 차례(첫 · 둘째 장면 영상 → 조판 받기) · 대기 영상 다시 인코딩 `waiting-v3`(H.264 CRF 22, 16.8 → 8.4MB) · 해시 이름 영상 1년 캐시 ·
   측정 도구(`--cert` · `--prewarm` · 장면별 멈춤). 수치는 CHANGELOG 10/26 저녁. 승인본 `waiting-v2`는 그대로 있다.
 - 🔴 **10/26 오전까지의 느린 망 측정은 크롬 디스크 캐시가 꺼진 채였다**(자체 서명 인증서 «오류 무시»). 재방문 수치는 이번 측정(`--cert`)으로 본다.
@@ -564,7 +669,6 @@
 - 현재 8종 조판의 기준은 `scripts/verify/release-baseline.mjs`와 `scripts/verify/snapshots/release-20261003-windows.json`이다. 아래 과거 4종·20쌍 기록은 당시 결과이며 현행 출시 검증이 아니다.
 - 배포 성공과 최종 SHA는 PR #4의 해당 CI 및 배포 후 생성하는 `poster-studio-freeze-20261003-audited-100` 태그·릴리스 기록으로 확인한다. 태그가 없으면 배포 완료로 간주하지 않는다. 실제 생성·부하테스트·영상 제작은 이번 범위에서 수행하지 않는다.
 
-
 ## 2026-10-02 — Poster Studio 표기·기본 이름 수정과 디자인 진단
 
 - Bumm님 정정에 따라 결과 상단을 기존 고급형 슬레이트와 Poster Studio로 바꾸고 Studio만 빨간색으로 표시했다.
@@ -805,7 +909,6 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 - scripts/verify/camera-review-comparison.mjs. 1px 강제 이동 자기검사는 정상적으로 종료 코드 1로 차단했다. 정상 비교 결과는 .cache/camera-review-comparison/result.json과 PNG들에 있다.
 - 타입·빌드 종료 코드 0. 전체 회귀·린트는 §31에 따라 마무리 때 실행한다. 로컬 5500 반영, 미커밋·미배포.
 
-
 ## 대기 화면·포스터 후속 보완 (2026-10-01, Bumm님 직접 지시)
 
 - 로봇 v4 직접 모델을 제거하고 최초 생성 이미지의 재질을 참조한 v5 스프라이트로 교체. 이젤 옆 그리기/책상에 앉아 작업/클래퍼보드/작품 들고 인사 네 구도다. 내장 image_gen으로 6열×4행 원본을 생성한 후 바닥과 중심을 맞추고 30fps 무음 루프로 인코딩했다. 직접 영상 생성 모델의 결과는 아니며 이미지 기반 모션 보간이다.
@@ -817,7 +920,6 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 - 결과 갤러리 최대 폭과 카드 간격, 제목/인쇄 버튼 주변 여백 조정. 원래 열려 있던 캔버스는 빌드만으로 갱신되지 않으므로 최신 디자인 확인용 5524를 다시 빌드해 제공한다. 5523은 대기 전용, 5500은 실제 앱 최신 빌드.
 - 타입·빌드 종료 코드 0. 변경된 회귀 검사는 수정해 두었고 §31에 따라 전체 테스트/린트/브라우저 검사는 마무리 때 실행. 실제 생성 API·카메라·인쇄 호출 0. 미커밋·미배포.
 
-
 ## 로딩 문구 수정·12세트 검토 시안 (2026-10-01, Bumm님 직접 지시)
 
 - 앱의 세 문구를 ‘오늘의 주인공에게 어울리는 한 장 !’, ‘스크린 밖의 당신을 포스터 안으로’, ‘당신의 영화에 색을 입히고 있어요’로 변경했다.
@@ -825,7 +927,6 @@ git diff <이 문서의 "최종 커밋"> origin/master -- _docs/ops/HANDOFF_CURR
 - 세트 매핑은 _docs/intents/2026-09-30-studio-design-integration/waiting-set-proposal.json에 보존했다. 기존 12개 상식을 각각 한 번 사용한다. 음향 등 연결이 약한 항목에는 로딩 문구를 새로 제안했다.
 - 현재는 세트 검토 시안이며 앱의 순환 조합은 아직 바꾸지 않았다. 앱에는 요청한 세 문구만 반영했다. 포스터 제시 영상과 토이 스토리 상식의 연결은 다른 세 완성 카드보다 느슨하다고 시안에 명시했다.
 - 타입·빌드 종료 코드 0. 시안 12개/영상 4개/빈 그림 8개 생성 확인. 미커밋·미배포.
-
 
 ## 2026-10-01 13:12 — Poster Studio 로고 원화 12세트
 

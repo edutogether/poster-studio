@@ -15,7 +15,6 @@ import PosterStudio from '../src/PosterStudio.js';
 import * as saveModule from '../src/savePoster.js';
 import * as posterModule from '../src/poster.js';
 import { approvedCameraVideo } from '../src/studio/cameraVideo.js';
-import { DOWNLOADS } from '../src/downloads.js';
 import {
   installCanvas, installCamera, installFetch, installImage, installFonts,
   installObjectURL, makeVideoReady, makeAppContainer
@@ -59,42 +58,8 @@ afterEach(() => {
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const renderApp = () => render(<PosterStudio />, { container: document.querySelector('main.app') as HTMLElement });
-const setupRequests = () => net.calls.filter((u) => /Setup\.exe/i.test(u));
 
 describe('웹 첫 화면 «↓ 다운로드»', () => {
-  test('1단계에만 있고, 메뉴에 «Poster Studio 설치» 하나만 있다 — 열고 닫는 동안 요청 0건', async () => {
-    await act(async () => { renderApp(); });
-    const link = document.querySelector('.download-link') as HTMLButtonElement;
-    expect(link.textContent).toBe('다운로드');
-    expect(link.getAttribute('aria-expanded')).toBe('false');
-    expect(document.querySelector('.download-menu-list')).toBeNull();   // 누르기 전에는 링크도 문서에 없다
-    await act(async () => { link.click(); });
-    const items = [...document.querySelectorAll<HTMLAnchorElement>('.download-menu-list a')];
-    expect(items.map((a) => a.textContent)).toEqual(['Poster Studio 설치']);   // Voice Cinema 항목은 두지 않는다(10/27 정정)
-    expect(items.map((a) => a.getAttribute('href'))).toEqual(DOWNLOADS.map((d) => d.href));
-    expect(items.map((a) => a.getAttribute('download'))).toEqual(['PosterStudio-Setup.exe']);
-    expect(link.getAttribute('aria-expanded')).toBe('true');
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(document.querySelector('.download-menu-list')).toBeNull();
-    expect(setupRequests()).toEqual([]);
-    // 2단계로 가면 없다
-    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
-    expect(document.querySelector('.download-link')).toBeNull();
-    expect(setupRequests()).toEqual([]);
-  });
-
-  test('메뉴 밖을 누르면 닫히고, 항목을 누르면 닫힌다', async () => {
-    await act(async () => { renderApp(); });
-    await act(async () => { (document.querySelector('.download-link') as HTMLButtonElement).click(); });
-    fireEvent.pointerDown(document.body);
-    expect(document.querySelector('.download-menu-list')).toBeNull();
-    await act(async () => { (document.querySelector('.download-link') as HTMLButtonElement).click(); });
-    const item = document.querySelector('.download-menu-list a') as HTMLAnchorElement;
-    item.addEventListener('click', (e) => e.preventDefault());   // jsdom은 내려받기를 못 한다 — 눌렀을 때 닫히는지만 본다
-    await act(async () => { item.click(); });
-    expect(document.querySelector('.download-menu-list')).toBeNull();
-  });
-
   test('웹에는 설치판 갈래(표시 · PC에 저장 · 인쇄 미리보기)가 없다', async () => {
     await act(async () => { renderApp(); });
     expect(document.querySelector('.desktop-badge')).toBeNull();

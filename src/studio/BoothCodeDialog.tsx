@@ -38,7 +38,8 @@ export default function BoothCodeDialog({ open, verify, onSaved, onClose }: Prop
     <div className="booth-code-dialog" role="dialog" aria-modal="true" aria-labelledby="boothCodeTitle"
       onKeyDown={e => { if (e.key === "Escape" && !checking) onClose(); }}>
       <h2 id="boothCodeTitle">부스 코드를 넣어 주세요</h2>
-      <p>행사 부스 진행용 기기에서만 접속할 수 있어요. 운영자에게 받은 코드를 한 번만 넣으면 이 기기를 기억할게요.</p>
+      {/* 두 문장이 각각 한 줄(11/3 Bumm님 «운영자에게 받은»을 빼고 줄을 나눠 «코드를»부터) — 줄 나눔은 CSS(.booth-code-lead span) */}
+      <p className="booth-code-lead"><span>행사 부스 진행용 기기에서만 접속할 수 있어요.</span> <span>코드를 한 번만 넣으면 이 기기를 기억할게요.</span></p>
       <form onSubmit={e => { e.preventDefault(); if (!checking) void submit(); }}>
         <label htmlFor="boothCodeInput">부스 코드</label>
         <input id="boothCodeInput" ref={input} type="text" autoComplete="off" autoCapitalize="off" spellCheck={false} maxLength={64}

@@ -39,7 +39,9 @@ export function createWaitSequence() {
  *  장면 경계에서 잘리지 않게. 한도는 남은 길이 + 0.3초(«ended»가 오지 않는 경우), 많아야 9초. */
 export type SceneEnd = () => Promise<void>;
 
-export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextRef: RefObject<HTMLParagraphElement | null>; sceneEndRef?: { current: SceneEnd | null } }) {
+/* sceneLimit: 이 장면 수까지만 넘기고 마지막 장면에 머문다(샘플 포스터 보기 — 2026-11-03 Bumm님 «로딩 영상 2개만 뜨고 열리기로 했는데 엄청 많이 열림»).
+   샘플 조판이 대기 시간보다 늦으면 예전에는 셋째 · 넷째 장면이 이어 나왔다 — 이제 둘째 장면 영상이 끝난 마지막 장면에 머물다가 다 되면 바로 열린다. */
+export default function GenerationWait({ spinTextRef, sceneEndRef, sceneLimit }: { spinTextRef: RefObject<HTMLParagraphElement | null>; sceneEndRef?: { current: SceneEnd | null }; sceneLimit?: number }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const [reduced, setReduced] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
@@ -69,9 +71,11 @@ export default function GenerationWait({ spinTextRef, sceneEndRef }: { spinTextR
 
   useEffect(() => {
     if (still) return;
-    const timer = window.setInterval(() => { if (!holdRef.current) setSceneIndex(value => (value + 1) % scenes.length); }, SCENE_MS);
+    const timer = window.setInterval(() => {
+      if (!holdRef.current) setSceneIndex(value => (sceneLimit && value + 1 >= sceneLimit ? value : (value + 1) % scenes.length));
+    }, SCENE_MS);
     return () => window.clearInterval(timer);
-  }, [still, scenes.length]);
+  }, [still, scenes.length, sceneLimit]);
 
   useEffect(() => {
     if (!sceneEndRef) return;

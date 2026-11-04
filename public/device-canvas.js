@@ -2,6 +2,9 @@
 
    갈래마다 기준 화면 하나를 디자인하고, 다른 크기는 그 화면을 통째로 줄이고 키운다:
      휴대폰  390×844  — viewport 폭을 390으로(브라우저가 기기 폭에 맞춰 통째로 줄이고 키운다, 손가락 확대는 그대로)
+            가로로 들면 PC 화면 — viewport 폭 1440(갈래 이름도 pc). 11/3 Bumm님 «휴대폰 가로면 그냥 PC 버전 보여 주면 되는 거 아니야 ?»:
+            폭 390 그대로면 보이는 높이가 180~219px뿐이라 11/2부터 «세로로 돌려 주세요» 안내로 덮었다. 1440이면 가로 휴대폰(932×430 등)의 보이는 높이가
+            약 560~600px — PC 낮은 창 한 화면 배치(높이 560 이상, studio.css «낮은 PC 창»)에 든다. 세로로 돌리면 다시 휴대폰 화면.
      태블릿  세로 1024×1366 · 가로 1366×1024 — viewport 폭을 1024 / 1366으로(돌리면 바꾼다)
      PC     2560×1440 — <html>에 zoom(창 폭/2560 · 창 높이/1440 중 작은 쪽, 2560보다 크면 1)을 걸고 캔버스를 가운데에
    <html data-device="phone | tablet-p | tablet-l | pc">로 CSS가 갈래를 고른다 — 빌드 단계(scripts/build/device-media.mjs)가 폭 · 높이
@@ -32,8 +35,10 @@
 
   function apply() {
     if (kind === 'phone') {
-      d.setAttribute('data-device', 'phone');
-      if (meta) meta.setAttribute('content', 'width=390, viewport-fit=cover');
+      var pland = mq('(orientation: landscape)');
+      if (pland === null) pland = window.innerWidth > window.innerHeight;
+      d.setAttribute('data-device', pland ? 'pc' : 'phone');
+      if (meta) meta.setAttribute('content', pland ? 'width=1440' : 'width=390, viewport-fit=cover');
     } else if (kind === 'tablet') {
       var land = mq('(orientation: landscape)');
       if (land === null) land = window.innerWidth > window.innerHeight;

@@ -168,7 +168,7 @@ const MEASURE = `(() => {
     rects: Object.fromEntries(items.map((i) => [i.key, [i.x, i.y, i.w, i.h].map((v) => Math.round(v * 10) / 10)])), overlaps, offside, clipped };
 })()`;
 // 2단계 예시 칸의 영상 · 정지 그림은 재생 시점에 따라 서로 바뀐다(두 창이 같은 순간에 재지 않는다) — 칸(.cameraBox) 자리는 그대로 견준다(11/2 600×480에서 한쪽만 영상)
-const EXCLUDE_ALWAYS = ['.desktop-badge', '.download-menu', '.download-link', '.camera-example-video', '.camera-example-still'];
+const EXCLUDE_ALWAYS = ['.desktop-badge', '.download-link', '.camera-example-video', '.camera-example-still'];
 const exclusions = (screen, w, h) => [...EXCLUDE_ALWAYS,
   // 2단계 오른쪽 칸 — 설치판 높이 구간(desktop.css, 폭 1100 이상 · 높이 680 이상)에서 제목 · 안내 · 영화 · 단추 줄을 일부러 다르게 둔다(그 배치는 desktop-layout-sweep.mjs의 구간 규칙이 잰다)
   ...(screen === 'step2' && w >= 1100 && h >= 680 ? ['#cameraWorkspace .page-heading', '#cameraWorkspace .camera-guide', '#cameraWorkspace .camera-actions', '#cameraView .camera-tips'] : []),

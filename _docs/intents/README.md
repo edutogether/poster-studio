@@ -27,9 +27,12 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-11-01 | [deps-alerts-npx-firebase](2026-11-01-deps-alerts-npx-firebase/intent.md) | 2 | done | Dependabot 알림 6건을 고친 판으로 — 루트·functions는 overrides(qs·glob·minimatch), 배포 도구는 잠금 파일 밖 `npx firebase-tools@15.32.1`. 화면·함수 동작 변화 0 |
+| 2026-11-03 | [mobile-field-fixes](2026-11-03-mobile-field-fixes/intent.md) | 2 | in-progress | Bumm님 휴대폰 실기기 확인 — 무한 로딩(조판 30초 시한) · 샘플 대기 두 편 · 알림 가운데 · 카메라 칸 · 실패 창 단추 · 휴대폰 다운로드 아이콘 숨김 · 웹 인쇄 밀림 · 방침 양쪽 맞춤 · 예시 영상 용량 |
+| 2026-10-27 | [download-button-deploy](2026-10-27-download-button-deploy/intent.md) | 2 | done | 설치 파일을 Cloud Storage 공개 객체 하나로 올리고 첫 화면 «↓ 다운로드»(메뉴 없이 바로 받기)를 hosting만 배포 |
 | 2026-10-27 | [desktop-installer](2026-10-27-desktop-installer/intent.md) | 2 | done | Windows 설치판(Electron · AI 없이 사진 그대로 · 인터넷 없이 촬영→8종→저장→인쇄 미리보기) · 웹 첫 화면 «↓ 다운로드» 단추(미배포) · 현장 PDF 2종 |
-| 2026-10-26 | [slow-wifi-optimization](2026-10-26-slow-wifi-optimization/intent.md) | 2 | in-progress | 느린 와이파이 최적화 1~5번(미리 받기 · 글꼴 쪼개기 · 장르 그림 WebP · 샘플 원화 WebP · 측정 도구)을 지금 코드로 이식 — 결과물 화소 동일 · 옛 주소 유지 · 실제 응답 재생 측정 |
-| 2026-10-26 | [waiting-video-protect](2026-10-26-waiting-video-protect/intent.md) | 2 | in-progress | 대기 영상 12편이 느린 와이파이에서도 멈추지 않게 — 받기 차례 · 다시 인코딩(v3) · 1년 캐시, 포스터 속도는 7ab4be0 수준(⚠ intent를 착수 뒤에 씀) |
+| 2026-10-26 | [slow-wifi-optimization](2026-10-26-slow-wifi-optimization/intent.md) | 2 | done | 느린 와이파이 최적화 1~5번(미리 받기 · 글꼴 쪼개기 · 장르 그림 WebP · 샘플 원화 WebP · 측정 도구)을 지금 코드로 이식 — 결과물 화소 동일 · 옛 주소 유지 · 실제 응답 재생 측정 |
+| 2026-10-26 | [waiting-video-protect](2026-10-26-waiting-video-protect/intent.md) | 2 | done | 대기 영상 12편이 느린 와이파이에서도 멈추지 않게 — 받기 차례 · 다시 인코딩(v3) · 1년 캐시, 포스터 속도는 7ab4be0 수준(⚠ intent를 착수 뒤에 씀) |
 | 2026-10-25 | [ai-prompt-freeze](2026-10-25-ai-prompt-freeze/intent.md) | 2 | done | 장르 × 혼자/단체 16칸 지시문 동결(Bumm님 확정) · 안전 차단 창 · 독립 리뷰 · 실제 생성 3건 · 격리 리허설 — 10/26 02:01 라이브 `81a07b4`로 배포(Bumm님 승인). ⚠ 사후 기록 |
 | 2026-10-23 | [ratio-canvas](2026-10-23-ratio-canvas/intent.md) | 2 | in-progress | 갈래(PC 2560×1440 · 태블릿 1024×1366/1366×1024 · 휴대폰 390×844)마다 기준 화면 하나를 통째로 줄이고 키운다 — 설계안만, PC 글자 크기 결정 대기 |
 | 2026-10-16 | [camera-example-video](2026-10-16-camera-example-video/intent.md) | 2 | in-progress | 촬영 화면 «자리 잡는 영상» 2편을 앱에 연결하는 자리 — 승인 전에는 화면 변화 0, 숫자·말풍선은 앱이 얹음 |

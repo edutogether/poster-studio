@@ -635,10 +635,10 @@ dialog #dialogContent > .poster {
 .poster[data-template="3"] .poster-festival {
   display: none;
 }
-/* PC 한 화면 배치 — 폭 1100 이상, 그리고 2026-10-24부터 폭 761~1099의 낮은 창(PC 1024×768 등, 높이 700~959)도 같은 배치(Bumm님 «1024부터는 제대로 안 돼 있다»).
+/* PC 한 화면 배치 — 폭 1100 이상(11/3부터 높이 560 이상 — 예전 700 이상. Bumm님 «1366 · 1280 창에서 잘린다»: 1366×635 · 1280×667 · 1280×587 창이 한 화면 배치를 못 받아 긴 세로 페이지였다), 그리고 2026-10-24부터 폭 761~1099의 낮은 창(PC 1024×768 등, 높이 700~959)도 같은 배치(Bumm님 «1024부터는 제대로 안 돼 있다»).
    세로 창(761~1099 · 높이 960 이상 · 세로가 더 김 — 태블릿 세로)도 같은 한 화면 배치를 쓰고 studio.css «태블릿 세로 전용 배치»가 칸을 위아래로 쌓는다.
    이 폭에서 달라지는 것은 studio.css «761~1099 낮은 창» · «태블릿 세로 전용 배치» 규칙. */
-@media (min-width: 1100px) and (min-height: 700px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 959px), (min-width: 761px) and (max-width: 1099px) and (min-height: 960px) and (orientation: portrait) {
+@media (min-width: 1100px) and (min-height: 560px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 959px), (min-width: 761px) and (max-width: 1099px) and (min-height: 960px) and (orientation: portrait) {
   .prepare-layout {
     height: calc(100svh - 76px);
     min-height: 0;
@@ -1118,7 +1118,7 @@ dialog #dialogContent > .poster {
     font-size: 14px;
   }
 }
-@media (min-width: 1100px) and (min-height: 700px) {
+@media (min-width: 1100px) and (min-height: 560px) {
   .segmented button {
     gap: 6px;
     padding-left: 8px;

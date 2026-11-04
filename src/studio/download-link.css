@@ -1,0 +1,46 @@
+/* 첫 화면 다운로드 아이콘(2026-10-27, DownloadLink.tsx). 개인정보처리방침 링크(compact.css .privacy-link)와 같은 줄 · 같은 색으로
+   그 바로 왼쪽에 둔다 — 방침 링크는 한 화소도 옮기지 않는다. 오른쪽 끝 = 방침 링크의 왼쪽 끝 − 8px
+   (10/27 Bumm님 «방침 쪽으로 조금 더 붙인다» — 14 → 8px. 아이콘 그림 안쪽 여백 1.7px까지 눈에 보이는 간격은 약 10px).
+   방침 링크 폭은 «개인정보처리방침» 여덟 글자 = 6.92em(Studio 글꼴 실측: PC 12px → 83px · 휴대폰 11px → 76px)이라 글자 크기에 맞춰 em으로 잰다.
+   아이콘은 방침 글자와 같은 크기 감으로 1.15em 칸(그림 자체는 칸의 3/4 — 한글 글자 높이와 비슷)이고, 방침 글자 줄(20px)의 가운데에 놓는다.
+   10/27 Bumm님: 밑줄 없음(평소 · 마우스를 올렸을 때 모두), 마우스를 올리면 커서만 손가락 — 색 바뀜 · 그 밖의 효과 없음. */
+.download-link {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: calc(var(--content-right) + 6.92em + 8px);
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  box-sizing: content-box;
+  height: 20px;
+  font-size: 12px;
+  color: #666;
+  text-decoration: none;
+  cursor: pointer;
+}
+.download-link:focus-visible {
+  outline: 2px solid #e11d2a;
+  outline-offset: 2px;
+}
+
+/* 세로 태블릿 1단계: 방침 링크처럼 어두운 영화관 띠 위라 밝은 색(studio.css의 같은 조건) */
+@media (min-width: 761px) and (max-width: 1099px) and (min-height: 960px) and (orientation: portrait) {
+  body[data-step="1"] .download-link {
+    color: #eee;
+  }
+}
+
+/* 휴대폰에는 두지 않는다(2026-11-03 Bumm님 실기기 확인 «모바일에서는 첫 페이지 다운로드 버튼 없애») — 받는 것이 Windows 설치 파일이라
+   휴대폰에서는 쓸 수 없다. 휴대폰 배치(폭 760 이하 — 노트북 창을 그만큼 좁힌 경우 포함)에는 방침 링크만 남는다. */
+@media (max-width: 760px) {
+  .download-link {
+    display: none;
+  }
+}
+
+/* Lucide download 아이콘 — 글자색을 따라간다. */
+.download-icon {
+  display: block;
+  width: 1.15em;
+  height: 1.15em;
+}

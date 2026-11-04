@@ -1,4 +1,4 @@
-/* 웹 첫 화면 «↓ 다운로드» 확인(2026-10-27, _docs/intents/2026-10-27-desktop-installer).
+/* 웹 첫 화면 다운로드 아이콘 확인(2026-10-27, _docs/intents/2026-10-27-download-button-deploy). 라이브 확인은 download-live.mjs.
 
      node scripts/verify/download-button-probe.mjs <dist 폴더> <결과 폴더> --before                 바꾸기 전 판: 첫 화면만 찍는다
      node scripts/verify/download-button-probe.mjs <dist 폴더> <결과 폴더> --compare <전 결과 폴더>  바꾼 판: 찍고 · 재고 · 전과 대조한다
@@ -10,11 +10,14 @@
 
    --compare일 때 재는 것(하나라도 걸리면 종료코드 1):
      ① 전/후 첫 화면 화소 대조 — 다운로드 단추 상자 밖은 차이 0화소(단추 말고는 시각적 차이가 없어야 한다)
-     ② 단추가 개인정보처리방침 링크와 같은 줄 · 바로 왼쪽(간격 14px) · 다른 요소와 안 겹침 · 화면 안 · 휴대폰은 누르는 높이 44px 이상
-     ③ 메뉴: 항목 «Poster Studio 설치» 하나(Voice Cinema 항목 없음 — 10/27 정정) · 화면 안 · 항목 높이(PC 40 · 휴대폰 44px 이상) — 열린 화면도 찍는다
-     ④ 네트워크 기록(1920×1080에서): 접속 · 새로고침 · 2단계로 갔다 돌아오기 · 메뉴 열고 닫기까지 설치 파일 요청 0건,
-        «Poster Studio 설치»를 누르면 그때 첫 요청 · 내려받기 시작
-     ⑤ 첫 화면에만 있다(2단계에는 없다) */
+     ② 단추가 개인정보처리방침 링크와 같은 줄 · 바로 왼쪽(간격 8px) · 다른 요소와 안 겹침 · 화면 안 · 휴대폰은 누르는 높이 44px 이상
+     ③ 단추는 메뉴 없이 바로 받는 링크 하나(<a href download>, 10/27 Bumm님 A안 — 받는 것이 Poster Studio 설치판 하나뿐) ·
+        글자 없이 lucide download 아이콘 · 화면 읽기용 이름(aria-label) · 툴팁 없음 · PC에서 마우스를 올리면 커서만 손가락(색 · 밑줄 그대로)
+     ④ 네트워크 기록(1920×1080에서): 접속 · 새로고침 · 2단계로 갔다 돌아오기까지 설치 파일 요청 0건,
+        단추를 누르면 그때 첫 요청 · 내려받기 시작
+     ⑤ 첫 화면에만 있다(2단계에는 없다)
+   «0건» · «전부»는 본 것이 있을 때만 통과다(download-judge.mjs, 2026-11-02): ④는 그동안 이 페이지 요청을 하나 이상 봤어야 하고,
+   «바깥 주소는 /health뿐»은 가로챈 /health가 하나 이상 있어야 한다. */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -22,6 +25,7 @@ import http from 'node:http';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { spawn } from 'node:child_process';
 import { loadImage, createCanvas } from '@napi-rs/canvas';
+import { sawPage, onlyHealth } from './download-judge.mjs';
 
 const args = process.argv.slice(2);
 const [dist, out] = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--compare');
@@ -46,7 +50,7 @@ const server = http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   if (p === '/download/PosterStudio-Setup.exe') {
     serverExeHits += 1;
-    res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-disposition': 'attachment; filename="PosterStudio-Setup.exe"', 'content-length': fakeExe.length });
+    res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-disposition': 'attachment; filename="Poster Studio Setup.exe"', 'content-length': fakeExe.length });
     res.end(fakeExe);
     return;
   }
@@ -127,7 +131,7 @@ for (const s of SIZES) {
   }
   const m = await evaluate(`(() => {
     const R = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, r: r.right, b: r.bottom }; };
-    const link = document.querySelector('.download-link'), privacy = document.querySelector('.privacy-link'), box = document.querySelector('.download-menu');
+    const link = document.querySelector('.download-link'), privacy = document.querySelector('.privacy-link'), box = link;
     if (!link || !privacy) return null;
     const a = R(link), p = R(privacy);
     const textOf = (e) => { const rg = document.createRange(); rg.selectNodeContents(e); const r = rg.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, r: r.right, b: r.bottom }; };
@@ -148,24 +152,16 @@ for (const s of SIZES) {
       if (box.contains(e) || e === privacy || !shown(e)) continue;
       if (over(e.getBoundingClientRect())) hit.push(e.tagName + ' ' + (e.id || e.className));
     }
-    return { innerWidth, link: a, text: at, privacyText: pt, gap: pt.x - at.r, sameLine: Math.abs((at.y + at.h / 2) - (pt.y + pt.h / 2)), font: [getComputedStyle(link).fontSize, getComputedStyle(privacy).fontSize], color: [getComputedStyle(link).color, getComputedStyle(privacy).color], hit, inView: a.x >= 0 && a.r <= innerWidth && a.y >= 0 };
+    return { innerWidth, link: a, text: at, privacyText: pt, gap: pt.x - at.r, sameLine: Math.abs((at.y + at.h / 2) - (pt.y + pt.h / 2)), font: [getComputedStyle(link).fontSize, getComputedStyle(privacy).fontSize], color: [getComputedStyle(link).color, getComputedStyle(privacy).color], hit, inView: a.x >= 0 && a.r <= innerWidth && a.y >= 0,
+      kind: { tag: link.tagName, href: link.getAttribute('href'), download: link.getAttribute('download'), text: link.textContent, label: link.getAttribute('aria-label'), icon: link.querySelectorAll('svg path').length,
+        title: link.hasAttribute('title') || !!link.querySelector('title'), menu: !!document.querySelector('[role="menu"]') || link.hasAttribute('aria-haspopup') } };
   })()`);
   report.sizes[s.name] = { measure: m };
-  check(`${s.name}: 방침 링크 바로 왼쪽 · 같은 줄 · 같은 글자 크기 · 같은 색`, m && Math.abs(m.gap - 14) <= 1 && m.sameLine <= 1 && m.font[0] === m.font[1] && m.color[0] === m.color[1], m && { gap: Math.round(m.gap * 10) / 10, sameLine: m.sameLine, font: m.font, color: m.color });
+  check(`${s.name}: 방침 링크 바로 왼쪽 · 같은 줄 · 같은 글자 크기 · 같은 색`, m && Math.abs(m.gap - 8) <= 1 && m.sameLine <= 1 && m.font[0] === m.font[1] && m.color[0] === m.color[1], m && { gap: Math.round(m.gap * 10) / 10, sameLine: m.sameLine, font: m.font, color: m.color });
   check(`${s.name}: 다른 요소와 안 겹침 · 화면 안`, m && m.hit.length === 0 && m.inView, m && { hit: m.hit, inView: m.inView });
   if (s.mobile) check(`${s.name}: 누르는 높이 44px 이상`, m && m.link.h >= 44, m && Math.round(m.link.h));
-  // 메뉴
-  await evaluate(`document.querySelector('.download-link').click()`);
-  await sleep(250);
-  const menu = await evaluate(`(() => { const l = document.querySelector('.download-menu-list'); if (!l) return null; const r = l.getBoundingClientRect(); const items = [...l.querySelectorAll('a')].map((a) => ({ t: a.textContent.trim(), h: a.getBoundingClientRect().height, href: a.getAttribute('href') })); return { x: r.x, r: r.right, b: r.bottom, items, expanded: document.querySelector('.download-link').getAttribute('aria-expanded') }; })()`);
-  report.sizes[s.name].menu = menu;
-  const minH = s.mobile ? 44 : 40;
-  check(`${s.name}: 메뉴 «Poster Studio 설치» 하나 · 화면 안 · 항목 높이 ${minH}px 이상`, menu && menu.items.map((i) => i.t).join('|') === 'Poster Studio 설치' &&menu.x >= 0 && menu.r <= s.w && menu.b <= s.h && menu.items.every((i) => i.h >= minH) && menu.expanded === 'true', menu);
-  await shot(`menu-${s.name}.png`);
-  await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
-  await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
-  await sleep(150);
-  check(`${s.name}: Esc로 메뉴가 닫힌다`, await evaluate(`!document.querySelector('.download-menu-list')`));
+  check(`${s.name}: 메뉴 없이 바로 받는 링크 하나(<a href download>) · 글자 없이 아이콘 · 화면 읽기용 이름 · 툴팁 없음`, m && m.kind.tag === 'A' && m.kind.href === '/download/PosterStudio-Setup.exe' && m.kind.download === 'Poster Studio Setup.exe'
+    && m.kind.text === '' && m.kind.icon === 3 && m.kind.label === 'Poster Studio 설치 파일 다운로드' && !m.kind.title && !m.kind.menu, m && m.kind);
 
   // 전/후 화소 대조 — 단추 상자(단추 + 2px) 밖은 같아야 한다. 화면 화소 = CSS px × (캡처 폭 ÷ innerWidth) — 휴대폰은 기준 폭(390)을 실제 폭에 맞춰 줄이고 키운다.
   const pres = [`home-${s.name}.png`, ...Array.from({ length: TRIES - 1 }, (_, t) => `home-${s.name}-${t + 2}.png`)].map((n) => path.join(compareDir, n)).filter((p) => fs.existsSync(p));
@@ -191,6 +187,15 @@ for (const s of SIZES) {
     report.sizes[s.name].pixels = best;
     check(`${s.name}: 전/후 화소 — 단추 밖 차이 0`, best && best.outside === 0 && best.insideButton > 0, best);
   } else check(`${s.name}: 전 화면 캡처가 있다`, false, compareDir);
+  // 마우스를 올렸을 때(PC): 커서만 손가락 — 색 · 밑줄은 그대로, 툴팁 없음(10/27 Bumm님)
+  if (m && !s.mobile && !s.touch) {
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: m.link.x + m.link.w / 2, y: m.link.y + m.link.h / 2 });
+    await sleep(200);
+    const hv = await evaluate(`(() => { const l = document.querySelector('.download-link'); const cs = getComputedStyle(l); return { hover: l.matches(':hover'), color: cs.color, deco: cs.textDecorationLine, cursor: cs.cursor }; })()`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+    report.sizes[s.name].hover = hv;
+    check(`${s.name}: 마우스를 올리면 커서만 손가락(색 · 밑줄 그대로)`, hv.hover && hv.color === m.color[0] && hv.deco === 'none' && hv.cursor === 'pointer', hv);
+  }
 }
 
 if (!before) {
@@ -202,28 +207,29 @@ if (!before) {
   await open(); steps.push(['접속', count()]);
   await send('Page.reload', { ignoreCache: true }); await sleep(3500); steps.push(['새로고침', count()]);
   await evaluate(`document.getElementById('prepareNextBtn').click()`); await sleep(1200);
-  const onStep2 = await evaluate(`({ step: document.body.dataset.step, button: !!document.querySelector('.download-menu') })`);
+  const onStep2 = await evaluate(`({ step: document.body.dataset.step, button: !!document.querySelector('.download-link') })`);
   check('첫 화면에만 — 2단계에는 단추가 없다', onStep2.step === '2' && !onStep2.button, onStep2);
   steps.push(['2단계로 감', count()]);
   await evaluate(`document.querySelectorAll('.stepper button')[0].click()`); await sleep(800); steps.push(['1단계로 돌아옴', count()]);
-  await evaluate(`document.querySelector('.download-link').click()`); await sleep(400); steps.push(['메뉴 열기', count()]);
-  await evaluate(`document.querySelector('.download-link').click()`); await sleep(300); steps.push(['메뉴 닫기', count()]);
   const beforeClick = count();
-  check('누르기 전 설치 파일 요청 0건(접속 · 새로고침 · 화면 전환 · 메뉴 열고 닫기)', beforeClick.requests === 0 && beforeClick.downloads === 0 && beforeClick.server === 0 && beforeClick.outsideSetup === 0, steps);
+  // «0건»은 그동안 요청 기록이 이 페이지 요청을 봤을 때만 증거다(download-judge.mjs — 기록이 죽어 있어도 0건이 나온다)
+  const watched = sawPage(log.requests, base);
+  check('누르기 전 설치 파일 요청 0건(접속 · 새로고침 · 화면 전환)', watched && beforeClick.requests === 0 && beforeClick.downloads === 0 && beforeClick.server === 0 && beforeClick.outsideSetup === 0,
+    watched ? steps : { unwatched: '이 페이지 요청을 하나도 못 봤다 — 요청 기록이 돌지 않았다', steps });
   // 사람이 누르는 것처럼 실제 마우스로 누른다
   const press = async (sel) => {
     const r = await evaluate(RECT(sel));
     await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: r.x + r.w / 2, y: r.y + r.h / 2, button: 'left', clickCount: 1 });
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: r.x + r.w / 2, y: r.y + r.h / 2, button: 'left', clickCount: 1 });
   };
-  await press('.download-link'); await sleep(300);
-  await press('.download-menu-list a[href$="PosterStudio-Setup.exe"]'); await sleep(2000);
-  const afterPs = count(); steps.push(['«Poster Studio 설치» 누름', afterPs]);
+  await press('.download-link'); await sleep(2000);
+  const afterPs = count(); steps.push(['단추 누름', afterPs]);
   // 같은 주소 내려받기는 브라우저가 맡아 페이지 네트워크 기록에는 안 남는다 — 서버가 받은 요청과 «내려받기 시작» 알림으로 잰다
-  check('«Poster Studio 설치»를 누르면 그때 요청 · 내려받기가 시작된다', afterPs.server === 1 && afterPs.downloads >= 1, afterPs);
-  check('누른 뒤 메뉴가 닫힌다', await evaluate(`!document.querySelector('.download-menu-list')`));
+  check('단추를 누르면 그때 요청 · 내려받기가 시작된다(메뉴 없이 한 번에)', afterPs.server === 1 && afterPs.downloads >= 1, afterPs);
+  check('누른 뒤에도 첫 화면 그대로(다른 페이지로 넘어가지 않음)', await evaluate(`document.body.dataset.step === '1' && location.pathname === '/'`));
   report.network = { steps, requests: log.requests.filter((u) => SETUP.test(u)), downloads: log.downloads, outside: log.outside };
-  check('바깥 주소 요청은 AI 서버 확인뿐(이 도구가 대신 답함 — 실제로 나간 것 0)', log.outside.every((u) => /\/health$/.test(u)), log.outside);
+  // 가로챈 것이 0건이면 실패 — 두 단추 판은 열 때마다 /health를 부르므로, 0건은 가로채기가 앱의 요청을 못 본 것이다(download-judge.mjs)
+  check('바깥 주소 요청은 AI 서버 확인뿐(이 도구가 대신 답함 — 실제로 나간 것 0)', onlyHealth(log.outside), log.outside);
 }
 
 ws.close(); chrome.kill(); server.close();

@@ -114,7 +114,7 @@ try {
   // 창 제목(작업표시줄에 보이는 이름)
   const title = spawnSync('powershell', ['-NoProfile', '-Command', `(Get-Process -Id ${app.pid}).MainWindowTitle`], { encoding: 'utf8' }).stdout.trim();
   check('창 제목 «Poster Studio»', title === 'Poster Studio', title);
-  const view = await main.evaluate(`({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio, step: document.body.dataset.step, desktop: 'desktop' in document.body.dataset, badge: document.querySelector('.desktop-badge')?.textContent ?? null, download: !!document.querySelector('.download-menu') })`);
+  const view = await main.evaluate(`({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio, step: document.body.dataset.step, desktop: 'desktop' in document.body.dataset, badge: document.querySelector('.desktop-badge')?.textContent ?? null, download: !!document.querySelector('.download-link') })`);
   check('1단계 · 설치판 표시', view.step === '1' && view.desktop && view.badge === '설치판 · AI 없이 사진 그대로', view);
   check('설치판에는 다운로드 단추가 없다', !view.download);   // «샘플 포스터 보기»는 10/28부터 설치판 2단계에도 있다(아래)
   // 키 · 토큰을 설치판에 넣지 않는다 — 화면이 실제로 받은 스크립트에 부스 토큰 값이 없는지(값은 CI와 같은 방식으로 src/constants.ts에서 읽는다)

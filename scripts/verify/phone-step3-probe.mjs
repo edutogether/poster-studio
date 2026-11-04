@@ -4,7 +4,7 @@
 
    기기 셋: 아이폰 사파리 UA(390×664 · 3배, 터치) · 갤럭시 삼성 인터넷 UA(360×740 · 3배, 터치) · PC 좁은 창(390×664, 윈도 크롬 UA, 마우스).
    기기마다 샘플 흐름으로 3단계까지 가서 판정한다(하나라도 어긋나면 종료코드 1):
-   ① 포스터 아래 이름이 영어(로마자 · 띄어쓰기만)이고 «/»(순번)가 없다
+   ① 포스터 아래 이름이 한글(한글 · 띄어쓰기만 — 10/23부터 한글 이름)이고 «/»(순번)가 없다
    ② 오른쪽 › 를 손가락(터치) · 마우스로 누른 뒤 빨간 초점 테두리가 없다(:focus-visible 아님 · outline 없음) — 캡처로도 남긴다
    ③ 마지막 장에서 오른쪽 단추가 «처음 포스터로»(되돌리기 그림)로 바뀌고, 누르면 줄이 맨 앞까지 넘어간다 —
       50ms마다 줄 위치를 재서 지나간 장 수 · 걸린 시간을 적고, 끝에 1번이 골라져 있어야 한다
@@ -95,7 +95,7 @@ for (const d of devices) {
         focusVisible: !!(n && n.matches(':focus-visible')), outline: cs ? cs.outlineStyle + ' ' + cs.outlineWidth : null, active: document.activeElement && (document.activeElement.className || document.activeElement.tagName) }; })()`);
     const first = await state();
     row.caption = first.caption;
-    if (!first.caption || !/^[A-Za-z][A-Za-z ]+$/.test(first.caption)) problems.push(`이름이 영어가 아님: «${first.caption}»`);
+    if (!first.caption || !/^[가-힣][가-힣 ]*$/.test(first.caption)) problems.push(`이름이 한글이 아님: «${first.caption}»`);
     await capture('1-처음');
     await press('.carousel-arrow.next'); await delay(700);
     const afterPress = await state();

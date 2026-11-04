@@ -11,6 +11,8 @@
      --align의 크기(«후»)    제목 글자 윗선(화소로 찾은 첫 어두운 줄)이 카메라 사진 윗선과 1px 안 · 제목 ↔ 안내 ↔ «오늘 촬영할 영화» ↔ 포스터 · 티켓 ↔ 단추가
                              겹치지 않음 · 단추가 화면 안 · 가로 넘침 없음 · 티켓 글자 잘림 없음 · 보이는 포스터가 «전»보다 작아지지 않음
      --same-as <빌드>        그 빌드와 «후»의 2단계 요소 자리가 모든 크기에서 0.5px 안에서 같다(설치판 = 웹 확인용 — 설치판에만 있는 표시는 뺀다)
+     모든 크기 · 모든 빌드      2단계라면 어느 크기에서나 보이는 요소(step2-geometry-judge.mjs의 REQUIRED)를 하나 이상 쟀다 —
+                             못 잰 빌드가 있으면 걸림(2026-11-02 — 그 전에는 두 빌드 모두 0개를 재도 «같음»으로 통과했다)
    --shots의 크기는 빌드마다 <결과 폴더>/<이름>-<크기>.png로 찍는다(원본 해상도, 1배). 잰 값은 <결과 폴더>/geometry.json.
    빌드 자리에 https 주소(라이브)를 주면 그 주소를 그대로 연다 — 배포한 화면이 빌드와 같은지 볼 때(바깥 요청 차단 · /health 대신 답하기는 같다). */
 import fs from 'node:fs';
@@ -19,6 +21,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { spawn, spawnSync } from 'node:child_process';
+import { SEL, unmeasured, compareIssues } from './step2-geometry-judge.mjs';
 
 const args = process.argv.slice(2);
 const out = args[0];
@@ -109,10 +112,7 @@ async function openPage(base) {
   return { send, ev };
 }
 
-// 2단계 요소 — 설치판에만 있는 표시(.desktop-badge)는 «같은 화면» 비교에서 뺀다
-const SEL = { cameraTop: '#cameraView .camera-top', cameraBox: '#cameraView .cameraBox', pageHeading: '#cameraWorkspace .page-heading', title: '#cameraWorkspace .page-heading h1',
-  tips: '.camera-instructions', tip: '.camera-instructions li', filmHeading: '.camera-film-heading', card: '.camera-film-card', scene: '.camera-film-scene', poster: '.camera-film-poster img',
-  ticket: '.camera-ticket', actions: '#cameraWorkspace .camera-actions', actionBtn: '#cameraWorkspace .camera-actions button', guide: '.camera-guide' };
+// 2단계 요소(SEL)와 비교 판정은 step2-geometry-judge.mjs — selftest.mjs가 브라우저 없이 같은 판정을 시험한다
 const MEASURE = `(() => { const r = {};
   for (const [k, s] of Object.entries(${JSON.stringify(SEL)})) r[k] = [...document.querySelectorAll(s)].filter((e) => e.getClientRects().length).map((e) => { const b = e.getBoundingClientRect(); return [b.x, b.y, b.width, b.height].map((v) => Math.round(v * 100) / 100); });
   const img = document.querySelector(${JSON.stringify(SEL.poster)}); r.natural = img ? img.naturalWidth / img.naturalHeight : null;
@@ -161,9 +161,6 @@ const servers = await Promise.all(dirs.map((d) => (/^https:\/\//.test(d) ? { bas
 const pages = [];
 for (const s of servers) pages.push(await openPage(s.base));
 
-const close = (a, b) => Math.abs(a - b) <= 0.5;
-const KEYS = Object.keys(SEL);
-const diffKeys = (a, b) => KEYS.filter((k) => a[k].length !== b[k].length || a[k].some((r, i) => r.some((v, j) => !close(v, b[k][i][j]))));
 const top = (r) => r[1], bottom = (r) => r[1] + r[3];
 const seen = (m) => { const p = m.poster[0]; return p && m.natural ? Math.min(p[3], p[2] / m.natural) : 0; };
 const report = { builds, sameAs: sameAs ?? null, sizes: [] };
@@ -172,13 +169,9 @@ for (const [w, h] of SIZES) {
   const key = `${w}x${h}`;
   const shot = SHOTS.has(key);
   const [a, b, c] = [await measure(pages[0], w, h, shot && builds[0].name), await measure(pages[1], w, h, shot && builds[1].name), sameAs ? await measure(pages[2], w, h) : null];
-  const issues = [];
-  const diff = diffKeys(a, b);
-  if (CHANGED.has(key) && !diff.length) issues.push('«전»과 «후»가 같다(고친 것이 먹지 않음)');
-  if (!CHANGED.has(key) && diff.length) issues.push(`«전»과 다름: ${diff.join(', ')}`);
-  if (c) { const d2 = diffKeys(b, c); if (d2.length) issues.push(`--same-as 빌드와 다름: ${d2.join(', ')}`); }
+  const { issues, diff } = compareIssues(a, b, c, CHANGED.has(key), builds.map((x) => x.name));
   const row = { size: key, titleInk: [a.titleInk, b.titleInk], cameraTop: [a.cameraBox[0]?.[1], b.cameraBox[0]?.[1]], poster: [Math.round(seen(a)), Math.round(seen(b))], changed: diff };
-  if (ALIGN.has(key)) {
+  if (ALIGN.has(key) && !unmeasured(b).length) {   // 못 잰 «후»는 위에서 이미 걸림 — 없는 요소로 간격을 재지 않는다
     const cam = top(b.cameraBox[0]);
     if (b.titleInk === null || Math.abs(b.titleInk - cam) > 1) issues.push(`제목 윗선 ${b.titleInk} ≠ 사진 윗선 ${cam}`);
     const gaps = { 제목_안내: top(b.tips[0]) - bottom(b.pageHeading[0]), 안내_영화제목: top(b.filmHeading[0]) - bottom(b.tips[0]), 영화제목_포스터: top(b.scene[0]) - bottom(b.filmHeading[0]),
