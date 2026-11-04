@@ -12,8 +12,9 @@
      ① 세 주소 각각: 첫 화면 200 · /download/PosterStudio-Setup.exe가 302로 Storage 객체를 가리킴 · 넘어간 곳 200 ·
         Content-Type · Content-Disposition(attachment, 이름 Poster Studio Setup.exe) · Content-Length = 받은 바이트 · 끝까지 받은 SHA-256 = 기대값
      ② 세 주소 각각 헤드리스 첫 화면(PC 2560): 앱이 뜨고 단추가 하나 있다 · 세 주소의 본 번들이 같다
-     ③ 대표 주소 PC 2560 · 휴대폰 3배: 접속 · 새로고침 · 2단계 갔다 오기까지 설치 파일 요청 0건 → 단추를 마우스(휴대폰은 손가락)로
-        누르면 그때 내려받기가 시작돼 끝까지 받아진다 · 저장 이름 Poster Studio Setup.exe · SHA-256 = 기대값 · 페이지는 그대로
+     ③ 대표 주소 PC 2560 · 휴대폰 3배: 접속 · 새로고침 · 2단계 갔다 오기까지 설치 파일 요청 0건 → PC는 단추를 마우스로
+        누르면 그때 내려받기가 시작돼 끝까지 받아진다 · 저장 이름 Poster Studio Setup.exe · SHA-256 = 기대값 · 페이지는 그대로.
+        휴대폰은 단추가 보이지 않아야 한다(2026-11-03 Bumm님 «모바일에서는 첫 페이지 다운로드 버튼 없애» — download-link.css) — 누르지 않는다.
      ④ --compare: 대표 주소 전/후 첫 화면 화소 — 단추 상자 밖 차이 0(같은 판을 3번 열어 가장 가까운 짝)
         🟠 «전»은 배포 직후 같은 시각에 되돌림 채널(배포 전 판)을 --site로 찍은 것을 쓴다. 배포 전에 미리 찍은 것과는
         큰 장르 그림 한 장을 줄여 그리는 결과가 시각에 따라 갈릴 수 있다(2026-10-27 실측: 같은 836b1b9 판끼리 PC 2560에서 «애니메이션» 그림
@@ -52,7 +53,7 @@ const HOSTS = [
 const PATH = '/download/PosterStudio-Setup.exe';
 const OBJECT = 'https://storage.googleapis.com/inky-poster-studio-download/PosterStudio-Setup.exe';
 const FILE = 'Poster Studio Setup.exe';   // 받는 주소 · 객체 이름은 그대로, 저장되는 이름만(10/27)
-const SIZES = [{ name: 'pc-2560x1440', w: 2560, h: 1440, s: 1 }, { name: 'phone-390x844x3', w: 390, h: 844, s: 3, mobile: true }];
+const SIZES = [{ name: 'pc-2560x1440', w: 2560, h: 1440, s: 1 }, { name: 'phone-390x844x3', w: 390, h: 844, s: 3, mobile: true, hidden: true }]   // hidden: 단추가 DOM에는 있고 보이지 않는다(11/3);
 const SETUP = /Setup\.exe/i;
 const TRIES = 3;
 
@@ -164,7 +165,7 @@ for (const s of SIZES) {
   // 전 캡처: 배포 전에 대표 주소에서 찍은 것(<주소>-<크기>) 또는 --site로 되돌림 채널을 찍은 것(site-<크기>)
   const pres = [main.name, 'site'].flatMap((n) => [`${n}-${s.name}.png`, ...Array.from({ length: TRIES - 1 }, (_, t) => `${n}-${s.name}-${t + 2}.png`)])
     .map((n) => path.join(compareDir ?? '', n)).filter((p) => compareDir && fs.existsSync(p));
-  if (compareDir) {
+  if (compareDir && !s.hidden) {
     const A = await Promise.all(pres.map(readPng));
     let best = null;
     for (let t = 1; t <= TRIES && !(best?.outside === 0); t++) {
@@ -202,6 +203,12 @@ for (const s of SIZES) {
   const watched = sawPage(log.requests, main.url);
   check(`${main.name} ${s.name}: 누르기 전 설치 파일 요청 0건(접속 · 새로고침 · 화면 전환)`, watched && pre.requests === 0 && pre.begins === 0,
     watched ? steps : { unwatched: '이 페이지 요청을 하나도 못 봤다 — 요청 기록이 돌지 않았다', steps });
+  if (s.hidden) {
+    const seen = await evaluate(`(() => { const e = document.querySelector('.download-link'); return { present: !!e, display: e ? getComputedStyle(e).display : null, rects: e ? e.getClientRects().length : null }; })()`);
+    report.browser[`${main.name}-${s.name}`].download = { steps, seen };
+    check(`${main.name} ${s.name}: 휴대폰에서는 단추가 보이지 않는다(DOM에는 있고 그려지지 않음)`, seen.present && seen.display === 'none' && seen.rects === 0, seen);
+    continue;
+  }
   const r = await linkRect();
   const x = r.x + r.w / 2, y = r.y + r.h / 2;
   if (s.mobile) {
