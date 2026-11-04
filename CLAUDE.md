@@ -33,11 +33,11 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 
 ## 명령
 ```bash
-cd functions && npm ci && npm test    # vitest 118개(2026-11-01)
+cd functions && npm ci && npm test    # vitest 137개(2026-11-05)
 cd functions && npm run lint          # eslint
 cd functions && npm run format        # prettier (functions에만 있음)
 
-npm ci && npm test                    # vitest 558개(2026-11-04) (저장소 루트 = 프론트엔드 루트)
+npm ci && npm test                    # vitest 570개(2026-11-05) (저장소 루트 = 프론트엔드 루트)
 npm run lint                          # eslint
 npm run typecheck                     # TS strict — src와 test/*.ts(x)
 npm run build                         # -> dist/ (배포되는 것)
@@ -62,7 +62,7 @@ src/          프론트엔드 소스(TypeScript + React 19)
 public/       정적 자산. Vite가 dist/ 루트로 그대로 복사한다
               splash-font-gate.js(스플래시 글꼴 게이트) boot-splash.js fonts/ studio/ logo-*.png favicon-inky.png
 dist/         빌드 산출물 = 배포 폴더(firebase.json의 public). 커밋하지 않는다
-test/         vitest 558개(2026-11-04) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
+test/         vitest 570개(2026-11-05) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/    Cloud Functions — index.js 하나에 전부(미들웨어 체인·프롬프트·OpenAI·Firestore 카운터·스케줄러)
 scripts/      verify/(확인·대조 도구) ci/(배포 단계 도구) media/(대기·예시 영상) fonts/(서브셋) docs/(설명서) editor/(화면 편집판) build/ qa/ loadtest.mjs
 _docs/        저장소 문서(배포 대상 아님) — ops/ intents/ CHANGELOG.md
@@ -83,7 +83,7 @@ desktop/      Windows 설치판(Electron · 2026-10-27) — 웹 프론트를 `np
   숫자와 근거는 app.md «앱»과 [`_docs/ops/printer-capacity.md`](_docs/ops/printer-capacity.md). ⚠ "노트북 20대"와 부하테스트는 폐기됐다(2026-09-11 대표, `_docs/intents/2026-09-11-loadtest-3ip/intent.md`).
 - 학생 얼굴 사진 + 입력정보 수집 — 실명 필수 아님(별명 허용), 체험목적 외 사용 금지, 현장출력 중심(별도 QR전달 없음). 사진이 OpenAI(미국) 서버로 전송되는 사실을 부스 안내문에 명시할 것(README 참고).
 - **"PNG 저장" 버튼을 누르지 않는 한 노트북에 남는 것은 없다** — 촬영 사진·AI 생성 이미지는 서버/노트북 어디에도 영구 저장되지 않는다(브라우저 메모리·캐시만 존재). 다만 완성 포스터를 `PNG 저장` 버튼으로 내려받으면 아동 얼굴+이름이 담긴 파일이 노트북 다운로드 폴더에 실제로 남는다 — 2026-08-29 대표 결정으로 이 버튼은 유지하고, 그렇게 쌓인 파일은 **연말(2026-12-31)까지 보관 후 삭제**하며, 삭제 작업은 앱이 자동으로 하지 않고 **교육청 장학사가 직접 처리**한다(`_docs/CHANGELOG.md`의 "4차 감사 🔴 후속조치" 참고).
-- **2026-08-30부로 Firestore 사용 중**(`_docs/CHANGELOG.md`의 "5차 감사 후속조치" 참고) — **레이트리밋·재생성한도·일일예산용 순수 숫자 카운터와 사진 SHA-256 해시만** 저장한다. 사진·이름 등 개인정보는 Firestore를 포함해 그 어디에도 저장되지 않는다 — 이 원칙은 안 바뀜.
+- **2026-08-30부로 Firestore 사용 중**(`_docs/CHANGELOG.md`의 "5차 감사 후속조치" 참고) — **레이트리밋·재생성한도·일일예산용 순수 숫자 카운터와 사진 SHA-256 해시만** 저장한다. **예외는 두 컬렉션이다(2026-11-05 Bumm님, app.md «현장 의견 받기»)**: `feedback`(현장 의견 — 진행자·교사가 적은 이름·의견과 판 번호·화면 크기·기기·단계, 받은 지 90일 뒤 자동 삭제)과 `kakaoAuth`(카카오톡 알림을 받는 계정 하나의 토큰·사용자 번호·연결 대기 state 해시). 둘 다 서버 Admin SDK만 읽고 쓴다. 이 예외 밖에서 사진·아동 이름 등 개인정보는 Firestore를 포함해 그 어디에도 저장되지 않는다 — 이 원칙은 안 바뀜.
 - 그 외 이 앱에서 **절대 하면 안 되는 것**(라이브 부하테스트, 타임아웃 체인 부분 변경, XFF 맨 왼쪽 사용, `npm audit fix --force` 등)은 `.claude/rules/app.md`에 모아 뒀다.
 
 ## 자율 권한
