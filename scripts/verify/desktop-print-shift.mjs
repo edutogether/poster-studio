@@ -34,8 +34,11 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-print-shift-'));
 
 const port = 9500 + Math.floor(Math.random() * 400);
 const exe = args.includes('--dev') ? path.join(ROOT, 'desktop/node_modules/electron/dist/electron.exe') : path.resolve(opt('--exe'));
+// 창 자리(test-monitor.json의 점)를 처음부터 넘긴다 — 넘기지 않으면 앱 창이 주 모니터(위)에서 최대화된 채 먼저 보였다(11/4 21차: -8,-8 2576×1408, 감시가 바로 끔).
+const tm = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/verify/test-monitor.json'), 'utf8'));
+const testEnv = { ...process.env, POSTER_STUDIO_TEST_WINDOW: `${tm.point[0]},${tm.point[1]}` };
 const app = spawn(exe, [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${port}`, '--mute-audio',
-  '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'], { stdio: 'ignore' });
+  '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'], { stdio: 'ignore', env: testEnv });
 const report = { exe, checks: [] };
 const check = (name, ok, detail) => { report.checks.push({ name, ok: !!ok, detail }); console.log(`${ok ? '통과' : '걸림'}  ${name}${detail === undefined ? '' : ' — ' + JSON.stringify(detail)}`); };
 

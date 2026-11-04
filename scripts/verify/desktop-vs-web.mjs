@@ -74,6 +74,8 @@ async function captureAll(child, port, urlPrefix, prefix) {
     await ev(`(document.getAnimations().forEach((a) => { if (a instanceof CSSTransition) a.finish(); else { a.pause(); a.currentTime = 0; } }), new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))`);
     await sleep(300);
     const badge = await ev(`(() => { const b = document.querySelector('.desktop-badge'); if (!b) return null; const r = b.getBoundingClientRect(); return [r.x, r.y, r.right, r.bottom]; })()`);
+    // 웹 첫 화면의 다운로드 아이콘 — 설치판은 같은 자리에 표시 상자를 둔다(StudioView «DESKTOP ? 표시 : DownloadLink»). 11/4 합친 웹의 아이콘 끝이 표시 상자 밖으로 2~3화소 나가 11화소가 «차이»로 세였다.
+    const download = await ev(`(() => { const b = document.querySelector('.download-link'); if (!b) return null; const r = b.getBoundingClientRect(); return r.width ? [r.x, r.y, r.right, r.bottom] : null; })()`);
     // 화면 글자가 실제로 어떤 글꼴로 그려졌는지(두 창이 같은 글꼴을 썼는지 — 다르면 글자 화소가 갈린다)
     const fonts = {};
     const { result: { root } } = await send('DOM.getDocument', { depth: 0 });
@@ -86,7 +88,7 @@ async function captureAll(child, port, urlPrefix, prefix) {
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     const file = path.join(out, `${prefix}-home-${w}x${h}${t > 1 ? '-' + t : ''}.png`);
     fs.writeFileSync(file, Buffer.from(shot.result.data, 'base64'));
-    (shots[`${w}x${h}`] ??= []).push({ file, hovered, badge, fonts });
+    (shots[`${w}x${h}`] ??= []).push({ file, hovered, badge, download, fonts });
   }
   await ev('window.close()').catch(() => {});
   ws.close();
@@ -95,13 +97,13 @@ async function captureAll(child, port, urlPrefix, prefix) {
   return shots;
 }
 
-function compare(A, B, box) {
+function compare(A, B, boxes) {
   if (A.w !== B.w || A.h !== B.h) return null;
   let outside = 0, inside = 0;
   for (let y = 0; y < B.h; y++) for (let x = 0; x < B.w; x++) {
     const i = (y * B.w + x) * 4;
     if (A.data[i] === B.data[i] && A.data[i + 1] === B.data[i + 1] && A.data[i + 2] === B.data[i + 2]) continue;
-    if (box && x >= box[0] && x < box[2] && y >= box[1] && y < box[3]) inside += 1; else outside += 1;
+    if (boxes.some((box) => x >= box[0] && x < box[2] && y >= box[1] && y < box[3])) inside += 1; else outside += 1;
   }
   return { outside, inside };
 }
@@ -111,7 +113,11 @@ const toTestMonitor = (child) => { spawn('powershell', ['-NoProfile', '-Executio
 // ① 설치판
 const p1 = 9450 + Math.floor(Math.random() * 40);
 const exe = args.includes('--dev') ? ELECTRON : path.resolve(opt('--exe'));
-const desktop = await captureAll(toTestMonitor(spawn(exe, [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${p1}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore' })), p1, 'app://studio/', 'desktop');
+// 창 자리(test-monitor.json의 점)를 처음부터 넘긴다 — 설치판은 POSTER_STUDIO_TEST_WINDOW, 웹 껍데기는 아래 main.cjs가 같은 점의 모니터에서 연다.
+// 11/4 21차: 웹 껍데기 창이 주 모니터(위)에서 최대화된 채 보인 뒤에야 옮겨졌다(-8,-8 2576×1408).
+const tm = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/verify/test-monitor.json'), 'utf8'));
+const testEnv = { ...process.env, POSTER_STUDIO_TEST_WINDOW: `${tm.point[0]},${tm.point[1]}` };
+const desktop = await captureAll(toTestMonitor(spawn(exe, [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${p1}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore', env: testEnv })), p1, 'app://studio/', 'desktop');
 
 // ② 같은 엔진(Electron)으로 바꾸기 전 웹
 const root = path.resolve(webDist);
@@ -131,13 +137,14 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}`;
 const shell = fs.mkdtempSync(path.join(os.tmpdir(), 'web-electron-'));
 fs.writeFileSync(path.join(shell, 'package.json'), JSON.stringify({ name: 'web-electron-check', main: 'main.cjs' }));
-fs.writeFileSync(path.join(shell, 'main.cjs'), `const { app, BrowserWindow, Menu, session } = require('electron');
+fs.writeFileSync(path.join(shell, 'main.cjs'), `const { app, BrowserWindow, Menu, session, screen } = require('electron');
 app.setPath('userData', ${JSON.stringify(path.join(shell, 'profile'))});
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   session.defaultSession.webRequest.onBeforeRequest({ urls: ['https://*/*', 'wss://*/*'] }, (d, cb) => cb(/\\/health$/.test(d.url) ? { redirectURL: ${JSON.stringify(base + '/__health')} } : { cancel: true }));
-  const w = new BrowserWindow({ width: 1366, height: 860, autoHideMenuBar: true, backgroundColor: '#ffffff', webPreferences: { backgroundThrottling: false } });
-  w.maximize();
+  const area = screen.getDisplayNearestPoint(screen.screenToDipPoint({ x: ${tm.point[0]}, y: ${tm.point[1]} })).workArea;
+  const w = new BrowserWindow({ x: area.x, y: area.y, width: Math.min(1366, area.width), height: Math.min(860, area.height), show: false, autoHideMenuBar: true, backgroundColor: '#ffffff', webPreferences: { backgroundThrottling: false } });
+  w.maximize(); w.show();
   w.loadURL(${JSON.stringify(base + '/')});
 });
 app.on('window-all-closed', () => app.quit());
@@ -153,16 +160,19 @@ for (const [w, h] of SIZES) {
   const key = `${w}x${h}`;
   const ds = desktop[key], wvs = web[key];
   const d = ds[0];
-  const box = d.badge ? [Math.floor(d.badge[0] - 2), Math.floor(d.badge[1] - 2), Math.ceil(d.badge[2] + 2), Math.ceil(d.badge[3] + 2)] : null;
+  const grow = (r) => [Math.floor(r[0] - 2), Math.floor(r[1] - 2), Math.ceil(r[2] + 2), Math.ceil(r[3] + 2)];
+  const box = d.badge ? grow(d.badge) : null;
+  // 뺄 칸: 설치판 표시 상자 + 웹 다운로드 아이콘(있으면). 표시 상자가 없으면 판정하지 않는다(아래 ok).
+  const boxes = [box, wvs[0].download ? grow(wvs[0].download) : null].filter(Boolean);
   let same = null;
   for (const x of ds) for (const y of wvs) {
     if (JSON.stringify(x.fonts) !== JSON.stringify(y.fonts)) continue;
-    const c = compare(await readPng(y.file), await readPng(x.file), box);
+    const c = compare(await readPng(y.file), await readPng(x.file), boxes);
     if (c && (!same || c.outside < same.outside)) same = { ...c, desktop: path.basename(x.file), web: path.basename(y.file) };
   }
   const B = await readPng(d.file);
-  const row = { size: key, hovered: [ds.map((x) => x.hovered), wvs.map((x) => x.hovered)], badgeBox: box, sameEngine: same, fonts: { desktop: ds.map((x) => x.fonts), web: wvs.map((x) => x.fonts) } };
-  if (chromeDir && fs.existsSync(path.join(chromeDir, `home-${key}.png`))) row.vsChrome = compare(await readPng(path.join(chromeDir, `home-${key}.png`)), B, box);
+  const row = { size: key, hovered: [ds.map((x) => x.hovered), wvs.map((x) => x.hovered)], badgeBox: box, skipBoxes: boxes, sameEngine: same, fonts: { desktop: ds.map((x) => x.fonts), web: wvs.map((x) => x.fonts) } };
+  if (chromeDir && fs.existsSync(path.join(chromeDir, `home-${key}.png`))) row.vsChrome = compare(await readPng(path.join(chromeDir, `home-${key}.png`)), B, boxes);
   report.sizes.push(row);
   const ok = ds.every((x) => x.hovered === 0) && wvs.every((x) => x.hovered === 0) && box && same && same.outside === 0 && same.inside > 0;
   report.checks.push({ name: `${key}: 설치판 첫 화면 = 같은 엔진의 웹 첫 화면(표시 상자 밖 차이 0)`, ok });
