@@ -193,7 +193,8 @@ const excludedKeys = (page, sels) => page.ev(`(() => { ${MEASURE.slice(MEASURE.i
 function judge(screen, w, h, d, v, exD, exV) {
   const bad = [];
   // 창이 그 크기가 되지 않았다 — 최소 창보다 작은 크기(그 방향이 최소에 걸림)일 때만 빼고, 그 밖에는 걸림(창이 크기를 따라오지 않은 것)
-  if (Math.abs(d.iw - w) > 1 || Math.abs(d.ih - h) > 1) {
+  // 최소 바로 아래(1099 등)는 창이 최소(1100)에 멈춰도 차이가 1이라 «그 크기가 됨»으로 보였다 — 최소보다 작은 크기에서 창이 더 크면 그 크기가 되지 않은 것이다(11/4)
+  if (Math.abs(d.iw - w) > 1 || Math.abs(d.ih - h) > 1 || (w < MIN_CLIENT.w && d.iw > w) || (h < MIN_CLIENT.h && d.ih > h)) {
     const atMin = (Math.abs(d.iw - w) <= 1 || (w < d.iw && d.iw <= MIN_CLIENT.w + 1)) && (Math.abs(d.ih - h) <= 1 || (h < d.ih && d.ih <= MIN_CLIENT.h + 1));
     return atMin ? { skip: `최소 창보다 작음 — 창이 ${d.iw}×${d.ih}까지만 줄어든다` } : { bad: [`창이 ${w}×${h}가 되지 않음(${d.iw}×${d.ih})`] };
   }

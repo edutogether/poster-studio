@@ -45,7 +45,10 @@ const exe = args.includes('--dev') ? path.join(ROOT, 'desktop/node_modules/elect
 const exeArgs = [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${port}`, '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`, '--mute-audio',
   // 앱 창이 다른 창 뒤에서 열려도 그리기를 멈추지 않게(확인할 때만 — desktop-vs-web.mjs 머리말)
   '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'];
-const env = { ...process.env, POSTER_STUDIO_TEST_SAVE_DIR: saveDir, POSTER_STUDIO_TEST_PRINT_PDF: printPdf };
+// 창 자리는 앱에 넘긴다(POSTER_STUDIO_TEST_WINDOW = test-monitor.json의 점) — 그래야 새 창(개인정보처리방침)도 처음부터 검사 모니터에 뜬다.
+// 넘기지 않으면 새 창이 주 모니터 가운데에 먼저 보인 뒤에야 옮겨졌다(11/4 실측: 830,266 900×860).
+const tm = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/verify/test-monitor.json'), 'utf8'));
+const env = { ...process.env, POSTER_STUDIO_TEST_SAVE_DIR: saveDir, POSTER_STUDIO_TEST_PRINT_PDF: printPdf, POSTER_STUDIO_TEST_WINDOW: `${tm.point[0]},${tm.point[1]}` };
 const started = Date.now();
 const app = spawn(exe, exeArgs, { env, stdio: 'ignore' });
 // 앱 창은 검사용 아래 모니터에서 최대화한다(10/28 «자동 검사 창은 아래 작은 모니터에만» — win-capture.ps1 -Maximize, 창을 찾으면 끝난다)
