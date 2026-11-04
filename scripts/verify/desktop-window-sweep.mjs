@@ -9,9 +9,11 @@
    ③ 두 창의 안쪽(client) 크기를 Windows로 바꾸고(win-ctl.ps1 — 실제 WM_SIZE), 화면이 그 크기가 된 뒤 화면마다 잰다:
       1단계(혼자) · 2단계(카메라 켜기 전) · 3단계(샘플 포스터 8종) · 인쇄 미리보기(설치판만).
       - 가로 넘침(문서 폭 > 화면 폭) · 단추 · 입력칸끼리 겹침(모달 창이 열려 있으면 그 안끼리) · 단추가 화면 왼쪽 · 오른쪽 밖 · 잘린 글자(넘침 숨김인데 내용이 더 큼, «…» 줄임과 줄 수 제한은 뺀다)
+      - 단추가 보이는 칸 밖(11/4): 화면이나 넘침을 자르는 칸(안쪽 스크롤 칸 등) 밖으로 조금이라도 나간 단추 — 문서 스크롤이 있는 휴대폰 배치(760 이하)는 그 자체가 정상이라 문서 스크롤로 닿는 것은 뺀다.
+        11/3 Bumm님 «창을 끌어 너무 작게 만들면 많이 깨진다»: 600×480 근처에서 2단계 주 단추가 오른쪽 칸 스크롤 뒤로 숨었는데 겹침 · 잘린 글자 검사는 통과였다(보는 층에 없던 결함).
       - 같은 크기 웹과 요소 자리 비교(0.5px) — 설치판 전용 차이는 뺀다: «설치판» 표시 · 웹 «다운로드», 2단계 오른쪽 칸(제목 · 안내 · 영화 · 단추 줄 — 폭 1100 이상 · 높이 680 이상, desktop.css 높이 구간),
-        3단계 단추 줄(«PC에 저장»). 웹이 세로로 스크롤되지 않는데 설치판만 스크롤되면 그것도 걸림.
-      - 앱이 정한 최소 창(600×480, 안쪽 약 584×441 — 11/2 반 화면 붙이기 · 그 전 1024×640)보다 작은 크기는 창이 그 크기가 되지 않는다 — «최소 창보다 작음»으로 적고 판정에서 뺀다.
+        3단계 단추 줄(«PC에 저장») · 낮은 창의 3단계 디자인 8칸(폭 1100 이상 · 높이 679 이하와 700~729 — desktop.css가 일부러 다르게 줄인다). 웹이 세로로 스크롤되지 않는데 설치판만 스크롤되면 그것도 걸림.
+      - 앱이 정한 최소 창(안쪽 1100×648 — 11/4, 그 전 600×480 · 1024×640)보다 작은 크기는 창이 그 크기가 되지 않는다 — «최소 창보다 작음»으로 적고 판정에서 뺀다.
    ④ 배율: 두 창을 125% 모니터 자리(숨은 채)로 옮겨 같은 CSS 크기에서 배치가 100%와 같은지(반올림 1px), 옮겼다가 돌아와도 같은지 잰다.
    결과: <결과 폴더>/report.json, 하나라도 걸리면 종료코드 1. 서버 요청 · 생성 · 카메라 0건. */
 import fs from 'node:fs';
@@ -45,9 +47,10 @@ for (let w = 1100; w <= 3840; w += 137) for (let h = 640; h <= 2160; h += 67) GR
 // 최소 창 근처와 반 화면 크기(11/2 — 1366×768 · 1920×1080 125 · 150% · 1280×800의 반 화면 안쪽, 760 · 761 휴대폰 ↔ PC 경계, 3단계 단추 줄이 넘치던 761~950)를 촘촘히
 const SMALL = [[584, 441], [600, 480], [624, 649], [640, 480], [667, 689], [700, 560], [752, 785], [760, 600], [761, 480], [761, 600], [800, 600], [900, 560], [944, 1001], [950, 640], [1000, 600], [1093, 543],
   [1008, 601], [1008, 640], [1008, 700], [1024, 601], [1024, 640], [1050, 620], [1099, 601], [1100, 601], [1100, 640], [1200, 601], [1280, 601], [1366, 601]];
+SMALL.push([1100, 648], [1100, 649], [1101, 660], [1100, 679], [1100, 680], [1100, 699], [1100, 700], [1100, 729], [1100, 730], [1280, 649], [1366, 697], [1920, 648], [1920, 700], [1920, 720], [2560, 648]);
 const parseSizes = (s) => s.split(',').map((x) => x.split('x').map(Number));
 const SIZES = opt('--sizes') ? parseSizes(opt('--sizes')) : args.includes('--quick') ? [...NAMED, ...SMALL] : [...new Map([...NAMED, ...GRID, ...SMALL].map((s) => [s.join('x'), s])).values()];
-const MIN_CLIENT = { w: 584, h: 441 };   // 앱 최소 창 600×480(desktop/main.mjs, 11/2)의 안쪽 — 100% 자리에서 잰 값(그 전 1024×640 → 1008×601, 10/28)   // 앱 최소 창 1024×640(desktop/main.mjs)의 안쪽 — 100% 자리에서 잰 값(10/28)
+const MIN_CLIENT = { w: 1100, h: 648 };   // 앱 최소 창(desktop/main.mjs — 11/4부터 안쪽 크기로 정한다, useContentSize). 그 전 600×480 → 안쪽 584×441(11/2) · 1024×640 → 1008×601(10/28)
 const DPI_SIZES = [[1366, 768], [1536, 793], [1280, 649], [1100, 820], [1366, 697], [1440, 829]];   // 125% 모니터 자리(1760×990)에 들어가는 크기
 
 // ── 앱 · 웹 창 띄우기 ──
@@ -163,8 +166,17 @@ const MEASURE = `(() => {
     const hide = (v) => v === 'hidden' || v === 'clip';
     return (hide(s.overflowX) && e.scrollWidth > e.clientWidth + 1) || (hide(s.overflowY) && e.scrollHeight > e.clientHeight + 2);
   }).map((e) => (e.className || e.tagName) + ': ' + e.textContent.trim().slice(0, 24));
+  // 단추가 보이는 칸 밖(11/4) — 화면과 넘침을 자르는 조상 칸들의 겹친 영역 밖으로 나간 단추. 문서 스크롤로 닿는 아래쪽은 뺀다(휴대폰 배치 · 긴 페이지).
+  // 휴대폰 배치 3단계 포스터 넘기기(.poster-slide)는 가로로 넘겨 보는 줄이라 뺀다(위 «화면 옆 밖»과 같은 까닭). «본문으로 건너뛰기»(.skip-link)는 키보드 초점을 받을 때만 화면 위에서 내려온다.
+  const se = document.scrollingElement;
+  const clipBox = (e) => { let r = { t: 0, b: innerHeight, l: 0, rr: innerWidth }; for (let p = e.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) { const s = getComputedStyle(p); if (s.overflowY !== 'visible' || s.overflowX !== 'visible') { const b = p.getBoundingClientRect(); r = { t: Math.max(r.t, b.top), b: Math.min(r.b, b.bottom), l: Math.max(r.l, b.left), rr: Math.min(r.rr, b.right) }; } } return r; };
+  const hidden = ctrls.filter((i) => !i.el.classList.contains('poster-slide') && !i.el.classList.contains('skip-link')).filter((i) => {
+    const c = clipBox(i.el);
+    const docReach = c.b === innerHeight && i.y + i.h - innerHeight <= se.scrollHeight - innerHeight - scrollY + 0.5;   // 화면 아래로만 나갔고 문서 스크롤로 닿는다
+    return i.y < c.t - 0.5 || i.x < c.l - 0.5 || i.x + i.w > c.rr + 0.5 || (i.y + i.h > c.b + 0.5 && !docReach);
+  }).map((i) => i.key + '@' + Math.round(i.y) + '+' + Math.round(i.h));
   const d = document.documentElement;
-  return { iw: innerWidth, ih: innerHeight, dpr: devicePixelRatio, sw: d.scrollWidth, cw: d.clientWidth, sh: d.scrollHeight, step: document.body.dataset.step,
+  return { hidden, iw: innerWidth, ih: innerHeight, dpr: devicePixelRatio, sw: d.scrollWidth, cw: d.clientWidth, sh: d.scrollHeight, step: document.body.dataset.step,
     rects: Object.fromEntries(items.map((i) => [i.key, [i.x, i.y, i.w, i.h].map((v) => Math.round(v * 10) / 10)])), overlaps, offside, clipped };
 })()`;
 // 2단계 예시 칸의 영상 · 정지 그림은 재생 시점에 따라 서로 바뀐다(두 창이 같은 순간에 재지 않는다) — 칸(.cameraBox) 자리는 그대로 견준다(11/2 600×480에서 한쪽만 영상)
@@ -172,7 +184,9 @@ const EXCLUDE_ALWAYS = ['.desktop-badge', '.download-link', '.camera-example-vid
 const exclusions = (screen, w, h) => [...EXCLUDE_ALWAYS,
   // 2단계 오른쪽 칸 — 설치판 높이 구간(desktop.css, 폭 1100 이상 · 높이 680 이상)에서 제목 · 안내 · 영화 · 단추 줄을 일부러 다르게 둔다(그 배치는 desktop-layout-sweep.mjs의 구간 규칙이 잰다)
   ...(screen === 'step2' && w >= 1100 && h >= 680 ? ['#cameraWorkspace .page-heading', '#cameraWorkspace .camera-guide', '#cameraWorkspace .camera-actions', '#cameraView .camera-tips'] : []),
-  ...(screen === 'step3' ? ['#resultView .result-actions'] : [])];
+  ...(screen === 'step3' ? ['#resultView .result-actions'] : []),
+  // 낮은 창의 3단계 디자인 8칸 — 설치판은 단추가 하나 더 있어 8칸을 더 줄이고(높이 679 이하), 높이 700~729는 웹의 최소 폭 536px 없이 줄인다(desktop.css, 11/4)
+  ...(screen === 'step3' && w >= 1100 && (h <= 679 || (h >= 700 && h <= 729)) ? ['#gallery'] : [])];
 // 열쇠가 제외 영역 안 요소인지는 페이지에서 고른다 — 각 창에서 제외할 열쇠 목록을 받는다
 const excludedKeys = (page, sels) => page.ev(`(() => { ${MEASURE.slice(MEASURE.indexOf('const vis'), MEASURE.indexOf('const ctrls'))} const sels = ${JSON.stringify(sels)}; return items.filter((i) => sels.some((s) => i.el.closest(s))).map((i) => i.key); })()`);
 
@@ -186,6 +200,7 @@ function judge(screen, w, h, d, v, exD, exV) {
   if (d.sw > d.cw + 0.5) bad.push(`가로 넘침 ${d.sw} > ${d.cw}`);
   if (d.overlaps.length) bad.push(`단추 겹침: ${d.overlaps.slice(0, 4).join(' | ')}`);
   if (d.offside.length) bad.push(`단추가 화면 옆 밖: ${d.offside.slice(0, 4).join(' | ')}`);
+  if (d.hidden.length) bad.push(`단추가 보이는 칸 밖(스크롤해야 보임): ${d.hidden.slice(0, 4).join(' | ')}`);
   if (d.clipped.length) bad.push(`잘린 글자: ${d.clipped.slice(0, 4).join(' | ')}`);
   if (v) {
     if (d.sh > d.ih + 1 && !(v.sh > v.ih + 1)) bad.push(`설치판만 세로로 스크롤(${d.sh} > ${d.ih}, 웹 ${v.sh})`);
