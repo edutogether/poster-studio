@@ -529,12 +529,15 @@
   2. `cd desktop && npm ci`
   3. `node node_modules/electron/install.js` — npm 12는 설치 스크립트를 막아 Electron 실행 파일이 안 받아진다.
   4. `npx electron-builder --win nsis --x64 --publish never`
-  - 판: electron 44.7.0 · electron-builder 26.17.0.
+  - 판: electron 44.9.3(11/5 — 44.7.0의 «인증서 신뢰» 보안 알림 #91, 44.9.1부터 고침 · Bumm님 12 ①) · electron-builder 26.17.0.
   - 🟠 **설치판 판 번호는 `desktop/package.json`의 `version`(과 package-lock 맨 위 두 곳)이고, 커밋에서 센다**(11/3 Bumm님 F-5 «A» — 앱이 바뀐 커밋만 센다):
     `node scripts/build/app-version.mjs HEAD`가 큰 구조 변경(첫 판 · React 전환 · 설치판 세 커밋)은 첫째 자리, `feat`는 둘째 자리, 고침(`fix` · `perf` · `refactor` · `style` 등)은 셋째 자리에 하나씩 더하고
     10이면 윗자리로 올린 값을 낸다. 문서 · 시험 · CI · 잡일(`docs` · `test` · `ci` · `chore` · `verify` · `mock`)은 세지 않는다 — 판 번호를 올리는 커밋도 `chore`라 번호가 그대로다.
     모르는 종류가 나오면 멈춘다(표에 더한 뒤 센다). 11/4 합친 판이 17.4.0이다(그 전 1.0.0~1.6.0은 판마다 손으로 올렸다). 판마다의 표(커밋 · 크기 · SHA-256 · 근거)는 `_docs/CHANGELOG.md`에 잇는다.
-    보이는 곳: 설치기 아래 상표 글 «Poster Studio 17.x.x» · «설치된 앱»(DisplayVersion) · 실행 파일 속성. 앱에는 메뉴 · «정보» 화면이 없다(`Menu.setApplicationMenu(null)`).
+    🔴 **11/5 Bumm님 «2.7.4 버전으로 써줘»(팀장 전달): 판 번호를 2.7.4에서 다시 센다.** 시작점은 `app-version.mjs`의 `START`(커밋 `4728a45` = 2.7.4, 예전 셈으로 17.4.0)이고,
+    그 뒤 커밋만 위 규칙으로 더한다(고침 6 · 기능 1이면 2.9.0). 시작점에 닿지 않는 옛 커밋은 예전처럼 처음부터 센다(`--selftest`가 11/3 17.2.5와 시작점 2.7.4를 둘 다 본다).
+    17.4.0보다 낮은 번호지만 덮어 설치는 막히지 않아야 한다 — 확인은 아래 «확인»의 설치기 탐침 `-Replace`.
+    보이는 곳: 설치기 아래 상표 글 «Poster Studio 2.x.x» · «설치된 앱»(DisplayVersion) · 실행 파일 속성. 앱에는 메뉴 · «정보» 화면이 없다(`Menu.setApplicationMenu(null)`).
   - 서명은 없다. 그래서 인터넷에서 받은 설치 파일은 Windows SmartScreen이 «PC 보호» 창을 띄운다(«추가 정보» → «실행»).
     현장 주소는 poster.edutogether.kr 하나이고, USB 배포 · 파일 출처 표시를 지우는 방식은 쓰지 않는다(10/27 Bumm님 방침). 서명 · Store(MSIX)는 하지 않고 EXE 그대로 낸다(10/27 Bumm님 A안) — 진행요원 · 교사용 매뉴얼에 «경고가 떠도 정상»과 실제 창 두 장을 넣었다.
 - 🟠 **설치 모양은 Bumm님 기준이다**(10/27 정정 · 11/3 Bumm님 직접 지시, 팀장 전달 — 바꾸지 않는다):
