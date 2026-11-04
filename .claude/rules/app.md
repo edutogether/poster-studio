@@ -137,6 +137,8 @@
   카카오가 실패하거나 연결 전이어도 **저장은 된다**(로그에 «알림 실패»만). 저장이 실패하면 503. 로그에는 이름 · 의견 · 토큰을 남기지 않는다(문서 번호만).
 - 🔴 **카카오 키 두 개는 Secret Manager**(`KAKAO_REST_API_KEY` · `KAKAO_CLIENT_SECRET`, 10 A)이고 **값은 Bumm님이 직접 넣는다** — 세션은 값을 보거나 다루지 않는다.
   `posterStudio`와 `cleanupOldCountersSchedule`이 이 비밀을 걸므로 **비밀이 없으면 functions 배포가 실패한다** — 비밀을 먼저 만들고 배포한다.
+  🟠 **시크릿을 새로 만들면 배포 전에 실행 계정(`652638343764-compute@…`)의 `roles/secretmanager.secretAccessor`를 그 시크릿에 넣는다**(프로젝트 소유 계정, 값은 보지 않음 — 11/5). 항목이 없으면 firebase-tools가 직접 넣으려 하는데 CI 계정 `github-actions-deploy@…`에는 `setIamPolicy`가 없다.
+  CI 계정에 `secretmanager.admin`을 주지 않는다(11/5 Bumm님 결정 — 시크릿별로 넣는다). 확인: `gcloud secrets get-iam-policy <이름>`이 기존 시크릿과 같은 모양인지.
 - **연결**: 키를 넣고 배포한 뒤 `https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/kakao/start`를 열어 알림을 받을 카카오 계정으로 로그인 → «연결 완료»와 시험 메시지.
   카카오 개발자 콘솔의 Redirect URI는 같은 주소의 `/kakao/callback`이다. state는 해시로만 10분 · 한 번만 쓴다. **처음 연결한 계정만** 다시 연결할 수 있다(다른 계정은 403) —
   받는 계정을 바꾸려면 Firestore `kakaoAuth/owner` 문서를 콘솔에서 지운 뒤 다시 연결한다. 토큰은 `kakaoAuth/owner`(서버 전용)에 두고 매일 04시 작업이 새로 받는다.
