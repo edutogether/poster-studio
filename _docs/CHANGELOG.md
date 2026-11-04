@@ -1,5 +1,22 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-04(수) 15:26~16:30 라이브 — 공개 설치 파일 17.4.0(`6009c87`)으로 교체 · master `567b926` CI 배포(설치판 가지 합침) (Bumm님 «설치판 끝나면 바로 배포하자», 팀장 OK 11/4)
+
+- **공개 설치 파일**: 교체 직전 1.5.0(`d7714f4`, 160,332,836바이트) 확인 → 17.4.0(158,564,806바이트 · SHA-256 `f6498a6a28a12f9aa6d40d3485ec0e62c5019db9ccf90c8666e79f9632c3cb10`), 15:26:05 KST.
+  익명 200 · `attachment; filename="Poster Studio Setup.exe"` · `no-cache` · 버킷 목록 익명 403 그대로. `download-live.mjs` 26건 통과(세 주소 끝까지 받은 SHA-256 · 머리글, PC 2560 누르기 전 0건 → 눌러 끝까지 받아 해시 같음, 휴대폰 3배 누르기 전 0건 · 단추 숨김).
+  - 도구가 11/3 «휴대폰은 다운로드 단추 없음» 전의 기대(휴대폰에서 눌러 받기)로 2건 걸려 휴대폰은 «단추가 그려지지 않음»을 보게 고쳤다(`567b926`) — 숨기기 전 판(`rollback-20261102-2`)에서는 그 검사 하나만 걸린다.
+  - 되돌리기: 작업 폴더 `build-d7714f4`의 설치 파일을 app.md «파일을 바꿀 때» 명령으로 다시 올린다(덮인 판은 소프트 삭제로 11/11까지도 남는다).
+- **웹 되돌릴 자리**(push 전): 채널 한도 50개가 차 있어 가장 오래된 `rollback-20261016-night`만 지우고, 배포 전 라이브(`2d8d957`)를 `rollback-20261104`로 복제 — 채널 `/` · `privacy.html`이 그때 라이브와 바이트까지 같다.
+  되돌리기: `firebase hosting:clone poster-studio:rollback-20261104 poster-studio:live --project inky-poster-studio`(12/4까지).
+- **웹**: master `39fe9c5` → `567b926` 빨리감기(설치판 가지 `desktop-version-20261103` — 합침 `077f199` · F-6 · F-3-1 · F-5 · 최소 창 · 확인 도구 · 기록). CI 41787083980(headSha `567b926`): changes · test · deploy-functions · deploy-hosting 모두 success.
+- **확인**(라이브 생성 · 유료 AI 호출 0건)
+  - `dist-vs-live.mjs`(LF 사본 빌드): `poster.edutogether.kr` · `poster-studio.web.app` 모두 621/621 같음 · `waiting-videos-live.mjs` 종료코드 0(12편).
+  - `mobile-layout-probe.mjs --url`(360×640 · 390×664 · 430×740 · 390×844, 샘플 흐름): 아이폰 40화면 · 갤럭시 40화면 결함 0.
+  - `viewport-survey.mjs` 27크기(낮은 창 1366×697 · 1280×667 · 1366×635 · 1280×587, 휴대폰 가로 932×380 · 844×340 · 780×304 포함) × 7화면 결함 0 — 휴대폰 가로는 PC 화면.
+  - 배포 전(되돌림 채널) ↔ 뒤(라이브) 배치 대조(`layout-compare.mjs`) 189화면: 다른 27화면은 모두 채널에만 뜬 «AI 서버 연결을 확인할 수 없습니다» 알림
+    (채널 주소는 `ALLOWED_ORIGINS`에 없어 /health가 막힌다 — 앵커 규칙대로) — 그 알림만 빼면 189/189 같음. 캡처: 작업 폴더 `screens\웹-배포-20261104-567b926`(전 `survey-before` · 뒤 `survey-after`, 화면마다 `-view.png`).
+- F-3-2(행사 당일 건너뛰기) · F-3-3(`CLAUDE.md` 문구)은 넣지 않았다 — 팀장이 Bumm님께 따로 여쭌다.
+
 ## 2026-11-04(수) — 설치판 17.4.0(`6009c87`, 가지 `desktop-version-20261103`): master 11/3 웹 고침을 합침 · 위치 다시 고를 수 있게 · 판 번호를 커밋에서 셈 · 최소 창 안쪽 1100×648 (팀장 전달 11/4 — Bumm님 «오늘 Poster Studio 출시»)
 
 - **합친 것**: `077f199` master `39fe9c5`(웹 11/3 휴대폰 실기기 · 오후 2차 · 깨우기). 충돌은 웹 동작이 이기는 쪽으로 풀었다(다운로드 아이콘 · StatusToast · 인쇄 미리보기 그림 개체 주소). 웹 · 휴대폰 화면은 라이브 `2d8d957`과 같다.
