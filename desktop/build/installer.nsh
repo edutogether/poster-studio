@@ -1,8 +1,8 @@
 ; Poster Studio 설치기 추가 단계(2026-10-27 Bumm님 기준, 팀장 전달) — electron-builder가 이 파일을 설치기에 넣는다(package.json build.nsis.include).
 ;
-; 설치 위치는 언제나 C:\Program Files\InKY Film Festival\Poster Studio 하나다(11/3 Bumm님 직접 지시 «설치 폴더는 무조건 …»).
+; 설치 위치의 기본값은 C:\Program Files\InKY Film Festival\Poster Studio이고, 위치 화면에서 바꿀 수 있다(11/3 Bumm님 F-6 «위치는 바꿀 수 있어야 — 기본 위치만 Program Files»).
 ;   모든 사용자 설치만 한다(package.json nsis.perMachine) — «나만 / 모든 사용자» 화면은 없고, 설치기는 처음부터 관리자 권한으로 뜬다(관리자 승인 창이 한 번 뜬다).
-;   위치 화면은 그 위치를 보여 주기만 한다 — 폴더 칸 · «찾아보기»는 잠근다(psDirShow). 예전 설치 위치(등록 값) · /D도 따르지 않는다(customInit).
+;   기본값 · 예전 설치 위치(HKLM 등록 값) · /D는 템플릿(setInstallModePerAllUsers)이 정한다. 고른 폴더가 우리 폴더가 아니면 «Poster Studio» 하위 폴더를 붙인다(psSafeInstDir).
 ;   예전에 «나만»(%LOCALAPPDATA%\Programs\…)으로 깐 판이 있으면 «지우고 새로 설치할까요?» 뒤 그 판을 먼저 지운다(psRemoveOldInstalls — 관리자 권한 설치기의 HKCU,
 ;   조용한 설치는 템플릿 uninstallOldVersion HKEY_CURRENT_USER).
 ; 시작 메뉴 «InKY Film Festival» 폴더에는 «Poster Studio»(electron-builder)와 «Uninstall Poster Studio»(아래)를 둔다.
@@ -36,8 +36,7 @@
 ; 번역투(«~할 예정입니다 · ~하십시오 · ~하였습니다 · ~주시기 바랍니다 · ~됨 · 성공적으로 완료되었습니다»)는 쉬운 말로 바꿨다(10/28 오후 팀장). 단추 이름은 «'…' 단추».
 ; 위치 화면 안내만 MUI 설정으로 바꾼다 — 그 화면(MUI_PAGE_DIRECTORY)보다 먼저 정해야 해서 여기 둔다. 여러 줄 안내의 줄 간격은 psSpread가 띄운다.
 !ifndef BUILD_UNINSTALLER
-  ; 위치는 바꿀 수 없다(11/3 Bumm님) — 예전 둘째 줄 «다른 폴더에 설치하려면 '찾아보기' …»는 걷었다
-  !define MUI_DIRECTORYPAGE_TEXT_TOP "${PRODUCT_NAME}를 아래 폴더에 설치합니다.$\r$\n설치를 시작하려면 '설치' 단추를 눌러 주세요."
+  !define MUI_DIRECTORYPAGE_TEXT_TOP "${PRODUCT_NAME}를 아래 폴더에 설치합니다.$\r$\n다른 폴더에 설치하려면 '찾아보기' 단추를 눌러 폴더를 골라 주세요.$\r$\n설치를 시작하려면 '설치' 단추를 눌러 주세요."
 !endif
 
 ; ── 설치 화면 그림: 칸 크기에 맞춘 판 고르기(10/27 Bumm님 «오른쪽 위 로고가 가로로 늘어나 깨져 보인다», 팀장 전달) ──
@@ -245,6 +244,7 @@
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW psDirShow
     !define MUI_PAGE_CUSTOMFUNCTION_LEAVE psDirLeave
     !insertmacro MUI_PAGE_DIRECTORY
+    !define MUI_PAGE_CUSTOMFUNCTION_PRE psInstFilesPre
     !define MUI_PAGE_CUSTOMFUNCTION_SHOW psInstFilesShow
   !macroend
 
@@ -395,9 +395,7 @@
   ; 바꾼 문구 목록은 _docs/CHANGELOG.md 10/28 오후 절. 설치 범위 · 제거 범위 화면 문구는 11/3에 화면과 함께 걷었다(모든 사용자 설치만).
   !ifndef BUILD_UNINSTALLER
     ShowInstDetails show
-    ; 위치 화면 머리 — 위치는 고를 수 없다(11/3 Bumm님): 기본 «설치 위치 선택» · «… 폴더를 골라 주세요.»를 바꿨다
-    LangString MUI_TEXT_DIRECTORY_TITLE ${LANG_KOREAN} "설치 위치"
-    LangString MUI_TEXT_DIRECTORY_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치할 폴더입니다."
+    LangString MUI_TEXT_DIRECTORY_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치할 폴더를 골라 주세요."
     LangString MUI_TEXT_INSTALLING_TITLE ${LANG_KOREAN} "설치 중"
     LangString MUI_TEXT_INSTALLING_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치하는 동안 잠시 기다려 주세요."
     LangString MUI_TEXT_FINISH_SUBTITLE ${LANG_KOREAN} "${PRODUCT_NAME}를 설치했습니다."
@@ -1046,10 +1044,6 @@
       GetDlgItem $R0 $R1 1019
       SendMessage $R0 ${EM_SETSEL} 0 0
       SendMessage $R0 ${EM_SCROLLCARET} 0 0
-      ; 위치는 바꿀 수 없다(11/3 Bumm님 «설치 폴더는 무조건 …») — 폴더 칸은 읽기 전용(글은 그대로 읽힌다), «찾아보기»는 누를 수 없게 한다
-      SendMessage $R0 ${EM_SETREADONLY} 1 0
-      GetDlgItem $R0 $R1 1001
-      EnableWindow $R0 0
       Push $R1
       Call psThaw
       Pop $R1
@@ -1101,9 +1095,33 @@
       Call psCompOn   ; 진행 화면이 처음 그려질 때 한 장에(완료 화면 psThaw가 끈다)
     FunctionEnd
 
+    ; 설치 위치가 우리 폴더인지 — 아니면 «Poster Studio» 하위 폴더를 붙인다. 템플릿은 경로에 «Poster Studio» 글자가 들어 있기만 하면 그대로 써서,
+    ; D:\Poster Studio 사진을 고르면 그 폴더에 바로 깔리고 제거기가 그 폴더를 통째로 지웠다(11/2 종합감사). 그대로 쓰는 것은 마지막 폴더 이름이
+    ; 정확히 «Poster Studio»이고 그 폴더가 없거나 · 비었거나 · 우리 설치(앱 또는 제거기가 있음)일 때뿐이다. $0 · $1을 지켜 둔다.
+    ; (11/3 1.6.0은 위치를 고정하며 이 판정을 걷었다 — 11/3 F-6으로 위치를 다시 고를 수 있게 되어 11/2 판 그대로 되살렸다.)
+    Function psSafeInstDir
+      Push $0
+      Push $1
+      ${GetFileName} "$INSTDIR" $0
+      ${DirState} "$INSTDIR" $1
+      ${If} $0 != "${APP_FILENAME}"
+        StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
+      ${ElseIf} $1 == 1
+      ${AndIfNot} ${FileExists} "$INSTDIR\${APP_EXECUTABLE_FILENAME}"
+      ${AndIfNot} ${FileExists} "$INSTDIR\${UNINSTALL_FILENAME}"
+        StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
+      ${EndIf}
+      Pop $1
+      Pop $0
+    FunctionEnd
+
+    ; 위치 화면 다음(PRE) — 고른 위치가 우리 폴더가 아니면 «Poster Studio» 하위 폴더를 붙인다(LEAVE에서는 $INSTDIR을 바꿔도 되돌아간다 — 템플릿 주석). 조용한 설치는 customInit이 같은 판정을 부른다.
+    Function psInstFilesPre
+      Call psSafeInstDir
+    FunctionEnd
+
     ; 진행 화면을 띄우기 직전 — 예전 판을 지우기로 했으면 두 범위(예전 «나만» HKCU · «모든 사용자» HKLM)의 제거 명령을 옮겨 둔다(psStash).
     ; 설치기는 처음부터 관리자 권한이라 HKLM도 늘 옮길 수 있다.
-    ; (11/2 감사의 psSafeInstDir — 고른 폴더가 우리 폴더가 아니면 하위 폴더를 붙이던 판정 — 는 걷었다: 위치를 고를 수 없고 customInit이 늘 기준 위치로 정한다.)
     Function psInstFilesShow
       Push $R0
       ${If} $psRemoveOld == "1"
@@ -1424,11 +1442,13 @@
 !macroend
 
 !ifndef BUILD_UNINSTALLER
-  ; 설치 위치는 언제나 «Program Files\InKY Film Festival\Poster Studio» 하나다(11/3 Bumm님 «설치 폴더는 무조건 …»).
-  ; 템플릿(setInstallModePerAllUsers)은 예전 설치 위치(HKLM 등록 값)나 /D가 있으면 그것을 따르는데, 그 뒤에 여기서 기준 위치로 다시 정한다 —
-  ; 화면 설치 · 조용한 설치(/S) 모두 같다. 위치 화면의 폴더 칸 · «찾아보기»는 psDirShow가 잠근다.
+  ; 설치 위치는 템플릿(setInstallModePerAllUsers)이 정한다 — 예전 설치 위치(HKLM 등록 값) → 없으면 «Program Files\InKY Film Festival\Poster Studio»,
+  ; /D가 있으면 그것(11/3 F-6 — 1.6.0의 «기준 위치로 다시 정하기»는 걷었다). 화면 설치는 위치 화면 다음에 psInstFilesPre가,
+  ; 조용한 설치는 위치 화면이 없어 여기서 같은 판정을 한다 — /D로 사용자 폴더를 줘도 그 폴더에 바로 깔지 않게(psSafeInstDir, 11/2 종합감사).
   !macro customInit
-    StrCpy $INSTDIR "$PROGRAMFILES64\${MENU_FILENAME}\${APP_FILENAME}"
+    ${If} ${Silent}
+      Call psSafeInstDir
+    ${EndIf}
   !macroend
 !endif
 

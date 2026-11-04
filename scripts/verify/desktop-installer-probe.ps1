@@ -3,7 +3,7 @@
 #   설치:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify/desktop-installer-probe.ps1 -Step install -Mode all -Installer <Poster Studio Setup.exe> -Out <결과 폴더>
 #          [-Replace | -Beside] [-AppOn] [-Answers ok,cancel,…] [-Decline] [-AsUser] [-NoShots] [-NoRun]
 #   제거:  ... -Step uninstall -Mode user|all -Via startmenu|settings -Out <결과 폴더> [-AppOn] [-Answers …] [-Decline]
-#   설치는 -Mode all만 받는다 — 11/3부터 설치기는 모든 사용자 설치만 한다(Bumm님 «설치 폴더는 무조건 C:\Program Files\InKY Film Festival\Poster Studio»).
+#   설치는 -Mode all만 받는다 — 11/3부터 설치기는 모든 사용자 설치만 한다(기본 위치 C:\Program Files\InKY Film Festival\Poster Studio · 위치는 바꿀 수 있다 — 11/3 F-6).
 #   -Mode user는 예전 판(1.5.0 이하)을 «나만»으로 깔아 둔 PC의 제거 확인용으로만 남겨 둔다.
 #
 #   -Replace  같은 범위에 예전 판이 있는 PC — «설치»를 누르면 «이미 설치되어 있습니다 · 지우고 새로 설치할까요?»가 뜬다(10/28 Bumm님).
@@ -24,12 +24,12 @@
 # 사람이 더블클릭한 것처럼 설치 창을 띄운다(조용한 설치 /S가 아니다). 화면마다 그 창만 따로 찍고(PrintWindow), 창의 단추에 누름 메시지를 보낸다.
 # 다른 창을 가리거나 키보드를 빼앗지 않는다 — 이 PC를 쓰는 사람의 다른 창에 글자가 들어가지 않게.
 #   설치 범위 화면(«나만 / 모든 사용자»)은 없어야 한다(11/3).
-#   위치 화면: 위치가 기준 위치이고, 폴더 칸은 읽기 전용 · «찾아보기»는 꺼져 있는지 잰다(11/3 — 위치를 바꿀 수 없다).
+#   위치 화면: 기본 위치를 그대로 둔다 — 기본값이 기준 위치이고, 폴더 칸에 쓸 수 있고 «찾아보기»가 눌리는지 잰다(11/3 F-6 — 위치는 바꿀 수 있다).
 # 설치기는 처음부터 관리자 권한으로 뜬다. Windows는 보통 권한 프로그램이 관리자 창에 보내는 메시지를 막으므로,
 # 이 확인 도구도 관리자 권한으로 띄워야 단추를 누를 수 있다(Start-Process -Verb RunAs). 다른 PC에서는 관리자 승인 창이 한 번 뜬다(정상).
 #
 # 기준(Bumm님 10/27 · 11/3):
-#   위치 — C:\Program Files\InKY Film Festival\Poster Studio 하나(예전 판의 «나만» 위치는 %LOCALAPPDATA%\Programs\InKY Film Festival\Poster Studio)
+#   위치 — 기본값 C:\Program Files\InKY Film Festival\Poster Studio · 바꿀 수 있음(11/3 F-6, 예전 판의 «나만» 위치는 %LOCALAPPDATA%\Programs\InKY Film Festival\Poster Studio)
 #   판 번호 — «설치된 앱»(DisplayVersion) · 실행 파일 속성 · 설치기 아래 상표 글이 desktop/package.json의 version과 같다
 #   바로가기 — 바탕화면 «Poster Studio», 시작 메뉴 «InKY Film Festival» 폴더 안에 «Poster Studio» · «Uninstall Poster Studio»
 #   «설치된 앱»(제어판 프로그램 추가/제거)에 «Poster Studio» — 거기서도, 시작 메뉴 «Uninstall Poster Studio»로도 제거된다
@@ -570,7 +570,7 @@ function Walk($prefix) {
         [Win]::ShotStable($h, (Join-Path $Out ('{0}-{1:00}-실행-끔.png' -f $prefix, $n))) | Out-Null
       }
     }
-    # 위치 화면 — 위치를 읽어 둔다(바꾸지 않는다). 폴더 칸이 읽기 전용(ES_READONLY 0x800)인지 · «찾아보기»(1001)가 꺼져 있는지도 잰다(11/3)
+    # 위치 화면 — 기본값을 읽어 둔다(바꾸지 않는다). 폴더 칸이 읽기 전용(ES_READONLY 0x800)이 아닌지 · «찾아보기»(1001)가 켜져 있는지도 잰다(11/3 F-6)
     $dir = [Win]::FindChildById($h, 1019)
     if ($dir -ne [IntPtr]::Zero) {
       $page.defaultDir = [Win]::EditText($dir); $report.defaultDir = $page.defaultDir
@@ -708,9 +708,9 @@ if ($Step -eq 'install') {
     for ($i = 0; $i -lt 120 -and -not (Test-Path $exe); $i++) { Start-Sleep -Milliseconds 500 }
     $scopePages = @($report.pages | Where-Object { $_.text -match '나만' })
     Check '설치 범위 화면(«나만 / 모든 사용자»)이 없다(11/3)' ($scopePages.Count -eq 0) $(if ($scopePages.Count) { ($scopePages | ForEach-Object { $_.shot }) -join ' · ' })
-    Check '위치 화면의 위치가 기준이다' ($report.defaultDir -eq $appDir) "$($report.defaultDir)"
+    Check '위치 화면의 기본 위치가 기준이다' ($report.defaultDir -eq $appDir) "$($report.defaultDir)"
     $lock = $report.dirLock
-    Check '위치 화면: 폴더 칸은 읽기 전용이고 «찾아보기»는 눌리지 않는다(11/3)' ($lock -and $lock.readOnly -and $lock.browseFound -and -not $lock.browseEnabled) $(if ($lock) { $lock | ConvertTo-Json -Compress } else { '위치 화면 없음' })
+    Check '위치 화면: 폴더 칸에 쓸 수 있고 «찾아보기»가 눌린다(11/3 F-6 — 위치는 바꿀 수 있다)' ($lock -and -not $lock.readOnly -and $lock.browseFound -and $lock.browseEnabled) $(if ($lock) { $lock | ConvertTo-Json -Compress } else { '위치 화면 없음' })
     $brand = @($report.pages | Where-Object { $_.text -match ('\[1028\]' + [regex]::Escape("Poster Studio $version") + ' ') })
     $brandOther = @($report.pages | Where-Object { $_.text -match '\[1028\]Poster Studio ' -and $_.text -notmatch ('\[1028\]' + [regex]::Escape("Poster Studio $version") + ' ') })
     Check "설치기 아래 상표 글이 «Poster Studio $version»이다(보이는 화면 모두 · 다른 판 번호 0)" ($brand.Count -ge 1 -and $brandOther.Count -eq 0) "$($brand.Count)/$(@($report.pages).Count) 화면에 보임 · 다른 판 번호 $($brandOther.Count)"
