@@ -1074,7 +1074,7 @@ const KAKAO_COLLECTION = 'kakaoAuth';
 const FEEDBACK_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const FEEDBACK_MAX_BYTES = 8 * 1024;
 const FEEDBACK_NAME_MAX = 40;
-const FEEDBACK_TEXT_MAX = 1000;
+const FEEDBACK_TEXT_MAX = 500;
 // 같은 곳(공인 IP)에서 10분에 10건 · 하루 전체 300건 — 현장 의견은 하루 수십 건이라 넉넉하고, 공개 토큰으로 마구 보내도 저장 · 알림이 이 안에서 멈춘다.
 // 카운터는 이미 있는 두 컬렉션을 «feedback:» 접두 문서로 쓴다(정리 작업 · 보관 기간이 그대로 따라온다).
 const FEEDBACK_IP_MAX = 10;

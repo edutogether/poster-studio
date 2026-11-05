@@ -2229,7 +2229,7 @@ test('의견 칸 확인: 사진 · 모르는 칸이 끼거나 칸이 빠지거�
     { ...goodFeedback(), name: '   ' },
     { ...goodFeedback(), name: '가'.repeat(41) },
     { ...goodFeedback(), text: '\n\n' },
-    { ...goodFeedback(), text: '가'.repeat(1001) },
+    { ...goodFeedback(), text: '가'.repeat(501) },
     { ...goodFeedback(), version: '../etc/passwd' },
     { ...goodFeedback(), screen: '2560x1440' },
     { ...goodFeedback(), device: 'tv' },
@@ -2240,8 +2240,8 @@ test('의견 칸 확인: 사진 · 모르는 칸이 끼거나 칸이 빠지거�
     null
   ];
   for (const b of bad) expect(validateFeedback(b), JSON.stringify(b)).toBe(null);
-  // 경계: 이름 40자 · 글 1000자는 받는다(이모지 하나는 한 글자)
-  expect(validateFeedback({ ...goodFeedback(), name: '가'.repeat(40), text: '🙂'.repeat(1000) })).not.toBe(null);
+  // 경계: 이름 40자 · 글 500자는 받는다(이모지 하나는 한 글자)
+  expect(validateFeedback({ ...goodFeedback(), name: '가'.repeat(40), text: '🙂'.repeat(500) })).not.toBe(null);
 });
 
 test('POST /feedback: 부스 토큰이 없으면 401이고 아무것도 저장하지 않는다', async () => {
@@ -2283,7 +2283,7 @@ test('POST /feedback: 카카오 글은 200자를 넘으면 줄여 보내고, 저
   const db = makeFeedbackDb();
   db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
   const kakao = makeKakao({ [MEMO_URL]: { status: 200 } });
-  const long = '가'.repeat(1000);
+  const long = '가'.repeat(500);
   await withFeedbackServer({ db, kakao }, async (base) => {
     expect((await postFeedback(base, { ...goodFeedback(), text: long })).status).toBe(200);
   });

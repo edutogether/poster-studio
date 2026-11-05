@@ -8,7 +8,7 @@ import { deviceKind } from "./deviceCanvas.js";
 export const FEEDBACK_OPEN = true;
 
 export const FEEDBACK_NAME_MAX = 40;
-export const FEEDBACK_TEXT_MAX = 1000;
+export const FEEDBACK_TEXT_MAX = 500;
 const NAME_KEY = "posterStudio.feedbackName";
 const TIMEOUT_MS = 15_000;
 

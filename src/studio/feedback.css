@@ -43,7 +43,7 @@
   body[data-step="1"] .feedback-link:hover { color: #fff; }
 }
 
-/* 의견 창 — 시안 값 그대로(둥근 20px · 폭 560 · 제목 24/800 · 칸 16px 글자 · 단추 52px, «보내기»가 «취소»의 두 배 폭) */
+/* 의견 창 — 시안 값(둥근 20px · 폭 560 · 제목 24/800 · 칸 16px 글자) + 11/5 Bumm님이 라이브 창을 보고 고친 것(단추 같은 크기 120×44 · 이름 칸 초점 테두리 · 휴대폰 의견 칸) */
 .feedback-backdrop {
   position: fixed;
   inset: 0;
@@ -66,7 +66,6 @@
 }
 .feedback-dialog h2 { margin: 0 0 6px; font-size: 24px; font-weight: 800; }
 .feedback-sub { margin: 0 0 20px; font-size: 15px; line-height: 1.5; color: #555; }
-.feedback-sub span { display: block; }
 .feedback-dialog label { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 700; }
 .feedback-hint { font-weight: 400; color: #777; }
 .feedback-dialog input,
@@ -83,23 +82,35 @@
   font: inherit;
   font-size: 16px;
 }
+/* 이름 칸도 의견 칸과 같은 초점 테두리 — 앞 겹의 input:focus-visible(빨간 3px)을 걷어 브라우저 기본으로 되돌린다 */
+.feedback-dialog input:focus-visible { outline: revert; outline-offset: revert; }
 .feedback-dialog textarea { height: 150px; resize: none; margin-bottom: 4px; }
 .feedback-count { margin: 0 0 14px; text-align: right; font-size: 13px; color: #888; }
-.feedback-auto { margin: 0 0 20px; padding: 10px 12px; border-radius: 10px; background: #f4f4f5; font-size: 13px; line-height: 1.55; color: #666; }
+/* 두 문장을 나란히 — 칸이 좁으면(휴대폰) 저절로 두 줄이 된다 */
+.feedback-auto { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 16px; margin: 0 0 20px; padding: 10px 12px; border-radius: 10px; background: #f4f4f5; font-size: 13px; line-height: 1.55; color: #666; }
 .feedback-problem { margin: -8px 0 14px; font-size: 14px; line-height: 1.4; color: #c42a1f; }
 .feedback-problem:empty { margin: 0; }   /* 비어 있을 때는 자리를 차지하지 않는다(알림 칸은 그대로 남아 읽기 프로그램이 새 글을 읽는다) */
-.feedback-actions { display: flex; gap: 10px; }
+.feedback-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .feedback-actions button {
-  flex: 1;
-  height: 52px;
+  width: 120px;
+  height: 44px;
   border: 0;
-  padding: 0;   /* 브라우저 기본 안쪽 여백을 빼야 폭이 정확히 1 : 2로 나뉜다(flex 기준 폭 0에 여백이 더해졌다) */
-  border-radius: 14px;
+  padding: 0;
+  border-radius: 12px;
   font: inherit;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 800;
   cursor: pointer;
 }
 .feedback-actions button:disabled { cursor: default; opacity: .7; }
 .feedback-cancel { background: #e4e4e7; color: #27272a; }
-.feedback-actions .feedback-send { flex: 2; background: #e1252c; color: #fff; }
+.feedback-send { background: #e1252c; color: #fff; }
+/* 휴대폰: 안내 한 줄을 지키고(기준 폭 390) 이름 안내는 칸 위에 따로, 의견 칸은 낮게 */
+@media (max-width: 760px) {
+  .feedback-dialog { padding: 24px 20px 18px; }
+  .feedback-sub { margin-bottom: 16px; font-size: 14px; white-space: nowrap; }
+  .feedback-hint { display: block; margin-top: 2px; font-size: 13px; line-height: 1.4; word-break: keep-all; }
+  .feedback-dash { display: none; }
+  .feedback-dialog textarea { height: 96px; }
+  .feedback-auto { margin-bottom: 16px; }
+}

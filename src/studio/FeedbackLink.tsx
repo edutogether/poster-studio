@@ -1,6 +1,6 @@
 /* 첫 화면 «의견 보내기» 링크와 의견 창(2026-11-05 Bumm님 9 ① · 11 ② — 11/4 시안 feedback-mock-20261104 그대로).
-   링크는 개인정보처리방침과 같은 줄 · 같은 글자다(자리는 feedback.css). 창: 이름(그 기기에 기억) · 의견(1000자) · 함께 보내는 것 안내 · «취소» · «보내기».
-   개인정보처리방침은 바꾸지 않는다(11 ②) — 알림은 이 창의 «사진은 보내지 않아요» · «함께 보내는 것»으로 한다. */
+   링크는 개인정보처리방침과 같은 줄 · 같은 글자다(자리는 feedback.css). 창: 이름(그 기기에 기억) · 의견(500자) · 함께 보내는 것 안내 · «취소» · «보내기».
+   개인정보처리방침은 바꾸지 않는다(11 ②) — 알림은 이 창의 «함께 보내는 것» · «보내지 않는 것»으로 한다. */
 import { useEffect, useRef, useState } from "react";
 import { FEEDBACK_NAME_MAX, FEEDBACK_TEXT_MAX, rememberName, rememberedName, sendFeedback, type FeedbackResult } from "../feedback.js";
 import "./feedback.css";
@@ -56,16 +56,16 @@ function FeedbackDialog({ step, onClose }: { step: number; onClose: () => void }
         </div>
       </> : <>
         <h2 id="feedbackTitle">의견 보내기</h2>
-        <p className="feedback-sub"><span>현장에서 불편했던 점 · 바라는 점을 적어 주세요.</span> <span>사진은 보내지 않아요.</span></p>
+        <p className="feedback-sub">테스트한 뒤 개선점이나 치명적인 오류 등을 적어 주세요.</p>
         <form onSubmit={e => { e.preventDefault(); if (!sending) void submit(); }}>
-          <label htmlFor="feedbackName">이름 <span className="feedback-hint">— 한 번 적으면 이 기기에 기억해요</span></label>
+          <label htmlFor="feedbackName">이름 <span className="feedback-hint"><span className="feedback-dash">— </span>피드백을 살펴보고 추가로 문의드릴 것이 있을 때를 위해 적어 주세요.</span></label>
           <input id="feedbackName" ref={nameInput} type="text" autoComplete="off" maxLength={FEEDBACK_NAME_MAX}
             value={name} onChange={e => setName(e.target.value)} disabled={sending} />
           <label htmlFor="feedbackText">의견</label>
           <textarea id="feedbackText" ref={textInput} maxLength={FEEDBACK_TEXT_MAX}
             value={text} onChange={e => setText(e.target.value)} disabled={sending} aria-describedby="feedbackCount" />
           <p id="feedbackCount" className="feedback-count">{[...text].length} / {FEEDBACK_TEXT_MAX}</p>
-          <p className="feedback-auto">함께 보내는 것: 판 번호 · 화면 크기 · 기기 · 단계</p>
+          <p className="feedback-auto"><span>함께 보내는 것: 판 번호 · 화면 크기 · 기기 · 단계</span> <span>보내지 않는 것: 여러분이 찍은 사진</span></p>
           <p className="feedback-problem" role="alert">{problem ?? ""}</p>
           <div className="feedback-actions">
             <button type="button" className="feedback-cancel" onClick={onClose} disabled={sending}>취소</button>

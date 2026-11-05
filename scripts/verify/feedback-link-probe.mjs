@@ -13,7 +13,7 @@
      ③ 기능 넣기 전 빌드(--before)의 같은 크기 첫 화면과 화소 대조 — 링크 상자 밖 차이 0(링크가 다른 것을 한 화소도 밀지 않는다).
         링크만 숨겨 견주지 않는다: 머리글 칸 하나를 숨기거나 보이면 크롬이 PC 머리글 로고를 다시 그리며 화소가 갈린다(11/5 실측 — 기존 다운로드 아이콘을 숨겨도
         같은 1,507화소). 같은 판을 다시 열어도 큰 그림을 줄여 그리는 순간이 달라 갈릴 수 있어 TRIES번까지 열어 «링크 밖 0»인 짝을 찾는다(download-button-probe.mjs와 같은 방식).
-     ④ 창: 화면 안(넘치면 창 안에서 스크롤) · 가로 넘침 없음 · 글자 잘림 없음 · 단추 높이 52px · «보내기»가 «취소»의 두 배 폭
+     ④ 창: 화면 안(넘치면 창 안에서 스크롤) · 가로 넘침 없음 · 글자 잘림 없음 · 단추 둘이 같은 크기(120×44) · 안내 한 줄 · 이름 칸 초점 테두리 = 의견 칸
      ⑤ 네트워크(1920×1080): 접속 · 창 열기까지 /feedback 0건 → 보내면 1건(여섯 칸 JSON · 부스 토큰) → «보냈어요»
      ⑥ 2단계에는 링크가 없다 */
 import fs from 'node:fs';
@@ -190,12 +190,14 @@ for (const s of SIZES) {
       for (const e of dlg.querySelectorAll('h2, p, label, button, span')) if (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== 'visible') clipped.push(e.className || e.tagName);
       const cancel = dlg.querySelector('.feedback-cancel').getBoundingClientRect(), sendB = dlg.querySelector('.feedback-send').getBoundingClientRect();
       return { box: { x: r.x, y: r.y, r: r.right, b: r.bottom }, innerWidth, innerHeight, scroll: dlg.scrollHeight > dlg.clientHeight, hOverflow: dlg.scrollWidth > dlg.clientWidth || document.documentElement.scrollWidth > innerWidth,
-        clipped, buttons: [Math.round(cancel.height), Math.round(sendB.height)], ratio: Math.round(sendB.width / cancel.width * 100) / 100,
-        focus: document.activeElement && document.activeElement.id };
+        clipped, buttons: [cancel.width, cancel.height, sendB.width, sendB.height].map(Math.round),
+        subLines: Math.round(dlg.querySelector('.feedback-sub').getBoundingClientRect().height / parseFloat(getComputedStyle(dlg.querySelector('.feedback-sub')).lineHeight)),
+        subOverflow: dlg.querySelector('.feedback-sub').scrollWidth > dlg.querySelector('.feedback-sub').clientWidth,
+        textH: Math.round(dlg.querySelector('textarea').getBoundingClientRect().height), rings: ['feedbackName', 'feedbackText'].map((id) => { const e = document.getElementById(id); e.focus(); const c = getComputedStyle(e); return [c.outlineStyle, c.outlineColor, c.outlineWidth, c.outlineOffset].join(' '); }) };
     })()`);
     report.sizes[s.name].dialog = d;
     check(`${s.name}: 창이 화면 안 · 가로 넘침 없음 · 글자 잘림 없음`, d && d.box.x >= 0 && d.box.y >= 0 && d.box.r <= d.innerWidth && d.box.b <= d.innerHeight && !d.hOverflow && d.clipped.length === 0, d);
-    check(`${s.name}: 단추 52px · «보내기»가 «취소»의 두 배 폭 · 이름 칸에서 시작`, d && d.buttons[0] === 52 && d.buttons[1] === 52 && Math.abs(d.ratio - 2) <= 0.05 && d.focus === 'feedbackName', d && { buttons: d.buttons, ratio: d.ratio, focus: d.focus });
+    check(`${s.name}: 단추 둘이 같은 크기 120×44 · 안내 한 줄 · 의견 칸 높이(휴대폰 96 · 그 밖 150) · 이름 칸 초점 테두리 = 의견 칸 · 빨간 테두리 아님`, d && d.buttons.join() === '120,44,120,44' && d.subLines === 1 && !d.subOverflow && d.textH === (s.phone ? 96 : 150) && d.rings[0] === d.rings[1] && !/229, 45, 36/.test(d.rings[0]), d && { buttons: d.buttons, subLines: d.subLines, subOverflow: d.subOverflow, textH: d.textH, rings: d.rings });
     await press('.feedback-cancel');
     await sleep(200);
   }

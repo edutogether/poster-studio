@@ -91,16 +91,19 @@ describe('첫 화면 «의견 보내기»', () => {
     expect(link()).toBe(null);
   });
 
-  test('창: 시안 문구 · «사진은 보내지 않아요» · 함께 보내는 것 안내 · 이름 칸에서 시작', async () => {
+  test('창: 안내 문구 · 함께 보내는 것 · 보내지 않는 것 · 500자 · 이름 칸에서 시작', async () => {
     await act(async () => { renderApp(); });
     await openDialog();
     const d = dialog()!;
     expect(d.getAttribute('role')).toBe('dialog');
     expect(d.querySelector('h2')!.textContent).toBe('의견 보내기');
-    expect(d.textContent).toContain('현장에서 불편했던 점 · 바라는 점을 적어 주세요.');
-    expect(d.textContent).toContain('사진은 보내지 않아요.');
+    expect(d.querySelector('.feedback-sub')!.textContent).toBe('테스트한 뒤 개선점이나 치명적인 오류 등을 적어 주세요.');
+    expect(d.textContent).toContain('피드백을 살펴보고 추가로 문의드릴 것이 있을 때를 위해 적어 주세요.');
+    expect(d.textContent).not.toContain('사진은 보내지 않아요');
     expect(d.textContent).toContain('함께 보내는 것: 판 번호 · 화면 크기 · 기기 · 단계');
-    expect(d.textContent).toContain('0 / 1000');
+    expect(d.textContent).toContain('보내지 않는 것: 여러분이 찍은 사진');
+    expect(d.textContent).toContain('0 / 500');
+    expect(textBox().maxLength).toBe(500);
     expect(document.activeElement).toBe(nameBox());
   });
 
@@ -109,7 +112,7 @@ describe('첫 화면 «의견 보내기»', () => {
     await openDialog();
     fireEvent.change(nameBox(), { target: { value: '  3번 부스 김진행 ' } });
     fireEvent.change(textBox(), { target: { value: '카메라가 가끔 어두워요.' } });
-    expect(dialog()!.textContent).toContain('13 / 1000');
+    expect(dialog()!.textContent).toContain('13 / 500');
     await submit();
     expect(sent).toHaveLength(1);
     const { url, init } = sent[0];
