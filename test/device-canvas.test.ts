@@ -52,7 +52,7 @@ describe("기기 판정(public/device-canvas.js)", () => {
   const file = readFileSync(resolve("public/device-canvas.js"), "utf8");
   const withCanvas = (on: boolean) => { const s = file.replace(/var PC_CANVAS = (true|false);/, `var PC_CANVAS = ${on};`); if (!s.includes(`var PC_CANVAS = ${on};`)) throw new Error("device-canvas.js에 PC_CANVAS 줄이 없다"); return s; };
   let src = withCanvas(true);
-  afterEach(() => { vi.unstubAllGlobals(); src = withCanvas(true); const d = document.documentElement; d.removeAttribute("data-device"); d.removeAttribute("data-pc-canvas"); d.removeAttribute("style"); d.className = ""; document.head.innerHTML = ""; });
+  afterEach(() => { vi.unstubAllGlobals(); src = withCanvas(true); const d = document.documentElement; d.removeAttribute("data-device"); d.removeAttribute("data-pc-canvas"); d.removeAttribute("data-phone"); d.removeAttribute("style"); d.className = ""; document.head.innerHTML = ""; });
   function run({ ua, tp = 0, coarse = false, landscape = false, screen = [1920, 1080], win = [1920, 1080] }: { ua: string; tp?: number; coarse?: boolean; landscape?: boolean; screen?: number[]; win?: number[] }) {
     document.head.innerHTML = '<meta name="viewport" content="width=device-width, initial-scale=1">';
     vi.stubGlobal("navigator", { userAgent: ua, maxTouchPoints: tp });
@@ -60,7 +60,7 @@ describe("기기 판정(public/device-canvas.js)", () => {
     vi.stubGlobal("innerWidth", win[0]); vi.stubGlobal("innerHeight", win[1]);
     vi.stubGlobal("matchMedia", (q: string) => ({ matches: q === "(pointer: coarse)" ? coarse : q === "(orientation: landscape)" ? landscape : false, addEventListener() {} }));
     new Function(src)();
-    return { device: document.documentElement.dataset.device, meta: document.querySelector('meta[name="viewport"]')!.getAttribute("content"), zoom: document.documentElement.style.zoom };
+    return { device: document.documentElement.dataset.device, phone: document.documentElement.hasAttribute("data-phone"), meta: document.querySelector('meta[name="viewport"]')!.getAttribute("content"), zoom: document.documentElement.style.zoom };
   }
   const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
   const GALAXY = "Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36";
@@ -76,6 +76,14 @@ describe("기기 판정(public/device-canvas.js)", () => {
     expect(run({ ua: IPHONE, tp: 5, coarse: true, landscape: true, screen: [430, 932], win: [932, 380] })).toMatchObject({ device: "pc", meta: "width=1440", zoom: "" });
     expect(run({ ua: GALAXY, tp: 5, coarse: true, landscape: true, screen: [360, 780] })).toMatchObject({ device: "pc", meta: "width=1440" });
     expect(run({ ua: IPHONE, tp: 5, coarse: true, screen: [430, 932] })).toMatchObject({ device: "phone", meta: "width=390, viewport-fit=cover" });
+  });
+  // 11/7 Bumm님 의견 창 — 가로로 눕힌 휴대폰도 휴대폰으로 본다. 갈래 이름이 pc여도 data-phone은 남고, 태블릿 · PC에는 없다
+  test("data-phone은 휴대폰 세로 · 가로에만", () => {
+    expect(run({ ua: IPHONE, tp: 5, coarse: true, screen: [390, 844] })).toMatchObject({ device: "phone", phone: true });
+    expect(run({ ua: IPHONE, tp: 5, coarse: true, landscape: true, screen: [430, 932], win: [932, 380] })).toMatchObject({ device: "pc", phone: true });
+    document.documentElement.removeAttribute("data-phone");
+    expect(run({ ua: IPAD_SAFARI, tp: 5, coarse: true, landscape: true, screen: [820, 1180] })).toMatchObject({ device: "tablet-l", phone: false });
+    expect(run({ ua: WINDOWS })).toMatchObject({ device: "pc", phone: false });
   });
   test("아이패드 사파리(맥 이름표 + 터치) → 태블릿, 세로 1024 · 가로 1366", () => {
     expect(run({ ua: IPAD_SAFARI, tp: 5, coarse: true, screen: [820, 1180] })).toMatchObject({ device: "tablet-p", meta: "width=1024, viewport-fit=cover" });

@@ -56,7 +56,7 @@ function FeedbackDialog({ step, onClose }: { step: number; onClose: () => void }
         </div>
       </> : <>
         <h2 id="feedbackTitle">의견 보내기</h2>
-        <p className="feedback-sub">테스트하면서 불편했던 점이나 고칠 점, 오류를 적어 주세요.</p>
+        <p className="feedback-sub feedback-lead">테스트하면서 불편했던 점이나 고칠 점, 오류를 적어 주세요.</p>
         <form onSubmit={e => { e.preventDefault(); if (!sending) void submit(); }}>
           <label htmlFor="feedbackName">이름 <span className="feedback-hint"><span className="feedback-dash">— </span>피드백을 살펴보고 추가로 문의드릴 것이 있을 때를 위해 적어 주세요.</span></label>
           <input id="feedbackName" ref={nameInput} type="text" autoComplete="off" maxLength={FEEDBACK_NAME_MAX}

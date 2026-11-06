@@ -118,3 +118,16 @@
   .feedback-count { position: absolute; top: 0; right: 0; }
   .feedback-auto { margin-bottom: 12px; }
 }
+/* 휴대폰(세로 · 가로 모두 — device-canvas.js의 data-phone, 11/7 Bumm님): 설명글을 전부 빼고 칸과 여백을 줄인다. 화면에서만 숨기고 보내는 값은 그대로다.
+   보낸 뒤의 «의견을 잘 받았어요»는 결과 안내라 남긴다(feedback-lead가 아니다) */
+html[data-phone] .feedback-lead,
+html[data-phone] .feedback-hint,
+html[data-phone] .feedback-auto { display: none; }
+html[data-phone] .feedback-dialog { padding: 18px 18px 14px; }
+html[data-phone] .feedback-dialog h2 { margin-bottom: 10px; font-size: 20px; }
+html[data-phone] .feedback-dialog label { margin-bottom: 4px; }
+html[data-phone] .feedback-dialog input,
+html[data-phone] .feedback-dialog textarea { margin-bottom: 10px; padding: 7px 12px; }
+html[data-phone] .feedback-dialog textarea { height: 76px; margin-bottom: 12px; }
+html[data-phone] .feedback-problem { margin: -4px 0 8px; }
+html[data-phone] .feedback-problem:empty { margin: 0; }

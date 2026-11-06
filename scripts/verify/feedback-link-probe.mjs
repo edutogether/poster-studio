@@ -15,6 +15,7 @@
         같은 1,507화소). 같은 판을 다시 열어도 큰 그림을 줄여 그리는 순간이 달라 갈릴 수 있어 TRIES번까지 열어 «링크 밖 0»인 짝을 찾는다(download-button-probe.mjs와 같은 방식).
      ④ 창: 화면 안(넘치면 창 안에서 스크롤) · 가로 넘침 없음 · 글자 잘림 없음 · 단추 둘이 같은 크기(120×44) · 안내 한 줄 · 이름 칸 초점 테두리 = 의견 칸
      ④-2 의견 안내 한 줄 · 글자 수는 입력칸 위 오른쪽 끝 · 안 겹침 · «함께 보내는 것» 줄이 입력칸 아래 4px(2026-11-07)
+     ④-3 휴대폰(세로 · 가로 — html[data-phone]): 설명글 없음 · 의견 칸 76 · 글자 수는 입력칸 위 오른쪽 끝 · 단추가 창 안(2026-11-07)
      ⑤ 네트워크(1920×1080): 접속 · 창 열기까지 /feedback 0건 → 보내면 1건(여섯 칸 JSON · 부스 토큰) → «보냈어요»
      ⑥ 2단계에는 링크가 없다 */
 import fs from 'node:fs';
@@ -39,7 +40,7 @@ const SIZES = [
   { name: '1280x587', w: 1280, h: 587, s: 1 }, { name: '1366x697', w: 1366, h: 697, s: 1 }, { name: '1536x793', w: 1536, h: 793, s: 1 }, { name: '1366x768', w: 1366, h: 768, s: 1 }, { name: '1920x1080', w: 1920, h: 1080, s: 1 }, { name: '2560x1440', w: 2560, h: 1440, s: 1 },
   { name: '1024x1366', w: 1024, h: 1366, s: 2, touch: true },
   { name: '360x780', w: 360, h: 780, s: 3, mobile: true, phone: true }, { name: '390x844', w: 390, h: 844, s: 3, mobile: true, phone: true },
-  { name: '430x932', w: 430, h: 932, s: 3, mobile: true, phone: true }, { name: '844x390', w: 844, h: 390, s: 3, mobile: true },
+  { name: '430x932', w: 430, h: 932, s: 3, mobile: true, phone: true }, { name: '844x390', w: 844, h: 390, s: 3, mobile: true, phoneLand: true },
 ];
 const TYPE = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.woff2': 'font/woff2', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.mp4': 'video/mp4', '.svg': 'image/svg+xml' };
 const serve = async (dir) => {
@@ -191,7 +192,7 @@ for (const s of SIZES) {
       const clipped = [];
       for (const e of dlg.querySelectorAll('h2, p, label, button, span')) if (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== 'visible') clipped.push(e.className || e.tagName);
       const cancel = dlg.querySelector('.feedback-cancel').getBoundingClientRect(), sendB = dlg.querySelector('.feedback-send').getBoundingClientRect();
-      return { box: { x: r.x, y: r.y, r: r.right, b: r.bottom }, innerWidth, innerHeight, scroll: dlg.scrollHeight > dlg.clientHeight, hOverflow: dlg.scrollWidth > dlg.clientWidth || document.documentElement.scrollWidth > innerWidth,
+      return { isPhone: document.documentElement.hasAttribute('data-phone'), shown: ['.feedback-lead', '.feedback-hint', '.feedback-auto'].filter((q) => [...dlg.querySelectorAll(q)].some((e) => e.getClientRects().length)), buttonsIn: sendB.bottom <= r.bottom && cancel.bottom <= r.bottom && sendB.right <= r.right, box: { x: r.x, y: r.y, r: r.right, b: r.bottom }, innerWidth, innerHeight, scroll: dlg.scrollHeight > dlg.clientHeight, hOverflow: dlg.scrollWidth > dlg.clientWidth || document.documentElement.scrollWidth > innerWidth,
         clipped, buttons: [cancel.width, cancel.height, sendB.width, sendB.height].map(Math.round),
         subLines: Math.round(dlg.querySelector('.feedback-sub').getBoundingClientRect().height / parseFloat(getComputedStyle(dlg.querySelector('.feedback-sub')).lineHeight)),
         subOverflow: dlg.querySelector('.feedback-sub').scrollWidth > dlg.querySelector('.feedback-sub').clientWidth,
@@ -199,8 +200,12 @@ for (const s of SIZES) {
     })()`);
     report.sizes[s.name].dialog = d;
     check(`${s.name}: 창이 화면 안 · 가로 넘침 없음 · 글자 잘림 없음`, d && d.box.x >= 0 && d.box.y >= 0 && d.box.r <= d.innerWidth && d.box.b <= d.innerHeight && !d.hOverflow && d.clipped.length === 0, d);
-    check(`${s.name}: 단추 둘이 같은 크기 120×44 · 안내 한 줄 · 의견 칸 높이 96 · 이름 칸 초점 테두리 = 의견 칸 · 빨간 테두리 아님`, d && d.buttons.join() === '120,44,120,44' && d.subLines === 1 && !d.subOverflow && d.textH === 96 && d.rings[0] === d.rings[1] && !/229, 45, 36/.test(d.rings[0]), d && { buttons: d.buttons, subLines: d.subLines, subOverflow: d.subOverflow, textH: d.textH, rings: d.rings });
-    check(`${s.name}: 의견 안내 한 줄 · 글자 수는 입력칸 위 오른쪽 끝 · 안 겹침 · «함께 보내는 것» 줄이 입력칸 아래 4px${s.phone ? '' : ' · 이름 안내 한 줄'}`, d && d.lines.textHint === 1 && d.lines.countAbove && d.lines.countRight && !d.lines.countClash && d.lines.autoGap === 4 && (s.phone || d.lines.nameHint === 1), d && d.lines);
+    if (s.phone || s.phoneLand) {
+      check(`${s.name}: 휴대폰 — 설명글 없음(위 안내 · 이름 · 의견 안내 · 함께 보내는 것) · 단추 둘이 같은 크기 120×44이고 창 안 · 의견 칸 높이 76 · 글자 수는 입력칸 위 오른쪽 끝 · 안 겹침 · 이름 칸 초점 테두리 = 의견 칸`, d && d.isPhone && d.shown.length === 0 && d.buttonsIn && !d.scroll && d.buttons.join() === '120,44,120,44' && d.textH === 76 && d.lines.countAbove && d.lines.countRight && !d.lines.countClash && d.rings[0] === d.rings[1] && !/229, 45, 36/.test(d.rings[0]), d && { isPhone: d.isPhone, shown: d.shown, buttonsIn: d.buttonsIn, scroll: d.scroll, buttons: d.buttons, textH: d.textH, lines: d.lines, rings: d.rings });
+    } else {
+      check(`${s.name}: 단추 둘이 같은 크기 120×44 · 안내 한 줄 · 의견 칸 높이 96 · 이름 칸 초점 테두리 = 의견 칸 · 빨간 테두리 아님`, d && !d.isPhone && d.buttons.join() === '120,44,120,44' && d.subLines === 1 && !d.subOverflow && d.textH === 96 && d.rings[0] === d.rings[1] && !/229, 45, 36/.test(d.rings[0]), d && { buttons: d.buttons, subLines: d.subLines, subOverflow: d.subOverflow, textH: d.textH, rings: d.rings });
+      check(`${s.name}: 의견 안내 한 줄 · 글자 수는 입력칸 위 오른쪽 끝 · 안 겹침 · «함께 보내는 것» 줄이 입력칸 아래 4px · 이름 안내 한 줄`, d && d.lines.textHint === 1 && d.lines.countAbove && d.lines.countRight && !d.lines.countClash && d.lines.autoGap === 4 && d.lines.nameHint === 1, d && d.lines);
+    }
     await press('.feedback-cancel');
     await sleep(200);
   }

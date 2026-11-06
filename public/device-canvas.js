@@ -32,6 +32,8 @@
   var kind = phoneUA ? 'phone' : tabletUA ? 'tablet' : coarse ? (shortSide < 600 ? 'phone' : 'tablet') : coarse === null && window.innerWidth <= 760 ? 'phone' : 'pc';
   var meta = document.querySelector('meta[name="viewport"]');
   var REF_W = 2560, REF_H = 1440;
+  // 가로로 들어도 갈래 이름은 pc가 되므로, 휴대폰임은 따로 표시한다(11/7 — 의견 창이 세로 · 가로 모두 짧은 창을 쓴다)
+  if (kind === 'phone') d.setAttribute('data-phone', '');
 
   function apply() {
     if (kind === 'phone') {
