@@ -27,7 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
-| 2026-11-07 | [camera-example-prefetch](2026-11-07-camera-example-prefetch/intent.md) | 2 | in-progress | 1단계에 머무는 동안 2단계 예시 영상을 미리 열어 받기 — 1단계 그림 · 글꼴 뒤에 시작, 클릭 → 재생 약 0.02초 |
+| 2026-11-07 | [camera-example-prefetch](2026-11-07-camera-example-prefetch/intent.md) | 2 | done | 1단계에 머무는 동안 2단계 예시 영상을 미리 열어 받기 — 1단계 그림 · 글꼴 뒤에 시작, 클릭 → 재생 약 0.02초 |
 | 2026-11-05 | [field-feedback](2026-11-05-field-feedback/intent.md) | 2 | done | 첫 화면 «의견 보내기» → 서버 `/feedback`가 Firestore `feedback`에 저장 + Bumm님 카카오톡 «나에게» 알림(토큰은 서버 전용 문서 · 매일 갱신) · 90일 자동 삭제 · 방침은 그대로(11 ②) |
 | 2026-11-01 | [deps-alerts-npx-firebase](2026-11-01-deps-alerts-npx-firebase/intent.md) | 2 | done | Dependabot 알림 6건을 고친 판으로 — 루트·functions는 overrides(qs·glob·minimatch), 배포 도구는 잠금 파일 밖 `npx firebase-tools@15.32.1`. 화면·함수 동작 변화 0 |
 | 2026-11-03 | [mobile-field-fixes](2026-11-03-mobile-field-fixes/intent.md) | 2 | in-progress | Bumm님 휴대폰 실기기 확인 — 무한 로딩(조판 30초 시한) · 샘플 대기 두 편 · 알림 가운데 · 카메라 칸 · 실패 창 단추 · 휴대폰 다운로드 아이콘 숨김 · 웹 인쇄 밀림 · 방침 양쪽 맞춤 · 예시 영상 용량 |

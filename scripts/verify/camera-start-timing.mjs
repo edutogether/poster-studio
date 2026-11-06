@@ -94,7 +94,7 @@ async function oneRun({ w, h, dpr }, mode, rep) {
       if (!r) return;
       if (m.method === 'Network.responseReceived') { r.status = q.response.status; r.cache = Boolean(q.response.fromDiskCache || q.response.fromPrefetchCache); r.first = r.base + q.timestamp * 1000; }
       if (m.method === 'Network.requestServedFromCache') r.cache = true;
-      if (m.method === 'Network.dataReceived') { const n = q.encodedDataLength || q.dataLength; r.bytes += n; r.chunks.push({ t: r.base + q.timestamp * 1000, n }); }
+      if (m.method === 'Network.dataReceived') { const n = q.dataLength; r.bytes += n; r.chunks.push({ t: r.base + q.timestamp * 1000, n }); }
       if (m.method === 'Network.loadingFinished') { r.done = r.base + q.timestamp * 1000; r.total = q.encodedDataLength; }
       if (m.method === 'Network.loadingFailed') { r.failed = q.errorText; r.done = r.base + q.timestamp * 1000; }
     };
