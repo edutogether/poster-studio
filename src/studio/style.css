@@ -34,7 +34,7 @@
   color: var(--ink);
   background: var(--paper);
   font-synthesis: none;
-  color-scheme: light;
+  color-scheme: only light;
 }
 * {
   box-sizing: border-box;

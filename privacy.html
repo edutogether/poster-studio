@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- 기기 다크 모드와 상관없이 늘 밝은 화면(2026-11-06) — index.html과 같은 선언. test/color-scheme.test.js -->
+  <meta name="color-scheme" content="only light">
+  <meta name="supported-color-schemes" content="light">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="darkreader-lock">
   <!-- 휴대폰은 앱과 같은 기준 화면(폭 390)으로 그린다(2026-11-03) — 양쪽 맞춤 줄바꿈을 390에서 맞춘 문구가 어느 휴대폰에서나 그대로 나뉜다. 인라인 금지(CSP) -->
   <script src="/device-canvas.js"></script>
   <title>개인정보처리방침 — Poster Studio</title>
@@ -12,7 +17,7 @@
     @font-face{font-family:Privacy;src:url('/fonts/subset/Pretendard-SemiBold.woff2?v=ca327e325c') format('woff2');font-weight:600;font-display:block}
     @font-face{font-family:Privacy;src:url('/fonts/subset/Pretendard-Bold.woff2?v=ca327e325c') format('woff2');font-weight:700;font-display:block}
     *{box-sizing:border-box}
-    html{color-scheme:light}
+    html{color-scheme:only light}
     body{margin:0;padding:40px 24px 56px;background:#f5f6f8;color:#25282d;font-family:Privacy,"Malgun Gothic",sans-serif;font-size:16px;line-height:1.6;word-break:keep-all;overflow-wrap:break-word}
     main{max-width:920px;margin:0 auto;padding:32px 56px 52px;background:#fff;border:1px solid #e5e7eb;border-radius:20px;box-shadow:0 8px 32px #18202c06}
     .document-nav{display:flex;align-items:center;justify-content:space-between;margin:0 -10px 24px}

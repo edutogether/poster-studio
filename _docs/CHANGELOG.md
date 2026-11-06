@@ -1,5 +1,11 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-06(금) — 기기 다크 모드와 상관없이 늘 밝은 화면 (Bumm님, 팀장 전달)
+
+- 원인: 브라우저 강제 다크. 크롬 강제 다크로 재현했을 때 폴드 접힘 · 펼침 12장면이 모두 검게 뒤집혔다(`prefers-color-scheme: dark`만으로는 그대로).
+- `index.html` · `privacy.html` 맨 앞에 `color-scheme: only light` 등 선언 4개, CSS `color-scheme: only light`. 고친 뒤 12장면 모두 밝은 화면이다.
+- 밝은 설정 화면은 그대로다: JS 내용이 같고, CSS는 그 한 곳만 다르다. 시험 `test/color-scheme.test.js` · 도구 `scripts/verify/dark-mode-probe.mjs`. 삼성 인터넷 · 실기기는 세션이 확인하지 못했다.
+
 ## 2026-11-05(목) — 아이들용 안내를 귀여운 판으로 · 부스 운영 교사용 2 · 5 · 8쪽 채움 (Bumm님 K1, 팀장 전달)
 
 - `03_아이들용_안내`: 11/3 Word 판(표)을 걷고 10/27~11/2 귀여운 판(노란 띠 · 필름 띠 · 둥근 카드 · 로봇)으로 다시 만들었다. 이 문서만 총괄용 양식의 예외다. 양면 1장 그대로이고, 글은 Word 도형 안 진짜 글이라 .docx에서 고칠 수 있다.
