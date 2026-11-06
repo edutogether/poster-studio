@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { activeCues, type ApprovedCameraVideo, type CameraCue } from "./cameraVideo.js";
+import { cameraPrefetchAllowed, whenPageIdle } from "./cameraPrefetch.js";
 
-type Props = { mode: string; video?: ApprovedCameraVideo; hidden: boolean; offstage: boolean };
+type Props = { mode: string; video?: ApprovedCameraVideo; hidden: boolean; offstage: boolean; prefetch?: boolean };
 
 const ALT = {
   group: "모두의 얼굴이 보이게 모여 웃는 단체 촬영 구도 예시",
@@ -30,7 +31,7 @@ function useReducedMotion() {
 // 10/24 Bumm님(F12 1024×768) «단체 영상이 재생 안 됨 — 이전 갔다 와도 안 됨»: 느린 망에서 4초 안에 재생이 안 시작되면 실패로 굳혀 영상 요소를 내렸고,
 // 실패는 다시 2단계에 와도 풀리지 않았다(단체 4.9MB가 개인 3.9MB보다 더 자주 걸림 — 1.5Mbps 실측). 그래서 4초 정체는 끝 정지 그림만 보이고
 // 영상은 계속 받아 재생이 시작되면 넘기며, 2단계를 떠나거나 카메라를 켜면 실패 표시를 지워 다음에 다시 시도한다.
-export default function CameraExample({ mode, video, hidden, offstage }: Props) {
+export default function CameraExample({ mode, video, hidden, offstage, prefetch = false }: Props) {
   const alt = mode === "group" ? ALT.group : ALT.solo;
   const reduced = useReducedMotion();
   const player = useRef<HTMLVideoElement>(null);
@@ -41,14 +42,30 @@ export default function CameraExample({ mode, video, hidden, offstage }: Props) 
   const [cues, setCues] = useState<CameraCue[]>([]);
   const onstage = Boolean(video) && !reduced && !hidden && !offstage;
   const enabled = onstage && !failed;
+  // 영상 요소가 있어야 하는 때: 2단계이거나, 1단계에서 미리 준비할 때
+  const armed = enabled || (Boolean(video) && !reduced && !hidden && prefetch && cameraPrefetchAllowed());
 
   useEffect(() => { if (!onstage) { setFailed(false); setStalled(false); } }, [onstage]);
+
+  // 1단계에 있는 동안 2단계에서 쓸 영상 요소를 미리 열어 둔다 — 파일 · 첫 프레임 · 디코더가 준비되어 넘어가면 바로 재생된다(cameraPrefetch.ts).
+  // 재생 전 영상 요소는 정지 그림 뒤에서 보이지 않고 소리도 나지 않는다. 요소를 내릴 때 재생 · 소리 · 다운로드를 정리한다.
+  useEffect(() => {
+    const element = player.current;
+    if (!armed || !element || !video) return;
+    const cancel = whenPageIdle(() => { if (!element.getAttribute("src")) element.src = video.src; });
+    return () => {
+      cancel();
+      element.pause();
+      element.removeAttribute("src");
+      element.load();
+    };
+  }, [armed, video]);
 
   useEffect(() => {
     const element = player.current;
     if (!enabled || !element || !video) return;
     let cancelled = false;
-    element.src = video.src;
+    if (element.getAttribute("src") !== video.src || element.error) element.src = video.src;
     setVisible(false); setBuffering(true);
     // 2단계로 오는 단추를 누른 뒤라 소리 있는 자동 재생이 허용된다. 그래도 거부되면 소리 없이, 그것도 안 되면 정지 그림.
     element.muted = false;
@@ -60,8 +77,8 @@ export default function CameraExample({ mode, video, hidden, offstage }: Props) 
     return () => {
       cancelled = true;
       element.pause();
-      element.removeAttribute("src");
-      element.load();
+      // 1단계로 돌아가 요소가 남으면 다음에 처음부터 재생한다
+      element.currentTime = 0;
     };
   }, [enabled, video]);
 
@@ -100,11 +117,11 @@ export default function CameraExample({ mode, video, hidden, offstage }: Props) 
   }
   return <div className="camera-example-stage" hidden={hidden}>
     <img className="camera-example-still" data-active={!(enabled && visible)} src={failed || stalled || reduced ? video.endStill : video.still} alt={alt} />
-    {enabled && <video ref={player} className="camera-example-video" data-active={visible} poster={video.still}
+    {armed && <video ref={player} className="camera-example-video" data-active={visible} poster={video.still}
       playsInline preload="auto" aria-hidden="true" disablePictureInPicture
       onPlaying={() => { setVisible(true); setBuffering(false); setStalled(false); }}
       onWaiting={() => setBuffering(true)} onStalled={() => setBuffering(true)}
-      onEnded={() => setBuffering(false)} onError={() => setFailed(true)} />}
+      onEnded={() => setBuffering(false)} onError={() => { if (enabled) setFailed(true); }} />}
     {cues.map(cue => cue.kind === "count"
       ? <span key={`c${cue.from}`} className="camera-example-count" aria-hidden="true">{cue.text}</span>
       : <span key={`s${cue.from}`} className="camera-example-say" style={{ left: `${cue.x}%`, top: `${cue.y}%` }}>{cue.text}</span>)}

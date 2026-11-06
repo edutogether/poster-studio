@@ -184,6 +184,17 @@ describe('세 단계 화면 연결', () => {
     expect(el('video').className).not.toContain('hidden');
   });
 
+  test('1단계에서 2단계 예시 영상 요소를 미리 열되 재생하지 않고, 2단계에서 같은 요소가 재생한다', async () => {
+    installFetch();
+    await act(async () => { renderApp(); });
+    const video = document.querySelector('.camera-example-video');
+    expect(video).not.toBeNull();
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    expect(document.querySelector('.camera-example-video')).toBe(video);
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+  });
+
   test('고른 영화와 단체·구성원은 촬영 티켓까지 이어지고 정보 수정 후에도 갱신된다', async () => {
     const view = await act(async () => renderApp());
     fireEvent.click(view.getByRole('button', { name: '우리 같이' }));

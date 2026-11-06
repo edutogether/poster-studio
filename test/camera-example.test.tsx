@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi, type MockInstance } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import fs from "node:fs";
 import path from "node:path";
@@ -21,9 +21,12 @@ const fake: ApprovedCameraVideo = {
 };
 const base = { mode: "group", video: fake, hidden: false, offstage: false };
 let reduce = false;
+let imageComplete: MockInstance<() => boolean>;
+
 beforeEach(() => {
   reduce = false;
   vi.useFakeTimers();
+  imageComplete = vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(true);
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
@@ -187,4 +190,173 @@ test("움직임 줄이기는 영상 요소를 만들지 않는다", () => {
   expect(view.container.querySelector("video")).toBeNull();
   expect(view.container.querySelector(".camera-example-still")!.getAttribute("src")).toBe(fake.endStill);
   expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+});
+
+// 1단계에 있는 동안 2단계 영상 요소를 미리 연다(2026-11-07 Bumm님 «넘기면 처음에 좀 딜레이되었다 시작», 팀장 전달).
+const step1 = { ...base, offstage: true, prefetch: true };
+const idle = () => act(() => vi.advanceTimersByTime(200));   // jsdom에는 requestIdleCallback이 없어 200ms 타이머로 간다
+const saveData = () => vi.stubGlobal("navigator", Object.assign(Object.create(navigator), { connection: { saveData: true } }));
+
+test("1단계는 페이지가 한가해진 뒤 주소만 건다 — 재생 · 소리 없음, 정지 그림 그대로", () => {
+  const view = render(<CameraExample {...step1} />);
+  const video = view.container.querySelector("video")!;
+  expect(video.getAttribute("src")).toBeNull();
+  idle();
+  expect(video.getAttribute("src")).toBe(fake.src);
+  expect(video.preload).toBe("auto");
+  fireEvent.loadedData(video);
+  expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+  expect(video.dataset.active).toBe("false");
+  expect((view.container.querySelector(".camera-example-still") as HTMLElement).dataset.active).toBe("true");
+});
+
+test("2단계로 넘어가면 같은 요소가 받던 것을 이어 받아 재생한다 — 다시 받지 않는다", () => {
+  const view = render(<CameraExample {...step1} />);
+  const video = view.container.querySelector("video")!;
+  idle();
+  let assigned = 0;
+  Object.defineProperty(video, "src", { configurable: true, get: () => video.getAttribute("src") ?? "", set: (value: string) => { assigned++; video.setAttribute("src", value); } });
+  view.rerender(<CameraExample {...base} />);
+  expect(view.container.querySelector("video")).toBe(video);
+  expect(assigned).toBe(0);
+  expect(HTMLMediaElement.prototype.load).not.toHaveBeenCalled();
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+  expect(video.muted).toBe(false);
+  fireEvent.playing(video);
+  expect(video.dataset.active).toBe("true");
+});
+
+test("주소를 걸기 전에 넘어가도 2단계에서 바로 걸고, 예약해 둔 것은 두 번 걸지 않는다", () => {
+  const view = render(<CameraExample {...step1} />);
+  const video = view.container.querySelector("video")!;
+  let assigned = 0;
+  Object.defineProperty(video, "src", { configurable: true, get: () => video.getAttribute("src") ?? "", set: (value: string) => { assigned++; video.setAttribute("src", value); } });
+  view.rerender(<CameraExample {...base} />);
+  expect(video.getAttribute("src")).toBe(fake.src);
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+  idle();
+  expect(assigned).toBe(1);
+});
+
+test("미리 받다 오류가 나도 1단계에서는 실패로 굳히지 않고, 2단계에서 다시 받는다", () => {
+  const view = render(<CameraExample {...step1} />);
+  const video = view.container.querySelector("video")!;
+  idle();
+  Object.defineProperty(video, "error", { configurable: true, get: () => ({ code: 2 }) });
+  fireEvent.error(video);
+  expect(view.container.querySelector("video")).toBe(video);
+  let assigned = 0;
+  Object.defineProperty(video, "src", { configurable: true, get: () => video.getAttribute("src") ?? "", set: (value: string) => { assigned++; video.setAttribute("src", value); } });
+  view.rerender(<CameraExample {...base} />);
+  expect(assigned).toBe(1);
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+  expect(view.container.querySelector(".camera-example-still")!.getAttribute("src")).toBe(fake.still);
+});
+
+test("1단계에서 혼자 · 단체를 바꾸면 받던 것을 끊고 고른 영상으로 바꾼다", () => {
+  const other = { ...fake, mode: "solo" as const, src: "/test-other.mp4" };
+  const view = render(<CameraExample {...step1} />);
+  const video = view.container.querySelector("video")!;
+  idle();
+  view.rerender(<CameraExample {...step1} mode="solo" video={other} />);
+  expect(video.getAttribute("src")).toBeNull();
+  expect(HTMLMediaElement.prototype.load).toHaveBeenCalledTimes(1);
+  idle();
+  expect(video.getAttribute("src")).toBe(other.src);
+  expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+});
+
+test("2단계에서 1단계로 돌아오면 멈춰 처음으로 되감고 정지 그림을 보인다 — 다시 오면 처음부터", () => {
+  const view = render(<CameraExample {...base} prefetch={false} />);
+  const video = view.container.querySelector("video")!;
+  fireEvent.playing(video);
+  video.currentTime = 3;
+  view.rerender(<CameraExample {...step1} />);
+  expect(view.container.querySelector("video")).toBe(video);
+  expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
+  expect(video.currentTime).toBe(0);
+  expect((view.container.querySelector(".camera-example-still") as HTMLElement).dataset.active).toBe("true");
+  view.rerender(<CameraExample {...base} prefetch={false} />);
+  expect(video.dataset.active).toBe("false");
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
+});
+
+test("1단계를 떠나 다른 단계로 가면 영상 요소를 내려 다운로드를 끊는다", () => {
+  const view = render(<CameraExample {...step1} />);
+  const video = view.container.querySelector("video")!;
+  idle();
+  view.rerender(<CameraExample {...base} offstage prefetch={false} />);
+  expect(view.container.querySelector("video")).toBeNull();
+  expect(video.getAttribute("src")).toBeNull();
+  expect(HTMLMediaElement.prototype.load).toHaveBeenCalled();
+});
+
+test("움직임 줄이기 · 데이터 절약 · 카메라 켬에서는 1단계에 미리 받지 않는다", () => {
+  reduce = true;
+  const a = render(<CameraExample {...step1} />);
+  expect(a.container.querySelector("video")).toBeNull();
+  a.unmount();
+  reduce = false;
+  const b = render(<CameraExample {...step1} hidden />);
+  expect(b.container.querySelector("video")).toBeNull();
+  b.unmount();
+  saveData();
+  const c = render(<CameraExample {...step1} />);
+  expect(c.container.querySelector("video")).toBeNull();
+  // 데이터 절약이어도 2단계는 지금처럼 재생한다
+  c.rerender(<CameraExample {...base} />);
+  expect(c.container.querySelector("video")!.getAttribute("src")).toBe(fake.src);
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+});
+
+test("설치판은 미리 받지 않는다", async () => {
+  vi.resetModules();
+  vi.doMock("../src/desktop", () => ({ DESKTOP: true }));
+  const { cameraPrefetchAllowed } = await import("../src/studio/cameraPrefetch");
+  expect(cameraPrefetchAllowed()).toBe(false);
+  vi.doUnmock("../src/desktop");
+  vi.resetModules();
+});
+
+test("문서 · 그림 · 글꼴을 하나라도 받는 중이면 기다리고, 다 받으면 시작한다", async () => {
+  const { whenPageIdle } = await import("../src/studio/cameraPrefetch");
+  const poster = document.body.appendChild(document.createElement("img"));
+  const state = vi.spyOn(document, "readyState", "get");
+  const pending = [
+    () => state.mockReturnValue("loading"),
+    () => { imageComplete.mockReturnValue(false); },
+    () => { Object.defineProperty(document, "fonts", { configurable: true, value: { status: "loading" } }); },
+  ];
+  for (const hold of pending) {
+    const run = vi.fn();
+    hold();
+    whenPageIdle(run);
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(run).not.toHaveBeenCalled();
+    state.mockReturnValue("complete");
+    imageComplete.mockReturnValue(true);
+    Reflect.deleteProperty(document, "fonts");
+    act(() => vi.advanceTimersByTime(450));   // 다음 확인(250ms) + 한가할 때(200ms)
+    expect(run).toHaveBeenCalledTimes(1);
+  }
+  state.mockRestore();
+  poster.remove();
+});
+
+test("첫 화면 그림이 20초 넘게 안 끝나도 시작하고, 떠나면 예약을 취소한다", async () => {
+  const { whenPageIdle } = await import("../src/studio/cameraPrefetch");
+  const poster = document.body.appendChild(document.createElement("img"));
+  imageComplete.mockReturnValue(false);
+  const run = vi.fn();
+  whenPageIdle(run);
+  act(() => vi.advanceTimersByTime(19_000));
+  expect(run).not.toHaveBeenCalled();
+  act(() => vi.advanceTimersByTime(1_500));
+  expect(run).toHaveBeenCalledTimes(1);
+  const later = vi.fn();
+  const stop = whenPageIdle(later);
+  stop();
+  act(() => vi.advanceTimersByTime(30_000));
+  expect(later).not.toHaveBeenCalled();
+  poster.remove();
 });

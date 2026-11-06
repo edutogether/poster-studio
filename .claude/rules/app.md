@@ -325,6 +325,11 @@
   넣는 순서(뒤처리 → 굽기 → 목록 → 헤드리스 확인)는 `_docs/ops/camera-example-videos.md` «앱 연결»에 있다.
 - 🟠 **대기 영상과 달리 소리가 있다.** 카메라를 켜거나 2단계를 떠나면 영상 요소를 내려 소리를 멈춘다(`test/camera-example.test.tsx`).
   실시간 카메라 `<video>`는 좌우를 뒤집지만 예시 영상은 뒤집지 않는다(`.cameraBox video`의 `scaleX(-1)`을 덮어 씀).
+- 🟠 **1단계에 머무는 동안 지금 고른 모드의 영상을 미리 받는다**(2026-11-07 Bumm님 «넘기면 처음에 좀 딜레이되었다 시작», 팀장 전달 — `_docs/intents/2026-11-07-camera-example-prefetch`).
+  fetch로 파일만 받지 않고 2단계에서 쓸 `<video>`를 1단계에 미리 열어 둔다(재생 · 소리 없음) — 캐시에서 읽어도 그 브라우저의 첫 재생 준비(약 0.15초)가 남기 때문이다. 넘어갈 때 같은 요소가 받던 것을 이어 받으므로 두 번 받지 않는다.
+  🔴 **1단계 그림 · 글꼴을 다 받은 뒤(늦어도 20초) 시작한다**(`src/studio/cameraPrefetch.ts`). 장르 포스터는 `load` 뒤에 요청되므로 `load`만 기다리면 영상이 포스터와 망을 나눠 쓴다(1.6Mbps 실측: 첫 페이지가 약 3초 늦었다). 움직임 줄이기 · 카메라 켬 · 데이터 절약 · 설치판은 미리 받지 않는다.
+  확인: `node scripts/verify/camera-start-timing.mjs <주소> <폴더> --net wifi|slow4g --cert <cert.pem>`(전/후), `camera-prefetch-webkit.mjs`(WebKit, playwright-core는 임시 폴더). 측정 서버는 응답에 ETag가 있어야 크롬이 구간 응답을 캐시에 둔다(`serve-dist.mjs`).
+  ⚠ 실제 아이폰 사파리는 `preload`를 줄일 수 있어 이 효과가 작을 수 있다 — 그때는 예전과 같고 데이터도 더 들지 않는다. 세션은 실기기를 잴 수 없다.
 - 🟠 **숫자 3·2·1과 대사 말풍선은 영상에 굽지 않고 목록의 `cues`로 앱이 얹는다.** 대사 글자가 JSON에 있으므로 글자 집합 추출기가 `src` 아래 JSON도 훑는다(10/16) — 대사를 넣으면 서브셋을 다시 만든다.
 - 확인은 패널이 아니라 헤드리스로 한다: `scripts/verify/camera-example-probe.mjs`. 패널은 화면에 안 그려지는 동안 애니메이션 프레임이 돌지 않아 숫자·말풍선이 안 보인다(10/16 실측).
 - 🟠 **2026-10-19부터 진짜 예시 영상이 라이브에 있다(`0e0beaa`).** Bumm님이 이 두 편에 한해 Higgsfield 금지를 풀었다

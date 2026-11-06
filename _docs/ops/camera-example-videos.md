@@ -692,6 +692,7 @@ lines in Korean by the matching person: 1.8-2.6s A: "야, 빨리 와~". 3.6-4.4s
 
 - 부품은 `src/studio/CameraExample.tsx`이고, 목록은 `src/studio/camera-videos.json`이다.
   - 목록의 `status`가 `approved`가 아니면 지금 정지 그림 그대로다(화면 변화 0, 영상 요청 0).
+  - 11/7부터 승인된 영상은 1단계 화면을 다 받은 뒤 미리 열어 받아 둔다(`src/studio/cameraPrefetch.ts`, 근거 숫자는 `_docs/intents/2026-11-07-camera-example-prefetch/intent.md`).
 - 순서:
   1. 생성 원본(1920×1080, 소리 있음)을 받는다.
   2. `scripts/media/camera-shot-post.py`로 셔터 소리·플래시·멈춘 장면을 넣는다.

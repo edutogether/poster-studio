@@ -1,5 +1,12 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-07(토) — 2단계 예시 영상을 1단계에서 미리 받기 (Bumm님, 팀장 전달)
+
+- 2단계에서 쓸 `<video>`를 1단계에 미리 연다(재생 · 소리 없음). 1단계 그림 · 글꼴을 다 받은 뒤(늦어도 20초) 시작하고, 넘어갈 때 같은 요소가 이어 받는다. 움직임 줄이기 · 카메라 켬 · 데이터 절약 · 설치판은 미리 받지 않는다. 영상 파일은 그대로다.
+- 클릭 → 재생(로컬 측정): 와이파이 217~272 → 16~28ms, 1.6Mbps 841~887 → 16~27ms, CPU 4배 제한 350~453 → 148~182ms. 1.6Mbps 30초 머묾은 재생 중 멈춤도 없어졌다(단체 5회 약 17.4초 → 0). 5초 만에 넘기면 예전과 같다. 첫 페이지 다 받는 시각은 같다.
+- 받는 양: 1단계만 보고 떠나면 2.9MB(혼자) ~ 최대 7.0MB(단체로 바꿈), 2단계로 가면 추가 없음. 숫자 전체는 `_docs/intents/2026-11-07-camera-example-prefetch/intent.md`.
+- 도구: `scripts/verify/camera-start-timing.mjs` · `camera-prefetch-webkit.mjs`, `serve-dist.mjs` 응답에 ETag(크롬이 구간 응답을 캐시에 두게 — 라이브와 같게).
+
 ## 2026-11-07(토) — 설명서 · 운영 문서: Canon SELPHY CP1500 3대 · 노트북 운영 3대 · 일정 (Bumm님, 팀장 전달)
 
 - 프린터를 Canon SELPHY CP1500 3대로, 노트북을 운영 3대 · 예비 3대로, 인쇄 시간을 Canon 공식 자료(약 41초)로 고쳤다. 일정: 각자 테스트 · 현장 장비 시험 11월 10일, 기술 담당 반영 11월 11~13일. `_docs/manual/` · `printer-capacity.md` · `runbook.md` · `completion-plan-1114.md` · app.md.

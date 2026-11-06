@@ -705,7 +705,7 @@ export default function StudioView(p: StudioViewProps) {
             data-fit={(p.phase === "live" || p.phase === "shot") && camAspect ? "" : undefined}
             style={camAspect ? { "--cam-ar": camAspect } as CSSProperties : undefined}>
             {/* 로딩 화면이 뜨면(2단계를 떠난 것과 같다) 예시 영상을 내려 소리도 멈춘다 — 10/20 저녁 Bumm님 «로딩 뒤에서 소리가 들림», PC도 */}
-            <CameraExample mode={p.mode} video={exampleVideo} hidden={p.phase !== "idle"} offstage={step !== 2 || p.spinning} />
+            <CameraExample mode={p.mode} video={exampleVideo} hidden={p.phase !== "idle"} offstage={step !== 2 || p.spinning} prefetch={step === 1} />
             <div className="camera-frame">
             <video id="video" ref={p.videoRef} autoPlay playsInline muted className={p.phase === "live" ? "" : "hidden"}
               onLoadedMetadata={(e) => readAspect(e.currentTarget.videoWidth, e.currentTarget.videoHeight)}

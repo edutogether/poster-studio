@@ -40,7 +40,7 @@ const handler = (req, res) => {
   let file = path.join(root, p);
   if (p.endsWith('/')) file = path.join(file, 'index.html');
   if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
-  const h = { 'Content-Type': TYPE[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'max-age=3600', 'Accept-Ranges': 'bytes' };
+  const h = { 'Content-Type': TYPE[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'max-age=3600', 'Accept-Ranges': 'bytes', ETag: `"${fs.statSync(file).size}-${fs.statSync(file).mtimeMs}"` };   // 라이브처럼 — 검증값이 없으면 크롬이 구간 응답(영상)을 캐시에 두지 않는다(2026-11-07)
   for (const r of rules) if (hostingGlob(r.source).test(p)) for (const x of r.headers) h[x.key] = x.value;
   let body = fs.readFileSync(file);
   const range = req.headers.range && /bytes=(\d*)-(\d*)/.exec(req.headers.range);
