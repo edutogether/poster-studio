@@ -56,15 +56,17 @@ function FeedbackDialog({ step, onClose }: { step: number; onClose: () => void }
         </div>
       </> : <>
         <h2 id="feedbackTitle">의견 보내기</h2>
-        <p className="feedback-sub">테스트한 뒤 개선점이나 치명적인 오류 등을 적어 주세요.</p>
+        <p className="feedback-sub">테스트하면서 불편했던 점이나 고칠 점, 오류를 적어 주세요.</p>
         <form onSubmit={e => { e.preventDefault(); if (!sending) void submit(); }}>
           <label htmlFor="feedbackName">이름 <span className="feedback-hint"><span className="feedback-dash">— </span>피드백을 살펴보고 추가로 문의드릴 것이 있을 때를 위해 적어 주세요.</span></label>
           <input id="feedbackName" ref={nameInput} type="text" autoComplete="off" maxLength={FEEDBACK_NAME_MAX}
             value={name} onChange={e => setName(e.target.value)} disabled={sending} />
-          <label htmlFor="feedbackText">의견</label>
+          <div className="feedback-text-head">
+            <label htmlFor="feedbackText">의견 <span className="feedback-hint"><span className="feedback-dash">— </span>어느 화면에서 어떤 문제가 있었는지 함께 적어 주세요.</span></label>
+            <p id="feedbackCount" className="feedback-count">{[...text].length} / {FEEDBACK_TEXT_MAX}</p>
+          </div>
           <textarea id="feedbackText" ref={textInput} maxLength={FEEDBACK_TEXT_MAX}
             value={text} onChange={e => setText(e.target.value)} disabled={sending} aria-describedby="feedbackCount" />
-          <p id="feedbackCount" className="feedback-count">{[...text].length} / {FEEDBACK_TEXT_MAX}</p>
           <p className="feedback-auto"><span>함께 보내는 것: 판 번호 · 화면 크기 · 기기 · 단계</span> <span>보내지 않는 것: 여러분이 찍은 사진</span></p>
           <p className="feedback-problem" role="alert">{problem ?? ""}</p>
           <div className="feedback-actions">

@@ -14,6 +14,7 @@
         링크만 숨겨 견주지 않는다: 머리글 칸 하나를 숨기거나 보이면 크롬이 PC 머리글 로고를 다시 그리며 화소가 갈린다(11/5 실측 — 기존 다운로드 아이콘을 숨겨도
         같은 1,507화소). 같은 판을 다시 열어도 큰 그림을 줄여 그리는 순간이 달라 갈릴 수 있어 TRIES번까지 열어 «링크 밖 0»인 짝을 찾는다(download-button-probe.mjs와 같은 방식).
      ④ 창: 화면 안(넘치면 창 안에서 스크롤) · 가로 넘침 없음 · 글자 잘림 없음 · 단추 둘이 같은 크기(120×44) · 안내 한 줄 · 이름 칸 초점 테두리 = 의견 칸
+     ④-2 의견 안내 한 줄 · 글자 수는 입력칸 위 오른쪽 끝 · 안 겹침 · «함께 보내는 것» 줄이 입력칸 아래 4px(2026-11-07)
      ⑤ 네트워크(1920×1080): 접속 · 창 열기까지 /feedback 0건 → 보내면 1건(여섯 칸 JSON · 부스 토큰) → «보냈어요»
      ⑥ 2단계에는 링크가 없다 */
 import fs from 'node:fs';
@@ -26,6 +27,7 @@ import { loadImage, createCanvas } from '@napi-rs/canvas';
 
 const args = process.argv.slice(2);
 const [dist, out] = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--before');
+const SAME_LINK = args.includes('--same-link');   // 링크가 이미 있는 빌드와 견줄 때(창만 고친 판) — 링크 글자 차이가 없어도 통과
 const beforeDist = args.includes('--before') ? args[args.indexOf('--before') + 1] : null;
 if (!dist || !out || !fs.existsSync(path.join(dist, 'index.html')) || !beforeDist || !fs.existsSync(path.join(beforeDist, 'index.html'))) {
   console.error('사용: feedback-link-probe.mjs <dist 폴더> <결과 폴더> --before <기능 넣기 전 dist 폴더>');
@@ -34,7 +36,7 @@ if (!dist || !out || !fs.existsSync(path.join(dist, 'index.html')) || !beforeDis
 fs.mkdirSync(out, { recursive: true });
 const root = path.resolve(dist);
 const SIZES = [
-  { name: '1366x768', w: 1366, h: 768, s: 1 }, { name: '1920x1080', w: 1920, h: 1080, s: 1 }, { name: '2560x1440', w: 2560, h: 1440, s: 1 },
+  { name: '1280x587', w: 1280, h: 587, s: 1 }, { name: '1366x697', w: 1366, h: 697, s: 1 }, { name: '1536x793', w: 1536, h: 793, s: 1 }, { name: '1366x768', w: 1366, h: 768, s: 1 }, { name: '1920x1080', w: 1920, h: 1080, s: 1 }, { name: '2560x1440', w: 2560, h: 1440, s: 1 },
   { name: '1024x1366', w: 1024, h: 1366, s: 2, touch: true },
   { name: '360x780', w: 360, h: 780, s: 3, mobile: true, phone: true }, { name: '390x844', w: 390, h: 844, s: 3, mobile: true, phone: true },
   { name: '430x932', w: 430, h: 932, s: 3, mobile: true, phone: true }, { name: '844x390', w: 844, h: 390, s: 3, mobile: true },
@@ -174,7 +176,7 @@ for (const s of SIZES) {
       }
     }
     report.sizes[s.name].pixels = best;
-    check(`${s.name}: 기능 넣기 전 빌드와 대조 — 링크 밖 차이 0(링크 글자는 있음)`, best && best.outside === 0 && best.inside > 0, best);
+    check(`${s.name}: 기능 넣기 전 빌드와 대조 — 링크 밖 차이 0(링크 글자는 있음)`, best && best.outside === 0 && (SAME_LINK || best.inside > 0), best);
     await open();
   }
 
@@ -193,11 +195,12 @@ for (const s of SIZES) {
         clipped, buttons: [cancel.width, cancel.height, sendB.width, sendB.height].map(Math.round),
         subLines: Math.round(dlg.querySelector('.feedback-sub').getBoundingClientRect().height / parseFloat(getComputedStyle(dlg.querySelector('.feedback-sub')).lineHeight)),
         subOverflow: dlg.querySelector('.feedback-sub').scrollWidth > dlg.querySelector('.feedback-sub').clientWidth,
-        textH: Math.round(dlg.querySelector('textarea').getBoundingClientRect().height), rings: ['feedbackName', 'feedbackText'].map((id) => { const e = document.getElementById(id); e.focus(); const c = getComputedStyle(e); return [c.outlineStyle, c.outlineColor, c.outlineWidth, c.outlineOffset].join(' '); }) };
+        textH: Math.round(dlg.querySelector('textarea').getBoundingClientRect().height), lines: (() => { const L = (e) => { const g = document.createRange(); g.selectNodeContents(e); return new Set([...g.getClientRects()].filter((r) => r.width > 1).map((r) => Math.round(r.y / 8))).size; }; const hints = [...dlg.querySelectorAll('.feedback-hint')]; const row = dlg.querySelector('.feedback-text-head'), c = dlg.querySelector('.feedback-count').getBoundingClientRect(), t = dlg.querySelector('textarea').getBoundingClientRect(), au = dlg.querySelector('.feedback-auto').getBoundingClientRect(), lb = dlg.querySelector('label[for=feedbackText]'); const g = document.createRange(); g.selectNodeContents(lb); const lr = g.getBoundingClientRect(); return { nameHint: L(hints[0]), textHint: L(hints[1]), countAbove: c.bottom <= t.top + 1, countRight: Math.abs(c.right - t.right) <= 1, countClash: !!row && [...g.getClientRects()].some((r) => r.width > 1 && r.right > c.left - 2 && r.bottom > c.top && r.top < c.bottom), autoGap: Math.round(au.top - t.bottom), height: Math.round(dlg.getBoundingClientRect().height) }; })(), rings: ['feedbackName', 'feedbackText'].map((id) => { const e = document.getElementById(id); e.focus(); const c = getComputedStyle(e); return [c.outlineStyle, c.outlineColor, c.outlineWidth, c.outlineOffset].join(' '); }) };
     })()`);
     report.sizes[s.name].dialog = d;
     check(`${s.name}: 창이 화면 안 · 가로 넘침 없음 · 글자 잘림 없음`, d && d.box.x >= 0 && d.box.y >= 0 && d.box.r <= d.innerWidth && d.box.b <= d.innerHeight && !d.hOverflow && d.clipped.length === 0, d);
-    check(`${s.name}: 단추 둘이 같은 크기 120×44 · 안내 한 줄 · 의견 칸 높이(휴대폰 96 · 그 밖 150) · 이름 칸 초점 테두리 = 의견 칸 · 빨간 테두리 아님`, d && d.buttons.join() === '120,44,120,44' && d.subLines === 1 && !d.subOverflow && d.textH === (s.phone ? 96 : 150) && d.rings[0] === d.rings[1] && !/229, 45, 36/.test(d.rings[0]), d && { buttons: d.buttons, subLines: d.subLines, subOverflow: d.subOverflow, textH: d.textH, rings: d.rings });
+    check(`${s.name}: 단추 둘이 같은 크기 120×44 · 안내 한 줄 · 의견 칸 높이 96 · 이름 칸 초점 테두리 = 의견 칸 · 빨간 테두리 아님`, d && d.buttons.join() === '120,44,120,44' && d.subLines === 1 && !d.subOverflow && d.textH === 96 && d.rings[0] === d.rings[1] && !/229, 45, 36/.test(d.rings[0]), d && { buttons: d.buttons, subLines: d.subLines, subOverflow: d.subOverflow, textH: d.textH, rings: d.rings });
+    check(`${s.name}: 의견 안내 한 줄 · 글자 수는 입력칸 위 오른쪽 끝 · 안 겹침 · «함께 보내는 것» 줄이 입력칸 아래 4px${s.phone ? '' : ' · 이름 안내 한 줄'}`, d && d.lines.textHint === 1 && d.lines.countAbove && d.lines.countRight && !d.lines.countClash && d.lines.autoGap === 4 && (s.phone || d.lines.nameHint === 1), d && d.lines);
     await press('.feedback-cancel');
     await sleep(200);
   }

@@ -97,7 +97,7 @@ describe('첫 화면 «의견 보내기»', () => {
     const d = dialog()!;
     expect(d.getAttribute('role')).toBe('dialog');
     expect(d.querySelector('h2')!.textContent).toBe('의견 보내기');
-    expect(d.querySelector('.feedback-sub')!.textContent).toBe('테스트한 뒤 개선점이나 치명적인 오류 등을 적어 주세요.');
+    expect(d.querySelector('.feedback-sub')!.textContent).toBe('테스트하면서 불편했던 점이나 고칠 점, 오류를 적어 주세요.');
     expect(d.textContent).toContain('피드백을 살펴보고 추가로 문의드릴 것이 있을 때를 위해 적어 주세요.');
     expect(d.textContent).not.toContain('사진은 보내지 않아요');
     expect(d.textContent).toContain('함께 보내는 것: 판 번호 · 화면 크기 · 기기 · 단계');
