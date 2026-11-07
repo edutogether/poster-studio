@@ -699,6 +699,7 @@
     확인: 숨긴 창 크기 · 배율 강제 150~300%(`desktop-window-sweep.mjs --force-scale`), 끌어 줄이기 녹화(`desktop-resize-record.mjs`) — 최소부터 3840×2160까지 겹침 · 잘림 · 넘침 · «보이는 칸 밖 단추» 0(11/4).
     - `node scripts/verify/desktop-window-sweep.mjs <결과> (--exe <설치한 exe> | --dev) --web-dist <웹 dist> [--quick]`: 숨긴 설치판 창의 크기를 Windows로 실제로 바꿔(`win-ctl.ps1`) 1 · 2 · 3단계 ·
       인쇄 미리보기를 568개 크기에서 잰다(같은 크기 웹과 자리 비교 — 설치판 전용 차이는 뺀다 · 최소보다 작은 52개는 «최소 창보다 작음»으로 뺀다). «보이는 칸 밖 단추»(화면 · 안쪽 스크롤 칸 밖으로 나간 단추, 11/4)도 잰다. 125% 모니터 자리로 옮겨 배율도 본다. 창은 보이지 않는다(위 모니터에 안 뜬다). 약 37분(`--quick` 5분).
+    - `node scripts/verify/desktop-real-window.mjs <결과> (--exe … | --dev) [--w-step 20] [--h-step 8]`: 강제 크기 없이 Windows로 창 크기를 바꿔 1 · 2 · 3단계 · 인쇄 미리보기의 문서 크기 · 스크롤 · 잘림 · 안쪽 스크롤 칸을 잰다(아래 모니터, 11/7). `--break-cut`은 일부러 깨뜨린 시험이다. 125%에서 화소 하나하나로 재려면 `--h-step 0.8` 또는 `--w-step 0.8`. CSS 경계 사이 소수 높이(125%의 699.2 등)는 늘 더한다 — `max-height: 699px`와 `min-height: 700px` 사이 틈에 실제로 빠졌다(2.8.9 3단계).
     - `node scripts/verify/desktop-resize-record.mjs <결과> (--exe … | --dev)`: 아래 모니터에서 끌어 줄이기 · 늘리기(크기 바꾸기 시작 · 끝 알림 + 16ms 걸음 — 마우스는 쓰지 않는다) ·
       느린 걸음 · 최대화 ↔ 원래 크기를 녹화하며 그려지는 프레임마다 넘침 · 겹침을 잰다. 화면이 보이는 시험이라 화면 차례에만 돌린다.
     - 둘 다 `with-window-watch.ps1`로 감싸 콘솔 · 검사 모니터 밖 창 0을 함께 본다.

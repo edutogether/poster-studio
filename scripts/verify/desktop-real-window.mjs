@@ -139,7 +139,8 @@ for (const sc of SCREENS) {
     await sleep(40);
     const m = row(await ev(MEASURE), `${w}×${h}`, [Number(a[1]), Number(a[2])]);
     m.want = [w, h];
-    m.sizeOk = Math.abs(m.iw - w) <= 1 && Math.abs(m.ih - h) <= 1;
+    // 실제 화소가 요청과 같고, 크롬이 알리는 크기가 반올림한 값에서 1 안이다 — 소수 그대로 견주면 811화소(648.8)를 650으로 알려 걸렸다(11/7 실측).
+    m.sizeOk = Number(a[1]) === Math.round(w * scale) && Number(a[2]) === Math.round(h * scale) && Math.abs(m.iw - Math.round(w)) <= 1 && Math.abs(m.ih - Math.round(h)) <= 1;
     if ((w === WS[0] && h === HS[0]) || (w === maxW && h === maxH)) m.shot = await shot(`${safe(sc.key)}-${w}x${h}`);
     rows.push(m);
   }
