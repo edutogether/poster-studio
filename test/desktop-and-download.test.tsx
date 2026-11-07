@@ -336,6 +336,11 @@ describe('설치판 화면 규칙(src/desktop.css)', () => {
   test('2단계 창 크기 배치 규칙이 설치판 전용 파일에 남아 있지 않다', () => {
     expect(css).not.toMatch(/camera-film|camera-ticket|page-heading|camera-tips/);
   });
+  test('3단계 낮은 창 구간 사이에 틈이 없다 — 125%의 699.2가 «~699»와 «700~» 어느 쪽에도 들지 않으면 안쪽 칸이 20px 넘친다(11/7 desktop-real-window.mjs)', () => {
+    const studio = fs.readFileSync('src/studio.css', 'utf8');
+    expect(studio).toContain('@media (min-width: 1100px) and (min-height: 560px) and (max-height: 699px) {');
+    expect(css).toContain('@media (min-width: 1100px) and (min-height: 699.01px) and (max-height: 729px) {');
+  });
 });
 
 test('인쇄 미리보기 «인쇄하기»는 대화 상자 공통 위 여백(20px)을 쓰지 않는다 — «닫기»와 한 줄(10/27)', () => {

@@ -60,7 +60,8 @@ body[data-desktop] #resultView .result-actions {
     max-width: calc((100svh - 400px + 12px) * 4 / 3);
   }
 }
-@media (min-width: 1100px) and (min-height: 700px) and (max-height: 729px) {
+/* 아래쪽 경계는 700이 아니라 699.01이다 — 125%면 실제 874화소가 699.2라 «~699»(studio.css 낮은 PC 창)도 «700~» 어느 쪽에도 들지 않아 3단계 안쪽 칸이 20px 넘쳤다(11/7 실제 창 측정). */
+@media (min-width: 1100px) and (min-height: 699.01px) and (max-height: 729px) {
   body[data-desktop] #resultView #gallery.style-grid,
   body[data-desktop] #resultView .result-actions {
     max-width: calc((100svh - 340px + 12px) * 4 / 3);
