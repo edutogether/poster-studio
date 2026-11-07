@@ -10,8 +10,8 @@
    --chrome을 주면 크롬(헤드리스)으로 찍은 웹 첫 화면과의 차이도 적는다(참고만 — 크롬과 Electron의 크로뮴은 판이 달라 WebP 그림을 푸는 값 ·
    글자 그림자의 흐림이 1~수 단계 갈린다. 10/27 실측: 판타지 · 스릴러 · 드라마 WebP 그림과 그림자 진 문장 한 줄뿐, 배치 · 글자 · 색 차이는 0).
    찍기 전 맞추는 것(두 창 같게): 그림을 다 풀고, 반복 애니메이션은 0초에 세우고, CSS 전환은 끝까지 보낸다.
-   두 창 모두 실제 화면의 창이라 그 자리의 진짜 마우스 포인터가 장르 카드를 «올림» 상태로 만든다 — 찍는 동안만 포인터 반응을 끄고
-   흉내 낸 포인터를 한 번 움직여 올림 상태를 푼다(올림 요소 0개를 확인한다). */
+   찍는 동안만 포인터 반응을 끈다(숨긴 창 위에는 진짜 포인터가 없다 — 올림 요소 0개를 확인한다).
+   🔴 크기를 CDP로 강제하는 시험이라 두 창 모두 보이지 않게 띄운다(11/7 Bumm님 «다 커져서 틀어지고 잘려 있다» — 작은 모니터의 보이는 창 안에 2560×1440을 강제해 잘린 화면이 보였다). 실제 창 크기의 배치는 desktop-real-window.mjs가 잰다. */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -55,6 +55,15 @@ async function captureAll(child, port, urlPrefix, prefix) {
   ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.id && wait.has(m.id)) { wait.get(m.id)(m); wait.delete(m.id); } });
   const send = (method, params = {}) => new Promise((r) => { const i = ++id; wait.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
   const ev = async (expression) => (await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })).result?.result?.value;
+  const ws2 = new globalThis.WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((r) => ws2.addEventListener('open', r));
+  const shoot = () => new Promise((resolve, reject) => {
+    const i = ++id;
+    const timer = globalThis.setTimeout(() => reject(new Error(`${prefix}: 화면 찍기가 30초 안에 끝나지 않음`)), 30000);
+    const on = (e) => { const m = JSON.parse(e.data); if (m.id === i) { globalThis.clearTimeout(timer); ws2.removeEventListener('message', on); resolve(m); } };
+    ws2.addEventListener('message', on);
+    ws2.send(JSON.stringify({ id: i, method: 'Page.captureScreenshot', params: { format: 'png' } }));
+  });
   await send('Page.enable');
   await send('DOM.enable');
   await send('CSS.enable');
@@ -68,7 +77,7 @@ async function captureAll(child, port, urlPrefix, prefix) {
     await ev(`Promise.all([...document.images].map((i) => i.decode().catch(() => {})))`);
     await sleep(700);
     await ev(`(() => { const st = document.createElement('style'); st.textContent = '*{pointer-events:none!important}'; document.head.append(st); })()`);
-    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 2, y: 2 });
+    // 흉내 낸 마우스는 보내지 않는다 — 숨긴 창 위에는 진짜 포인터도 없다(올림 요소 0개는 아래에서 확인한다).
     await sleep(400);
     const hovered = await ev(`document.querySelectorAll(':hover').length - document.querySelectorAll('html:hover, body:hover').length`);
     await ev(`(document.getAnimations().forEach((a) => { if (a instanceof CSSTransition) a.finish(); else { a.pause(); a.currentTime = 0; } }), new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))`);
@@ -85,12 +94,14 @@ async function captureAll(child, port, urlPrefix, prefix) {
       const pf = await send('CSS.getPlatformFontsForNode', { nodeId: q.result.nodeId });
       fonts[sel] = (pf.result?.fonts ?? []).map((x) => `${x.familyName}·${x.glyphCount}`).join(' + ');
     }
-    const shot = await send('Page.captureScreenshot', { format: 'png' });
+    // 찍기는 흉내를 켜지 않은 둘째 연결로 한다 — 숨긴 창에서 흉내를 켠 연결의 찍기는 끝나지 않았다(11/7 실측: 10분 멈춤, 다른 연결에서 찍자 1.2초에 끝나며 함께 풀림).
+    const shot = await shoot();
     const file = path.join(out, `${prefix}-home-${w}x${h}${t > 1 ? '-' + t : ''}.png`);
     fs.writeFileSync(file, Buffer.from(shot.result.data, 'base64'));
     (shots[`${w}x${h}`] ??= []).push({ file, hovered, badge, download, fonts });
   }
   await ev('window.close()').catch(() => {});
+  ws2.close();
   ws.close();
   await sleep(1500);
   child.kill();
@@ -108,16 +119,10 @@ function compare(A, B, boxes) {
   return { outside, inside };
 }
 
-// 앱 창은 검사용 아래 모니터에서 최대화한다(10/28 — win-capture.ps1 -Maximize). 화면 크기는 아래에서 CDP로 정하므로(배율 1) 판정은 그대로다.
-const toTestMonitor = (child) => { spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(ROOT, 'scripts/verify/win-capture.ps1'), '-AppPid', String(child.pid), '-Out', os.tmpdir(), '-Maximize'], { stdio: 'ignore', windowsHide: true }); return child; };
-// ① 설치판
+// ① 설치판 — 보이지 않는 창(POSTER_STUDIO_TEST_WINDOW=hidden). 화면 크기는 아래에서 CDP로 정한다(배율 1).
 const p1 = 9450 + Math.floor(Math.random() * 40);
 const exe = args.includes('--dev') ? ELECTRON : path.resolve(opt('--exe'));
-// 창 자리(test-monitor.json의 점)를 처음부터 넘긴다 — 설치판은 POSTER_STUDIO_TEST_WINDOW, 웹 껍데기는 아래 main.cjs가 같은 점의 모니터에서 연다.
-// 11/4 21차: 웹 껍데기 창이 주 모니터(위)에서 최대화된 채 보인 뒤에야 옮겨졌다(-8,-8 2576×1408).
-const tm = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/verify/test-monitor.json'), 'utf8'));
-const testEnv = { ...process.env, POSTER_STUDIO_TEST_WINDOW: `${tm.point[0]},${tm.point[1]}` };
-const desktop = await captureAll(toTestMonitor(spawn(exe, [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${p1}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore', env: testEnv })), p1, 'app://studio/', 'desktop');
+const desktop = await captureAll(spawn(exe, [...(args.includes('--dev') ? [path.join(ROOT, 'desktop')] : []), `--remote-debugging-port=${p1}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore', env: { ...process.env, POSTER_STUDIO_TEST_WINDOW: 'hidden' } }), p1, 'app://studio/', 'desktop');
 
 // ② 같은 엔진(Electron)으로 바꾸기 전 웹
 const root = path.resolve(webDist);
@@ -137,20 +142,18 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}`;
 const shell = fs.mkdtempSync(path.join(os.tmpdir(), 'web-electron-'));
 fs.writeFileSync(path.join(shell, 'package.json'), JSON.stringify({ name: 'web-electron-check', main: 'main.cjs' }));
-fs.writeFileSync(path.join(shell, 'main.cjs'), `const { app, BrowserWindow, Menu, session, screen } = require('electron');
+fs.writeFileSync(path.join(shell, 'main.cjs'), `const { app, BrowserWindow, Menu, session } = require('electron');
 app.setPath('userData', ${JSON.stringify(path.join(shell, 'profile'))});
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   session.defaultSession.webRequest.onBeforeRequest({ urls: ['https://*/*', 'wss://*/*'] }, (d, cb) => cb(/\\/health$/.test(d.url) ? { redirectURL: ${JSON.stringify(base + '/__health')} } : { cancel: true }));
-  const area = screen.getDisplayNearestPoint(screen.screenToDipPoint({ x: ${tm.point[0]}, y: ${tm.point[1]} })).workArea;
-  const w = new BrowserWindow({ x: area.x, y: area.y, width: Math.min(1366, area.width), height: Math.min(860, area.height), show: false, autoHideMenuBar: true, backgroundColor: '#ffffff', webPreferences: { backgroundThrottling: false } });
-  w.maximize(); w.show();
+  const w = new BrowserWindow({ width: 1366, height: 860, show: false, autoHideMenuBar: true, backgroundColor: '#ffffff', webPreferences: { backgroundThrottling: false } });
   w.loadURL(${JSON.stringify(base + '/')});
 });
 app.on('window-all-closed', () => app.quit());
 `);
 const p2 = 9490 + Math.floor(Math.random() * 40);
-const web = await captureAll(toTestMonitor(spawn(ELECTRON, [shell, `--remote-debugging-port=${p2}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore' })), p2, base, 'web-electron');
+const web = await captureAll(spawn(ELECTRON, [shell, `--remote-debugging-port=${p2}`, '--mute-audio', ...NO_OCCLUSION], { stdio: 'ignore' }), p2, base, 'web-electron');
 server.close();
 fs.rmSync(shell, { recursive: true, force: true });
 

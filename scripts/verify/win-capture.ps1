@@ -49,7 +49,10 @@ public static class Cap {
       if ((Array.IndexOf(pids, p) >= 0 || Text(h) == "Windows 인쇄") && IsWindowVisible(h) && r.R - r.L > 100 && r.B - r.T > 100) { found = h; return false; } return true; }, IntPtr.Zero);
     return found;
   }
+  [DllImport("user32.dll")] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr c);
   public static string Shot(IntPtr h, string file) {
+    // 창이 있는 모니터 배율 그대로 잰다(-4 = 모니터별 v2). 시스템 배율로 재면 125% 모니터에서 창 크기가 0.8배로 작게 읽혀, 원본 화소로 그려지는 창의 왼쪽 위 64%만 찍혔다(11/7 실측: 1422×758 — 앱 화면은 1760×902).
+    SetThreadDpiAwarenessContext(new IntPtr(-4));
     RECT r; GetWindowRect(h, out r);
     int w = r.R - r.L, hh = r.B - r.T;
     if (w <= 0 || hh <= 0) return "";

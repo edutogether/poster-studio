@@ -11,7 +11,7 @@
       - 가로 넘침(문서 폭 > 화면 폭) · 단추 · 입력칸끼리 겹침(모달 창이 열려 있으면 그 안끼리) · 단추가 화면 왼쪽 · 오른쪽 밖 · 잘린 글자(넘침 숨김인데 내용이 더 큼, «…» 줄임과 줄 수 제한은 뺀다)
       - 단추가 보이는 칸 밖(11/4): 화면이나 넘침을 자르는 칸(안쪽 스크롤 칸 등) 밖으로 조금이라도 나간 단추 — 문서 스크롤이 있는 휴대폰 배치(760 이하)는 그 자체가 정상이라 문서 스크롤로 닿는 것은 뺀다.
         11/3 Bumm님 «창을 끌어 너무 작게 만들면 많이 깨진다»: 600×480 근처에서 2단계 주 단추가 오른쪽 칸 스크롤 뒤로 숨었는데 겹침 · 잘린 글자 검사는 통과였다(보는 층에 없던 결함).
-      - 같은 크기 웹과 요소 자리 비교(0.5px) — 설치판 전용 차이는 뺀다: «설치판» 표시 · 웹 «다운로드», 2단계 오른쪽 칸(제목 · 안내 · 영화 · 단추 줄 — 폭 1100 이상 · 높이 680 이상, desktop.css 높이 구간),
+      - 같은 크기 웹과 요소 자리 비교(0.5px) — 설치판 전용 차이는 뺀다: «설치판» 표시 · 웹 «다운로드» · «의견 보내기», 2단계 오른쪽 칸(제목 · 안내 · 영화 · 단추 줄 — 폭 1100 이상 · 높이 680 이상, desktop.css 높이 구간),
         3단계 단추 줄(«PC에 저장») · 낮은 창의 3단계 디자인 8칸(폭 1100 이상 · 높이 679 이하와 700~729 — desktop.css가 일부러 다르게 줄인다). 웹이 세로로 스크롤되지 않는데 설치판만 스크롤되면 그것도 걸림.
       - 앱이 정한 최소 창(안쪽 1100×648 — 11/4, 그 전 600×480 · 1024×640)보다 작은 크기는 창이 그 크기가 되지 않는다 — «최소 창보다 작음»으로 적고 판정에서 뺀다.
    ④ 배율: 두 창을 125% 모니터 자리(숨은 채)로 옮겨 같은 CSS 크기에서 배치가 100%와 같은지(반올림 1px), 옮겼다가 돌아와도 같은지 잰다.
@@ -180,7 +180,7 @@ const MEASURE = `(() => {
     rects: Object.fromEntries(items.map((i) => [i.key, [i.x, i.y, i.w, i.h].map((v) => Math.round(v * 10) / 10)])), overlaps, offside, clipped };
 })()`;
 // 2단계 예시 칸의 영상 · 정지 그림은 재생 시점에 따라 서로 바뀐다(두 창이 같은 순간에 재지 않는다) — 칸(.cameraBox) 자리는 그대로 견준다(11/2 600×480에서 한쪽만 영상)
-const EXCLUDE_ALWAYS = ['.desktop-badge', '.download-link', '.camera-example-video', '.camera-example-still'];
+const EXCLUDE_ALWAYS = ['.desktop-badge', '.download-link', '.feedback-link', '.camera-example-video', '.camera-example-still'];
 const exclusions = (screen, w, h) => [...EXCLUDE_ALWAYS,
   // 2단계 오른쪽 칸 — 설치판 높이 구간(desktop.css, 폭 1100 이상 · 높이 680 이상)에서 제목 · 안내 · 영화 · 단추 줄을 일부러 다르게 둔다(그 배치는 desktop-layout-sweep.mjs의 구간 규칙이 잰다)
   ...(screen === 'step2' && w >= 1100 && h >= 680 ? ['#cameraWorkspace .page-heading', '#cameraWorkspace .camera-guide', '#cameraWorkspace .camera-actions', '#cameraView .camera-tips'] : []),
