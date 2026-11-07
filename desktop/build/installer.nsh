@@ -1532,6 +1532,9 @@
     Push $INSTDIR
     Call un.psDeleteDir
     RMDir /r $INSTDIR
+    ; 파일을 다 지운 뒤 바로가기 · 등록을 지우는 동안(이 PC 0.4~0.7초, 느린 노트북은 더) 막대가 문장 없이 930‰에 서 있었다 — 설치 쪽(«바로가기를 만들고 …»)과 같게 그 일을 말한다(11/7).
+    !insertmacro psStage "바로가기와 «설치된 앱» 등록을 지우는 중입니다 …"
+    !insertmacro psAt 945
   ${endif}
 !macroend
 
