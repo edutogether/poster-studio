@@ -185,8 +185,8 @@ const exclusions = (screen, w, h) => [...EXCLUDE_ALWAYS,
   // 2단계 오른쪽 칸 — 설치판 높이 구간(desktop.css, 폭 1100 이상 · 높이 680 이상)에서 제목 · 안내 · 영화 · 단추 줄을 일부러 다르게 둔다(그 배치는 desktop-layout-sweep.mjs의 구간 규칙이 잰다)
   ...(screen === 'step2' && w >= 1100 && h >= 680 ? ['#cameraWorkspace .page-heading', '#cameraWorkspace .camera-guide', '#cameraWorkspace .camera-actions', '#cameraView .camera-tips'] : []),
   ...(screen === 'step3' ? ['#resultView .result-actions'] : []),
-  // 낮은 창의 3단계 디자인 8칸 — 설치판은 단추가 하나 더 있어 8칸을 더 줄이고(높이 679 이하), 높이 700~729는 웹의 최소 폭 536px 없이 줄인다(desktop.css, 11/4)
-  ...(screen === 'step3' && w >= 1100 && (h <= 679 || (h >= 700 && h <= 729)) ? ['#gallery'] : [])];
+  // 낮은 창의 3단계 디자인 8칸 — 설치판은 단추가 하나 더 있어 8칸을 더 줄이고(높이 679 이하), 높이 699 초과~729(desktop.css 699.01 — 125%의 699.2도 든다)는 웹의 최소 폭 536px 없이 줄인다(desktop.css, 11/4)
+  ...(screen === 'step3' && w >= 1100 && (h <= 679 || (h > 699 && h <= 729)) ? ['#gallery'] : [])];
 // 열쇠가 제외 영역 안 요소인지는 페이지에서 고른다 — 각 창에서 제외할 열쇠 목록을 받는다
 const excludedKeys = (page, sels) => page.ev(`(() => { ${MEASURE.slice(MEASURE.indexOf('const vis'), MEASURE.indexOf('const ctrls'))} const sels = ${JSON.stringify(sels)}; return items.filter((i) => sels.some((s) => i.el.closest(s))).map((i) => i.key); })()`);
 
@@ -194,7 +194,8 @@ function judge(screen, w, h, d, v, exD, exV) {
   const bad = [];
   // 창이 그 크기가 되지 않았다 — 최소 창보다 작은 크기(그 방향이 최소에 걸림)일 때만 빼고, 그 밖에는 걸림(창이 크기를 따라오지 않은 것)
   // 최소 바로 아래(1099 등)는 창이 최소(1100)에 멈춰도 차이가 1이라 «그 크기가 됨»으로 보였다 — 최소보다 작은 크기에서 창이 더 크면 그 크기가 되지 않은 것이다(11/4)
-  if (Math.abs(d.iw - w) > 1 || Math.abs(d.ih - h) > 1 || (w < MIN_CLIENT.w && d.iw > w) || (h < MIN_CLIENT.h && d.ih > h)) {
+  // 소수 크기(--force-scale)는 반올림한 값과 견준다 — resize의 want와 같다. 창 안쪽이 정확히 1026(820.8)이어도 크롬은 innerHeight를 822로 알려 소수 그대로면 1.2 차이로 걸렸다(11/7 실측).
+  if (Math.abs(d.iw - Math.round(w)) > 1 || Math.abs(d.ih - Math.round(h)) > 1 || (w < MIN_CLIENT.w && d.iw > w) || (h < MIN_CLIENT.h && d.ih > h)) {
     const atMin = (Math.abs(d.iw - w) <= 1 || (w < d.iw && d.iw <= MIN_CLIENT.w + 1)) && (Math.abs(d.ih - h) <= 1 || (h < d.ih && d.ih <= MIN_CLIENT.h + 1));
     return atMin ? { skip: `최소 창보다 작음 — 창이 ${d.iw}×${d.ih}까지만 줄어든다` } : { bad: [`창이 ${w}×${h}가 되지 않음(${d.iw}×${d.ih})`] };
   }

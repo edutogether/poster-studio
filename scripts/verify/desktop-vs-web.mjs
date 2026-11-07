@@ -58,11 +58,14 @@ async function captureAll(child, port, urlPrefix, prefix) {
   const ws2 = new globalThis.WebSocket(target.webSocketDebuggerUrl);
   await new Promise((r) => ws2.addEventListener('open', r));
   const shoot = () => new Promise((resolve, reject) => {
-    const i = ++id;
+    const ids = new Set();
+    const ask = () => { const i = ++id; ids.add(i); ws2.send(JSON.stringify({ id: i, method: 'Page.captureScreenshot', params: { format: 'png' } })); };
+    // 숨긴 창의 첫 찍기는 혼자 끝나지 않고, 둘째 찍기가 오면 둘 다 끝났다(11/7 실측) — 3초 안에 답이 없으면 한 번 더 부른다
+    const again = globalThis.setTimeout(ask, 3000);
     const timer = globalThis.setTimeout(() => reject(new Error(`${prefix}: 화면 찍기가 30초 안에 끝나지 않음`)), 30000);
-    const on = (e) => { const m = JSON.parse(e.data); if (m.id === i) { globalThis.clearTimeout(timer); ws2.removeEventListener('message', on); resolve(m); } };
+    const on = (e) => { const m = JSON.parse(e.data); if (ids.has(m.id) && m.result?.data) { globalThis.clearTimeout(timer); globalThis.clearTimeout(again); ws2.removeEventListener('message', on); resolve(m); } };
     ws2.addEventListener('message', on);
-    ws2.send(JSON.stringify({ id: i, method: 'Page.captureScreenshot', params: { format: 'png' } }));
+    ask();
   });
   await send('Page.enable');
   await send('DOM.enable');
@@ -100,7 +103,8 @@ async function captureAll(child, port, urlPrefix, prefix) {
     fs.writeFileSync(file, Buffer.from(shot.result.data, 'base64'));
     (shots[`${w}x${h}`] ??= []).push({ file, hovered, badge, download, fonts });
   }
-  await ev('window.close()').catch(() => {});
+  // 기다리지 않는다 — 숨긴 창은 답하기 전에 닫혀 그 답을 영영 못 받고, 할 일이 없어진 node가 그대로 끝났다(11/7 실측 exit 13).
+  void ev('window.close()');
   ws2.close();
   ws.close();
   await sleep(1500);
