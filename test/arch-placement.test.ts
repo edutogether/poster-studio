@@ -81,14 +81,14 @@ describe("아치 프레임 창 배치", () => {
   }
 });
 
-// 얼굴을 지키는 다섯 종(시네마 · 에디토리얼 · 컬러 블록 · 필름스트립 · 트립틱 — 2026-11-08 밤 팀장 결정 «섞기»): fitPlacement.
+// 얼굴을 지키는 네 종(시네마 · 에디토리얼 · 컬러 블록 · 트립틱 — 2026-11-08 밤 팀장 결정 «섞기»): fitPlacement.
+// 필름스트립은 2026-11-09 Bumm님 시안 04로 덮어 채우기(위 coverPlacement · templates.test.js «칸을 꽉 채운다»)로 옮겼다.
 // 주인공 상자는 AI 약속 상자 또는 단체 얼굴 범위(설치판 자르기 · 샘플 단체 — 아래 SUBJECT는 샘플 단체 값).
 const SUBJECT = { x0: 0.142, y0: 0.02, x1: 0.827, y1: 0.751 };
 const FIT_SLOTS: Record<string, { cover: Rect; safe: Rect }> = {
   시네마: { cover: { x: 0, y: 0, w: 1200, h: 1800 }, safe: { x: 48, y: 150, w: 1104, h: 1040 } },
   에디토리얼: { cover: SLOTS.에디토리얼.cover, safe: SLOTS.에디토리얼.safes[0] },
   "컬러 블록": { cover: SLOTS["컬러 블록"].cover, safe: SLOTS["컬러 블록"].safes[0] },
-  필름스트립: { cover: SLOTS.필름스트립.cover, safe: SLOTS.필름스트립.safes[0] },
   트립틱: { cover: { x: 0, y: 0, w: 1200, h: 1800 }, safe: { x: 48, y: 150, w: 1104, h: 1030 } },
 };
 const BOXES = [["혼자 약속 상자", BOX.solo], ["단체 약속 상자", BOX.group], ["단체 얼굴 범위", SUBJECT]] as const;

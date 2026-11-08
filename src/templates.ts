@@ -162,7 +162,7 @@ interface Box { x0: number; y0: number; x1: number; y1: number }
 function subjectBox(m: Meta): Box {
   return m.mode === 'group' ? { x0: 0.04, y0: 0.05, x1: 0.96, y1: 0.67 } : { x0: 0.16, y0: 0.05, x1: 0.84, y1: 0.67 };
 }
-/** 얼굴을 지키는 다섯 종(fitArt)의 주인공 상자 — 단체이고 얼굴 범위를 알면(설치판 자르기 · 샘플 단체, Meta.subject) 그 범위,
+/** 얼굴을 지키는 네 종(fitArt)과 필름스트립 가운데 맞춤(placeArt)의 주인공 상자 — 단체이고 얼굴 범위를 알면(설치판 자르기 · 샘플 단체, Meta.subject) 그 범위,
     모르면(AI 그림) 위의 약속 상자. 얼굴 범위가 약속 상자보다 좁은 만큼 덜 줄인다 — «얼굴이 안전 영역에 막 들어오는 만큼만»(11/8 밤 팀장). */
 function fitBox(m: Meta): Box {
   return m.mode === 'group' && m.subject ? m.subject : subjectBox(m);
@@ -184,7 +184,8 @@ export function coverPlacement(aw: number, ah: number, cover: Rect, safe: Rect, 
   };
 }
 /* ───── 얼굴을 글 · 틀 밖으로 지키는 배치(2026-11-08 밤 Bumm님 «샘플 · 손님 사진 모두 얼굴이 제목 아래, 단체 양끝 얼굴이 잘리지 않게»,
-   팀장 결정 «섞기» — 시네마 · 에디토리얼 · 컬러 블록 · 필름스트립 · 트립틱만. 아치 · 폴라로이드 · 타이포그래피는 덮어 채우기 그대로) ─────
+   팀장 결정 «섞기» — 시네마 · 에디토리얼 · 컬러 블록 · 트립틱만. 아치 · 폴라로이드 · 타이포그래피는 덮어 채우기 그대로,
+   필름스트립도 2026-11-09 Bumm님 시안 04로 덮어 채우기) ─────
    덮어 채우기(coverPlacement)를 기본으로 두되 두 경우만 덜 덮는다.
    ① 주인공 상자(fitBox)가 안전 영역 폭보다 넓으면(넓은 단체 그림 · 좁은 칸) 상자 폭이 안전 영역에 막 들어가는 만큼만 줄인다 — 양끝 얼굴이 칸 밖으로 잘리지 않는다.
       줄어 칸보다 낮아진 그림은 칸 가운데에 두어 남는 높이를 위아래로 나누되, 머리가 안전 영역 위로 · 상자 아래가 안전 영역 아래로(제목 쪽) 나가지 않게 옮긴다.
@@ -725,10 +726,11 @@ export const TEMPLATES: Template[] = [
     const tag = fitSmall(c, m.tagline, { family: SANS, weight: 500, tracking: 0.16 }, 24, imgW - 80);
     const tagTop = titleTop - 20 - tag.height;
     const frame: Rect = { x: imgX, y: frameTop, w: imgW, h: frameBottom - frameTop };
-    // 사진은 늘리지 않고 칸을 덮게(좌우를 자른다), 주인공은 글 덩어리 위쪽 안전 영역 쪽에 둔다(placeArt).
+    // 사진은 늘리지 않고 칸을 꽉 덮는다 — 위는 칸 맨 위에 붙이고, 넓은 단체 사진은 얼굴 범위 가운데로 양옆을 자른다
+    // (2026-11-09 Bumm님 시안 04 «칸 꽉 · 넷 다 옆이 잘림» — 11/8 밤 «얼굴이 들어오게 줄임»(fitArt)을 바꿈).
     const safe: Rect = { x: imgX + 16, y: frameTop + 24, w: imgW - 32, h: tagTop - 40 - (frameTop + 24) };
     c.save(); roundRect(c, imgX, frameTop, imgW, frame.h, 10); c.clip();
-    const placed = fitArt(c, art, frame, safe, fitBox(m), '#100c08');
+    const placed = placeArt(c, art, frame, safe, fitBox(m));
     halation(c, art, imgX, frameTop, imgW, frame.h, 0.45, placed);
     const fade = c.createLinearGradient(0, tagTop - 260, 0, frameBottom);
     fade.addColorStop(0, 'rgba(10,7,4,0)'); fade.addColorStop(0.45, 'rgba(10,7,4,.62)'); fade.addColorStop(1, 'rgba(10,7,4,.9)');

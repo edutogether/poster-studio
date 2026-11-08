@@ -54,6 +54,28 @@ for (const template of app.TEMPLATES) {
   }
 }
 
+// 필름스트립은 사진 칸을 늘 꽉 채운다(2026-11-09 Bumm님 시안 04 «칸 꽉 · 넷 다 옆이 잘림» — 11/8 밤의 «얼굴이 들어오게 줄임»을 바꿈).
+// 넓은 단체 그림 · 얼굴 범위가 있어도 처음 그리는 사진(칸 그림)이 칸 226,150,748×1580을 덮어야 한다 — 위아래 빈 곳 없음.
+test('TEMPLATES[필름스트립]: 넓은 단체 사진도 칸을 꽉 채운다(위로 붙이고 양옆을 자른다)', () => {
+  const film = app.TEMPLATES.find((t) => t.label === '필름스트립');
+  const cover = { x: 226, y: 150, w: 748, h: 1580 };
+  for (const [w, h] of [[1536, 1024], [1135, 1080], [1672, 941], [1024, 1536]]) {
+    const art = { width: w, height: h };
+    const draws = [];
+    const ctx = new FakeCtx();
+    ctx.drawImage = (img, x, y, dw, dh) => { if (img === art && dw !== undefined) draws.push({ x, y, w: dw, h: dh }); };
+    const meta = { mode: 'group', groupName: '햇살초 5학년', members: '김인키, 이영화', title: '빛의 결투', tagline: '오늘의 이야기', genre: 'fantasy',
+      subject: { x0: 0.142, y0: 0.02, x1: 0.827, y1: 0.751 } };
+    film.render(ctx, art, meta, GENRE_STUB);
+    const p = draws[0];
+    expect(p, `${w}×${h}`).toBeTruthy();
+    expect(p.y, `${w}×${h} 위`).toBeCloseTo(cover.y, 6);
+    expect(p.x).toBeLessThanOrEqual(cover.x + 0.5);
+    expect(p.x + p.w).toBeGreaterThanOrEqual(cover.x + cover.w - 0.5);
+    expect(p.y + p.h).toBeGreaterThanOrEqual(cover.y + cover.h - 0.5);
+  }
+});
+
 test('TEMPLATES: 서로 다른 조판 방식의 8개 디자인이다', () => {
   expect(app.TEMPLATES.length).toBe(8);
   // vm 샌드박스의 배열은 이 realm의 Array.prototype과 달라 deepEqual이 realm
