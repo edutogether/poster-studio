@@ -9,6 +9,7 @@ status: dropped
 
 > **접음(2026-11-08 Bumm님, 팀장 전달)**: «두 줄로 붙이기»는 하지 않는다. 시험 코드도 넣지 않고, 포스터는 지금 그대로다.
 > 대신 촬영 때 «앞줄은 앉고 뒷줄은 서기»로 사람이 두 줄로 서게 안내한다 — [2026-11-08-group-shoot-front-sit](../2026-11-08-group-shoot-front-sit/intent.md).
+> 그 안도 같은 날 저녁 거뒀다 — 지금은 «모두 잘 보이게 서주세요»([2026-11-08-group-stand-sample-photos](../2026-11-08-group-stand-sample-photos/intent.md)).
 > 시험하며 만든 코드(`src/desktopCrop.ts` 두 줄 갈래 · 시험 11건 · 측정 도구 기록)는 저장소에 넣지 않았다. 아래는 그때 결과 기록이다.
 
 ## 문제

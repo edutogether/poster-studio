@@ -7,7 +7,7 @@
    설치판을 원격 디버깅 포트와 가짜 카메라(그 사진)로 띄우고, 사람이 하는 순서대로 누른다:
      1단계(설치판 표시 · 다운로드 단추 없음 · 화면 글꼴 · 한글 입력) → 2단계(예시 영상 · 켜기 전 «샘플 포스터 보기» · 카메라 켜기 · 3초 뒤 찍기)
      → «이 사진으로 포스터 만들기»(로딩 화면 장면 둘 → AI 없이 로컬 합성 8종) → PC에 저장(PNG 1200×1800) → 인쇄 미리보기 → 인쇄하기(4×6 PDF로 받음)
-     → 다음 주인공 → «샘플 포스터 보기»(화면의 촬영 구도 예시 사진 · 로컬 합성 — 웹의 AI 원화가 아니다) → 8종 → 개인정보처리방침 새 창 → 창 닫기로 종료.
+     → 다음 주인공 → «샘플 포스터 보기»(웹과 같은 혼자 샘플 사진 sample-solo · 로컬 합성) → 8종 → 개인정보처리방침 새 창 → 창 닫기로 종료.
    잰다: 앱이 보낸 요청이 전부 앱 안 주소(app://studio)·blob·data인지(바깥 인터넷 0건), 바깥 주소 fetch가 막히는지,
          콘솔 오류 · 못 받은 파일 0건, 화면마다 원본 해상도 캡처(<결과 폴더>/*.png), 결과 report.json.
    저장 · 인쇄 창은 확인용 환경 변수로 대신한다(desktop/main.mjs 머리말) — 사람이 쓰는 설치판은 Windows 저장 창 · 인쇄 창이 뜬다.
@@ -236,8 +236,8 @@ try {
   check('인쇄 = 4×6인치(288×432pt) 한 장 · 포스터 그림 포함', pdfInfo && pdfInfo.pages === 1 && pdfInfo.mediaBox?.[0] === 288 && pdfInfo.mediaBox?.[1] === 432 && pdfInfo.images >= 1, pdfInfo);
   check('인쇄 뒤 인쇄용 화면을 걷는다', await waitFor(`!document.getElementById('printArea')`, 5000));
 
-  // 다음 주인공 → «샘플 포스터 보기»(10/28 Bumm님): 화면의 촬영 구도 예시 사진(승인된 예시 영상의 «찰칵» 뒤 마지막 장면)을 로컬 합성으로 8종에 넣는다.
-  // 로딩 화면은 설치판 것(장면 둘 · AI 문구 없음)이고, 웹의 AI 원화(design-sample)는 받지 않는다.
+  // 다음 주인공 → «샘플 포스터 보기»(10/28 Bumm님 · 11/8 사진 바꿈): 웹과 같은 샘플 사진(혼자 = 촬영 예시 여학생 · 단체 = 새 단체 그림, 사람 둘레 세로 2:3으로 미리 자른 것)을
+  // 로컬 합성으로 8종에 넣는다. 로딩 화면은 설치판 것(장면 둘 · AI 문구 없음)이다.
   await click('#resultView .result-tools .icon-button[aria-label="다음 주인공"]');
   await sleep(800);
   const afterReset = await main.evaluate(`({ step: document.body.dataset.step, title: document.getElementById('movieTitle').value, thumbs: document.querySelectorAll('#resultView .style-option.thumb').length, snapshot: !document.getElementById('snapshot').classList.contains('hidden') })`);
@@ -257,8 +257,8 @@ try {
   }
   check('샘플: 설치판 로딩 화면(AI 문구 없음) 뒤 8종', sampleWait.some((w) => w.open) && sampleWait.every((w) => !w.ai) && await waitFor(`document.body.dataset.step === '3' && document.querySelectorAll('#resultView .style-option.thumb').length === 8`, 20000), { 로딩표본: sampleWait.filter((w) => w.open).length, 문구AI: sampleWait.some((w) => w.ai) });
   const sampleReq = report.requests.slice(reqBefore).map((u) => u.replace(/^app:\/\/studio/, ''));
-  const examplePhoto = sampleReq.find((u) => /^\/studio\/camera-(v1\/(solo|group)-end|student|group)\.webp/.test(u));
-  check('샘플 사진 = 화면의 촬영 구도 예시 사진(웹의 AI 원화를 받지 않는다)', !!examplePhoto && !sampleReq.some((u) => /design-sample/.test(u)), { examplePhoto, 원화: sampleReq.filter((u) => /design-sample/.test(u)) });
+  const examplePhoto = sampleReq.find((u) => /^\/assets\/sample-solo-[\w-]+\.webp$/.test(u));
+  check('샘플 사진 = 혼자 샘플 사진(sample-solo — 웹과 같은 것)', !!examplePhoto, { examplePhoto, 요청: sampleReq.filter((u) => /\.webp$/.test(u)) });
   await sleep(1200);
   await shot('3단계-샘플');
 

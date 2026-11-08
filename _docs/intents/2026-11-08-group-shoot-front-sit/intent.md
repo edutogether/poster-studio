@@ -1,11 +1,14 @@
 ---
-status: in-progress
+status: dropped
 등급: 2
 작성자: Poster Studio 세션
 작성 시각: 2026-11-08
 ---
 
 # 단체 촬영 안내를 «앞줄은 앉고 뒷줄은 서기»로 — 화면 문구 · 예시 그림 · 설명서
+
+> **거둠(2026-11-08 저녁 Bumm님, 팀장 전달)**: 벤치 · 앉기를 쓰지 않는다. 문구는 «모두 잘 보이게 서주세요», 그림은 모두 선 새 단체 그림 —
+> [2026-11-08-group-stand-sample-photos](../2026-11-08-group-stand-sample-photos/intent.md). 이 안의 커밋(ed6d7e0)은 push 전에 그 작업이 덮었다.
 
 ## 문제
 

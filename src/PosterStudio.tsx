@@ -23,7 +23,9 @@ import type { Meta, Poster } from "./state.js";
 import { restartAtHome } from "./restartHome.js";
 import { STUDIO_MODE } from "./studioMode.js";
 import { DESKTOP, desktopBridge, printFailed } from "./desktop.js";
-import { approvedCameraVideo } from "./studio/cameraVideo.js";
+// 샘플 사진(11/8 Bumm님 — 웹 · 설치판 같은 것): 가져오기는 주소 글자만 번들에 넣는다. 그림은 «샘플 포스터 보기»를 누를 때 buildPosters가 받는다.
+import SAMPLE_SOLO from "./studio/sample-solo.webp";
+import SAMPLE_GROUP from "./studio/sample-group.webp";
 
 /* 한 장의 사진으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만 허용한다
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
@@ -44,7 +46,7 @@ const DESKTOP_PHOTO_MAX = 1920;
 const boothToken = DESKTOP ? "" : BOOTH_TOKEN;
 
 /* 샘플 흐름(2026-10-09 Bumm님 «샘플 포스터를 보더라도 로딩 화면 이후 포스터 고르는 화면으로»).
-   «샘플 포스터 보기»는 촬영 · AI 없이 같은 원화로 흐름 전체를 보여 준다 — 진짜 생성과 같은 로딩 화면을 장면 SAMPLE_WAIT_SCENES개 동안
+   «샘플 포스터 보기»는 촬영 · AI 없이 샘플 사진(혼자 · 단체)으로 흐름 전체를 보여 준다 — 진짜 생성과 같은 로딩 화면을 장면 SAMPLE_WAIT_SCENES개 동안
    보인 뒤 포스터 고르기로 간다. 카메라 권한 요청·AI 호출·서버 요청은 하나도 일어나지 않는다(테스트로 고정).
    이 단추를 보일지는 src/studioMode.ts의 스위치가 정한다(«both» 두 단추 · «sample» 샘플만 · «real» 진짜 생성만). */
 // 10/20 저녁 Bumm님 «샘플 흐름의 로딩은 장면 5개 → 2개»(진짜 생성은 그대로 — 끝날 때까지)
@@ -58,7 +60,7 @@ const DESKTOP_SAVE_FAILED = "포스터를 저장하지 못했어요.\n저장할 
 const DESKTOP_PRINT_FAILED = "인쇄하지 못했어요.\n프린터 연결을 확인하고 다시 인쇄해 주세요.";
 
 /* 포스터 고르기 화면만 바로 여는 로컬 미리보기(2026-10-14 Bumm님: «샘플 흐름을 처음부터 거치지 않고 그 화면이 곧장 열리게»).
-   개발 서버(npm run dev)에서 주소 끝에 ?preview=posters를 붙이면 샘플 원화로 8개 디자인을 채운 3단계가 곧장 열린다.
+   개발 서버(npm run dev)에서 주소 끝에 ?preview=posters를 붙이면 샘플 사진으로 8개 디자인을 채운 3단계가 곧장 열린다.
    import.meta.env.DEV는 운영 빌드에서 false로 바뀌어 이 갈래가 번들에서 통째로 빠진다 — 라이브에는 노출되지 않는다.
    서버 확인(/health)·카메라·AI 요청은 하나도 하지 않는다. */
 const PREVIEW = import.meta.env.DEV ? new URLSearchParams(location.search).get("preview") : null;
@@ -605,21 +607,18 @@ export default function PosterStudio() {
     }
   };
 
-  /* 샘플 모드: 촬영 대신 같은 원화 한 장으로 8개 틀을 만든다. 진짜 생성과 같은 로딩 화면을 장면 SAMPLE_WAIT_SCENES개 동안
-     보인 뒤 결과로 간다. 원화는 샘플 모드에서 이 단추를 누를 때만 받는다. */
+  /* 샘플 모드: 촬영 대신 샘플 사진 한 장(혼자 · 단체)으로 8개 틀을 만든다. 진짜 생성과 같은 로딩 화면을 장면 SAMPLE_WAIT_SCENES개 동안
+     보인 뒤 결과로 간다. 샘플 사진은 이 단추를 누를 때만 받는다. */
   const onSample = async () => {
     if (!(sampleMode || sampleChoice) || isGeneratingRef.current) return;
     stopCamera();
     await composeWhileWaiting(DESKTOP ? DESKTOP_WAIT_SCENES : SAMPLE_WAIT_SCENES, async () => {
-      // 설치판 샘플은 설치판이 실제로 만드는 모습이어야 한다(10/28 Bumm님) — 웹의 AI 원화 대신 화면의 «촬영 구도 예시» 사진(지금 고른 개인 · 단체)을
-      // 로컬 합성 그대로 8종에 넣는다. 예시가 승인된 영상이면 «찰칵» 뒤 마지막 장면, 아니면 정지 그림이다(CameraExample.tsx와 같은 규칙).
-      const { default: sampleArt } = DESKTOP
-        ? { default: approvedCameraVideo(mode)?.endStill ?? (mode === "group" ? "/studio/camera-group.webp" : "/studio/camera-student.webp") }
-        : await import("./studio/design-sample.webp");
+      // 샘플 사진은 웹 · 설치판 같은 것이다(11/8 Bumm님): 혼자는 촬영 예시 속 여학생(camera-student.webp), 단체는 새 단체 그림 —
+      // 설치판이 찍은 사진에 하는 «사람 둘레 세로 2:3 자르기»(desktopCrop)를 미리 해 둔 그림이라, 설치판이 실제로 만드는 모습과 같다.
+      const sampleArt = mode === "group" ? SAMPLE_GROUP : SAMPLE_SOLO;
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
-      // 설치판은 예시 사진도 찍은 사진처럼 사람 둘레 세로 2:3으로 잘라 넣는다(아래 onCompose와 같은 줄 · 같은 까닭).
-      return buildPosters([import.meta.env.MODE === "desktop" ? await (await import("./desktopCrop.js")).cropForPoster(sampleArt, mode) : sampleArt], meta);
+      return buildPosters([sampleArt], meta);
     }, "[샘플 포스터 실패]", "샘플 포스터를 불러오지 못했어요.\n다시 눌러주세요.");
   };
 
@@ -629,7 +628,7 @@ export default function PosterStudio() {
     if (!POSTER_PREVIEW) return;
     let alive = true;
     (async () => {
-      const { default: sampleArt } = await import("./studio/design-sample.webp");
+      const sampleArt = mode === "group" ? SAMPLE_GROUP : SAMPLE_SOLO;
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
       const built = await buildPosters([sampleArt], meta);

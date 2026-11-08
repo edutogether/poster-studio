@@ -713,7 +713,7 @@ export default function StudioView(p: StudioViewProps) {
             <img id="snapshot" src={p.snapshotURL ?? undefined} className={p.phase === "shot" ? "" : "hidden"} alt="촬영 사진"
               onLoad={(e) => readAspect(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}/>
             <div id="camHint" className={p.phase === "idle" ? "camHint camera-example-caption" : "camHint hidden"}>
-              <span className="camera-example-label">{p.mode === "group" ? "이렇게, 앞줄은 앉고 뒷줄은 서서" : "이렇게, 얼굴과 어깨가 보이게"}</span>
+              <span className="camera-example-label">{p.mode === "group" ? "이렇게, 모두의 얼굴이 보이게" : "이렇게, 얼굴과 어깨가 보이게"}</span>
               {!p.sampleMode && <button type="button" id="startBtn" className="camera-start-button" onClick={p.onStart} disabled={locked}>카메라 켜기 <StudioIcon name="camera"/></button>}
             </div>
             {p.phase === "live" && <>
@@ -738,7 +738,7 @@ export default function StudioView(p: StudioViewProps) {
             {...phoneShotTap}>
             <StudioIcon name="camera"/>
           </button>
-          <p className="camera-bottom">{p.mode === "group" ? "앞줄은 앉고 뒷줄은 서서, 모두의 얼굴이 보이게 모여주세요." : "얼굴과 어깨가 화면 안에 들어오도록 맞춰주세요."}</p>
+          <p className="camera-bottom">{p.mode === "group" ? "모두 잘 보이게 서주세요." : "얼굴과 어깨가 화면 안에 들어오도록 맞춰주세요."}</p>
 
         </div>
         <div className="workspace" id="cameraWorkspace">
@@ -746,7 +746,7 @@ export default function StudioView(p: StudioViewProps) {
           <aside className="camera-guide">
             <div className="camera-instructions" data-review={p.phase === "shot"}>
             <ul className="camera-tips" aria-hidden={p.phase === "shot"}>
-              <li><span>1</span><div><strong>{p.mode === "group" ? "앞줄은 앉고, 뒷줄은 서서" : "얼굴이 잘 보이게"}</strong><p>{p.mode === "group" ? "모두의 얼굴이 겹치지 않게 두 줄로 모여주세요." : "머리 위부터 어깨까지 화면에 담아주세요."}</p></div></li>
+              <li><span>1</span><div><strong>{p.mode === "group" ? "모두 잘 보이게 서주세요" : "얼굴이 잘 보이게"}</strong><p>{p.mode === "group" ? "앞뒤로 겹치지 않게, 프레임 안에 모여주세요." : "머리 위부터 어깨까지 화면에 담아주세요."}</p></div></li>
               <li><span>2</span><div><strong>{p.mode === "group" ? "표정은 우리답게" : "표정은 나답게"}</strong><p>편하게 웃어도, 멋진 포즈를 지어도 좋아요.</p></div></li>
               <li><span>3</span><div><strong>준비되면 촬영</strong><p>버튼을 누르고 3초만 포즈를 유지해 주세요.</p></div></li>
             </ul>

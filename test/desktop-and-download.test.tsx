@@ -14,7 +14,6 @@ import type { PrintResult } from '../src/desktop.js';
 import PosterStudio from '../src/PosterStudio.js';
 import * as saveModule from '../src/savePoster.js';
 import * as posterModule from '../src/poster.js';
-import { approvedCameraVideo } from '../src/studio/cameraVideo.js';
 import {
   installCanvas, installCamera, installFetch, installImage, installFonts,
   installObjectURL, makeVideoReady, makeAppContainer
@@ -153,18 +152,18 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     expect(net.calls).toEqual([]);
   });
 
-  /* 설치판 샘플은 설치판이 실제로 만드는 모습이어야 한다 — 웹의 AI 원화(design-sample)가 아니라 화면의 «촬영 구도 예시» 사진(예시 영상이 승인돼 있으면
-     «찰칵» 뒤 마지막 장면, 아니면 정지 그림)을 같은 로컬 합성(buildPosters)에 넣는다. 로딩 화면은 설치판 것(AI 문구 없음), 카메라 · 서버 요청 0건. */
-  test.each([['solo'], ['group']])('«샘플 포스터 보기»(%s): 화면의 촬영 구도 예시 사진을 로컬 합성으로 8종에 넣는다 — AI 원화 · AI 문구 · 카메라 · 서버 요청 없음', async (mode) => {
+  /* 설치판 샘플은 웹과 같은 샘플 사진(11/8 Bumm님 — 혼자 = 촬영 예시 여학생 · 단체 = 새 단체 그림)을 같은 로컬 합성(buildPosters)에 넣는다.
+     사진은 설치판의 «사람 둘레 세로 2:3 자르기»를 미리 해 둔 것이라 다시 자르지 않는다. 로딩 화면은 설치판 것(AI 문구 없음), 카메라 · 서버 요청 0건. */
+  test.each([['solo'], ['group']])('«샘플 포스터 보기»(%s): 모드에 맞는 샘플 사진을 로컬 합성으로 8종에 넣는다 — AI 문구 · 카메라 · 서버 요청 없음', async (mode) => {
     const build = vi.spyOn(posterModule, 'buildPosters');
     await act(async () => { renderApp(); });
     if (mode === 'group') await act(async () => { (document.querySelector('#modeSeg [data-mode="group"]') as HTMLButtonElement).click(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await composeWithLoading('shotBtn');
-    const photo = approvedCameraVideo(mode)?.endStill ?? (mode === 'group' ? '/studio/camera-group.webp' : '/studio/camera-student.webp');
     expect(build).toHaveBeenCalledTimes(1);
-    expect(crop.calls).toEqual([[photo, mode]]);   // 예시 사진도 찍은 사진처럼 잘라 넣는다(11/8)
-    expect(build.mock.calls[0][0]).toEqual([`cropped:${mode}:${photo}`]);
+    expect(crop.calls).toEqual([]);   // 미리 자른 그림이다
+    expect(build.mock.calls[0][0]).toHaveLength(1);
+    expect(String(build.mock.calls[0][0][0]).endsWith(`sample-${mode}.webp`)).toBe(true);
     expect(document.querySelectorAll('#resultView .style-option.thumb').length).toBe(8);
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
     expect(net.calls).toEqual([]);
@@ -315,7 +314,7 @@ describe('조판 실패 — 샘플 · 설치판 포스터 만들기', () => {
     expect(document.getElementById('spinner')).toBeNull();
     expect(document.body.dataset.step).toBe('2');
     expect(el<HTMLButtonElement>('shotBtn').disabled).toBe(false);   // 다시 누를 수 있다(생성 중 표시가 풀림)
-    expect(crop.calls.length).toBe(desktop ? 1 : 0);   // 사진 자르기는 설치판만(웹 샘플은 AI 원화 그대로)
+    expect(crop.calls.length).toBe(0);   // 샘플 사진은 미리 자른 그림이다(웹 · 설치판 같은 것)
   });
 
   test('설치판 «이 사진으로 포스터 만들기»', async () => {

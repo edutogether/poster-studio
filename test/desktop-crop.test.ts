@@ -111,7 +111,7 @@ test('desktopCrop은 import.meta.env.MODE를 그 자리에서 읽는 갈래 안�
   const src = readFileSync('src/PosterStudio.tsx', 'utf8');
   const imports = src.match(/import\(["']\.\/desktopCrop\.js["']\)/g) ?? [];
   const guarded = src.match(/import\.meta\.env\.MODE === "desktop" \? await \(await import\("\.\/desktopCrop\.js"\)\)\.cropForPoster\(/g) ?? [];
-  expect(imports.length).toBe(2);   // «이 사진으로 포스터 만들기» · «샘플 포스터 보기»
+  expect(imports.length).toBe(1);   // «이 사진으로 포스터 만들기»(샘플 사진은 미리 자른 그림 — 11/8)
   expect(guarded.length).toBe(imports.length);
   expect(src).not.toMatch(/^import[^;]*desktopCrop/m);
 });
