@@ -21,11 +21,16 @@ export const BLOCKED_URLS = ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*
 /** 앱 안 주소인가 — «app://studio/»로 시작해야 한다(«app://studio.evil/» · «app://studio»는 아니다). */
 export const isAppUrl = (url) => typeof url === 'string' && url.startsWith(`${ORIGIN}/`);
 
-/** app://studio/<경로>가 가리키는 web 안 파일. 다른 호스트이거나 web 밖으로 나가면 null(→ 404). */
+/** app://studio/<경로>가 가리키는 web 안 파일. 다른 호스트이거나 web 밖으로 나가거나 % 표기를 풀 수 없으면 null(→ 404). */
 export function appFilePath(webRoot, requestUrl) {
   const url = new URL(requestUrl);
   if (url.host !== 'studio') return null;
-  let rel = decodeURIComponent(url.pathname);
+  let rel;
+  try {
+    rel = decodeURIComponent(url.pathname);
+  } catch {
+    return null;   // «%E0%A4%A» 같은 깨진 표기 — 예외로 응답기를 멈추지 않는다(11/8 종합감사)
+  }
   if (rel.endsWith('/')) rel += 'index.html';
   const file = path.join(webRoot, rel);
   return file.startsWith(webRoot + path.sep) ? file : null;

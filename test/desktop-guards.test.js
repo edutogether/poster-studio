@@ -65,6 +65,12 @@ describe('앱 주소 서빙 — web 안 파일만', () => {
     expect(await res.text()).toBe('');
   });
 
+  test.each([['%E0%A4%A'], ['%'], ['studio%2Fclip%ZZ.mp4']])('풀 수 없는 % 표기 %s 는 예외 없이 404', async (rel) => {
+    expect(appFilePath(web, `${ORIGIN}/${rel}`)).toBeNull();
+    const res = await get(`${ORIGIN}/${rel}`);
+    expect(res.status).toBe(404);
+  });
+
   test('다른 호스트(app://evil/)는 404 · 없는 파일은 404', async () => {
     expect((await get('app://evil/index.html')).status).toBe(404);
     expect((await get(`${ORIGIN}/nope.html`)).status).toBe(404);
