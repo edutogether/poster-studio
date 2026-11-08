@@ -34,14 +34,14 @@
   {
     "mode": "group",
     "status": "approved",
-    "src": "/studio/camera-v1/group-23040397b1a0.mp4",
-    "sha256": "23040397b1a09239455941d2e730d893e0608b8a3d8d327365f39825b4f29215",
-    "bytes": 4120285,
+    "src": "/studio/camera-v1/group-9d58b79c423a.mp4",
+    "sha256": "9d58b79c423ae6d6f80331e3e47cf7e8b34eb02d51e2d9c6ebb3b0592837f84d",
+    "bytes": 1768903,
     "still": "/studio/camera-v1/group.webp",
-    "stillSha256": "f9f64ddaddc4172a79b159dcb3021d1e2e27618aa265592bbefe8d77d4e23857",
+    "stillSha256": "c81ff123d9e31f808ca7f05ad2acbb5095b3ec426179003ce9dcbcbc6b710129",
     "endStill": "/studio/camera-v1/group-end.webp",
-    "endStillSha256": "6e0e94419debf88adc2abd4241da17369aee44696467651a430b45ff50e7e5c2",
-    "duration": 8.05,
+    "endStillSha256": "6db1566eb80294d09eee064615e3d31370696255a773f19e78be779f5958ed93",
+    "duration": 8.042,
     "cues": [
       {
         "kind": "count",

@@ -5,7 +5,7 @@ import { cameraPrefetchAllowed, whenPageIdle } from "./cameraPrefetch.js";
 type Props = { mode: string; video?: ApprovedCameraVideo; hidden: boolean; offstage: boolean; prefetch?: boolean };
 
 const ALT = {
-  group: "모두의 얼굴이 보이게 모여 웃는 단체 촬영 구도 예시",
+  group: "앞줄은 앉고 뒷줄은 서서 모두의 얼굴이 보이게 웃는 단체 촬영 구도 예시",
   solo: "얼굴과 어깨를 담고 편하게 웃는 촬영 구도 예시",
 };
 

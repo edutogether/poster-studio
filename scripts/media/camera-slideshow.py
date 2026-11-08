@@ -2,17 +2,18 @@
 왜: 진짜 영상은 Bumm님이 직접 만든다(유료 영상 생성 금지). 그 전까지 앱의 촬영 화면 영상 자리에 «이렇게 서서, 이렇게 찍는다»를
 보여 줄 임시판이다. 장면은 섞지 않고 뚝뚝 넘긴다(컷). 소리·플래시·멈춘 장면은 뒤처리(camera-shot-post.py), 숫자 3·2·1은 앱이 얹는다.
 
-입력 목록.json = {"crop_top": 48, "frames": [{"image": "경로/K0.png", "seconds": 0.6}, ...]}
-  그림은 모두 같은 크기의 3:2여야 한다(같은 카메라 자리로 그린 연속 장면). 16:9로 자를 때 위에서 crop_top 화소를 덜어 내고
+입력 목록.json = {"crop_top": 48, "fps": 30, "frames": [{"image": "경로/K0.png", "seconds": 0.6}, ...]}
+  그림은 모두 같은 크기의 3:2 또는 16:9여야 한다(같은 카메라 자리로 그린 연속 장면). 16:9로 자를 때 위에서 crop_top 화소를 덜어 내고
   나머지는 아래에서 덜어 낸다 — 모든 장에 같은 자르기를 써야 컷이 넘어갈 때 화면 틀이 튀지 않는다.
-출력: 1920×1080 · 30fps · H.264(무손실에 가깝게 CRF 12) · 소리 없음. 길이 = seconds 합(30fps로 정확히 나눠떨어져야 한다).
+  fps는 없으면 30이다. 11/8 단체 임시판은 지금 영상(24fps · 193프레임)과 같은 길이로 맞추려고 24를 쓴다.
+출력: 1920×1080 · fps · H.264(무손실에 가깝게 CRF 12) · 소리 없음. 길이 = seconds 합(fps로 정확히 나눠떨어져야 한다).
 사용: python scripts/media/camera-slideshow.py <목록.json> <출력.mp4>
 종료: 0 · 1 검사 실패(프레임 수·크기) · 2 입력 오류
 """
 import json, os, subprocess, sys
 from PIL import Image
 
-W, H, FPS = 1920, 1080, 30
+W, H = 1920, 1080
 
 
 def main(argv):
@@ -20,7 +21,7 @@ def main(argv):
     listing_path, out = argv
     try: listing = json.load(open(listing_path, encoding='utf-8'))
     except (OSError, ValueError) as err: print(f'목록을 못 읽음: {err}'); return 2
-    frames, top = listing.get('frames') or [], int(listing.get('crop_top', 0))
+    frames, top, FPS = listing.get('frames') or [], int(listing.get('crop_top', 0)), int(listing.get('fps', 30))
     if not frames: print('frames가 비었다'); return 2
     sizes = set()
     for f in frames:
@@ -31,7 +32,8 @@ def main(argv):
     if len(sizes) != 1: print(f'그림 크기가 서로 다르다: {sorted(sizes)}'); return 2
     sw, sh = sizes.pop()
     ch = round(sw * 9 / 16)
-    if abs(sw / sh - 1.5) > 0.01 or not 0 <= top <= sh - ch: print(f'3:2 그림이 아니거나 crop_top {top}이 범위(0~{sh - ch}) 밖'); return 2
+    if min(abs(sw / sh - 1.5), abs(sw / sh - 16 / 9)) > 0.01 or not 0 <= top <= sh - ch:
+        print(f'3:2 · 16:9 그림이 아니거나 crop_top {top}이 범위(0~{sh - ch}) 밖'); return 2
     args, chains = ['ffmpeg', '-v', 'error', '-y'], []
     for i, f in enumerate(frames):
         args += ['-loop', '1', '-framerate', str(FPS), '-t', f'{f["seconds"]}', '-i', f['image']]
