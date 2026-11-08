@@ -152,31 +152,34 @@ function photo(c: Ctx, art: HTMLImageElement, x: number, y: number, w: number, h
 /* ───── 주인공 자리를 지키는 배치(2026-10-14 Bumm님: «얼굴이 아치 안에 들어와야 함 — 지금은 다 잘림») ─────
    AI 그림의 구도는 생성 지시문이 정한다(functions/index.js buildPrompt: «세로 2:3, 주인공은 위쪽 2/3 안에 머리까지 다 보이게,
    머리 위 여백, 아래 1/3은 비움», 혼자면 «가운데»). 그래서 주인공 상자를 그 약속대로 둔다 — 혼자: 가로 16~84%, 단체: 4~96%,
-   세로 5~67%(그림 비율). 틀은 그림을 «덮어 채우기» 대신, 이 상자가 틀의 안전 영역 안에 다 들어오게 크기·자리를 정한다.
-   그러다 그림이 칸을 다 못 덮으면, 남는 자리는 같은 그림을 크게 흐려 깐 «배경 연장»으로 채운다(0원·0초 — AI 배경 연장 없음). */
+   세로 5~67%(그림 비율).
+   2026-11-08 Bumm님 «위에 지워지는 거 개짜증나는데 좌우 얼굴 옆쪽을 잘라서라도 최대한 채워. 모든 이미지들을 1번 시네마랑 8번 트립틱처럼»:
+   예전에는 이 상자가 틀의 안전 영역 안에 다 들어오게 그림을 줄여, 칸의 위(· 아래)가 흐린 «배경 연장»으로 비었다.
+   이제 그림은 늘 칸을 덮는다(시네마 · 트립틱과 같은 덮어 채우기 — 좌우 · 아래가 잘린다). 자리만 주인공 상자가 안전 영역 가운데에 가장
+   가깝게 오도록 덮는 범위 안에서 고른다. */
 interface Rect { x: number; y: number; w: number; h: number }
 interface Box { x0: number; y0: number; x1: number; y1: number }
 function subjectBox(m: Meta): Box {
   return m.mode === 'group' ? { x0: 0.04, y0: 0.05, x1: 0.96, y1: 0.67 } : { x0: 0.16, y0: 0.05, x1: 0.84, y1: 0.67 };
 }
-/** cover = 그림이 채울 칸, safe = 주인공 상자가 들어와야 할 영역(cover 안). 반환: 그린 그림의 자리·크기. */
+/** cover = 그림이 채울 칸, safe = 주인공 상자를 둘 영역(cover 안). 그림은 cover를 덮는 크기로 그리고, 덮는 범위 안에서
+    주인공 상자를 safe 가운데에 가장 가깝게 둔다. 세로로 safe보다 크면 머리(상자 위)를 safe 위에 맞춘다 — 가운데에 맞추면 머리가 잘린다.
+    반환: 그린 그림의 자리·크기. */
+export function coverPlacement(aw: number, ah: number, cover: Rect, safe: Rect, box: Box): Rect {
+  const s = Math.max(cover.w / aw, cover.h / ah);
+  const axis = (cLo: number, cLen: number, sLo: number, sLen: number, b0: number, b1: number, len: number, headFirst: boolean) => {
+    const fits = s * (b1 - b0) * len <= sLen;
+    const want = !fits && headFirst ? sLo - s * b0 * len : sLo + sLen / 2 - s * (b0 + b1) / 2 * len;
+    return Math.min(cLo, Math.max(cLo + cLen - s * len, want));
+  };
+  return {
+    x: axis(cover.x, cover.w, safe.x, safe.w, box.x0, box.x1, aw, false),
+    y: axis(cover.y, cover.h, safe.y, safe.h, box.y0, box.y1, ah, true),
+    w: aw * s, h: ah * s,
+  };
+}
 function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: Box) {
-  const aw = art.width, ah = art.height;
-  const bw = (box.x1 - box.x0) * aw, bh = (box.y1 - box.y0) * ah;
-  const sCover = Math.max(cover.w / aw, cover.h / ah), sFit = Math.min(safe.w / bw, safe.h / bh);
-  const s = Math.min(sCover, sFit);
-  const pick = (lo: number, hi: number, want: number) => (lo <= hi ? Math.min(hi, Math.max(lo, want)) : want);
-  // 주인공 상자가 safe 안에 들어오는 범위와, 그림이 cover를 덮는 범위를 겹쳐 고른다(겹치지 않으면 주인공이 먼저).
-  const bx = (lo0: number, hi0: number) => [lo0, hi0];
-  const [sxLo, sxHi] = bx(safe.x - s * box.x0 * aw, safe.x + safe.w - s * box.x1 * aw);
-  const [syLo, syHi] = bx(safe.y - s * box.y0 * ah, safe.y + safe.h - s * box.y1 * ah);
-  const [cxLo, cxHi] = bx(cover.x + cover.w - s * aw, cover.x);
-  const [cyLo, cyHi] = bx(cover.y + cover.h - s * ah, cover.y);
-  const wantX = safe.x + safe.w / 2 - s * (box.x0 + box.x1) / 2 * aw;
-  const wantY = safe.y + safe.h / 2 - s * (box.y0 + box.y1) / 2 * ah;
-  const ox = Math.max(sxLo, cxLo) <= Math.min(sxHi, cxHi) ? pick(Math.max(sxLo, cxLo), Math.min(sxHi, cxHi), wantX) : pick(sxLo, sxHi, wantX);
-  const oy = Math.max(syLo, cyLo) <= Math.min(syHi, cyHi) ? pick(Math.max(syLo, cyLo), Math.min(syHi, cyHi), wantY) : pick(syLo, syHi, wantY);
-  const r = { x: ox, y: oy, w: aw * s, h: ah * s };
+  const r = coverPlacement(art.width, art.height, cover, safe, box);
   drawPlaced(c, art, r, cover);
   return r;
 }
@@ -200,28 +203,12 @@ function drawPlaced(c: Ctx, art: HTMLImageElement, r: Rect, cover: Rect) {
   c.restore();
 }
 /* ───── 아치 창 배치(2026-10-23 Bumm님 «아치 모양으로 안에는 잘 보이고 밖에는 흐리게 하기로 한 거 아니야 ?») ─────
-   아치 창 안은 곡선 꼭대기까지 선명한 그림으로 꽉 채운다(덮어 채우기) — 주인공 상자를 네모 안전 영역에 지키던 placeArt는 그림을 줄여
-   창 위 약 184px가 흐린 연장으로 비었다. 대신 «얼굴 띠»(생성 지시문의 주인공 자리 — 혼자: 가로 30~70%, 단체: 8~92%, 세로 둘 다 8~35%)가
-   아치 곡선 안(가장자리 24px 안쪽)에 들어오는 자리 · 크기 가운데 창을 가장 많이 덮는 것을 고른다. 덮을 수 있으면 그림 위를 창 꼭대기에 맞춘다
-   (얼굴이 가장 낮게 — 곡선이 넓은 쪽으로). 단체에서 양끝 얼굴이 곡선에 걸리면 걸리지 않는 가장 큰 채우기로 물러선다(위가 조금 빈다). */
-export function archPlacement(aw: number, ah: number, win: Rect, cx: number, spring: number, r: number, mode: string): Rect {
-  const fx = mode === 'group' ? 0.42 : 0.2, fy0 = 0.08, fy1 = 0.35, m = 25;   // fx = 얼굴 띠 반폭(그림 폭 대비, 가운데 기준). m은 24px + 계산 여유 1px
-  const sCover = Math.max(win.w / aw, win.h / ah), winB = win.y + win.h;
-  let best: { r: Rect; score: number } | null = null;
-  for (let k = 1; k >= 0.2 - 1e-9; k -= 0.01) {   // 가로 그림의 단체는 덮을 크기의 절반 남짓까지 줄여야 양끝 얼굴이 곡선 안에 든다
-    const s = sCover * k, W = aw * s, H = ah * s, half = fx * W, ox = cx - W / 2;
-    if (half > r - m) continue;
-    const yReq = Math.max(win.y + m, spring - Math.sqrt((r - m) ** 2 - half ** 2));   // 얼굴 띠 위 모서리가 곡선 안에 드는 가장 높은 자리
-    const oyMin = yReq - fy0 * H, oyMax = winB - m - fy1 * H;                        // 얼굴 띠 아래도 창 안
-    if (oyMin > oyMax) continue;
-    const oy = oyMin <= win.y ? Math.min(win.y, oyMax) : oyMin;
-    const covW = Math.max(0, Math.min(ox + W, win.x + win.w) - Math.max(ox, win.x)) / win.w;
-    const covH = Math.max(0, Math.min(oy + H, winB) - Math.max(oy, win.y)) / win.h;
-    const score = covW * covH;
-    if (!best || score > best.score + 1e-6) best = { r: { x: ox, y: oy, w: W, h: H }, score };
-    if (score >= 0.999) break;
-  }
-  return best ? best.r : { x: cx - (aw * sCover) / 2, y: win.y, w: aw * sCover, h: ah * sCover };
+   아치 창 안은 곡선 꼭대기까지 선명한 그림으로 꽉 채운다(덮어 채우기). 그림 위를 창 꼭대기에 맞춘다 — 덮는 자리 가운데 얼굴이 가장 낮아
+   곡선이 넓은 쪽에 온다. 2026-11-08 Bumm님 «좌우 얼굴 옆쪽을 잘라서라도 최대한 채워»: 예전에는 단체 양끝 얼굴이 곡선에 걸리면 그림을
+   줄여(최대 0.2배) 창 위가 흐린 연장으로 비었다. 이제 줄이지 않는다 — 양끝 얼굴이 곡선 밖으로 나가면 그 부분은 아치 바깥 흐림에 걸린다. */
+export function archPlacement(aw: number, ah: number, win: Rect, cx: number): Rect {
+  const s = Math.max(win.w / aw, win.h / ah);
+  return { x: cx - (aw * s) / 2, y: win.y, w: aw * s, h: ah * s };
 }
 /** 그림을 r에 그리고, cover에서 r이 못 덮는 쪽(위 · 아래 · 옆 · 모서리)은 그림 가장자리의 얇은 띠(2%)를 늘여 채운다. 얼굴이 두 번 나오지 않는 배경 연장. */
 function extendEdges(t: Ctx, art: HTMLImageElement, r: Rect, cover: Rect) {
@@ -532,7 +519,7 @@ export const TEMPLATES: Template[] = [
 
   /* 2. 에디토리얼 — «서점 잡지 표지». 시네마가 극장에 붙는 포스터라면 이건 서점에 꽂힌 영화 잡지다:
         흰 테두리 안의 사진, 맨 위 폭 가득한 제호(= 영화 제목)와 발행 줄(날짜 · 장소), 왼쪽 아래 표지 문구(홍보 문구가 가장 크다),
-        오른쪽 아래 실제 규칙대로 부호화한 ISBN 바코드 하나(EAN-13, 2026-10-17 · 10-18)와 영화제 이름. 주인공은 제호·표지 문구와 겹치지 않는 안전 영역에 둔다(placeArt).
+        오른쪽 아래 실제 규칙대로 부호화한 ISBN 바코드 하나(EAN-13, 2026-10-17 · 10-18)와 영화제 이름. 사진은 테두리 안을 덮어 채우고, 주인공은 제호·표지 문구 사이 안전 영역 쪽에 둔다(placeArt).
         레퍼런스: references-round2.md B — Sight and Sound(제호), Little White Lies(일러스트 초상 표지), 잡지 표지 문법. */
   { label: '에디토리얼', render(c, art, m) {
     const B = 28, frame: Rect = { x: B, y: B, w: W - 2 * B, h: H - 2 * B };
@@ -590,7 +577,7 @@ export const TEMPLATES: Template[] = [
 
   /* 3. 컬러 블록 — 위아래 두 색 면. 사진은 위 색 면 «안쪽 여백 안»에 들어간다(사방 같은 여백 — 색 면이 사진의 액자).
         색은 정해 둔 20세트 × 차분/선명 2가지에서 그림의 주색 계열·밝기·색 세기로 고른다(2026-10-17 «색 세트 10개 이상», src/palette.ts — 대비·겹침은 수치로 고정).
-        사진은 주인공 상자를 지키며 칸에 맞춘다(placeArt). 레퍼런스: Saul Bass «The Man with the Golden Arm»(색 면이 액자), «Anatomy of a Murder». */
+        사진은 칸을 덮어 채운다(placeArt — 좌우는 잘릴 수 있다). 레퍼런스: Saul Bass «The Man with the Golden Arm»(색 면이 액자), «Anatomy of a Murder». */
   { label: '컬러 블록', render(c, art, m) {
     const k = colorBlockSet(artColors(art), artTone(art));
     const topC = css(k.top), bottomC = css(k.bottom), onBottom = css(k.title), credit = css(k.credit), soft = css(k.soft), ink = css(k.ink);
@@ -619,7 +606,7 @@ export const TEMPLATES: Template[] = [
     c.restore();
   } },
 
-  /* 4. 아치 프레임 — 아치 모양 창 안에 주인공이 온전히 들어오게 그림을 놓는다(placeArt — 창 안쪽의 안전 영역에 주인공 상자).
+  /* 4. 아치 프레임 — 아치 모양 창 안을 그림으로 꽉 채운다(archPlacement — 덮어 채우기).
         바깥은 같은 그림을 흐려 깐 위에 깊은 색 막 — 위쪽은 옅게 덮어 흐린 그림이 보이고, 글자가 놓이는 아래로 갈수록 짙게(2026-10-17
         «바깥쪽도 블러로 은은하게 보이게», 10-18 «바깥이 거의 안 보임 → 투명도 · 블러를 줄여»). 색은 정해 둔 20세트 × 차분/선명 2가지에서 고른다(src/palette.ts, 대비·겹침 수치 고정).
         레퍼런스: Criterion «The Spirit of the Beehive»(모양이 곧 색 창문), Mucha(세로로 긴 비례). */
@@ -639,9 +626,9 @@ export const TEMPLATES: Template[] = [
     const tag = fitSmall(c, m.tagline, { family: SERIF, weight: 500, tracking: 0.14 }, 26, 960);
     const tagTop = titleTop - 30 - tag.height;
     const archBottom = tagTop - 56, r = 440, cx = W / 2, spring = 176 + r;
-    // 창 안: 곡선 꼭대기까지 선명한 그림으로 꽉(얼굴이 곡선에 안 걸리는 자리 · 크기 — archPlacement).
+    // 창 안: 곡선 꼭대기까지 선명한 그림으로 꽉(archPlacement — 덮어 채우기, 그림 위 = 창 꼭대기).
     const win: Rect = { x: cx - r, y: spring - r, w: 2 * r, h: archBottom - (spring - r) };
-    const placed = archPlacement(art.width, art.height, win, cx, spring, r, m.mode);
+    const placed = archPlacement(art.width, art.height, win, cx);
     c.save(); c.beginPath(); archPath(c, cx, spring, r, archBottom); c.clip();
     drawPlaced(c, art, placed, win);
     c.restore();
@@ -696,7 +683,7 @@ export const TEMPLATES: Template[] = [
     const tag = fitSmall(c, m.tagline, { family: SANS, weight: 500, tracking: 0.16 }, 24, imgW - 80);
     const tagTop = titleTop - 20 - tag.height;
     const frame: Rect = { x: imgX, y: frameTop, w: imgW, h: frameBottom - frameTop };
-    // 사진은 늘리지 않고 칸을 덮게(좌우를 자른다), 주인공 상자는 글 덩어리 위쪽 안전 영역에 지킨다.
+    // 사진은 늘리지 않고 칸을 덮게(좌우를 자른다), 주인공은 글 덩어리 위쪽 안전 영역 쪽에 둔다(placeArt).
     const safe: Rect = { x: imgX + 16, y: frameTop + 24, w: imgW - 32, h: tagTop - 40 - (frameTop + 24) };
     c.save(); roundRect(c, imgX, frameTop, imgW, frame.h, 10); c.clip();
     const placed = placeArt(c, art, frame, safe, subjectBox(m));
@@ -858,7 +845,7 @@ export const TEMPLATES: Template[] = [
     const titleTop = ruleY - 48 - title.height;
     const lastBase = titleTop + title.asc + (title.lines.length - 1) * title.step;
     const edge = Math.round(lastBase - title.size * 0.36);
-    // 사진: 위쪽 가장자리까지 꽉. 주인공은 로고 아래 ~ 제목 위 안전 영역에 지킨다.
+    // 사진: 위쪽 가장자리까지 꽉. 주인공은 로고 아래 ~ 제목 위 안전 영역 쪽에 둔다(placeArt).
     const safeTop = 150, safe: Rect = { x: M, y: safeTop, w: colW, h: Math.max(240, titleTop - 24 - safeTop) };
     placeArt(c, art, { x: 0, y: 0, w: W, h: edge }, safe, subjectBox(m));
     const shade = c.createLinearGradient(0, titleTop - 160, 0, edge);
