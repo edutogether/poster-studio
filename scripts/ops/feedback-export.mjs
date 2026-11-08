@@ -23,6 +23,8 @@ export const APPS = {
   'voice-cinema': { collection: 'feedbackVoiceCinema', prefix: 'feedback-voice-cinema' },
 };
 const COLLECTIONS = Object.values(APPS).map((a) => a.collection);
+// 기본 속성 이름(__proto__ · constructor 등)은 앱이 아니다 — 그냥 APPS[name]으로 읽으면 참이 된다.
+const appOf = (name) => (Object.hasOwn(APPS, name) ? APPS[name] : undefined);
 const BATCH = 400;
 const COLUMNS = [
   ['받은 시각(한국)', (d) => kst(d.createdAt)],
@@ -58,7 +60,7 @@ export function toCsv(rows) {
 }
 
 export async function exportFeedback(db, outDir, now = new Date(), app = 'poster-studio') {
-  const target = APPS[app];
+  const target = appOf(app);
   if (!target) throw new Error(`모르는 앱: ${app}`);
   const snap = await db.collection(target.collection).orderBy('createdAt').get();
   const rows = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -99,7 +101,7 @@ async function openDb() {
 
 async function main(argv) {
   const [cmd, target, flag, appName] = argv;
-  if (cmd === 'export' && target && (flag === undefined || (flag === '--app' && APPS[appName]))) {
+  if (cmd === 'export' && target && (flag === undefined || (flag === '--app' && appOf(appName)))) {
     const r = await exportFeedback(await openDb(), path.resolve(target), new Date(), appName ?? 'poster-studio');
     console.log(`내보냄 ${r.count}건\n${r.csvPath}\n${r.jsonPath}`);
     return 0;

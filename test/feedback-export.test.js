@@ -111,4 +111,8 @@ test('Voice Cinema: feedbackVoiceCinema만 내보내 feedback-voice-cinema-<시�
   expect(await deleteExported(db, r.jsonPath)).toEqual({ deleted: 1 });
   expect(db.deleted).toEqual(['v1']);
   await expect(exportFeedback(db, tmp(), new Date(), 'calculator')).rejects.toThrow('모르는 앱');
+  // 기본 속성 이름도 «모르는 앱»이다(APPS['__proto__']는 Object.prototype이라 그냥 읽으면 참이다).
+  for (const name of ['__proto__', 'constructor', 'toString']) {
+    await expect(exportFeedback(db, tmp(), new Date(), name)).rejects.toThrow('모르는 앱');
+  }
 });
