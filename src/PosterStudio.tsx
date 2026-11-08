@@ -613,7 +613,7 @@ export default function PosterStudio() {
     if (!(sampleMode || sampleChoice) || isGeneratingRef.current) return;
     stopCamera();
     await composeWhileWaiting(DESKTOP ? DESKTOP_WAIT_SCENES : SAMPLE_WAIT_SCENES, async () => {
-      // 샘플 사진은 웹 · 설치판 같은 것이다(11/8 Bumm님): 혼자는 촬영 예시 속 여학생(camera-student.webp), 단체는 새 단체 그림 —
+      // 샘플 사진은 웹 · 설치판 같은 것이다(11/8 Bumm님): 혼자는 2단계 예시 영상 끝 장면의 여학생(camera-v1/solo-end.webp — 로비 · 청남방 · 브이), 단체는 새 단체 그림(예시 영상 끝 장면과 같은 것) —
       // 설치판이 찍은 사진에 하는 «사람 둘레 세로 2:3 자르기»(desktopCrop)를 미리 해 둔 그림이라, 설치판이 실제로 만드는 모습과 같다.
       const sampleArt = mode === "group" ? SAMPLE_GROUP : SAMPLE_SOLO;
       const meta = getMeta(mode);
