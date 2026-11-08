@@ -16,11 +16,11 @@
   - D5 시험 −0.1: `scripts/build/app-version.mjs` 셈 규칙이 `--selftest`(손으로 돌림)뿐 → `30e4008` `versionOf`로 떼어 `test/app-version.test.js` 5건(CI는 얕은 체크아웃이라 git 기록 없이).
   - D6 시험 −0.1: `src/studio/StatusToast.tsx`(11/3 자리 · 시간) 시험 0 → `60e9e4f` `test/status-toast.test.tsx` 6건.
   - D7 시험 −0.1: `functions/index.js` 매일 04시 세 작업이 «하나가 실패해도 나머지는 돈다»에 시험 0 → `f335d57` `dailyMaintenance`로 떼어 시험(처음 · 가운데 · 전부 실패).
-  - D8 기술 부채 −0.1: `CLAUDE.md:36 · 40 · 65` 시험 수 137 · 570(11/5) — 지금 141 · 625. `CLAUDE.md`는 Bumm님 직접 지시로만 고친다 → **고치지 않고 결정으로 올림**.
+  - D8 기술 부채 −0.1: `CLAUDE.md:36 · 40 · 65` 시험 수 137 · 570(11/5) — 지금 141 · 625. `CLAUDE.md`는 Bumm님 직접 지시로만 고친다 → 결정으로 올렸고, 같은 날 Bumm님이 이 창에서 직접 지시해 141 · 625로 고쳤다.
   - D9 기술 부채(§22-1): `AGENTS.md` 88줄(기준 100~180) · 낡은 문장 둘(다운로드 단추 «가지에만» · 판 번호 «11/4 17.4.0») → 이 커밋에서 107줄로 고침(설치판 절 · 의견 10초 예산 · 검사 원칙).
 - 결함 아님(기록만): `/kakao/start`에 한도 없음(카카오 로그인 화면으로 넘길 뿐 · 쓰는 것 0) · `kakaoAuth/owner`를 지우면 처음 연결한 계정 자리가 다시 열림(app.md에 적힌 절차) ·
   `feedbackDb.add()`와 주인 문서 읽기는 10초 예산 밖(Firestore 자체 시한 — 드문 경우).
-- 고친 뒤: 기술 부채 9.9(D8 — Bumm님 결정 대기)를 뺀 9항목 10/10 (11/8 `f335d57`+문서 커밋 트리 기준).
+- 고친 뒤: 10항목 모두 10/10 (11/8 D8 `CLAUDE.md` 커밋 트리 기준).
 - 확인: 루트 vitest 625(48파일) · lint · typecheck · `fonts:check` · `verify:selftest` · build 모두 0, functions vitest 141 · lint 0. 고친 것 · 새 시험은 모두 일부러 깨뜨려 걸리는 것을 봤다(그 뒤 되돌림).
   라이브 «생성» · 유료 호출 0건. 아직 push · 배포 전이다 — `functions` 고침(O1)은 push 때 CI가 낸다(팀장 OK 뒤).
 
