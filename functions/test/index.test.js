@@ -70,6 +70,7 @@ import {
   _setKakaoFetchForTesting,
   _setFeedbackBudgetForTesting,
   FEEDBACK_REPLY_BUDGET_MS_DEFAULT,
+  dailyMaintenance,
   FEEDBACK_TTL_MS,
   FEEDBACK_IP_MAX,
   KAKAO_REDIRECT_URI
@@ -2305,6 +2306,34 @@ test('POST /feedback: 카카오가 실패하거나 아직 연결 전이어도 �
     });
     expect(db._docs('feedback'), `연결 ${connected}`).toHaveLength(1);
     expect(kakao.calls, `연결 ${connected}`).toHaveLength(connected ? 1 : 0);
+  }
+});
+
+test('매일 04시 작업: 세 일은 서로 막지 않는다 — 앞의 일이 실패해도 뒤의 일이 돌고, 다 실패해도 던지지 않는다', async () => {
+  const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+  try {
+    const fail = (what) => vi.fn(async () => { throw new Error(`${what} 시뮬레이션 실패`); });
+    const first = { counters: fail('카운터'), feedback: vi.fn(async () => 2), kakao: vi.fn(async () => ({ userId: '777' })) };
+    await dailyMaintenance(first);
+    expect([first.counters, first.feedback, first.kakao].map((f) => f.mock.calls.length)).toEqual([1, 1, 1]);
+    expect(log.mock.calls.flat()).toContain('[kakao] 토큰 갱신 완료');
+
+    const middle = { counters: vi.fn(async () => 0), feedback: fail('의견'), kakao: vi.fn(async () => null) };
+    await dailyMaintenance(middle);
+    expect(middle.kakao).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls.flat()).toContain('[kakao] 토큰 갱신 — 아직 연결 전');
+
+    const all = { counters: fail('카운터'), feedback: fail('의견'), kakao: fail('카카오') };
+    await expect(dailyMaintenance(all)).resolves.toBeUndefined();
+    const errors = err.mock.calls.map(([where]) => where);
+    expect(errors).toEqual([
+      '[cleanupOldCounters] 실패:', '[cleanupOldFeedback] 실패:',
+      '[cleanupOldCounters] 실패:', '[cleanupOldFeedback] 실패:', '[kakao] 토큰 갱신 실패:'
+    ]);
+  } finally {
+    err.mockRestore();
+    log.mockRestore();
   }
 });
 

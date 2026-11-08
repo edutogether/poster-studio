@@ -1465,6 +1465,7 @@ export {
   _setKakaoFetchForTesting,
   _setFeedbackBudgetForTesting,
   FEEDBACK_REPLY_BUDGET_MS_DEFAULT,
+  dailyMaintenance,
   FEEDBACK_TTL_MS,
   FEEDBACK_IP_MAX,
   FEEDBACK_DAILY_MAX,
@@ -1568,9 +1569,29 @@ async function cleanupOldFeedback(dbInstance = db, now = Date.now()) {
   return deleted;
 }
 
-// 세 일은 서로 막지 않는다 — 하나가 실패해도 나머지는 돈다.
+// 세 일은 서로 막지 않는다 — 하나가 실패해도 나머지는 돈다(시험은 jobs를 바꿔 끼운다 — 11/8 종합감사).
 // 카카오 토큰 갱신(10 A): 매일 한 번 갱신하면 리프레시 토큰의 남은 기간이 1개월 이하가 되는 날 카카오가 새 토큰을 주고 함수가 덮어쓴다 —
 // 의견이 뜸해도 만료되지 않아 다시 동의할 일이 없다. 연결 전이면 아무것도 하지 않는다.
+async function dailyMaintenance(jobs = { counters: cleanupOldCounters, feedback: cleanupOldFeedback, kakao: refreshKakaoToken }) {
+  try {
+    const total = await jobs.counters();
+    console.log(`[cleanupOldCounters] 완료, 총 ${total}건 삭제`);
+  } catch (err) {
+    console.error('[cleanupOldCounters] 실패:', err?.message || err);
+  }
+  try {
+    await jobs.feedback();
+  } catch (err) {
+    console.error('[cleanupOldFeedback] 실패:', err?.message || err);
+  }
+  try {
+    const owner = await jobs.kakao();
+    console.log(`[kakao] 토큰 갱신 ${owner ? '완료' : '— 아직 연결 전'}`);
+  } catch (err) {
+    console.error('[kakao] 토큰 갱신 실패:', err?.message || err);
+  }
+}
+
 export const cleanupOldCountersSchedule = onSchedule(
   {
     region: 'asia-northeast3',
@@ -1579,25 +1600,7 @@ export const cleanupOldCountersSchedule = onSchedule(
     timeZone: 'Asia/Seoul',
     secrets: [KAKAO_REST_API_KEY, KAKAO_CLIENT_SECRET]
   },
-  async () => {
-    try {
-      const total = await cleanupOldCounters();
-      console.log(`[cleanupOldCounters] 완료, 총 ${total}건 삭제`);
-    } catch (err) {
-      console.error('[cleanupOldCounters] 실패:', err?.message || err);
-    }
-    try {
-      await cleanupOldFeedback();
-    } catch (err) {
-      console.error('[cleanupOldFeedback] 실패:', err?.message || err);
-    }
-    try {
-      const owner = await refreshKakaoToken();
-      console.log(`[kakao] 토큰 갱신 ${owner ? '완료' : '— 아직 연결 전'}`);
-    } catch (err) {
-      console.error('[kakao] 토큰 갱신 실패:', err?.message || err);
-    }
-  }
+  () => dailyMaintenance()
 );
 
 export const keepWarm = onSchedule(
