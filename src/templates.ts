@@ -183,23 +183,10 @@ function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: B
   drawPlaced(c, art, r, cover);
   return r;
 }
-/** 자리 r에 그린 그림으로 칸 cover를 채운다 — 다 덮으면 그대로, 못 덮으면 같은 자리 배경 연장 위에 가장자리를 녹여 얹는다. */
+/** 칸 cover를 덮는 자리 r(coverPlacement · archPlacement)에 그림을 그리고 칸 밖은 자른다. */
 function drawPlaced(c: Ctx, art: HTMLImageElement, r: Rect, cover: Rect) {
-  const covers = r.x <= cover.x + 0.5 && r.y <= cover.y + 0.5 && r.x + r.w >= cover.x + cover.w - 0.5 && r.y + r.h >= cover.y + cover.h - 0.5;
   c.save(); c.beginPath(); rectPath(c, cover.x, cover.y, cover.w, cover.h); c.clip();
-  if (!covers) {
-    // 배경 연장: 선명한 그림과 같은 자리 · 크기로 깔고, 칸에서 모자란 쪽은 그림의 가장자리 띠를 늘여 채운 뒤 크게 흐리고 살짝 가라앉혀,
-    // 그 위에 선명한 그림을 가장자리를 부드럽게 해서 얹는다. 2026-10-23 Bumm님 «포스터 사진 위쪽에 크게 흐린 얼굴이 하나 더 보인다»:
-    // 예전에는 같은 그림을 칸을 덮는 크기로 키워 깔아, 그 안의 얼굴이 선명한 얼굴보다 크게 · 다른 자리에 흐리게 비쳤다.
-    // 가장자리 띠는 생성 지시문이 비워 두는 머리 위 여백 · 옆 · 아래라 얼굴이 들어가지 않는다.
-    c.save();
-    drawBlurred(c, 36, 1.1, (t) => extendEdges(t, art, r, cover));
-    c.restore();
-    c.fillStyle = 'rgba(0,0,0,.12)'; c.fillRect(cover.x, cover.y, cover.w, cover.h);
-    featherDraw(c, art, r, 56);
-  } else {
-    c.drawImage(art, r.x, r.y, r.w, r.h);
-  }
+  c.drawImage(art, r.x, r.y, r.w, r.h);
   c.restore();
 }
 /* ───── 아치 창 배치(2026-10-23 Bumm님 «아치 모양으로 안에는 잘 보이고 밖에는 흐리게 하기로 한 거 아니야 ?») ─────
