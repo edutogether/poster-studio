@@ -27,6 +27,8 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-11-08 | [group-shoot-front-sit](2026-11-08-group-shoot-front-sit/intent.md) | 2 | in-progress | 단체 촬영 안내를 «앞줄은 앉고 뒷줄은 서기»로 — 화면 문구 · 새 키프레임 스틸 세 장 · 슬라이드식 임시 예시 영상(진짜 영상은 Bumm님) · 설명서 00~03 |
+| 2026-11-08 | [desktop-group-two-rows](2026-11-08-desktop-group-two-rows/intent.md) | 2 | dropped | 설치판 단체 사진을 두 줄로 붙여 세로 2:3 채우기(D안) — 시험 사진 16장 중 0장, Bumm님 «접기»(11/8) · 촬영 안내로 대신 |
 | 2026-11-08 | [desktop-photo-crop](2026-11-08-desktop-photo-crop/intent.md) | 2 | in-progress | 설치판만 — 카메라 사진에서 얼굴을 찾아(pico) 사람 둘레 세로 2:3으로 잘라 8종에 넣기, 웹 dist 621개 바이트까지 그대로 · 공개 설치 파일 교체는 Bumm님 OK 뒤 |
 | 2026-11-07 | [camera-example-prefetch](2026-11-07-camera-example-prefetch/intent.md) | 2 | done | 1단계에 머무는 동안 2단계 예시 영상을 미리 열어 받기 — 1단계 그림 · 글꼴 뒤에 시작, 클릭 → 재생 약 0.02초 |
 | 2026-11-05 | [field-feedback](2026-11-05-field-feedback/intent.md) | 2 | done | 첫 화면 «의견 보내기» → 서버 `/feedback`가 Firestore `feedback`에 저장 + Bumm님 카카오톡 «나에게» 알림(토큰은 서버 전용 문서 · 매일 갱신) · 90일 자동 삭제 · 방침은 그대로(11 ②) |
