@@ -68,6 +68,8 @@ import {
   cleanupOldFeedback,
   _setFeedbackDbForTesting,
   _setKakaoFetchForTesting,
+  _setFeedbackBudgetForTesting,
+  FEEDBACK_REPLY_BUDGET_MS_DEFAULT,
   FEEDBACK_TTL_MS,
   FEEDBACK_IP_MAX,
   KAKAO_REDIRECT_URI
@@ -2304,6 +2306,69 @@ test('POST /feedback: 카카오가 실패하거나 아직 연결 전이어도 �
     expect(db._docs('feedback'), `연결 ${connected}`).toHaveLength(1);
     expect(kakao.calls, `연결 ${connected}`).toHaveLength(connected ? 1 : 0);
   }
+});
+
+// 신호(abort)가 올 때까지 답하지 않는 카카오 — 멈춘 카카오 서버
+function makeHangingKakao() {
+  const calls = [];
+  const fake = (url, opts = {}) => {
+    calls.push({ url, aborted: () => opts.signal?.aborted === true });
+    return new Promise((_, reject) => {
+      if (!opts.signal) return;   // 신호 없이 부르면 끝나지 않는다 — 시험이 시간 초과로 잡는다
+      opts.signal.addEventListener('abort', () => reject(opts.signal.reason));
+    });
+  };
+  fake.calls = calls;
+  return fake;
+}
+
+test('POST /feedback: 카카오가 멈춰도 서버는 응답 예산 안에 200을 주고 저장은 한 번이다', async () => {
+  for (const expired of [false, true]) {   // 토큰이 살아 있으면 보내기에서, 만료면 갱신에서 멈춘다
+    const db = makeFeedbackDb();
+    const now = Date.now();
+    db._put('kakaoAuth', 'owner', connectedOwner(now, expired ? { accessExpiresAt: now - 1 } : {}));
+    const kakao = makeHangingKakao();
+    _setFeedbackBudgetForTesting(300);
+    try {
+      await withFeedbackServer({ db, kakao, counter: makeInMemoryCounterImpl() }, async (base) => {
+        const started = Date.now();
+        const res = await postFeedback(base, goodFeedback());
+        expect(res.status, `만료 ${expired}`).toBe(200);
+        expect(Date.now() - started, `만료 ${expired}`).toBeLessThan(3_000);   // 예산 0.3초 — 카카오 상한 8초를 기다리지 않는다
+      });
+    } finally {
+      _setFeedbackBudgetForTesting(null);
+    }
+    expect(db._docs('feedback'), `만료 ${expired}`).toHaveLength(1);
+    expect(kakao.calls.map((c) => c.url), `만료 ${expired}`).toEqual([expired ? TOKEN_URL : MEMO_URL]);
+    expect(kakao.calls[0].aborted(), `만료 ${expired}`).toBe(true);
+  }
+});
+
+test('POST /feedback: 응답 예산이 이미 다 됐으면 카카오를 부르지 않고 저장만 한다', async () => {
+  const db = makeFeedbackDb();
+  db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
+  const kakao = makeKakao({ [MEMO_URL]: { status: 200 } });
+  _setFeedbackBudgetForTesting(0);
+  try {
+    await withFeedbackServer({ db, kakao, counter: makeInMemoryCounterImpl() }, async (base) => {
+      expect((await postFeedback(base, goodFeedback())).status).toBe(200);
+    });
+  } finally {
+    _setFeedbackBudgetForTesting(null);
+  }
+  expect(db._docs('feedback')).toHaveLength(1);
+  expect(kakao.calls).toHaveLength(0);
+});
+
+test('의견 응답 예산 + 여유 5초 ≤ 화면이 기다리는 시간(src/feedback.ts TIMEOUT_MS)', () => {
+  const root = path.resolve(import.meta.dirname, '../..');
+  const client = fs.readFileSync(path.join(root, 'src/feedback.ts'), 'utf8');
+  const m = client.match(/^const TIMEOUT_MS = ([\d_]+);$/m);
+  expect(m, 'src/feedback.ts에서 TIMEOUT_MS 줄을 찾지 못함').not.toBe(null);
+  const clientWait = Number(m[1].replaceAll('_', ''));
+  expect(clientWait).toBeGreaterThan(0);
+  expect(FEEDBACK_REPLY_BUDGET_MS_DEFAULT + 5_000).toBeLessThanOrEqual(clientWait);
 });
 
 test('POST /feedback: 저장이 실패하면 503이고 카카오도 보내지 않는다', async () => {

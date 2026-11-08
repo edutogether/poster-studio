@@ -140,6 +140,8 @@
   서버 `validateFeedback`이 여섯 칸 밖 · 모양이 다른 값을 400으로 거절한다. 개인정보처리방침은 바꾸지 않는다(11 ②) — 창의 «함께 보내는 것» · «보내지 않는 것: 여러분이 찍은 사진»이 알림이다.
 - **서버** `POST /feedback`(부스 토큰): 검사 → IP당 10분 10건 · 하루 300건(숫자 카운터) → Firestore `feedback`에 저장 → 카카오톡 «나에게 보내기»(200자, 넘으면 «…»).
   카카오가 실패하거나 연결 전이어도 **저장은 된다**(로그에 «알림 실패»만). 저장이 실패하면 503. 로그에는 이름 · 의견 · 토큰을 남기지 않는다(문서 번호만).
+  🟠 서버는 받은 순간부터 **10초 안에 답한다**(`FEEDBACK_REPLY_BUDGET_MS`, 11/8 종합감사) — 카카오는 남은 시간만 쓰고(한 번에 최대 8초), 다 쓰면 부르지 않는다. 화면이 15초를 기다리므로(`src/feedback.ts` `TIMEOUT_MS`)
+  그보다 길면 저장해 놓고 «보낼 수 없어요»가 떠 다시 누른 의견이 두 번 저장 · 알림된다. 두 값을 바꾸면 «예산 + 5초 ≤ 화면 대기» 시험이 막는다.
 - 🔴 **카카오 키 두 개는 Secret Manager**(`KAKAO_REST_API_KEY` · `KAKAO_CLIENT_SECRET`, 10 A)이고 **값은 Bumm님이 직접 넣는다** — 세션은 값을 보거나 다루지 않는다.
   `posterStudio`와 `cleanupOldCountersSchedule`이 이 비밀을 걸므로 **비밀이 없으면 functions 배포가 실패한다** — 비밀을 먼저 만들고 배포한다.
   🟠 **시크릿을 새로 만들면 배포 전에 실행 계정(`652638343764-compute@…`)의 `roles/secretmanager.secretAccessor`를 그 시크릿에 넣는다**(프로젝트 소유 계정, 값은 보지 않음 — 11/5). 항목이 없으면 firebase-tools가 직접 넣으려 하는데 CI 계정 `github-actions-deploy@…`에는 `setIamPolicy`가 없다.

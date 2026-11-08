@@ -1068,6 +1068,15 @@ const KAKAO_REDIRECT_URI = 'https://asia-northeast3-inky-poster-studio.cloudfunc
 const KAKAO_LINK_URL = 'https://poster.edutogether.kr';   // 메시지 템플릿의 링크 — 카카오 앱 [제품 링크 관리] › 웹 도메인에 등록한 주소
 const KAKAO_MEMO_MAX = 200;                                // 텍스트 템플릿 글자 상한(카카오 문서) — 넘치면 줄여 보낸다(저장은 원문 그대로)
 const KAKAO_TIMEOUT_MS = 8_000;
+// 의견 요청 하나에 서버가 쓰는 시간 — 받은 순간부터 카운터 둘(각 최대 5초) · 저장 · 카카오까지. 카카오는 이 안에 남은 시간만 쓰고,
+// 다 쓰면 부르지 않는다(저장은 그대로, 기록에 «못 보냄»). 화면은 15초를 기다리므로(src/feedback.ts TIMEOUT_MS) 그보다 짧아야 한다 —
+// 길면 서버는 저장했는데 화면은 «보낼 수 없어요»가 되고, 다시 누르면 같은 의견이 두 번 저장 · 알림된다(11/8 종합감사).
+// 순서(10초 + 여유 5초 ≤ 15초)는 functions/test/index.test.js가 두 파일을 읽어 고정한다.
+const FEEDBACK_REPLY_BUDGET_MS_DEFAULT = 10_000;
+let FEEDBACK_REPLY_BUDGET_MS = FEEDBACK_REPLY_BUDGET_MS_DEFAULT;
+function _setFeedbackBudgetForTesting(ms) {
+  FEEDBACK_REPLY_BUDGET_MS = ms ?? FEEDBACK_REPLY_BUDGET_MS_DEFAULT;
+}
 const KAKAO_STATE_TTL_MS = 10 * 60 * 1000;
 const FEEDBACK_COLLECTION = 'feedback';
 const KAKAO_COLLECTION = 'kakaoAuth';
@@ -1140,7 +1149,10 @@ function kakaoError(where, status, json) {
   const code = json?.error_code ?? json?.code ?? json?.error ?? '';
   return Object.assign(new Error(`카카오 ${where} 실패: HTTP ${status}${code === '' ? '' : ` · ${code}`}`), { status, kakaoCode: code });
 }
-async function kakaoCall(url, { where, form, token } = {}) {
+// deadline(시각, ms)이 있으면 한 번의 상한은 «8초와 남은 시간 중 짧은 것»이고, 남은 시간이 없으면 부르지 않는다.
+async function kakaoCall(url, { where, form, token, deadline = Infinity } = {}) {
+  const left = Math.min(KAKAO_TIMEOUT_MS, deadline - Date.now());
+  if (!(left > 0)) throw Object.assign(new Error(`카카오 ${where}: 의견 응답 시간이 다 돼 부르지 않음`), { status: 0 });
   const headers = {};
   if (form) headers['content-type'] = 'application/x-www-form-urlencoded;charset=utf-8';
   if (token) headers.authorization = `Bearer ${token}`;
@@ -1148,7 +1160,7 @@ async function kakaoCall(url, { where, form, token } = {}) {
     method: form ? 'POST' : 'GET',
     headers,
     body: form ? new URLSearchParams(form).toString() : undefined,
-    signal: AbortSignal.timeout(KAKAO_TIMEOUT_MS)
+    signal: AbortSignal.timeout(left)
   });
   const json = await res.json().catch(() => null);
   if (!res.ok) throw kakaoError(where, res.status, json);
@@ -1174,29 +1186,31 @@ function tokenFields(json, now) {
   return fields;
 }
 
-async function refreshKakaoToken(now = Date.now()) {
+async function refreshKakaoToken(now = Date.now(), deadline = Infinity) {
   const snap = await ownerRef().get();
   if (!snap.exists) return null;
   const owner = snap.data();
   const { clientId, clientSecret } = kakaoKeys();
   const json = await kakaoCall('https://kauth.kakao.com/oauth/token', {
     where: '토큰 갱신',
-    form: { grant_type: 'refresh_token', client_id: clientId, refresh_token: owner.refreshToken, client_secret: clientSecret }
+    form: { grant_type: 'refresh_token', client_id: clientId, refresh_token: owner.refreshToken, client_secret: clientSecret },
+    deadline
   });
   const fields = { ...tokenFields(json, now), refreshedAt: new Date(now) };
   await ownerRef().set(fields, { merge: true });
   return { ...owner, ...fields };
 }
 
-async function sendKakaoMemo(text, now = Date.now()) {
+async function sendKakaoMemo(text, now = Date.now(), deadline = Infinity) {
   const snap = await ownerRef().get();
   if (!snap.exists) return false;   // 아직 연결 전 — 저장만 한다
   let owner = snap.data();
-  if (!owner.accessToken || !(owner.accessExpiresAt > now + 60_000)) owner = await refreshKakaoToken(now);
+  if (!owner.accessToken || !(owner.accessExpiresAt > now + 60_000)) owner = await refreshKakaoToken(now, deadline);
   const send = (token) =>
     kakaoCall('https://kapi.kakao.com/v2/api/talk/memo/default/send', {
       where: '나에게 보내기',
       token,
+      deadline,
       form: {
         template_object: JSON.stringify({
           object_type: 'text',
@@ -1209,7 +1223,7 @@ async function sendKakaoMemo(text, now = Date.now()) {
     await send(owner.accessToken);
   } catch (err) {
     if (err.status !== 401) throw err;
-    owner = await refreshKakaoToken(now);   // 저장한 만료 시각보다 먼저 끊긴 토큰 — 한 번만 새로 받아 다시 보낸다
+    owner = await refreshKakaoToken(now, deadline);   // 저장한 만료 시각보다 먼저 끊긴 토큰 — 한 번만 새로 받아 다시 보낸다
     await send(owner.accessToken);
   }
   return true;
@@ -1235,6 +1249,7 @@ async function feedbackHandler(req, res) {
   if (!value) return res.status(400).json({ error: '의견 형식이 올바르지 않습니다.', code: 'feedback_invalid' });
 
   const now = Date.now();
+  const deadline = now + FEEDBACK_REPLY_BUDGET_MS;
   const bucket = Math.floor(now / RATE_LIMIT_WINDOW_MS);
   const ipOk = await feedbackCounter('ipRateLimitBuckets', `feedback:${bucket}:${ipKey(clientIpForRateLimit(req))}`, FEEDBACK_IP_MAX);
   const dayOk = ipOk && (await feedbackCounter('dailyBudgetBuckets', `feedback:${kstDateKey(now)}`, FEEDBACK_DAILY_MAX));
@@ -1249,7 +1264,7 @@ async function feedbackHandler(req, res) {
   }
   let notified = false;
   try {
-    notified = await sendKakaoMemo(feedbackMemo(value), now);
+    notified = await sendKakaoMemo(feedbackMemo(value), now, deadline);
   } catch (err) {
     console.error('[feedback] 카카오 알림 실패(저장은 됨):', err?.message || err);
   }
@@ -1448,6 +1463,8 @@ export {
   cleanupOldFeedback,
   _setFeedbackDbForTesting,
   _setKakaoFetchForTesting,
+  _setFeedbackBudgetForTesting,
+  FEEDBACK_REPLY_BUDGET_MS_DEFAULT,
   FEEDBACK_TTL_MS,
   FEEDBACK_IP_MAX,
   FEEDBACK_DAILY_MAX,
