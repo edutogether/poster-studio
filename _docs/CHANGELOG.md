@@ -1,5 +1,29 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-08(일) — 종합감사 (10/26 감사 `836b1b9` 뒤 199커밋 · 웹 · functions · 설치판, 팀장 전달)
+
+- 범위: 태그 `poster-studio-freeze-20261026-audited-100`(`836b1b9`) 이후 바뀐 코드 전부 — 웹 `src/` · `public/`, `functions/`, 설치판 `desktop/`, `scripts/` 확인 도구, 문서.
+  `COMMON_STANDARDS.md` §4~§7 · §22 · §29. 서버 · 보안 · 운영 6항목과 코드 · 시험 · 부채 · 오류 처리 4항목을 따로 훑었다(독립 서브에이전트 둘 · 결과는 세션이 다시 확인).
+- 고치기 전(같은 트리 `f743f52`+`8cc6ba7`+`4d98e4f`): 아키텍처 10/10 · 보안 10/10 · 확장성 10/10 · 운영 안정성 9.8 · 개인정보 10/10 · 비용 10/10 · 코드 품질 9.8 · 시험 9.2 · 기술 부채 9.9 · 오류 처리 9.8.
+- 결함과 고친 커밋(근거 → 고침):
+  - O1 운영 안정성 −0.2: `functions/index.js` `feedbackHandler` — 카카오 호출이 8초 × (토큰 새로 받기 + 보내기)라 최대 16초 걸려 화면 대기 15초(`src/feedback.ts` `TIMEOUT_MS`)를 넘었다.
+    저장은 됐는데 화면은 «보낼 수 없어요» → 다시 누르면 두 번 저장 · 알림. → `700ef80`: 받은 순간부터 10초 예산(`FEEDBACK_REPLY_BUDGET_MS`), 카카오는 남은 시간만 쓰고 다 쓰면 부르지 않는다.
+    시험 3건(멈춘 카카오 두 길에서 3초 안 200 · 한 번 저장 · 요청 끊김, 예산 0이면 카카오 0번, «예산 + 5초 ≤ 화면 대기»).
+  - D1 코드 품질 −0.2: `functions/test/index.test.js` 줄끝이 CRLF · LF 섞임(2,094줄) → `dddea7c` LF 하나로.
+  - D2 오류 처리 −0.2: `desktop/guards.mjs:30` `decodeURIComponent`가 `%E0%A4%A` 같은 주소에서 예외 → `da07884` 404로. 시험 3건.
+  - D3 시험 −0.3: `src/poster.ts:27 · 55 · 71` 조판 30초 시한 · PNG 실패 때 앞서 만든 그림 놓기에 시험 0 → `74b4d24` `test/poster-build.test.ts` 3건.
+  - D4 시험 −0.2: `src/vendor/pico.ts`(옮긴 코드)를 실제 사진 · 학습 파일로 돌리는 시험 0, `src/desktopCrop.ts` 실패 길 시험 0 → `8b558ae` `test/pico-port.test.ts` 3건.
+  - D5 시험 −0.1: `scripts/build/app-version.mjs` 셈 규칙이 `--selftest`(손으로 돌림)뿐 → `30e4008` `versionOf`로 떼어 `test/app-version.test.js` 5건(CI는 얕은 체크아웃이라 git 기록 없이).
+  - D6 시험 −0.1: `src/studio/StatusToast.tsx`(11/3 자리 · 시간) 시험 0 → `60e9e4f` `test/status-toast.test.tsx` 6건.
+  - D7 시험 −0.1: `functions/index.js` 매일 04시 세 작업이 «하나가 실패해도 나머지는 돈다»에 시험 0 → `f335d57` `dailyMaintenance`로 떼어 시험(처음 · 가운데 · 전부 실패).
+  - D8 기술 부채 −0.1: `CLAUDE.md:36 · 40 · 65` 시험 수 137 · 570(11/5) — 지금 141 · 625. `CLAUDE.md`는 Bumm님 직접 지시로만 고친다 → **고치지 않고 결정으로 올림**.
+  - D9 기술 부채(§22-1): `AGENTS.md` 88줄(기준 100~180) · 낡은 문장 둘(다운로드 단추 «가지에만» · 판 번호 «11/4 17.4.0») → 이 커밋에서 107줄로 고침(설치판 절 · 의견 10초 예산 · 검사 원칙).
+- 결함 아님(기록만): `/kakao/start`에 한도 없음(카카오 로그인 화면으로 넘길 뿐 · 쓰는 것 0) · `kakaoAuth/owner`를 지우면 처음 연결한 계정 자리가 다시 열림(app.md에 적힌 절차) ·
+  `feedbackDb.add()`와 주인 문서 읽기는 10초 예산 밖(Firestore 자체 시한 — 드문 경우).
+- 고친 뒤: 기술 부채 9.9(D8 — Bumm님 결정 대기)를 뺀 9항목 10/10 (11/8 `f335d57`+문서 커밋 트리 기준).
+- 확인: 루트 vitest 625(48파일) · lint · typecheck · `fonts:check` · `verify:selftest` · build 모두 0, functions vitest 141 · lint 0. 고친 것 · 새 시험은 모두 일부러 깨뜨려 걸리는 것을 봤다(그 뒤 되돌림).
+  라이브 «생성» · 유료 호출 0건. 아직 push · 배포 전이다 — `functions` 고침(O1)은 push 때 CI가 낸다(팀장 OK 뒤).
+
 ## 2026-11-08(일) — 설치판 사진을 사람 둘레 세로 2:3으로 잘라 넣기 (Bumm님 ⭐ «고침», 팀장 전달)
 
 - 설치판(AI 없음)은 가로 카메라 사진을 그대로 넣어 8종 중 5~6종의 위아래가 흐린 빈자리였다. 이제 기기 안에서 얼굴을 찾아(pico, MIT) 사람 둘레를 자른다(`src/desktopCrop.ts`) —

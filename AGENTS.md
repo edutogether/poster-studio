@@ -22,6 +22,7 @@
 - 생성 서버로 보내는 FormData는 `photo`·`movieTitle`·`tagline`·`genre`·`mode` 다섯 필드다. 사진과 제작 정보는 서버를 거쳐 OpenAI 이미지 생성에 사용한다. 이름·단체명·출연진은 브라우저에서만 합성하며 서버로 보내지 않는다. `test/poster-studio.test.tsx`의 요청 본문 허용 목록 검사를 유지한다.
 - Firestore에는 제한·예산용 카운터 4종과 사진 SHA-256·갱신 시각만 남긴다. 사진 원본·이름을 추가하지 않는다 — 예외는 현장 의견 `feedback`(진행자가 적은 이름 · 의견 · 판 · 화면 · 기기 · 단계, 90일 자동 삭제 · 끝나면 `scripts/ops/feedback-export.mjs`로 내보내고 지움)과 카카오 알림 토큰 `kakaoAuth`뿐이다(2026-11-05 Bumm님). `cleanupOldCountersSchedule`의 매일 KST 04시 실행·30일 지난 기록 삭제를 개인정보 고지와 일치시킨다.
 - 첫 화면 «의견 보내기»(`src/feedback.ts`의 `FEEDBACK_OPEN` 스위치 · 설치판에는 없음) → `POST /feedback` → Firestore → 카카오톡 «나에게 보내기». 카카오 키 `KAKAO_REST_API_KEY` · `KAKAO_CLIENT_SECRET`은 Secret Manager이고 **없으면 functions 배포가 실패한다**. 값은 Bumm님이 넣는다(app.md «현장 의견 받기»).
+- 의견 요청에 서버는 10초 안에 답한다(`FEEDBACK_REPLY_BUDGET_MS` — 카카오는 남은 시간만 쓴다). 화면은 15초를 기다리므로(`src/feedback.ts` `TIMEOUT_MS`) 이 순서를 뒤집지 않는다 — 시험이 두 값을 읽어 막는다.
 - 로컬로 저장한 포스터 파일은 서버 정리로 삭제되지 않는다. 개인정보 고지의 2026-12-31까지 보관 후 운영자 삭제 정책을 유지한다.
 - 업로드는 플랫폼의 `rawBody`를 busboy로 파싱한다. `/generate` 순서인 `markRequestStart → checkBoothToken → checkBoothCode → generateWindowGate → parseMultipart → requirePhoto → rateLimit → ipRateLimit → checkPhotoGenerationLimit → dailyBudgetCap`을 유지한다. 생성 성공·실패뿐 아니라 파싱 오류·429 차단에서도 임시 사진을 삭제하고 촬영 후 카메라 트랙을 해제한다.
 - 타임아웃 체인 120초(OpenAI 1회) < 125초(재시도·폴백 포함 요청 총시간) < 140초(Functions) < 150초(클라이언트)를 함께 유지한다. 변경 시 `scripts/loadtest.mjs`의 관련 값도 맞춘다.
@@ -32,7 +33,7 @@
 - 포스터 글꼴 PretendardFull은 핵심 조각 + 드문 글자 조각(`public/fonts/full/`, `scripts/fonts/slice-full.py`)이고, 조각을 못 받으면 원본 통글꼴 `public/fonts/Pretendard-*.woff2`를 대신 받는다(`src/layout.ts` `ensureFullFallback`) — 원본 6굵기를 지우지 않는다. 장르 그림은 `src/studio/genre/`(해시 이름)로 쓰되 `public/studio`의 옛 파일 8장도 지우지 않는다(옛 주소 200).
 - CORS는 정식 주소 `https://poster.edutogether.kr`와 기존 주소 `https://poster-studio.web.app`을 유지하며 허용 출처 정규식의 앵커·점 이스케이프를 풀지 않는다.
 - `/generate`는 실제 비용·운영 카운터를 소모한다. 검사에 OpenAI·Firestore 실호출을 넣지 않고 가짜 응답으로 검증한다. `public/`의 파일은 배포로 공개된다.
-- 첫 화면 다운로드 아이콘(글자 없음 · aria-label · 밑줄 없음 · 커서만 손가락)은 `/download/PosterStudio-Setup.exe` → `firebase.json` 리디렉션 302 → Cloud Storage 객체 하나(`gs://inky-poster-studio-download/PosterStudio-Setup.exe`, 그 객체만 `allUsers` 읽기)다. 버킷에 공개 권한을 주거나 «균일 접근»으로 바꾸지 않는다. 누르기 전 설치 파일 요청 0건(미리 받기 금지)을 유지한다. 이 단추와 연결은 가지 `download-20261027`에만 있어 그 가지를 합치기 전에 master를 push하면 사라진다 — app.md «첫 화면 다운로드 아이콘 · 설치 파일 공개».
+- 첫 화면 다운로드 아이콘(글자 없음 · aria-label · 밑줄 없음 · 커서만 손가락)은 `/download/PosterStudio-Setup.exe` → `firebase.json` 리디렉션 302 → Cloud Storage 객체 하나(`gs://inky-poster-studio-download/PosterStudio-Setup.exe`, 그 객체만 `allUsers` 읽기)다. 버킷에 공개 권한을 주거나 «균일 접근»으로 바꾸지 않는다. 누르기 전 설치 파일 요청 0건(미리 받기 금지)을 유지한다. 2026-10-31부터 master에 있고, `test/download-link.test.tsx`가 리디렉션과 주소를 맞춰 본다 — app.md «첫 화면 다운로드 아이콘 · 설치 파일 공개».
 
 ## APPROVED 영역·회귀
 
@@ -67,17 +68,35 @@ npm --prefix functions test
 npm --prefix functions run lint
 ```
 
-문구 변경은 폰트 서브셋을 검사한다. 새 글자는 `npm run fonts:charset` → `python scripts/fonts/subset.py` → `npm run fonts:check` 순서로 반영한다. 현행 8종 포스터는 `node scripts/verify/release-baseline.mjs`로 Windows에서 5개 입력 × 8종 지문을 수집하고 `npm run verify:pixels -- <전.json> <후.json>`로 대조한다. 배포 뒤 `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`로 저장된 출시 기준선과 실제 운영 출력을 대조한다(촬영 흐름을 누르므로 실제 모드 라이브에서만 된다. 샘플 모드 라이브는 `node scripts/verify/waiting-videos-live.mjs <결과 폴더> --url https://poster.edutogether.kr`로 본다). 이전 `poster-pixels-ui.js`·`studio-flow.mjs`는 구 4종 UI의 역사 검증용이다. 승인 범위 밖 출력 차이를 통과시키려고 기준을 갱신하지 않는다. 부하테스트는 별도 승인 없이 실행하지 않는다.
+- 문구 변경은 폰트 서브셋을 검사한다. 새 글자는 `npm run fonts:charset` → `python scripts/fonts/subset.py` → `npm run fonts:check` 순서로 반영한다.
+- 현행 8종 포스터는 `node scripts/verify/release-baseline.mjs`로 Windows에서 5개 입력 × 8종 지문을 수집하고 `npm run verify:pixels -- <전.json> <후.json>`로 대조한다.
+- 배포 뒤 `node scripts/verify/release-baseline.mjs https://poster.edutogether.kr`로 저장된 출시 기준선과 실제 운영 출력을 대조한다(촬영 흐름을 누르므로 실제 모드 라이브에서만 된다).
+  샘플 흐름 라이브는 `node scripts/verify/waiting-videos-live.mjs <결과 폴더> --url https://poster.edutogether.kr`로 본다.
+- 이전 `poster-pixels-ui.js`·`studio-flow.mjs`는 구 4종 UI의 역사 검증용이다. 승인 범위 밖 출력 차이를 통과시키려고 기준을 갱신하지 않는다.
+- 부하테스트는 별도 승인 없이 실행하지 않는다.
+- 새 검사를 넣으면 일부러 깨뜨려 실패하는지 본다 — 통과만 본 검사는 빈 게이트일 수 있다(app.md «자주 틀리는 것»).
 
-Windows 설치판(`desktop/`, 2026-10-27)은 AI가 없는 비상판이다. 웹과 같은 프론트를 `npm run build:desktop`(--mode desktop)으로 `desktop/web`에 빌드하고,
-`desktop`에서 `npm ci` → `node node_modules/electron/install.js`(npm 12는 설치 스크립트를 막는다) → `npx electron-builder --win nsis --x64 --publish never`로 `desktop/out/Poster Studio Setup.exe`를 만든다(받는 주소 `/download/PosterStudio-Setup.exe`는 그대로).
-확인은 `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>`(가짜 카메라로 전체 흐름 · 바깥 요청 0 · 토큰 0) ·
-`scripts/verify/desktop-installer-probe.ps1 -Mode all -Via startmenu|settings`(설치 · 제거 창 · 남은 것 0 · 판 번호, 관리자 권한으로 — 설치는 모든 사용자만, `-Mode user`는 예전 «나만» 판 제거 확인용) ·
-`node scripts/verify/desktop-vs-web.mjs <결과> --exe <exe> --web-dist <웹 빌드>`(첫 화면 화소 대조) · `node scripts/verify/desktop-print-shift.mjs <결과> --exe <exe>`(«인쇄하기» 때 화면이 움직이지 않는지 — 진짜 인쇄 창 · 연속 캡처) · `node scripts/verify/desktop-layout-sweep.mjs <desktop/web> <dist> <결과> --prev <직전 설치판 화면 빌드>`(2단계 오른쪽 칸 528개 창 크기 — 바꾸지 않은 구간은 직전 판 · 웹과 같음, 세로형 티켓 구간은 겹침 · 넘침 · 글자 잘림 없음) · `node scripts/verify/download-button-probe.mjs <dist> <결과> --compare <전>`(첫 화면 다운로드 단추 — 전/후 화소 · 누르기 전 요청 0)다.
-설치 위치 · 바로가기 · 아이콘(Poster Studio 슬레이트 — 설치 파일 · 설치기 · 제거기 모두) · 설치 화면 그림(배율마다 따로) 모양은 Bumm님 기준이라 바꾸지 않는다(app.md «Windows 설치판»).
-설치는 모든 사용자만(`nsis.perMachine`)이고, 위치 기본값은 `C:\Program Files\InKY Film Festival\Poster Studio`이며 위치 화면에서 바꿀 수 있다(11/3 Bumm님 F-6). 최소 창은 안쪽 1100×648(`desktop/main.mjs`, 11/4).
-판 번호는 `desktop/package.json`의 version이고 `node scripts/build/app-version.mjs HEAD`로 센 값을 쓴다(앱이 바뀐 커밋만 — 큰 변경 · feat · 고침, 11/3 Bumm님 F-5 «A» · 11/4 17.4.0).
-설치판 갈래는 `src/desktop.ts`의 `DESKTOP`으로 웹 번들에서 빠진다. `src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양은 CI가 정규식으로 읽으므로 바꾸지 않는다. 설치 파일은 저장소 · Hosting에 넣지 않는다(app.md «Windows 설치판»).
+## Windows 설치판
+
+- `desktop/`(2026-10-27)은 AI가 없는 비상판이다. 웹과 같은 프론트를 `npm run build:desktop`(--mode desktop)으로 `desktop/web`에 빌드한다.
+- 만들기: `desktop`에서 `npm ci` → `node node_modules/electron/install.js`(npm 12는 설치 스크립트를 막는다) → `npx electron-builder --win nsis --x64 --publish never`
+  → `desktop/out/Poster Studio Setup.exe`(받는 주소 `/download/PosterStudio-Setup.exe`는 그대로).
+- 확인 도구:
+  - `node scripts/verify/desktop-app-probe.mjs <결과> --exe <설치한 exe>` — 가짜 카메라로 전체 흐름 · 바깥 요청 0 · 토큰 0.
+  - `scripts/verify/desktop-installer-probe.ps1 -Mode all -Via startmenu|settings` — 설치 · 제거 창 · 남은 것 0 · 판 번호. 관리자 권한으로 돌린다(설치는 모든 사용자만, `-Mode user`는 예전 «나만» 판 제거 확인용).
+  - `node scripts/verify/desktop-vs-web.mjs <결과> --exe <exe> --web-dist <웹 빌드>` — 첫 화면 화소 대조.
+  - `node scripts/verify/desktop-print-shift.mjs <결과> --exe <exe>` — «인쇄하기» 때 화면이 움직이지 않는지(진짜 인쇄 창 · 연속 캡처).
+  - `node scripts/verify/desktop-layout-sweep.mjs <desktop/web> <dist> <결과> --prev <직전 설치판 화면 빌드>` — 2단계 오른쪽 칸 528개 창 크기.
+  - `node scripts/verify/download-button-probe.mjs <dist> <결과> --compare <전>` — 첫 화면 다운로드 단추(전/후 화소 · 누르기 전 요청 0).
+  - `node scripts/verify/desktop-crop-probe.mjs <개발 서버> <결과> 이름=사진=solo|group …` — 사진 자르기 전 · 후 8종.
+- 설치 위치 · 바로가기 · 아이콘(Poster Studio 슬레이트 — 설치 파일 · 설치기 · 제거기 모두) · 설치 화면 그림(배율마다 따로) 모양은 Bumm님 기준이라 바꾸지 않는다(app.md «Windows 설치판»).
+- 설치는 모든 사용자만(`nsis.perMachine`)이고, 위치 기본값은 `C:\Program Files\InKY Film Festival\Poster Studio`이며 위치 화면에서 바꿀 수 있다(11/3 Bumm님 F-6). 최소 창은 안쪽 1100×648(`desktop/main.mjs`, 11/4).
+- 판 번호는 `desktop/package.json`의 version이고 `node scripts/build/app-version.mjs HEAD`로 센 값을 쓴다(앱이 바뀐 커밋만 — 큰 변경 · feat · 고침, 11/3 Bumm님 F-5 «A»).
+  11/5 Bumm님 «2.7.4»로 시작점 `4728a45` = 2.7.4에서 센다. 셈 규칙은 `test/app-version.test.js`가 지킨다.
+- 설치판은 사진을 넣기 전에 기기 안에서 얼굴을 찾아 사람 둘레를 세로 2:3으로 자른다(`src/desktopCrop.ts` · `src/vendor/pico.ts`, 11/8).
+  `PosterStudio.tsx`의 두 자리는 `import.meta.env.MODE === "desktop" ? … import("./desktopCrop.js") …`를 그 자리에 쓴다 — 다른 모양이면 웹 `dist`에 조각이 생긴다(app.md «설치판 사진 자르기»).
+- 설치판 갈래는 `src/desktop.ts`의 `DESKTOP`으로 웹 번들에서 빠진다. `src/constants.ts`의 `export const BOOTH_TOKEN = '…';` 줄 모양은 CI가 정규식으로 읽으므로 바꾸지 않는다.
+- 설치 파일은 저장소 · Hosting에 넣지 않는다(app.md «Windows 설치판»).
 
 ## 공용 절차·보고·도구 인계
 
