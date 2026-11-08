@@ -31,9 +31,15 @@ const reaches = (refs, cwd) => refs.some((r) => {
 export function count(refs, cwd = ROOT) {
   const fromStart = reaches(refs, cwd);
   const log = git(['log', '--no-merges', '--format=%H%x09%s', ...refs, ...(fromStart ? [`^${START.commit}`] : [])], cwd);
+  const { version, ...tally } = versionOf(log.trim().split('\n').filter(Boolean), fromStart);
+  return { version, from: fromStart ? START.commit : null, ...tally };
+}
+
+/** «해시\t제목» 줄들 → 판 번호와 센 수. fromStart면 시작점(2.7.4) 뒤의 커밋들이다. git 없이 셈만 한다(test/app-version.test.js). */
+export function versionOf(lines, fromStart) {
   const tally = { commits: 0, big: 0, minor: 0, patch: 0, skipped: 0 };
   const unknown = [];
-  for (const line of log.trim().split('\n').filter(Boolean)) {
+  for (const line of lines) {
     const [hash, subject = ''] = line.split('\t');
     tally.commits++;
     if (BIG.some((b) => hash.startsWith(b))) { tally.big++; continue; }
@@ -50,7 +56,7 @@ export function count(refs, cwd = ROOT) {
   let patch = p0 + tally.patch, minor = n0 + tally.minor, major = m0 + tally.big;
   minor += Math.floor(patch / 10); patch %= 10;
   major += Math.floor(minor / 10); minor %= 10;
-  return { version: `${major}.${minor}.${patch}`, from: fromStart ? START.commit : null, ...tally };
+  return { version: `${major}.${minor}.${patch}`, ...tally };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
