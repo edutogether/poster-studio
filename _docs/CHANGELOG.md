@@ -1,5 +1,14 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-08(일) — 설치판 사진을 사람 둘레 세로 2:3으로 잘라 넣기 (Bumm님 ⭐ «고침», 팀장 전달)
+
+- 설치판(AI 없음)은 가로 카메라 사진을 그대로 넣어 8종 중 5~6종의 위아래가 흐린 빈자리였다. 이제 기기 안에서 얼굴을 찾아(pico, MIT) 사람 둘레를 자른다(`src/desktopCrop.ts`) —
+  혼자는 늘 세로 2:3, 단체는 찾은 얼굴 모두 + 어깨 몫(넓으면 그 폭 그대로), 못 찾으면 혼자 가운데 2:3 · 단체 그대로. 틀 · 배치 코드는 그대로다.
+- 웹은 바뀌지 않는다: 웹 `dist` 621개 파일 SHA-256 전 · 후 같음. `import.meta.env.MODE`를 그 자리에서 읽어야 웹에 조각이 안 생긴다(app.md «설치판 사진 자르기»).
+- 설치판 예시 사진 전 · 후(흐린 위아래가 있는 디자인): 혼자 6/8 → 3/8, 단체 6/8 → 6/8(모든 띠가 줄었다 — 네 명이 나란히라 2:3에 다 안 든다). 캡처 32장(1200×1800)은 저장소 밖 `ps-desktop-crop-1108`.
+- 시험: 루트 vitest 605(+16 `test/desktop-crop.test.ts`, 설치판 흐름 시험에 자르기 호출 확인) · lint · typecheck · fonts:check · verify:selftest, 실제 설치판 `desktop-app-probe.mjs --dev` 38건(바깥 요청 0).
+  도구 `scripts/verify/desktop-crop-probe.mjs`. 공개 설치 파일은 아직 바꾸지 않았다 — Bumm님 OK 뒤.
+
 ## 2026-11-07(토) 밤 — 대수 정정: 노트북 3대 · CP1500 3대(각 운영 2 · 예비 1) · KT EGG 2대 (Bumm님, 팀장 전달)
 
 - 교육청 제출 계획서(5 · 6 · 16 · 28 · 29쪽) 대로 두 부스를 합쳐 노트북 6 · 통신 4다. 같은 날 적은 «노트북 6대(운영 3 · 예비 3) · EGG 4대»는 틀린 값이라 `app.md` · `printer-capacity.md` · `runbook.md` · `completion-plan-1114.md` · `operator.md` · `self-test.md`를 고쳤다.

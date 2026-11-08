@@ -740,8 +740,20 @@
   - 🔴 **설치 파일을 Hosting(`public/` · `dist/`)에 넣지 않는다.** 다음 CI 배포가 지우고, 100MB가 넘어 저장소에도 못 넣는다.
   - 올릴 자리(제안 · 별도 승인)는 intent «올릴 자리»에 있다. 주소는 `src/downloads.ts` 한 줄이다.
 
+## 설치판 사진 자르기 — 사람 둘레 세로 2:3 (2026-11-08 Bumm님 ⭐ «고침», 팀장 전달 — `_docs/intents/2026-11-08-desktop-photo-crop`)
+- 설치판(AI 없음)은 가로 카메라 사진을 8종에 그대로 넣어 위아래가 흐린 «배경 연장»으로 찼다. 이제 넣기 전에 기기 안에서 얼굴을 찾아(pico — `src/vendor/pico.ts` · 학습 파일 `facefinder.bin`, MIT · `LICENSE-pico.txt`)
+  사람 둘레를 자른다(`src/desktopCrop.ts`). 혼자는 늘 세로 2:3(가장 뚜렷한 얼굴 가운데 · 머리 위 6% · 아래는 사진 끝까지), 단체는 찾은 얼굴 모두 + 양옆 어깨 몫(얼굴 크기 1.2배) —
+  그 폭이 2:3보다 넓으면 그 폭 그대로(사람을 자르지 않으므로 흐린 위아래가 일부 남는다). 못 찾으면 혼자는 가운데 2:3, 단체는 자르지 않는다. 무엇이든 실패하면 원래 사진.
+- 🔴 **`PosterStudio.tsx`의 두 자리는 `import.meta.env.MODE === "desktop" ? await (await import("./desktopCrop.js")).cropForPoster(…) : …`를 그 자리에 그대로 쓴다.**
+  `DESKTOP` 상수(다른 모듈)나 도우미 함수를 거치면 Rollup이 첫 단계에서 동적 불러오기를 남겨 **웹 `dist`에 `desktopCrop-*.js` · `facefinder-*.bin` 조각이 생기고 이름 압축이 바뀌어 웹 번들 바이트가 달라진다**(11/8 실측).
+  `test/desktop-crop.test.ts`가 모양을 고정한다. 바꾸면 웹 빌드 전 · 후 `dist` 전 파일 SHA-256을 대조한다(11/8: 621개 같음).
+- 잘린 그림은 PNG data: 주소다(놓을 개체 주소가 없어 하루 내내 써도 쌓이지 않는다). 사진은 기기 밖으로 나가지 않고, 학습 파일은 `app://` 안에서 받는다(`connect-src 'self'`).
+- 틀 · 배치(`templates.ts` · `poster.ts`)는 바꾸지 않는다 — 넣는 그림만 바꾼다. 웹(AI · 샘플)은 자르지 않는다.
+- 확인: 개발 서버를 띄우고 `node scripts/verify/desktop-crop-probe.mjs <개발 서버> <결과> 이름=사진=solo|group …` — 전 · 후 8종(1200×1800)과 «얼굴과 자른 자리» 그림 · 흐린 띠 측정(`측정.json`).
+  자른 자리가 사진 밖 · 포스터가 8장 아님 · 흐린 띠가 전보다 넓음이면 종료코드 1. 실제 설치판은 `desktop-app-probe.mjs --dev`(38건).
+
 ## 명령
-- 테스트: `cd functions && npm test`(137개) / 저장소 루트에서 `npm test`(570개) — 둘 다 vitest(2026-11-05)
+- 테스트: `cd functions && npm test`(137개) / 저장소 루트에서 `npm test`(605개) — 둘 다 vitest(2026-11-08)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
 - 빌드: 루트에서 `npm run build` → `dist/`

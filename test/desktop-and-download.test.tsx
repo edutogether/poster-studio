@@ -28,12 +28,19 @@ vi.mock('../src/desktop.js', async (importOriginal) => {
 });
 let studioMode: StudioMode = 'both';
 vi.mock('../src/studioMode.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('../src/studioMode.js')>()), get STUDIO_MODE() { return studioMode; } }));
+// 설치판 사진 자르기(src/desktopCrop.ts, 11/8) — 얼굴 찾기는 그림판이 있어야 해 여기서는 «잘린 주소»만 돌려준다(자리 계산은 desktop-crop.test.ts).
+// PosterStudio는 import.meta.env.MODE가 "desktop"일 때만 이 모듈을 부른다 — 설치판 묶음은 vi.stubEnv로 그 값을 준다.
+const crop = vi.hoisted(() => ({ calls: [] as [string, string][] }));
+vi.mock('../src/desktopCrop.js', () => ({
+  cropForPoster: async (url: string, mode: string) => { crop.calls.push([url, mode]); return `cropped:${mode}:${url}`; },
+}));
 
 let cam: ReturnType<typeof installCamera>;
 let net: ReturnType<typeof installFetch>;
 beforeEach(() => {
   flags.desktop = false;
   studioMode = 'both';
+  crop.calls = [];
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
@@ -51,6 +58,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
   vi.useRealTimers();
   delete (window as any).posterStudioDesktop;
@@ -69,7 +77,7 @@ describe('웹 첫 화면 «↓ 다운로드»', () => {
 });
 
 describe('설치판(AI 없이 사진 그대로)', () => {
-  beforeEach(() => { flags.desktop = true; studioMode = 'both'; });   // src/studioMode.ts — 설치판도 두 단추(10/28)
+  beforeEach(() => { flags.desktop = true; studioMode = 'both'; vi.stubEnv('MODE', 'desktop'); });   // src/studioMode.ts — 설치판도 두 단추(10/28)
 
   /* «이 사진으로 포스터 만들기»(10/27 Bumm님): 로딩 화면이 무작위 장면 둘(8초씩) 동안 돌고 나서 결과로 간다 — «최소 두 바퀴»(COMMON_STANDARDS §27).
      설치판에는 AI가 없으니 «AI …» 문구 장면은 나오지 않는다. 그 밖은 웹 그대로 — 승인된 대기 영상을 튼다(10/27 Bumm님 «승인된 영상과 디자인을 그대로»). */
@@ -122,8 +130,13 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     await act(async () => { await Promise.resolve(); });
     expect(canvases[0].width).toBe(1280);   // 웹은 1024로 줄인다(AI 전송용) — 설치판은 인쇄되므로 그대로
     expect(cam.stopped).toEqual(['video']);
+    const build = vi.spyOn(posterModule, 'buildPosters');
     await composeWithLoading();
     expect(document.querySelectorAll('#resultView .style-option.thumb').length).toBe(8);
+    // 찍은 사진은 사람 둘레 세로 2:3으로 잘라 넣는다(11/8) — 자르기에 찍은 사진 · 혼자를 주고, 잘린 그림으로 조판한다
+    expect(crop.calls).toHaveLength(1);
+    expect(crop.calls[0][1]).toBe('solo');
+    expect(build.mock.calls[0][0]).toEqual([`cropped:solo:${crop.calls[0][0]}`]);
     expect(net.calls).toEqual([]);
   });
 
@@ -150,7 +163,8 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     await composeWithLoading('shotBtn');
     const photo = approvedCameraVideo(mode)?.endStill ?? (mode === 'group' ? '/studio/camera-group.webp' : '/studio/camera-student.webp');
     expect(build).toHaveBeenCalledTimes(1);
-    expect(build.mock.calls[0][0]).toEqual([photo]);
+    expect(crop.calls).toEqual([[photo, mode]]);   // 예시 사진도 찍은 사진처럼 잘라 넣는다(11/8)
+    expect(build.mock.calls[0][0]).toEqual([`cropped:${mode}:${photo}`]);
     expect(document.querySelectorAll('#resultView .style-option.thumb').length).toBe(8);
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
     expect(net.calls).toEqual([]);
@@ -290,6 +304,7 @@ describe('조판 실패 — 샘플 · 설치판 포스터 만들기', () => {
 
   test.each([['웹', false], ['설치판', true]])('%s «샘플 포스터 보기»', async (_name, desktop) => {
     flags.desktop = desktop;
+    if (desktop) vi.stubEnv('MODE', 'desktop');
     const error = failBuild();
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
@@ -300,10 +315,12 @@ describe('조판 실패 — 샘플 · 설치판 포스터 만들기', () => {
     expect(document.getElementById('spinner')).toBeNull();
     expect(document.body.dataset.step).toBe('2');
     expect(el<HTMLButtonElement>('shotBtn').disabled).toBe(false);   // 다시 누를 수 있다(생성 중 표시가 풀림)
+    expect(crop.calls.length).toBe(desktop ? 1 : 0);   // 사진 자르기는 설치판만(웹 샘플은 AI 원화 그대로)
   });
 
   test('설치판 «이 사진으로 포스터 만들기»', async () => {
     flags.desktop = true;
+    vi.stubEnv('MODE', 'desktop');
     await act(async () => { renderApp(); });
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
     await act(async () => { el<HTMLButtonElement>('startBtn').click(); });

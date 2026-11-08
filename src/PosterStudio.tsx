@@ -618,7 +618,8 @@ export default function PosterStudio() {
         : await import("./studio/design-sample.webp");
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
-      return buildPosters([sampleArt], meta);
+      // 설치판은 예시 사진도 찍은 사진처럼 사람 둘레 세로 2:3으로 잘라 넣는다(아래 onCompose와 같은 줄 · 같은 까닭).
+      return buildPosters([import.meta.env.MODE === "desktop" ? await (await import("./desktopCrop.js")).cropForPoster(sampleArt, mode) : sampleArt], meta);
     }, "[샘플 포스터 실패]", "샘플 포스터를 불러오지 못했어요.\n다시 눌러주세요.");
   };
 
@@ -683,7 +684,10 @@ export default function PosterStudio() {
     // 로컬 합성은 1~2초면 끝나 예전에는 왼쪽 아래 «포스터를 만들고 있어요» 한 줄만 스쳤다(10/27 Bumm님 «성의 없다»). 웹과 같은 로딩 화면(승인된 대기 영상)을
     // 무작위 장면 둘(DESKTOP_WAIT_SCENES × 8초) 동안 보인 뒤 결과로 간다 — 장면 넘김이 이 화면의 애니메이션이라 «최소 두 바퀴»(COMMON_STANDARDS §27)다.
     // 조판은 로딩 화면 뒤에서 같이 돌리고, 재생 중인 대기 영상은 끝까지 보여 준다(샘플 흐름과 같은 composeWhileWaiting).
-    await composeWhileWaiting(DESKTOP_WAIT_SCENES, () => buildPosters([photoURL], getMeta(mode)),
+    // 가로 카메라 사진은 사람 둘레를 세로 2:3으로 잘라 넣는다(2026-11-08 Bumm님 «고침» — src/desktopCrop.ts, 자른 그림은 data: 주소라 놓을 것이 없다).
+    // 조건은 DESKTOP 상수가 아니라 import.meta.env.MODE를 그 자리에서 읽는다 — 빌드 도구가 웹 빌드에서 «"production" === "desktop"»을 그 자리에서
+    // 거짓으로 접어야 이 모듈 · 학습 파일이 dist에 아예 생기지 않고 웹 번들이 바이트까지 그대로다(DESKTOP을 거치면 빈 조각 둘이 남고 이름이 바뀌었다 — 11/8 실측).
+    await composeWhileWaiting(DESKTOP_WAIT_SCENES, async () => buildPosters([import.meta.env.MODE === "desktop" ? await (await import("./desktopCrop.js")).cropForPoster(photoURL, mode) : photoURL], getMeta(mode)),
       "[포스터 만들기 실패] 로컬 합성", "포스터를 만들지 못했어요. 다시 눌러 주세요.");
   };
 

@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-11-08 | [desktop-photo-crop](2026-11-08-desktop-photo-crop/intent.md) | 2 | in-progress | 설치판만 — 카메라 사진에서 얼굴을 찾아(pico) 사람 둘레 세로 2:3으로 잘라 8종에 넣기, 웹 dist 621개 바이트까지 그대로 · 공개 설치 파일 교체는 Bumm님 OK 뒤 |
 | 2026-11-07 | [camera-example-prefetch](2026-11-07-camera-example-prefetch/intent.md) | 2 | done | 1단계에 머무는 동안 2단계 예시 영상을 미리 열어 받기 — 1단계 그림 · 글꼴 뒤에 시작, 클릭 → 재생 약 0.02초 |
 | 2026-11-05 | [field-feedback](2026-11-05-field-feedback/intent.md) | 2 | done | 첫 화면 «의견 보내기» → 서버 `/feedback`가 Firestore `feedback`에 저장 + Bumm님 카카오톡 «나에게» 알림(토큰은 서버 전용 문서 · 매일 갱신) · 90일 자동 삭제 · 방침은 그대로(11 ②) |
 | 2026-11-01 | [deps-alerts-npx-firebase](2026-11-01-deps-alerts-npx-firebase/intent.md) | 2 | done | Dependabot 알림 6건을 고친 판으로 — 루트·functions는 overrides(qs·glob·minimatch), 배포 도구는 잠금 파일 밖 `npx firebase-tools@15.32.1`. 화면·함수 동작 변화 0 |
