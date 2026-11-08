@@ -20,9 +20,9 @@
 
 - React·TypeScript·Vite의 `src/`를 `dist/`로 빌드한다. 브라우저가 촬영·canvas 합성·인쇄를 맡고 `functions/index.js`가 OpenAI 생성 중계를 맡는다. 1200×1800 포스터·4×6 인화 규격과 승인된 출력 조판을 보호하며 변경은 현재 원장의 승인 범위 안에서만 수행한다.
 - 생성 서버로 보내는 FormData는 `photo`·`movieTitle`·`tagline`·`genre`·`mode` 다섯 필드다. 사진과 제작 정보는 서버를 거쳐 OpenAI 이미지 생성에 사용한다. 이름·단체명·출연진은 브라우저에서만 합성하며 서버로 보내지 않는다. `test/poster-studio.test.tsx`의 요청 본문 허용 목록 검사를 유지한다.
-- Firestore에는 제한·예산용 카운터 4종과 사진 SHA-256·갱신 시각만 남긴다. 사진 원본·이름을 추가하지 않는다 — 예외는 현장 의견 `feedback` · 같은 모양의 Voice Cinema 의견 `feedbackVoiceCinema`(진행자가 적은 이름 · 의견 · 판 · 화면 · 기기 · 단계, 90일 자동 삭제 · 끝나면 `scripts/ops/feedback-export.mjs`로 내보내고 지움)와 카카오 알림 토큰 `kakaoAuth`뿐이다(2026-11-05 Bumm님 · 11/8). `cleanupOldCountersSchedule`의 매일 KST 04시 실행·30일 지난 기록 삭제를 개인정보 고지와 일치시킨다.
+- Firestore에는 제한·예산용 카운터 4종과 사진 SHA-256·갱신 시각만 남긴다. 사진 원본·이름을 추가하지 않는다 — 예외는 현장 의견 `feedback`(진행자가 적은 이름 · 의견 · 판 · 화면 · 기기 · 단계, 90일 자동 삭제 · 끝나면 `scripts/ops/feedback-export.mjs`로 내보내고 지움)과 카카오 알림 토큰 `kakaoAuth`뿐이다(2026-11-05 Bumm님). `cleanupOldCountersSchedule`의 매일 KST 04시 실행·30일 지난 기록 삭제를 개인정보 고지와 일치시킨다.
 - 첫 화면 «의견 보내기»(`src/feedback.ts`의 `FEEDBACK_OPEN` 스위치 · 설치판에는 없음) → `POST /feedback` → Firestore → 카카오톡 «나에게 보내기».
-  **2026-11-14 00:00(한국 시간)에 저절로 닫힌다** — 시각은 `functions/feedback-window.json` 한 곳(서버 410 · 화면이 같은 파일을 읽어 링크를 내림). Voice Cinema 의견은 `POST /feedback/voice-cinema`(Origin 확인 · 같은 한도 · Firestore `feedbackVoiceCinema`)로 이 서버가 받는다. 카카오 키 `KAKAO_REST_API_KEY` · `KAKAO_CLIENT_SECRET`은 Secret Manager이고 **없으면 functions 배포가 실패한다**. 값은 Bumm님이 넣는다(app.md «현장 의견 받기»).
+  **2026-11-14 00:00(한국 시간)에 저절로 닫힌다** — 시각은 `functions/feedback-window.json` 한 곳(서버 410 · 화면이 같은 파일을 읽어 링크를 내림). 카카오 키 `KAKAO_REST_API_KEY` · `KAKAO_CLIENT_SECRET`은 Secret Manager이고 **없으면 functions 배포가 실패한다**. 값은 Bumm님이 넣는다(app.md «현장 의견 받기»).
 - 의견 요청에 서버는 10초 안에 답한다(`FEEDBACK_REPLY_BUDGET_MS` — 카카오는 남은 시간만 쓴다). 화면은 15초를 기다리므로(`src/feedback.ts` `TIMEOUT_MS`) 이 순서를 뒤집지 않는다 — 시험이 두 값을 읽어 막는다.
 - 로컬로 저장한 포스터 파일은 서버 정리로 삭제되지 않는다. 개인정보 고지의 2026-12-31까지 보관 후 운영자 삭제 정책을 유지한다.
 - 업로드는 플랫폼의 `rawBody`를 busboy로 파싱한다. `/generate` 순서인 `markRequestStart → checkBoothToken → checkBoothCode → generateWindowGate → parseMultipart → requirePhoto → rateLimit → ipRateLimit → checkPhotoGenerationLimit → dailyBudgetCap`을 유지한다. 생성 성공·실패뿐 아니라 파싱 오류·429 차단에서도 임시 사진을 삭제하고 촬영 후 카메라 트랙을 해제한다.

@@ -27,7 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
-| 2026-11-08 | [feedback-close-voice-cinema](2026-11-08-feedback-close-voice-cinema/intent.md) | 2 | in-progress | «의견 보내기» 11/14 0시 저절로 마감(서버 410 · 화면 내림, 시각은 `functions/feedback-window.json` 하나) · 설치판 제외 · Voice Cinema 의견도 이 서버로(`/feedback/voice-cinema`, Firestore `feedbackVoiceCinema`, Origin 확인) |
+| 2026-11-08 | [feedback-close](2026-11-08-feedback-close/intent.md) | 2 | in-progress | «의견 보내기» 11/14 0시 저절로 마감(서버 410 · 화면 내림, 시각은 `functions/feedback-window.json` 하나) · 설치판 제외. 함께 했던 «Voice Cinema 의견도 이 서버로»는 Bumm님 «받을 필요 없어»로 취소 · 되돌림 |
 | 2026-11-08 | [group-stand-sample-photos](2026-11-08-group-stand-sample-photos/intent.md) | 2 | in-progress | 단체 촬영 «모두 잘 보이게 서주세요» · 모두 선 새 단체 그림(슬라이드식 임시 예시 영상) · 샘플 포스터 사진(혼자 = 예시 영상 끝 장면 여학생 · 단체 = 새 그림, 웹 · 설치판 같음) · 설명서 00~03 |
 | 2026-11-08 | [group-shoot-front-sit](2026-11-08-group-shoot-front-sit/intent.md) | 2 | dropped | 단체 촬영 «앞줄은 앉고 뒷줄은 서기»(벤치 그림) — 같은 날 저녁 Bumm님이 거둠, 위 건이 대신함 |
 | 2026-11-08 | [desktop-group-two-rows](2026-11-08-desktop-group-two-rows/intent.md) | 2 | dropped | 설치판 단체 사진을 두 줄로 붙여 세로 2:3 채우기(D안) — 시험 사진 16장 중 0장, Bumm님 «접기»(11/8) · 촬영 안내로 대신 |

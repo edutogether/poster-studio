@@ -222,14 +222,6 @@ const app = express();
 // 단, req.ip 자체를 레이트리밋 키로 쓰면 안 된다(아래 clientIpForRateLimit 참고).
 app.set('trust proxy', true);
 
-// Voice Cinema 전용 주소는 CORS 목록에 있지만 그 앱의 의견 자리(/feedback/voice-cinema)만 쓴다 — 생성 · 상태 확인 등 나머지는 403(2026-11-08).
-app.use(function voiceCinemaOriginFence(req, res, next) {
-  if (originIn(VOICE_CINEMA_ONLY_ORIGINS, req.headers.origin) && req.path !== VOICE_CINEMA_FEEDBACK_PATH) {
-    return res.status(403).json({ error: '허용되지 않은 출처입니다.', code: 'feedback_origin' });
-  }
-  next();
-});
-
 /* 8차 감사 발견(2026-09-07, 라이브 실측으로 확인한 진짜 우회 경로).
    Express의 `trust proxy: true`는 req.ip를 X-Forwarded-For의 **맨 왼쪽** 값으로
    정한다. 그런데 Cloud Run/GFE는 클라이언트가 보낸 XFF를 지우지 않고 그 뒤에
@@ -1099,37 +1091,14 @@ const FEEDBACK_DAILY_MAX = 300;
 const FEEDBACK_FIELDS = ['name', 'text', 'version', 'screen', 'device', 'step'];
 const FEEDBACK_DEVICES = ['phone', 'tablet-p', 'tablet-l', 'pc', 'unknown'];
 
-/* 마감(2026-11-08 Bumm님, 팀장 전달 — _docs/intents/2026-11-08-feedback-close-voice-cinema): 행사 날 11/14 00:00(한국 시간)부터
-   두 앱의 의견을 받지 않는다 — 저장 · 카카오 알림 없이 410. 시각은 feedback-window.json 한 곳이고 Poster Studio 화면도 같은 파일을 읽는다.
+/* 마감(2026-11-08 Bumm님, 팀장 전달 — _docs/intents/2026-11-08-feedback-close): 행사 날 11/14 00:00(한국 시간)부터
+   의견을 받지 않는다 — 저장 · 카카오 알림 없이 410. 시각은 feedback-window.json 한 곳이고 화면(src/feedback.ts)도 같은 파일을 읽는다.
    이미 받은 의견 · 내보내기 도구 · 90일 정리는 그대로다. 시각이 읽히지 않으면 함수가 시작되지 않는다(조용히 늘 열리거나 늘 닫히지 않게). */
 const FEEDBACK_CLOSES_AT_TEXT = JSON.parse(fs.readFileSync(new URL('./feedback-window.json', import.meta.url), 'utf8')).closesAt;
 const FEEDBACK_CLOSES_AT = Date.parse(FEEDBACK_CLOSES_AT_TEXT);
 if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+09:00$/.test(FEEDBACK_CLOSES_AT_TEXT || '') || !Number.isFinite(FEEDBACK_CLOSES_AT)) {
   throw new Error('feedback-window.json의 closesAt이 «YYYY-MM-DDTHH:MM:SS+09:00» 모양이 아닙니다.');
 }
-
-/* 앱별 받는 자리(2026-11-08 Bumm님 «포스터랑 똑같은 걸 써 — 보이스 · 포스터 하위 폴더만 갈라서»). Voice Cinema 화면도 이 서버로 보낸다.
-   - 저장: Poster Studio는 예전 그대로 feedback, Voice Cinema는 feedbackVoiceCinema(Firestore 콘솔에서 앱별 컬렉션으로 보인다).
-   - 카운터 문서 이름의 접두가 앱마다 달라 한 앱이 다른 앱의 한도를 먹지 않는다. Poster Studio 접두는 예전 그대로다.
-   - 카카오 글 첫머리가 앱 이름이다. 링크는 두 앱 모두 카카오 앱에 이미 등록한 poster.edutogether.kr — 새 도메인을 등록할 일이 없다. */
-const FEEDBACK_APPS = {
-  'poster-studio': { collection: FEEDBACK_COLLECTION, counterKey: 'feedback', label: 'Poster Studio' },
-  'voice-cinema': { collection: 'feedbackVoiceCinema', counterKey: 'feedback-voice-cinema', label: 'Voice Cinema' }
-};
-const FEEDBACK_COLLECTIONS = Object.values(FEEDBACK_APPS).map((a) => a.collection);
-
-/* Voice Cinema 화면에는 이 서버의 부스 토큰이 없고, Voice Cinema의 App Check 토큰은 그 프로젝트(inky-voice-cinema) 것이라 여기서 확인할 수 없다.
-   그래서 /feedback/voice-cinema는 토큰 대신 Origin을 본다 — Voice Cinema 주소(정식 · 옛 주소 둘 · Portal 프록시)에서 온 요청만 받는다.
-   Origin은 브라우저 밖에서는 꾸밀 수 있으므로 진짜 막는 것은 Poster Studio와 같은 칸 확인 · 8KB · IP당 10분 10건 · 하루 300건 · 마감 시각이다.
-   거꾸로 Voice Cinema 전용 주소에서 온 요청은 이 자리 말고는 쓰지 못한다(아래 voiceCinemaOriginFence). */
-const VOICE_CINEMA_ONLY_ORIGINS = [
-  /^https:\/\/voice\.edutogether\.kr$/,
-  /^https:\/\/voice-cinema\.web\.app$/,
-  /^https:\/\/voice-cinema\.firebaseapp\.com$/
-];
-const VOICE_CINEMA_FEEDBACK_ORIGINS = [...VOICE_CINEMA_ONLY_ORIGINS, /^https:\/\/edutogether\.kr$/];
-const VOICE_CINEMA_FEEDBACK_PATH = '/feedback/voice-cinema';
-const originIn = (list, origin) => typeof origin === 'string' && list.some((re) => re.test(origin));
 
 let feedbackDb = db;
 let kakaoFetch = (...args) => fetch(...args);
@@ -1269,8 +1238,8 @@ async function sendKakaoMemo(text, now = Date.now(), deadline = Infinity) {
   return true;
 }
 
-function feedbackMemo(v, label = FEEDBACK_APPS['poster-studio'].label) {
-  return `[${label} 의견] ${v.name}\n${v.text}\n— 판 ${v.version} · ${v.screen} · ${v.device} · ${v.step}단계`;
+function feedbackMemo(v) {
+  return `[Poster Studio 의견] ${v.name}\n${v.text}\n— 판 ${v.version} · ${v.screen} · ${v.device} · ${v.step}단계`;
 }
 
 async function feedbackCounter(collectionName, docId, limit) {
@@ -1282,8 +1251,7 @@ async function feedbackCounter(collectionName, docId, limit) {
   }
 }
 
-async function feedbackHandler(req, res, appId = 'poster-studio') {
-  const target = FEEDBACK_APPS[appId];
+async function feedbackHandler(req, res) {
   const now = Date.now();
   // 마감 뒤에는 본문도 읽지 않는다 — 카운터 · 저장 · 카카오 모두 없다.
   if (now >= FEEDBACK_CLOSES_AT) return res.status(410).json({ error: '의견은 이제 받지 않아요.', code: 'feedback_closed' });
@@ -1295,35 +1263,28 @@ async function feedbackHandler(req, res, appId = 'poster-studio') {
 
   const deadline = now + FEEDBACK_REPLY_BUDGET_MS;
   const bucket = Math.floor(now / RATE_LIMIT_WINDOW_MS);
-  const key = target.counterKey;
-  const ipOk = await feedbackCounter('ipRateLimitBuckets', `${key}:${bucket}:${ipKey(clientIpForRateLimit(req))}`, FEEDBACK_IP_MAX);
-  const dayOk = ipOk && (await feedbackCounter('dailyBudgetBuckets', `${key}:${kstDateKey(now)}`, FEEDBACK_DAILY_MAX));
+  const ipOk = await feedbackCounter('ipRateLimitBuckets', `feedback:${bucket}:${ipKey(clientIpForRateLimit(req))}`, FEEDBACK_IP_MAX);
+  const dayOk = ipOk && (await feedbackCounter('dailyBudgetBuckets', `feedback:${kstDateKey(now)}`, FEEDBACK_DAILY_MAX));
   if (!ipOk || !dayOk) return res.status(429).json({ error: '잠시 뒤에 다시 보내 주세요.', code: 'feedback_busy' });
 
   let id;
   try {
-    id = (await feedbackDb.collection(target.collection).add({ ...value, createdAt: new Date(now) })).id;
+    id = (await feedbackDb.collection(FEEDBACK_COLLECTION).add({ ...value, createdAt: new Date(now) })).id;
   } catch (err) {
-    console.error(`[feedback] ${appId} 저장 실패:`, err?.message || err);
+    console.error('[feedback] 저장 실패:', err?.message || err);
     return res.status(503).json({ error: '지금은 보낼 수 없어요. 잠시 뒤에 다시 해 주세요.', code: 'feedback_store' });
   }
   let notified = false;
   try {
-    notified = await sendKakaoMemo(feedbackMemo(value, target.label), now, deadline);
+    notified = await sendKakaoMemo(feedbackMemo(value), now, deadline);
   } catch (err) {
-    console.error(`[feedback] ${appId} 카카오 알림 실패(저장은 됨):`, err?.message || err);
+    console.error('[feedback] 카카오 알림 실패(저장은 됨):', err?.message || err);
   }
-  console.log(`[feedback] ${appId} 저장 ${id} · 알림 ${notified ? '보냄' : '못 보냄'}`);
+  console.log(`[feedback] 저장 ${id} · 알림 ${notified ? '보냄' : '못 보냄'}`);
   res.json({ ok: true });
 }
 
-function checkVoiceCinemaOrigin(req, res, next) {
-  if (originIn(VOICE_CINEMA_FEEDBACK_ORIGINS, req.headers.origin)) return next();
-  return res.status(403).json({ error: '허용되지 않은 출처입니다.', code: 'feedback_origin' });
-}
-
-app.post('/feedback', checkBoothToken, (req, res) => feedbackHandler(req, res, 'poster-studio'));
-app.post(VOICE_CINEMA_FEEDBACK_PATH, checkVoiceCinemaOrigin, (req, res) => feedbackHandler(req, res, 'voice-cinema'));
+app.post('/feedback', checkBoothToken, (req, res) => feedbackHandler(req, res));
 
 /* 카카오 연결(처음 한 번 — Bumm님이 /kakao/start를 열어 로그인 · «카카오톡 메시지 전송» 동의).
    state는 한 번만 쓰고(받으면 바로 지움) 10분 뒤 만료된다. 처음 연결한 카카오 계정 하나에 묶는다 —
@@ -1451,9 +1412,7 @@ const ALLOWED_ORIGINS = [
   /^https:\/\/edutogether\.kr$/,
   /^https:\/\/poster\.edutogether\.kr$/,
   /^http:\/\/localhost:(5500|8080)$/,
-  /^http:\/\/127\.0\.0\.1:(5500|8080)$/,
-  // 2026-11-08: Voice Cinema 의견을 이 서버가 받는다 — 그 주소들은 /feedback/voice-cinema만 쓴다(voiceCinemaOriginFence).
-  ...VOICE_CINEMA_ONLY_ORIGINS
+  /^http:\/\/127\.0\.0\.1:(5500|8080)$/
 ];
 
 // 테스트 전용 export. onRequest로 감싸기 전의 순수 함수/미들웨어를 그대로 노출해서,
@@ -1523,8 +1482,6 @@ export {
   FEEDBACK_IP_MAX,
   FEEDBACK_DAILY_MAX,
   FEEDBACK_CLOSES_AT,
-  FEEDBACK_APPS,
-  VOICE_CINEMA_FEEDBACK_PATH,
   KAKAO_REDIRECT_URI
 };
 
@@ -1619,15 +1576,10 @@ async function cleanupOldCounters(dbInstance = db, now = Date.now()) {
 }
 
 // 현장 의견은 받은 지 90일이 지나면 지운다(2026-11-05 Bumm님 9 ① — 받기를 마치면 내려받아 넘긴 뒤 먼저 지우고, 이것은 잊었을 때의 안전장치다).
-// 앱별 컬렉션 둘 다(Poster Studio feedback · Voice Cinema feedbackVoiceCinema — 2026-11-08).
 async function cleanupOldFeedback(dbInstance = db, now = Date.now()) {
-  let total = 0;
-  for (const collectionName of FEEDBACK_COLLECTIONS) {
-    const deleted = await _deleteOldDocsInCollection(dbInstance, collectionName, new Date(now - FEEDBACK_TTL_MS), 'createdAt');
-    if (deleted) console.log(`[cleanupOldFeedback] ${collectionName}: ${deleted}건 삭제`);
-    total += deleted;
-  }
-  return total;
+  const deleted = await _deleteOldDocsInCollection(dbInstance, FEEDBACK_COLLECTION, new Date(now - FEEDBACK_TTL_MS), 'createdAt');
+  if (deleted) console.log(`[cleanupOldFeedback] ${FEEDBACK_COLLECTION}: ${deleted}건 삭제`);
+  return deleted;
 }
 
 // 세 일은 서로 막지 않는다 — 하나가 실패해도 나머지는 돈다(시험은 jobs를 바꿔 끼운다 — 11/8 종합감사).

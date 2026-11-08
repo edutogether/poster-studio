@@ -1,6 +1,15 @@
 # CHANGELOG — Poster Studio
 
-## 2026-11-08(일) 밤 2 — «의견 보내기» 11/14 0시 마감 · Voice Cinema 의견도 이 서버로 · 혼자 샘플 사진 = 예시 영상 여학생 (Bumm님, 팀장 전달)
+## 2026-11-08(일) 밤 3 — Voice Cinema 의견 경로 취소 · 되돌림 (Bumm님 «받을 필요 없어», 팀장 전달)
+
+- 바로 아래 «밤 2»의 «Voice Cinema 의견도 이 서버로»(`/feedback/voice-cinema` · `feedbackVoiceCinema` · Origin 확인 · 내보내기 `--app`)를 거뒀다 — 라이브에 나가지 않았다.
+  - `functions/index.js` · `functions/test/index.test.js` · `scripts/ops/feedback-export.mjs` · `test/feedback-export.test.js`를 그 전(`db2d6bd`) 모양으로 되돌리고, 마감만 다시 얹었다
+    (`feedback-window.json` 읽기 · 모양 검사 · `/feedback` 410, 시험 2건 — 시각 한 곳 · 1ms 전 받음 / 그 시각 · 하루 뒤 410).
+  - 그래서 «밤 2» 감사의 내보내기 `--app __proto__` 결함(8dc9123)도 도구가 `--app`을 받지 않게 되어 함께 사라졌다.
+  - 예외 컬렉션은 다시 `feedback` · `kakaoAuth` 둘이다(app.md · AGENTS.md · CLAUDE.md 그대로). intent 폴더는 `2026-11-08-feedback-close`로 바꿨다.
+- 확인: functions vitest 143 · 루트 vitest 630 · lint 둘 · typecheck 0. 마감 비교를 `>=` → `>`로 일부러 깨뜨리면 1건 걸린다.
+
+## 2026-11-08(일) 밤 2 — «의견 보내기» 11/14 0시 마감 · Voice Cinema 의견도 이 서버로(→ 밤 3에서 취소) · 혼자 샘플 사진 = 예시 영상 여학생 (Bumm님, 팀장 전달)
 
 - 혼자 샘플 사진: 바로 아래 항목의 «촬영 예시 여학생(`camera-student.webp` — 미술실 · 남색 카디건)»은 예시 영상을 못 틀 때만 보이는 옛 정지 그림이었다.
   2단계 «촬영 구도 예시» 영상 끝 장면의 여학생(`public/studio/camera-v1/solo-end.webp` — 로비 · 청남방 · 브이)과 달라 팀장이 짚었다.
