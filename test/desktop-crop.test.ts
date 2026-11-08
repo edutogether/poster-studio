@@ -3,7 +3,7 @@
    여기서는 찾은 얼굴 → 자를 자리 계산과, 이 모듈이 웹 빌드에 들어가지 않게 하는 불러오기 모양을 고정한다. */
 import { describe, test, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { cropRect, mergeFaces, pickFaces, type Face } from '../src/desktopCrop.js';
+import { cropRect, mergeFaces, pickFaces, subjectOf, type Face } from '../src/desktopCrop.js';
 
 const f = (x: number, y: number, size: number, score: number): Face => ({ x, y, size, score });
 
@@ -104,6 +104,22 @@ describe('쓸 얼굴 고르기(pickFaces) · 합치기(mergeFaces)', () => {
 
   test('여러 각도에서 같은 얼굴을 찾은 것은 하나로(점수 높은 것)', () => {
     expect(mergeFaces([f(500, 300, 200, 20), f(530, 310, 210, 45), f(900, 300, 200, 15)])).toEqual([f(530, 310, 210, 45), f(900, 300, 200, 15)]);
+  });
+});
+
+describe('단체 얼굴 범위(subjectOf) — 포스터 틀이 이 범위만 안전 영역에 막 들어오게 줄인다', () => {
+  const r = { x: 100, y: 50, w: 1000, h: 800 };
+  test('머리 상자(양옆 0.6 · 위 0.8 · 아래 0.6 얼굴 크기)를 자른 자리 비율로', () => {
+    const s = subjectOf([f(400, 300, 100, 30), f(800, 350, 120, 30)], r, 'group')!;
+    expect(s.x0).toBeCloseTo((400 - 60 - 100) / 1000, 9);
+    expect(s.x1).toBeCloseTo((800 + 72 - 100) / 1000, 9);
+    expect(s.y0).toBeCloseTo((300 - 80 - 50) / 800, 9);
+    expect(s.y1).toBeCloseTo((350 + 72 - 50) / 800, 9);
+  });
+  test('자른 자리 밖으로 나가는 머리는 0~1로 자른다 · 혼자 · 얼굴 없음은 범위를 주지 않는다(틀의 약속 상자)', () => {
+    expect(subjectOf([f(120, 60, 100, 30), f(1080, 300, 100, 30)], r, 'group')).toEqual({ x0: 0, y0: 0, x1: 1, y1: (300 + 60 - 50) / 800 });
+    expect(subjectOf([f(400, 300, 100, 30)], r, 'solo')).toBeUndefined();
+    expect(subjectOf([], r, 'group')).toBeUndefined();
   });
 });
 

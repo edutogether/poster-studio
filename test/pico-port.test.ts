@@ -48,7 +48,7 @@ describe('cropForPoster 실패 길 — 받은 주소 그대로', () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       const { cropForPoster } = await import('../src/desktopCrop.js');
-      await expect(cropForPoster('blob:photo-1', 'solo')).resolves.toBe('blob:photo-1');
+      await expect(cropForPoster('blob:photo-1', 'solo')).resolves.toEqual({ url: 'blob:photo-1' });
       expect(decode).toHaveBeenCalledTimes(1);
       expect(err).toHaveBeenCalledWith('[desktop-crop]', expect.any(Error));
     } finally {

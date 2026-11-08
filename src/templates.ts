@@ -162,6 +162,11 @@ interface Box { x0: number; y0: number; x1: number; y1: number }
 function subjectBox(m: Meta): Box {
   return m.mode === 'group' ? { x0: 0.04, y0: 0.05, x1: 0.96, y1: 0.67 } : { x0: 0.16, y0: 0.05, x1: 0.84, y1: 0.67 };
 }
+/** 얼굴을 지키는 다섯 종(fitArt)의 주인공 상자 — 단체이고 얼굴 범위를 알면(설치판 자르기 · 샘플 단체, Meta.subject) 그 범위,
+    모르면(AI 그림) 위의 약속 상자. 얼굴 범위가 약속 상자보다 좁은 만큼 덜 줄인다 — «얼굴이 안전 영역에 막 들어오는 만큼만»(11/8 밤 팀장). */
+function fitBox(m: Meta): Box {
+  return m.mode === 'group' && m.subject ? m.subject : subjectBox(m);
+}
 /** cover = 그림이 채울 칸, safe = 주인공 상자를 둘 영역(cover 안). 그림은 cover를 덮는 크기로 그리고, 덮는 범위 안에서
     주인공 상자를 safe 가운데에 가장 가깝게 둔다. 세로로 safe보다 크면 머리(상자 위)를 safe 위에 맞춘다 — 가운데에 맞추면 머리가 잘린다.
     반환: 그린 그림의 자리·크기. */
@@ -177,6 +182,55 @@ export function coverPlacement(aw: number, ah: number, cover: Rect, safe: Rect, 
     y: axis(cover.y, cover.h, safe.y, safe.h, box.y0, box.y1, ah, true),
     w: aw * s, h: ah * s,
   };
+}
+/* ───── 얼굴을 글 · 틀 밖으로 지키는 배치(2026-11-08 밤 Bumm님 «샘플 · 손님 사진 모두 얼굴이 제목 아래, 단체 양끝 얼굴이 잘리지 않게»,
+   팀장 결정 «섞기» — 시네마 · 에디토리얼 · 컬러 블록 · 필름스트립 · 트립틱만. 아치 · 폴라로이드 · 타이포그래피는 덮어 채우기 그대로) ─────
+   덮어 채우기(coverPlacement)를 기본으로 두되 두 경우만 덜 덮는다.
+   ① 주인공 상자(fitBox)가 안전 영역 폭보다 넓으면(넓은 단체 그림 · 좁은 칸) 상자 폭이 안전 영역에 막 들어가는 만큼만 줄인다 — 양끝 얼굴이 칸 밖으로 잘리지 않는다.
+      줄어 칸보다 낮아진 그림은 칸 가운데에 두어 남는 높이를 위아래로 나누되, 머리가 안전 영역 위로 · 상자 아래가 안전 영역 아래로(제목 쪽) 나가지 않게 옮긴다.
+   ② lowerHead면 머리(상자 위)를 안전 영역 위보다 위에 두지 않는다 — 덮는 범위 끝에서 멈추지 않고 그림을 내린다(에디토리얼 제호).
+   덜 덮은 자리는 그 디자인의 바탕색 면(band)이고, 그림 가장자리는 그 색으로 부드럽게 넘어간다(seam) — 그림을 흐려 늘이지 않는다. */
+export function fitPlacement(aw: number, ah: number, cover: Rect, safe: Rect, box: Box, lowerHead = false): Rect {
+  const sCover = Math.max(cover.w / aw, cover.h / ah);
+  const s = Math.min(sCover, safe.w / ((box.x1 - box.x0) * aw));
+  const w = aw * s, h = ah * s;
+  // 그림이 칸보다 크면 덮는 범위 안에서, 작으면 칸 안에서 want에 가장 가깝게
+  const place = (lo: number, len: number, size: number, want: number) =>
+    size >= len ? Math.min(lo, Math.max(lo + len - size, want)) : Math.max(lo, Math.min(lo + len - size, want));
+  const x = place(cover.x, cover.w, w, safe.x + safe.w / 2 - (s * (box.x0 + box.x1) / 2) * aw);
+  const headY = safe.y - s * box.y0 * ah;                 // 상자 위(머리)가 안전 영역 위에 닿는 자리
+  const endY = safe.y + safe.h - s * box.y1 * ah;         // 상자 아래가 안전 영역 아래에 닿는 자리
+  // 덮는 그림: 상자가 안전 영역에 들어가면 가운데, 아니면 머리 먼저. 칸보다 낮은 그림: 칸 가운데를 [머리 먼저, 상자 아래] 사이로.
+  const want = h < cover.h ? Math.max(headY, Math.min(endY, cover.y + (cover.h - h) / 2))
+    : endY >= headY ? (headY + endY) / 2 : headY;
+  let y = place(cover.y, cover.h, h, want);
+  // 머리를 내릴 때는 상자 위보다 그림 높이의 3%를 더 본다(머리가 상자보다 높은 그림 — 샘플 단체 남학생 정수리 2%).
+  if (lowerHead) y = Math.max(y, Math.min(headY + s * Math.min(box.y0, 0.03) * ah, cover.y + cover.h - h * 0.75));
+  return { x, y, w, h };
+}
+/** 칸 cover에 fitPlacement 자리로 그린다. 그림이 못 덮은 자리는 band 색 면, 그림 가장자리는 그 색으로 넘어간다(흐림 없음). 반환: 그린 자리. */
+function fitArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: Box, band: string, lowerHead = false): Rect {
+  const r = fitPlacement(art.width, art.height, cover, safe, box, lowerHead);
+  c.save(); c.beginPath(); rectPath(c, cover.x, cover.y, cover.w, cover.h); c.clip();
+  const gap = r.x > cover.x + 0.5 || r.y > cover.y + 0.5 || r.x + r.w < cover.x + cover.w - 0.5 || r.y + r.h < cover.y + cover.h - 0.5;
+  if (gap) { c.fillStyle = band; c.fillRect(cover.x, cover.y, cover.w, cover.h); }
+  c.drawImage(art, r.x, r.y, r.w, r.h);
+  if (gap) seam(c, r, cover, band);
+  c.restore();
+  return r;
+}
+/** 그림 r의 가장자리 중 칸 안에 있는 쪽을 band 색으로 넘긴다(그림 크기의 9%, 최대 140px). */
+function seam(c: Ctx, r: Rect, cover: Rect, band: string) {
+  // 투명 끝은 같은 색의 알파 0이어야 한다(투명 검정으로 넘기면 띠가 거뭇해진다) — band는 '#rrggbb' 또는 css()의 'rgb(r,g,b)'.
+  const f = Math.min(140, Math.min(r.w, r.h) * 0.09), clear = band.startsWith('#') ? `${band.slice(0, 7)}00` : band.replace(/^rgb\((.*)\)$/, 'rgba($1,0)');
+  const edge = (x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number) => {
+    const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, band); g.addColorStop(1, clear);
+    c.fillStyle = g; c.fillRect(rx, ry, rw, rh);
+  };
+  if (r.y > cover.y + 0.5) edge(0, r.y - 1, 0, r.y + f, r.x, r.y - 1, r.w, f + 1);
+  if (r.y + r.h < cover.y + cover.h - 0.5) edge(0, r.y + r.h + 1, 0, r.y + r.h - f, r.x, r.y + r.h - f, r.w, f + 1);
+  if (r.x > cover.x + 0.5) edge(r.x - 1, 0, r.x + f, 0, r.x - 1, r.y, f + 1, r.h);
+  if (r.x + r.w < cover.x + cover.w - 0.5) edge(r.x + r.w + 1, 0, r.x + r.w - f, 0, r.x + r.w - f, r.y, f + 1, r.h);
 }
 function placeArt(c: Ctx, art: HTMLImageElement, cover: Rect, safe: Rect, box: Box) {
   const r = coverPlacement(art.width, art.height, cover, safe, box);
@@ -479,7 +533,6 @@ export const TEMPLATES: Template[] = [
   /* 1. 시네마 — 전면 그림 + 아래로 깊어지는 어둠, 가운데 축. Bumm님이 만족한 방향 그대로, 쌓는 방식만 바꿨다:
         긴 제목이 와도 문구·제목·선·빌링이 겹치지 않고, 빌링은 한 덩어리로 묶인다. 레퍼런스: Beasts of the Southern Wild, 4등. */
   { label: '시네마', render(c, art, m) {
-    photo(c, art, 0, 0, W, H, 0.35);
     const bill = billing(c, m, {
       main: { family: SANS, weight: 600 }, mainSize: 33, mainColor: '#eee9db',
       sub: { family: SANS, weight: 400 }, subSize: 25, subColor: '#d9d3c4',
@@ -492,6 +545,8 @@ export const TEMPLATES: Template[] = [
     const titleTop = ruleY - 46 - title.height;
     const tag = fitSmall(c, m.tagline, { family: SANS, weight: 500, tracking: 0.07 }, 31, 1000);
     const tagTop = titleTop - 30 - tag.height;
+    // 사진은 화면 가득. 넓은 단체 그림은 양끝 얼굴이 막 들어오게 줄이고 남는 위아래는 같은 어둠 색 면(fitArt).
+    fitArt(c, art, { x: 0, y: 0, w: W, h: H }, { x: 48, y: 150, w: W - 96, h: tagTop - 40 - 150 }, fitBox(m), '#06101a', m.mode === 'group');
     // 어둠은 문구 위 300px에서 시작해 빌링 아래에서 가장 짙다 — 제목이 길어 위로 올라가면 함께 올라간다.
     const fadeStart = Math.min(940, tagTop - 300);
     const g = c.createLinearGradient(0, fadeStart, 0, H);
@@ -527,7 +582,7 @@ export const TEMPLATES: Template[] = [
     ], 640);
     const coverTop = 1716 - cover.height;
     const safe: Rect = { x: B + 24, y: issueBottom + 26, w: W - 2 * B - 48, h: coverTop - 40 - (issueBottom + 26) };
-    placeArt(c, art, frame, safe, subjectBox(m));
+    fitArt(c, art, frame, safe, fitBox(m), '#141414', true);
     // 글자 자리만 살짝 어둡게 — 위(로고·제호)와 왼쪽 아래(표지 문구).
     const top = c.createLinearGradient(0, B, 0, issueBottom + 80);
     top.addColorStop(0, 'rgba(0,0,0,.62)'); top.addColorStop(1, 'rgba(0,0,0,0)');
@@ -583,7 +638,7 @@ export const TEMPLATES: Template[] = [
     const planeTop = titleTop - 64;
     c.fillStyle = bottomC; c.fillRect(0, planeTop, W, H - planeTop);
     const box: Rect = { x: M, y: 168, w: W - 2 * M, h: planeTop - M - 168 };
-    placeArt(c, art, box, box, subjectBox(m));
+    fitArt(c, art, box, box, fitBox(m), topC);
     draw(c, title, M, titleTop, onBottom, 'left');
     bill.draw(M, 1724, 'left');
     // 세로 문구: 사진 오른쪽 여백(1128~1200)의 가운데 선, 사진 위쪽에서부터 아래로 읽힌다.
@@ -673,7 +728,7 @@ export const TEMPLATES: Template[] = [
     // 사진은 늘리지 않고 칸을 덮게(좌우를 자른다), 주인공은 글 덩어리 위쪽 안전 영역 쪽에 둔다(placeArt).
     const safe: Rect = { x: imgX + 16, y: frameTop + 24, w: imgW - 32, h: tagTop - 40 - (frameTop + 24) };
     c.save(); roundRect(c, imgX, frameTop, imgW, frame.h, 10); c.clip();
-    const placed = placeArt(c, art, frame, safe, subjectBox(m));
+    const placed = fitArt(c, art, frame, safe, fitBox(m), '#100c08');
     halation(c, art, imgX, frameTop, imgW, frame.h, 0.45, placed);
     const fade = c.createLinearGradient(0, tagTop - 260, 0, frameBottom);
     fade.addColorStop(0, 'rgba(10,7,4,0)'); fade.addColorStop(0.45, 'rgba(10,7,4,.62)'); fade.addColorStop(1, 'rgba(10,7,4,.9)');
@@ -861,9 +916,11 @@ export const TEMPLATES: Template[] = [
     const main = artColors(art).hue, near = (h: number) => Math.min(Math.abs(main - h), 360 - Math.abs(main - h)) < 40;
     const tints = [{ hue: '#2f6fe0', deep: 'rgb(20,40,104)', extra: near(220) ? 0.42 : 0 }, null,
       { hue: '#a23fc4', deep: 'rgb(70,24,86)', extra: near(285) ? 0.42 : 0 }];
+    // 사진 한 장을 세 칸에 걸쳐 화면 가득. 넓은 단체 그림은 양끝 얼굴이 막 들어오게 줄이고 남는 위아래는 바탕 검정(fitArt). 안전 영역 아래는 글 덩어리 위 대략값.
+    const full: Rect = { x: 0, y: 0, w: W, h: H }, safe: Rect = { x: 48, y: 150, w: W - 96, h: 1180 - 150 };
     xs.forEach((x, i) => {
       c.save(); c.beginPath(); rectPath(c, x, 0, widths[i], H); c.clip();
-      photo(c, art, 0, 0, W, H, 0.4);
+      fitArt(c, art, full, safe, fitBox(m), '#0a0a0a', m.mode === 'group');
       const t = tints[i];
       if (t) {
         c.globalCompositeOperation = 'color'; c.globalAlpha = grade.color; c.fillStyle = t.hue; c.fillRect(x, 0, widths[i], H);

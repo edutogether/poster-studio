@@ -21,6 +21,8 @@ export interface Meta {
   title: string;
   genre: string;
   tagline: string;
+  /** 단체 그림에서 얼굴(머리) 범위 — 그림 비율 0~1. 아는 경우만(설치판 자르기 desktopCrop · 샘플 단체). templates.ts fitBox가 쓴다. */
+  subject?: { x0: number; y0: number; x1: number; y1: number };
 }
 
 export const state = {

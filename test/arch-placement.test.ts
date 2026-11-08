@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { archPlacement, coverPlacement } from "../src/templates";
+import { archPlacement, coverPlacement, fitPlacement } from "../src/templates";
 
 // 사진 칸 덮어 채우기(2026-11-08 Bumm님 «위에 지워지는 거 개짜증나는데 좌우 얼굴 옆쪽을 잘라서라도 최대한 채워. 모든 이미지들을 1번 시네마랑 8번 트립틱처럼»):
 // 에디토리얼 · 컬러 블록 · 아치 프레임 · 필름스트립 · 폴라로이드 · 타이포그래피도 그림이 칸을 늘 덮는다(흐린 배경 연장 없음).
@@ -79,4 +79,75 @@ describe("아치 프레임 창 배치", () => {
       for (const [x, y] of corners) expect(insideArch(x, y, archBottom), `모서리 (${x.toFixed(0)}, ${y.toFixed(0)})`).toBe(true);
     });
   }
+});
+
+// 얼굴을 지키는 다섯 종(시네마 · 에디토리얼 · 컬러 블록 · 필름스트립 · 트립틱 — 2026-11-08 밤 팀장 결정 «섞기»): fitPlacement.
+// 주인공 상자는 AI 약속 상자 또는 단체 얼굴 범위(설치판 자르기 · 샘플 단체 — 아래 SUBJECT는 샘플 단체 값).
+const SUBJECT = { x0: 0.142, y0: 0.02, x1: 0.827, y1: 0.751 };
+const FIT_SLOTS: Record<string, { cover: Rect; safe: Rect }> = {
+  시네마: { cover: { x: 0, y: 0, w: 1200, h: 1800 }, safe: { x: 48, y: 150, w: 1104, h: 1040 } },
+  에디토리얼: { cover: SLOTS.에디토리얼.cover, safe: SLOTS.에디토리얼.safes[0] },
+  "컬러 블록": { cover: SLOTS["컬러 블록"].cover, safe: SLOTS["컬러 블록"].safes[0] },
+  필름스트립: { cover: SLOTS.필름스트립.cover, safe: SLOTS.필름스트립.safes[0] },
+  트립틱: { cover: { x: 0, y: 0, w: 1200, h: 1800 }, safe: { x: 48, y: 150, w: 1104, h: 1030 } },
+};
+const BOXES = [["혼자 약속 상자", BOX.solo], ["단체 약속 상자", BOX.group], ["단체 얼굴 범위", SUBJECT]] as const;
+
+describe("얼굴을 지키는 배치(fitPlacement)", () => {
+  const near = (a: Rect, b: Rect) => (["x", "y", "w", "h"] as const).every((k) => Math.abs(a[k] - b[k]) < 1e-6);
+  for (const [name, { cover, safe }] of Object.entries(FIT_SLOTS)) {
+    for (const [aw, ah, shape] of ARTS) {
+      for (const [boxName, b] of BOXES) {
+        // 앱과 같게: 에디토리얼은 늘, 시네마 · 트립틱은 단체만 머리를 내린다(lowerHead)
+        const group = b !== BOX.solo, lower = name === "에디토리얼" || (group && (name === "시네마" || name === "트립틱"));
+        test(`${name} · ${shape} · ${boxName}: 상자 폭이 안전 영역에 막 들어오는 만큼만 줄이고, 줄었으면 남는 높이를 위아래로 나눈다`, () => {
+          const p = fitPlacement(aw, ah, cover, safe, b, lower);
+          const sCover = Math.max(cover.w / aw, cover.h / ah), s = p.w / aw;
+          const head = p.y + b.y0 * p.h, end = p.y + b.y1 * p.h;
+          if (s < sCover - 1e-9) {
+            // 줄였다면 정확히 «막 들어오는 만큼» — 상자 폭 = 안전 영역 폭, 양끝도 안전 영역 안(양끝 얼굴이 칸 밖으로 잘리지 않는다)
+            expect((b.x1 - b.x0) * p.w).toBeCloseTo(safe.w, 6);
+            expect(p.x + b.x0 * p.w).toBeGreaterThanOrEqual(safe.x - 0.5);
+            expect(p.x + b.x1 * p.w).toBeLessThanOrEqual(safe.x + safe.w + 0.5);
+          } else if (!lower) {
+            // 줄이지 않았으면 덮어 채우기와 같다
+            expect(near(p, coverPlacement(aw, ah, cover, safe, b)), JSON.stringify(p)).toBe(true);
+          }
+          const capY = cover.y + cover.h - p.h * 0.75;   // 머리를 내려도 그림 아래가 칸 밖으로 4분의 1 넘게 나가지 않는다
+          if (lower) {
+            // 머리(상자 위)는 안전 영역 위보다 아래 — 내릴 수 있는 끝(capY)에 닿은 경우만 예외
+            if (Math.abs(p.y - capY) > 0.5) expect(head, "머리").toBeGreaterThanOrEqual(safe.y - 0.5);
+          } else if (p.h < cover.h) {
+            // 칸 안에 들어가고, 칸 가운데(남는 높이를 위아래로 반씩)에서 벗어났다면 머리 · 상자 아래 · 칸 끝 가운데 하나에 닿아서다
+            expect(p.y).toBeGreaterThanOrEqual(cover.y - 0.5);
+            expect(p.y + p.h).toBeLessThanOrEqual(cover.y + cover.h + 0.5);
+            const mid = cover.y + (cover.h - p.h) / 2;
+            if (Math.abs(p.y - mid) > 0.5) {
+              const atHead = Math.abs(head - safe.y) < 0.5, atEnd = Math.abs(end - (safe.y + safe.h)) < 0.5;
+              const atCover = Math.abs(p.y - cover.y) < 0.5 || Math.abs(p.y + p.h - cover.y - cover.h) < 0.5;
+              expect(atHead || atEnd || atCover, JSON.stringify({ p, head, end, mid })).toBe(true);
+            }
+            // 머리는 안전 영역 위보다 아래 — 그림이 칸 아래 끝에 붙어 더 내릴 수 없을 때만 예외
+            if (Math.abs(p.y + p.h - cover.y - cover.h) > 0.5) expect(head, "머리").toBeGreaterThanOrEqual(safe.y - 0.5);
+          }
+        });
+      }
+    }
+  }
+
+  test("lowerHead: 덮는 그림도 머리를 안전 영역 위보다 아래에 둔다(칸 위는 바탕색 면)", () => {
+    const cover = { x: 0, y: 0, w: 1000, h: 1000 }, safe = { x: 0, y: 200, w: 1000, h: 600 };
+    expect(fitPlacement(1000, 1000, cover, safe, BOX.solo).y).toBe(0);    // 덮어 채우기는 칸 위에서 멈춘다(머리 50 — 제호에 걸림)
+    const low = fitPlacement(1000, 1000, cover, safe, BOX.solo, true);
+    expect(low.y + 0.05 * 1000).toBeGreaterThanOrEqual(200);             // 머리를 내린다
+    expect(low.y).toBeLessThanOrEqual(1000 - 0.75 * 1000);               // 그림 아래는 칸 밖으로 4분의 1까지만
+  });
+
+  test("칸보다 낮아진 그림은 칸 가운데 — 남는 높이를 위아래로 반씩(아래로 몰지 않는다)", () => {
+    // 칸 600×1600, 정사각 그림, 얼굴 범위 0.142~0.827 → 폭 600에 상자가 막 들어오는 크기(약 876)로, 칸 가운데
+    const cover = { x: 0, y: 0, w: 600, h: 1600 }, safe = { x: 0, y: 0, w: 600, h: 1400 };
+    const p = fitPlacement(1000, 1000, cover, safe, SUBJECT);
+    expect((SUBJECT.x1 - SUBJECT.x0) * p.w).toBeCloseTo(600, 6);
+    expect(p.y).toBeCloseTo((1600 - p.h) / 2, 6);
+  });
 });

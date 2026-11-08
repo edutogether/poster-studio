@@ -14,6 +14,7 @@ import type { PrintResult } from '../src/desktop.js';
 import PosterStudio from '../src/PosterStudio.js';
 import * as saveModule from '../src/savePoster.js';
 import * as posterModule from '../src/poster.js';
+import { SAMPLE_GROUP_SUBJECT } from '../src/sampleSubject.js';
 import {
   installCanvas, installCamera, installFetch, installImage, installFonts,
   installObjectURL, makeVideoReady, makeAppContainer
@@ -31,7 +32,8 @@ vi.mock('../src/studioMode.js', async (importOriginal) => ({ ...(await importOri
 // PosterStudio는 import.meta.env.MODE가 "desktop"일 때만 이 모듈을 부른다 — 설치판 묶음은 vi.stubEnv로 그 값을 준다.
 const crop = vi.hoisted(() => ({ calls: [] as [string, string][] }));
 vi.mock('../src/desktopCrop.js', () => ({
-  cropForPoster: async (url: string, mode: string) => { crop.calls.push([url, mode]); return `cropped:${mode}:${url}`; },
+  // 단체면 얼굴 범위(subject)도 돌려준다 — 조판(Meta.subject)에 그대로 넘어가는지 본다
+  cropForPoster: async (url: string, mode: string) => { crop.calls.push([url, mode]); return { url: `cropped:${mode}:${url}`, subject: mode === 'group' ? { x0: 0.1, y0: 0.05, x1: 0.9, y1: 0.4 } : undefined }; },
 }));
 
 let cam: ReturnType<typeof installCamera>;
@@ -136,6 +138,7 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     expect(crop.calls).toHaveLength(1);
     expect(crop.calls[0][1]).toBe('solo');
     expect(build.mock.calls[0][0]).toEqual([`cropped:solo:${crop.calls[0][0]}`]);
+    expect(build.mock.calls[0][1].subject).toBeUndefined();   // 혼자는 얼굴 범위를 넘기지 않는다(틀의 약속 상자)
     expect(net.calls).toEqual([]);
   });
 
@@ -164,6 +167,8 @@ describe('설치판(AI 없이 사진 그대로)', () => {
     expect(crop.calls).toEqual([]);   // 미리 자른 그림이다
     expect(build.mock.calls[0][0]).toHaveLength(1);
     expect(String(build.mock.calls[0][0][0]).endsWith(`sample-${mode}.webp`)).toBe(true);
+    // 단체 샘플은 얼굴 범위(sampleSubject.ts)를 넘겨 설치판 사진과 같은 규칙으로 줄인다 — 혼자는 넘기지 않는다
+    expect(build.mock.calls[0][1].subject).toEqual(mode === 'group' ? SAMPLE_GROUP_SUBJECT : undefined);
     expect(document.querySelectorAll('#resultView .style-option.thumb').length).toBe(8);
     expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
     expect(net.calls).toEqual([]);

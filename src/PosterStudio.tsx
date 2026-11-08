@@ -26,6 +26,7 @@ import { DESKTOP, desktopBridge, printFailed } from "./desktop.js";
 // 샘플 사진(11/8 Bumm님 — 웹 · 설치판 같은 것): 가져오기는 주소 글자만 번들에 넣는다. 그림은 «샘플 포스터 보기»를 누를 때 buildPosters가 받는다.
 import SAMPLE_SOLO from "./studio/sample-solo.webp";
 import SAMPLE_GROUP from "./studio/sample-group.webp";
+import { SAMPLE_GROUP_SUBJECT } from "./sampleSubject.js";
 
 /* 한 장의 사진으로는 최초 생성 1회 + 재생성 1회, 총 2회까지만 허용한다
    (2026-08-29 대표 결정) — 무제한은 남용/과금 위험, 금지는 "결과가 안 좋게 나온
@@ -613,11 +614,12 @@ export default function PosterStudio() {
     if (!(sampleMode || sampleChoice) || isGeneratingRef.current) return;
     stopCamera();
     await composeWhileWaiting(DESKTOP ? DESKTOP_WAIT_SCENES : SAMPLE_WAIT_SCENES, async () => {
-      // 샘플 사진은 웹 · 설치판 같은 것이다(11/8 Bumm님): 혼자는 2단계 예시 영상 끝 장면의 여학생(camera-v1/solo-end.webp — 로비 · 청남방 · 브이), 단체는 새 단체 그림(예시 영상 끝 장면과 같은 것) —
+      // 샘플 사진은 웹 · 설치판 같은 것이다(11/8 Bumm님): 혼자는 촬영 예시 속 여학생(camera-student.webp — 미술실 · 남색 카디건), 단체는 새 단체 그림(예시 영상 끝 장면과 같은 것) —
       // 설치판이 찍은 사진에 하는 «사람 둘레 세로 2:3 자르기»(desktopCrop)를 미리 해 둔 그림이라, 설치판이 실제로 만드는 모습과 같다.
       const sampleArt = mode === "group" ? SAMPLE_GROUP : SAMPLE_SOLO;
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
+      if (mode === "group") meta.subject = SAMPLE_GROUP_SUBJECT;   // 얼굴 범위(sampleSubject.ts) — 설치판 사진과 같은 규칙으로 줄인다
       return buildPosters([sampleArt], meta);
     }, "[샘플 포스터 실패]", "샘플 포스터를 불러오지 못했어요.\n다시 눌러주세요.");
   };
@@ -631,6 +633,7 @@ export default function PosterStudio() {
       const sampleArt = mode === "group" ? SAMPLE_GROUP : SAMPLE_SOLO;
       const meta = getMeta(mode);
       meta.tagline = val("tagline") || GENRES[meta.genre].taglines[0];
+      if (mode === "group") meta.subject = SAMPLE_GROUP_SUBJECT;
       const built = await buildPosters([sampleArt], meta);
       if (alive) applyPosters(built);
     })();
@@ -686,8 +689,11 @@ export default function PosterStudio() {
     // 가로 카메라 사진은 사람 둘레를 세로 2:3으로 잘라 넣는다(2026-11-08 Bumm님 «고침» — src/desktopCrop.ts, 자른 그림은 data: 주소라 놓을 것이 없다).
     // 조건은 DESKTOP 상수가 아니라 import.meta.env.MODE를 그 자리에서 읽는다 — 빌드 도구가 웹 빌드에서 «"production" === "desktop"»을 그 자리에서
     // 거짓으로 접어야 이 모듈 · 학습 파일이 dist에 아예 생기지 않고 웹 번들이 바이트까지 그대로다(DESKTOP을 거치면 빈 조각 둘이 남고 이름이 바뀌었다 — 11/8 실측).
-    await composeWhileWaiting(DESKTOP_WAIT_SCENES, async () => buildPosters([import.meta.env.MODE === "desktop" ? await (await import("./desktopCrop.js")).cropForPoster(photoURL, mode) : photoURL], getMeta(mode)),
-      "[포스터 만들기 실패] 로컬 합성", "포스터를 만들지 못했어요. 다시 눌러 주세요.");
+    // 단체는 찾은 얼굴 범위(subject)도 함께 넘긴다 — 얼굴을 지키는 틀이 그 범위만 안전 영역에 막 들어오게 줄인다(templates.ts fitBox).
+    await composeWhileWaiting(DESKTOP_WAIT_SCENES, async () => {
+      const art = import.meta.env.MODE === "desktop" ? await (await import("./desktopCrop.js")).cropForPoster(photoURL, mode) : { url: photoURL, subject: undefined };
+      return buildPosters([art.url], { ...getMeta(mode), subject: art.subject });
+    }, "[포스터 만들기 실패] 로컬 합성", "포스터를 만들지 못했어요. 다시 눌러 주세요.");
   };
 
   const stopCamera = () => {

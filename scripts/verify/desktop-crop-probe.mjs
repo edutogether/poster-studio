@@ -34,7 +34,7 @@ const PROBE = (src, mode) => `(async () => {
   const detectMs = Math.round(performance.now() - t0);
   const faces = pickFaces(all, img.naturalHeight, meta.mode);
   const rect = cropRect(img.naturalWidth, img.naturalHeight, faces, meta.mode);
-  const cropped = await cropForPoster(src, meta.mode);
+  const { url: cropped, subject } = await cropForPoster(src, meta.mode);   // 앱처럼 단체 얼굴 범위도 받아 «후» 포스터에 넘긴다
   const cimg = await load(cropped);
   // 얼굴 상자(초록 = 쓴 얼굴, 빨강 = 버린 것)와 자른 자리(노랑)
   const ov = document.createElement('canvas'); ov.width = img.naturalWidth; ov.height = img.naturalHeight;
@@ -43,7 +43,7 @@ const PROBE = (src, mode) => `(async () => {
   if (rect) { ox.strokeStyle = '#F59E0B'; ox.lineWidth = 10; ox.strokeRect(rect.x, rect.y, rect.w, rect.h); }
 
   const P = CanvasRenderingContext2D.prototype, orig = P.drawImage;
-  const runOne = async (art) => {
+  const runOne = async (art, m = meta) => {
     const log = [];
     P.drawImage = function (im, ...a) {
       const f = this.filter || '';
@@ -54,7 +54,7 @@ const PROBE = (src, mode) => `(async () => {
       return orig.call(this, im, ...a);
     };
     try {
-      const ps = await buildPosters([art], meta);
+      const ps = await buildPosters([art], m);
       return ps.map((p) => {
         const mine = log.filter((e) => e.cv === p.canvas), ext = mine.filter((e) => e.ext), artRect = ext.find((e) => e.kind === 'art');
         let top = 0, bottom = 0, left = 0, right = 0;
@@ -67,7 +67,7 @@ const PROBE = (src, mode) => `(async () => {
       });
     } finally { P.drawImage = orig; }
   };
-  const before = await runOne(src), after = await runOne(cropped);
+  const before = await runOne(src), after = await runOne(cropped, { ...meta, subject });
   return { w: img.naturalWidth, h: img.naturalHeight, detectMs, faces: all.map((f) => ({ ...f, used: faces.includes(f) })), rect, croppedSize: [cimg.naturalWidth, cimg.naturalHeight],
     overlay: ov.toDataURL('image/jpeg', 0.9), croppedPng: cropped.startsWith('data:') ? cropped : null, before, after };
 })()`;

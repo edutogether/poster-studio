@@ -9,6 +9,7 @@
    이 모듈은 설치판에서만 동적으로 불러온다(PosterStudio.tsx) — 웹 번들 · dist에는 들어가지 않는다. 사진은 기기 밖으로 나가지 않는다. */
 import { clusterDetections, runCascade, unpackCascade, type ClassifyRegion } from './vendor/pico.js';
 import cascadeURL from './vendor/facefinder.bin?url';
+import type { Meta } from './state.js';
 
 /** 찾은 얼굴 — 원래 사진 화소 기준, 가운데(x, y)와 정사각형 한 변(size), 점수(score). */
 export interface Face { x: number; y: number; size: number; score: number }
@@ -116,8 +117,22 @@ const loadCascade = () =>
     .then((buf) => unpackCascade(new Int8Array(buf)))
     .catch((e: unknown) => { cascade = null; throw e; }));
 
-/** 포스터에 넣을 그림 주소 — 잘랐으면 무손실 PNG data: 주소(놓을 것이 없어 하루 내내 써도 쌓이지 않는다), 아니면 받은 주소 그대로. */
-export async function cropForPoster(url: string, mode: string): Promise<string> {
+/** 단체 얼굴(머리) 범위 — 넣는 그림(자른 자리 r) 비율 0~1. 머리 상자는 얼굴 가운데에서 양옆 0.6 · 위 0.8(HEAD_ABOVE) · 아래 0.6(턱) 얼굴 크기.
+    포스터 틀(templates.ts fitBox)이 이 범위만 안전 영역에 막 들어오게 줄인다. 혼자 · 얼굴 없음은 undefined(틀의 약속 상자). */
+export function subjectOf(faces: Face[], r: Crop, mode: string): Meta['subject'] {
+  if (mode !== 'group' || !faces.length) return undefined;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return {
+    x0: clamp((Math.min(...faces.map((f) => f.x - 0.6 * f.size)) - r.x) / r.w),
+    x1: clamp((Math.max(...faces.map((f) => f.x + 0.6 * f.size)) - r.x) / r.w),
+    y0: clamp((Math.min(...faces.map((f) => f.y - HEAD_ABOVE * f.size)) - r.y) / r.h),
+    y1: clamp((Math.max(...faces.map((f) => f.y + 0.6 * f.size)) - r.y) / r.h),
+  };
+}
+
+/** 포스터에 넣을 그림 — url: 잘랐으면 무손실 PNG data: 주소(놓을 것이 없어 하루 내내 써도 쌓이지 않는다), 아니면 받은 주소 그대로.
+    subject: 단체 얼굴 범위(subjectOf). 무엇이 실패해도 받은 주소 그대로 돌려준다(포스터가 멈추지 않는다). */
+export async function cropForPoster(url: string, mode: string): Promise<{ url: string; subject?: Meta['subject'] }> {
   try {
     const img = new Image();
     img.src = url;
@@ -127,15 +142,15 @@ export async function cropForPoster(url: string, mode: string): Promise<string> 
     try { faces = pickFaces(detectFaces(img, w, h, await loadCascade()), h, mode); }
     catch (e) { console.error('[desktop-crop] face detection', e); }
     const r = cropRect(w, h, faces, mode);
-    if (!r) return url;
+    if (!r) return { url, subject: subjectOf(faces, { x: 0, y: 0, w, h }, mode) };
     const cv = document.createElement('canvas');
     cv.width = r.w; cv.height = r.h;
     const ctx = cv.getContext('2d');
-    if (!ctx) return url;
+    if (!ctx) return { url };
     ctx.drawImage(img, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
-    return cv.toDataURL('image/png');
+    return { url: cv.toDataURL('image/png'), subject: subjectOf(faces, r, mode) };
   } catch (e) {
     console.error('[desktop-crop]', e);
-    return url;
+    return { url };
   }
 }
