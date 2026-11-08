@@ -6,6 +6,8 @@
 - 렌더(샘플 단체 웹, 1200×1800)가 결정판 시안 `img/ps-filmstrip-fill-1109/04-…`와 화소 차이 0.
 - 시험 `test/templates.test.js` «칸을 꽉 채운다»(그림 4모양 — 바꾸기 전 판에서 실패 확인), `arch-placement.test.ts`의 얼굴 지키기 칸 목록에서 필름스트립을 뺐다. `npm test` 756 · lint · typecheck · build · fonts:check 통과.
 - `face-clear-probe.mjs`는 필름스트립 단체에서 «옆 잘림»으로 걸린다 — 고른 시안의 대가(넷 다 옆이 잘림)라 결함이 아니다.
+- 배포 `d228088` → `975dc28`(팀장 OK). CI(`42502736053`) test · changes · functions · hosting 모두 성공.
+  라이브 확인(생성 요청 0건): «샘플 포스터 보기» 단체 3단계 PC 2560에서 필름스트립을 골라 찍고, 그 포스터(1200×1800)가 시안 04와 화소 차이 0 — 결정판 `img/ps-filmstrip-fill-1109/05 · 06`.
 
 ## 2026-11-08(일) 밤 7 — 얼굴 지키기 «섞기» · 혼자 샘플 카디건 사진, 배포 `130d5af` → `afdc6ef` (승인 Bumm 11/8, 팀장 전달)
 
