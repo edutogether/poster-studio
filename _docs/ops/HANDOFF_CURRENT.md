@@ -1,5 +1,13 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-11-08(일) 밤 2 — 의견 마감(11/14 0시) · Voice Cinema 의견 경로 · 혼자 샘플 = 예시 영상 여학생(로컬 커밋 · push 전)
+
+- 내용 · 확인은 CHANGELOG 11/8 밤 2, 설계는 intent `2026-11-08-feedback-close-voice-cinema`.
+- 🔴 11/14에는 배포하지 않는다 — 의견 마감은 시각으로 저절로 된다. 마감을 앞당기려면 `src/feedback.ts`의 `FEEDBACK_OPEN`(화면만) 또는 `functions/feedback-window.json`(서버 · 화면 둘 다)을 고쳐 배포한다.
+- push하면 functions가 새로 나가야 Voice Cinema 경로가 생긴다. Voice Cinema 화면 쪽 호출은 Voice Cinema 세션 몫이다(규격은 팀장에게 보냄).
+- `CLAUDE.md`의 «예외는 두 컬렉션이다»는 이제 세 컬렉션(`feedback` · `feedbackVoiceCinema` · `kakaoAuth`)이다 — Bumm님 직접 지시 때 고친다(app.md · AGENTS.md는 고쳤다).
+- push · 설치 파일 · 설명서 교체는 위 항목과 같이 «배포 직전 한 줄» → 팀장 OK 뒤.
+
 ## 2026-11-08(일) 밤 — 단체 «모두 잘 보이게 서주세요» · 모두 서기 그림 · 샘플 포스터 사진(로컬 커밋 · push 전)
 
 - 내용 · 확인은 CHANGELOG 11/8 밤. 바로 아래 «앞줄은 앉고 뒷줄은 서기»는 거뒀다(라이브에 안 나감).

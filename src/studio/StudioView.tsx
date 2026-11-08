@@ -448,7 +448,7 @@ export default function StudioView(p: StudioViewProps) {
                 InKY <strong>Film Festival</strong>
               </span>
             </button>
-            {/* 첫 화면 «의견 보내기»(2026-11-05 Bumm님 9 ①) — 다운로드 아이콘 왼쪽(휴대폰은 방침 바로 왼쪽). 설치판에는 없다(서버 요청 0). 다 받으면 FEEDBACK_OPEN으로 뺀다. */}
+            {/* 첫 화면 «의견 보내기»(2026-11-05 Bumm님 9 ①) — 다운로드 아이콘 왼쪽(휴대폰은 방침 바로 왼쪽). 설치판에는 없다(서버 요청 0). 11/14 0시(functions/feedback-window.json)에 저절로 내려가고, 그 전에 빼려면 FEEDBACK_OPEN. */}
             {!DESKTOP && FEEDBACK_OPEN && step === 1 && <FeedbackLink step={step}/>}
             {/* 첫 화면에만 다운로드 아이콘(2026-10-27 — 메뉴 없이 바로 받기) — 설치판에서는 그 자리에 «설치판 · AI 없이» 표시를 늘 둔다(웹의 AI 포스터와 헷갈리지 않게). */}
             {DESKTOP ? <span className="desktop-badge">설치판 · AI 없이 사진 그대로</span> : step === 1 && <DownloadLink/>}

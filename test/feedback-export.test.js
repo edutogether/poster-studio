@@ -4,9 +4,9 @@ import { test, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { exportFeedback, deleteExported, toCsv } from '../scripts/ops/feedback-export.mjs';
+import { exportFeedback, deleteExported, toCsv, APPS } from '../scripts/ops/feedback-export.mjs';
 
-function fakeDb(docs) {
+function fakeDb(docs, collectionName = 'feedback') {
   const store = new Map(docs.map((d) => [d.id, d]));
   const deleted = [];
   const ts = (iso) => ({ toDate: () => new Date(iso) });
@@ -14,7 +14,7 @@ function fakeDb(docs) {
     deleted,
     store,
     collection(name) {
-      expect(name).toBe('feedback');
+      expect(name).toBe(collectionName);
       return {
         orderBy(field) {
           expect(field).toBe('createdAt');
@@ -89,4 +89,26 @@ test('지우기: 내보내기 도구가 만든 json이 아니면 하나도 지�
     await expect(deleteExported(db, p)).rejects.toThrow();
   }
   expect(db.deleted).toEqual([]);
+});
+
+/* 2026-11-08 — Voice Cinema 의견도 이 서버가 받는다(앱별 컬렉션). --app voice-cinema는 그 컬렉션만 내보내고, 지우기는 json에 적힌 컬렉션만 지운다. */
+test('앱별 컬렉션 표가 서버(functions/index.js FEEDBACK_APPS)와 같다', () => {
+  const server = fs.readFileSync(path.join(import.meta.dirname, '..', 'functions', 'index.js'), 'utf8');
+  for (const [app, { collection }] of Object.entries(APPS)) {
+    const line = server.split(/\r?\n/).find((l) => l.includes(`'${app}': {`));
+    expect(line, `서버에 ${app} 줄이 없음`).toBeTruthy();
+    expect(line.includes(collection === 'feedback' ? 'collection: FEEDBACK_COLLECTION' : `collection: '${collection}'`), line).toBe(true);
+  }
+  expect(Object.keys(APPS)).toEqual(['poster-studio', 'voice-cinema']);
+});
+
+test('Voice Cinema: feedbackVoiceCinema만 내보내 feedback-voice-cinema-<시각> 파일로 · 그 json으로 지우면 그 컬렉션만', async () => {
+  const db = fakeDb([row('v1', '2026-11-13T01:00:00Z', { step: 3 })], 'feedbackVoiceCinema');
+  const r = await exportFeedback(db, tmp(), new Date('2026-11-20T00:00:00Z'), 'voice-cinema');
+  expect(path.basename(r.csvPath)).toBe('feedback-voice-cinema-202611200900.csv');
+  const json = JSON.parse(fs.readFileSync(r.jsonPath, 'utf8'));
+  expect(json).toMatchObject({ project: 'inky-poster-studio', collection: 'feedbackVoiceCinema', count: 1 });
+  expect(await deleteExported(db, r.jsonPath)).toEqual({ deleted: 1 });
+  expect(db.deleted).toEqual(['v1']);
+  await expect(exportFeedback(db, tmp(), new Date(), 'calculator')).rejects.toThrow('모르는 앱');
 });

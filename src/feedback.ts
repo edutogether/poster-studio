@@ -3,16 +3,22 @@
    서버가 Firestore에 저장하고 Bumm님 카카오톡으로 알린다. 사진 · 영화 제목 · 출연진은 싣지 않는다. */
 import { API_BASE, BOOTH_TOKEN } from "./constants.js";
 import { deviceKind } from "./deviceCanvas.js";
+import feedbackWindow from "../functions/feedback-window.json";
 
 /** 🟠 의견 받기 스위치 — 다 받으면 false로 바꿔 배포한다(링크가 사라진다). 그 뒤 쌓인 의견을 내려받아 넘기고 Firestore에서 지운다. */
 export const FEEDBACK_OPEN = true;
+
+/** 마감 시각(2026-11-08 Bumm님 — 행사 날 0시, 배포 없이 저절로). 서버와 같은 파일 하나를 읽는다(functions/feedback-window.json).
+ *  이 시각부터 링크 · 창이 내려간다. 기기 시계가 틀려도 서버가 410으로 거절한다(«의견은 이제 받지 않아요»). */
+export const FEEDBACK_CLOSES_AT = Date.parse(feedbackWindow.closesAt);
+export const feedbackOpen = (now = Date.now()) => FEEDBACK_OPEN && now < FEEDBACK_CLOSES_AT;
 
 export const FEEDBACK_NAME_MAX = 40;
 export const FEEDBACK_TEXT_MAX = 500;
 const NAME_KEY = "posterStudio.feedbackName";
 const TIMEOUT_MS = 15_000;
 
-export type FeedbackResult = "ok" | "offline" | "busy" | "error";
+export type FeedbackResult = "ok" | "offline" | "busy" | "closed" | "error";
 
 // 이름은 그 기기에만 기억한다(저장소가 막힌 브라우저에서는 기억하지 못할 뿐 보내기는 된다).
 export function rememberedName(): string {
@@ -45,6 +51,7 @@ export async function sendFeedback(name: string, text: string, step: number): Pr
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (res.ok) return "ok";
+    if (res.status === 410) return "closed";
     return res.status === 429 ? "busy" : "error";
   } catch {
     return navigator.onLine === false ? "offline" : "error";

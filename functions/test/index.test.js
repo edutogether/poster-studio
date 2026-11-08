@@ -73,6 +73,9 @@ import {
   dailyMaintenance,
   FEEDBACK_TTL_MS,
   FEEDBACK_IP_MAX,
+  FEEDBACK_CLOSES_AT,
+  FEEDBACK_APPS,
+  VOICE_CINEMA_FEEDBACK_PATH,
   KAKAO_REDIRECT_URI
 } from '../index.js';
 
@@ -1390,12 +1393,14 @@ test('ALLOWED_ORIGINS: poster.edutogether.kr(커스텀 도메인)을 허용한�
 });
 
 test('ALLOWED_ORIGINS: 서브도메인은 부모 도메인 규칙으로 통과하지 않는다(앵커 유지 확인)', () => {
-  const parentOnly = ALLOWED_ORIGINS.filter((re) => String(re).includes('edutogether') && !String(re).includes('poster'));
+  // 2026-11-08부터 voice.edutogether.kr은 자기 줄로 허용된다(Voice Cinema 의견) — 부모 규칙만 골라 본다.
+  const parentOnly = ALLOWED_ORIGINS.filter((re) => String(re).includes('edutogether') && !/poster|voice/.test(String(re)));
   expect(parentOnly.length).toBeGreaterThan(0);
   expect(
     parentOnly.some((re) => re.test('https://voice.edutogether.kr')),
     'edutogether.kr 규칙이 임의의 서브도메인을 허용하면 안 된다'
   ).toBe(false);
+  expect(ALLOWED_ORIGINS.some((re) => re.test('https://calc.edutogether.kr')), '목록에 없는 서브도메인은 거부한다').toBe(false);
 });
 
 test('ALLOWED_ORIGINS: 커스텀 도메인의 접두사·접미사 위조는 거부한다', () => {
@@ -2630,4 +2635,174 @@ test('cleanupOldFeedback: 받은 지 90일 지난 의견만 지운다', async ()
   expect(FEEDBACK_TTL_MS).toBe(90 * 24 * 60 * 60 * 1000);
   expect(await cleanupOldFeedback(db, now)).toBe(1);
   expect(db._docs('feedback').map(([id]) => id).sort()).toEqual(['edge', 'new']);
+});
+
+/* ── 의견 마감 · Voice Cinema 의견(2026-11-08 Bumm님, 팀장 전달 — _docs/intents/2026-11-08-feedback-close-voice-cinema) ── */
+const VOICE_ORIGIN = 'https://voice.edutogether.kr';
+const postVoiceFeedback = (base, payload, origin = VOICE_ORIGIN) =>
+  fetch(`${base}${VOICE_CINEMA_FEEDBACK_PATH}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(origin ? { origin } : {}) },
+    body: JSON.stringify(payload)
+  });
+// Date만 가짜로 — 서버 · fetch · 타이머는 진짜로 돈다.
+async function atTime(ms, body) {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(ms);
+  try {
+    return await body();
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
+test('의견 마감 시각은 feedback-window.json 한 곳 — 2026-11-14 00:00 한국 시간이고, 화면(src/feedback.ts)도 그 파일을 읽는다', () => {
+  expect(new Date(FEEDBACK_CLOSES_AT).toISOString()).toBe('2026-11-13T15:00:00.000Z');
+  const root = path.resolve(import.meta.dirname, '..', '..');
+  const client = fs.readFileSync(path.join(root, 'src/feedback.ts'), 'utf8');
+  expect(client).toMatch(/from "\.\.\/functions\/feedback-window\.json"/);
+  expect(client, '화면에 시각을 따로 적지 않는다').not.toMatch(/2026-11-1[34]/);
+});
+
+test('의견 마감: 1ms 전에는 두 앱 모두 저장 · 카카오, 마감 시각부터는 410이고 저장 · 카운터 · 카카오가 하나도 없다', async () => {
+  const before = makeFeedbackDb();
+  before._put('kakaoAuth', 'owner', connectedOwner(FEEDBACK_CLOSES_AT - 1));
+  const okKakao = makeKakao({ [MEMO_URL]: { status: 200, json: { result_code: 0 } } });
+  await atTime(FEEDBACK_CLOSES_AT - 1, () =>
+    withFeedbackServer({ db: before, kakao: okKakao }, async (base) => {
+      expect((await postFeedback(base, goodFeedback())).status).toBe(200);
+      expect((await postVoiceFeedback(base, goodFeedback())).status).toBe(200);
+    })
+  );
+  expect(before._docs('feedback')).toHaveLength(1);
+  expect(before._docs('feedbackVoiceCinema')).toHaveLength(1);
+  expect(okKakao.calls).toHaveLength(2);
+
+  for (const at of [FEEDBACK_CLOSES_AT, FEEDBACK_CLOSES_AT + 86_400_000]) {
+    const db = makeFeedbackDb();
+    db._put('kakaoAuth', 'owner', connectedOwner(at));
+    const kakao = makeKakao({ [MEMO_URL]: { status: 200, json: { result_code: 0 } } });
+    const counter = vi.fn(async () => ({ allowed: true }));
+    await atTime(at, () =>
+      withFeedbackServer({ db, kakao, counter }, async (base) => {
+        for (const res of [await postFeedback(base, goodFeedback()), await postVoiceFeedback(base, goodFeedback())]) {
+          expect(res.status, `시각 ${at}`).toBe(410);
+          expect(await res.json()).toEqual({ error: '의견은 이제 받지 않아요.', code: 'feedback_closed' });
+        }
+      })
+    );
+    expect(db._docs('feedback')).toEqual([]);
+    expect(db._docs('feedbackVoiceCinema')).toEqual([]);
+    expect(kakao.calls).toEqual([]);
+    expect(counter).not.toHaveBeenCalled();
+  }
+});
+
+test('Voice Cinema 의견: 앱별 컬렉션 feedbackVoiceCinema에 저장 · 카카오 글 첫머리 [Voice Cinema 의견] · 부스 토큰 없이 받는다', async () => {
+  const db = makeFeedbackDb();
+  const now = Date.now();
+  db._put('kakaoAuth', 'owner', connectedOwner(now));
+  const kakao = makeKakao({ [MEMO_URL]: { status: 200, json: { result_code: 0 } } });
+  await withFeedbackServer({ db, kakao }, async (base) => {
+    const res = await postVoiceFeedback(base, { ...goodFeedback(), step: 3, device: 'phone' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  });
+  expect(db._docs('feedback'), 'Poster Studio 자리에는 들어가지 않는다').toEqual([]);
+  const saved = db._docs('feedbackVoiceCinema');
+  expect(saved).toHaveLength(1);
+  expect(Object.keys(saved[0][1]).sort()).toEqual(['createdAt', 'device', 'name', 'screen', 'step', 'text', 'version']);
+  const text = JSON.parse(kakao.calls[0].body.template_object).text;
+  expect(text.startsWith('[Voice Cinema 의견] 3번 부스 김진행\n')).toBe(true);
+  expect(text).toContain('· phone · 3단계');
+  expect(FEEDBACK_APPS).toEqual({
+    'poster-studio': { collection: 'feedback', counterKey: 'feedback', label: 'Poster Studio' },
+    'voice-cinema': { collection: 'feedbackVoiceCinema', counterKey: 'feedback-voice-cinema', label: 'Voice Cinema' }
+  });
+});
+
+test('Voice Cinema 의견: Voice Cinema 주소(정식 · 옛 주소 둘 · Portal)에서 온 것만 받고, 그 밖의 출처 · 출처 없음은 403 · 저장 없음', async () => {
+  const db = makeFeedbackDb();
+  const allowed = ['https://voice.edutogether.kr', 'https://voice-cinema.web.app', 'https://voice-cinema.firebaseapp.com', 'https://edutogether.kr'];
+  const denied = [
+    null,
+    'https://poster.edutogether.kr',
+    'https://poster-studio.web.app',
+    'http://voice.edutogether.kr',
+    'https://evil-voice.edutogether.kr',
+    'https://voice.edutogether.kr.evil.com',
+    'https://voice-cinema.web.app.evil.com',
+    'http://localhost:5500'
+  ];
+  await withFeedbackServer({ db, kakao: makeKakao({}), counter: async () => ({ allowed: true }) }, async (base) => {
+    for (const origin of allowed) expect((await postVoiceFeedback(base, goodFeedback(), origin)).status, origin).toBe(200);
+    for (const origin of denied) {
+      const res = await postVoiceFeedback(base, goodFeedback(), origin);
+      expect(res.status, String(origin)).toBe(403);
+      expect((await res.json()).code).toBe('feedback_origin');
+    }
+  });
+  expect(db._docs('feedbackVoiceCinema')).toHaveLength(allowed.length);
+});
+
+test('Voice Cinema 전용 주소는 의견 자리 말고는 쓰지 못한다 — /feedback · /health · /generate · /kakao/start는 403', async () => {
+  const db = makeFeedbackDb();
+  await withFeedbackServer({ db, kakao: makeKakao({}), counter: async () => ({ allowed: true }) }, async (base) => {
+    for (const origin of ['https://voice.edutogether.kr', 'https://voice-cinema.web.app', 'https://voice-cinema.firebaseapp.com']) {
+      expect((await postFeedback(base, goodFeedback(), { origin })).status, `${origin} /feedback`).toBe(403);
+      expect((await fetch(`${base}/health`, { headers: { origin } })).status, `${origin} /health`).toBe(403);
+      expect((await fetch(`${base}/generate`, { method: 'POST', headers: { origin, 'x-booth-token': 'test-booth-token' } })).status).toBe(403);
+      expect((await fetch(`${base}/kakao/start`, { headers: { origin }, redirect: 'manual' })).status).toBe(403);
+    }
+    // Poster Studio 주소는 그대로 Poster Studio 자리를 쓴다
+    expect((await postFeedback(base, goodFeedback(), { origin: 'https://poster.edutogether.kr' })).status).toBe(200);
+  });
+  expect(db._docs('feedback')).toHaveLength(1);
+  expect(db._docs('feedbackVoiceCinema')).toEqual([]);
+  // CORS 목록에도 Voice Cinema 주소가 앵커째 들어 있다(없으면 브라우저가 응답을 못 읽는다)
+  for (const o of ['https://voice.edutogether.kr', 'https://voice-cinema.web.app', 'https://voice-cinema.firebaseapp.com']) {
+    expect(ALLOWED_ORIGINS.some((re) => re.test(o)), o).toBe(true);
+  }
+});
+
+test('Voice Cinema 의견: 칸 확인 · 크기 · 한도가 Poster Studio와 같고, 한도 카운터는 앱마다 따로다', async () => {
+  const db = makeFeedbackDb();
+  const keys = [];
+  const counter = async (collection, id) => {
+    keys.push(`${collection}/${id}`);
+    return { allowed: true };
+  };
+  await withFeedbackServer({ db, kakao: makeKakao({}), counter }, async (base) => {
+    expect((await postVoiceFeedback(base, { ...goodFeedback(), photo: 'data:x' })).status).toBe(400);
+    expect((await postVoiceFeedback(base, { ...goodFeedback(), text: '가'.repeat(501) })).status).toBe(400);
+    expect((await postVoiceFeedback(base, { ...goodFeedback(), text: 'x'.repeat(9000) })).status).toBe(413);
+    expect((await postVoiceFeedback(base, goodFeedback())).status).toBe(200);
+    expect((await postFeedback(base, goodFeedback())).status).toBe(200);
+  });
+  expect(keys.filter((k) => k.includes('voice-cinema')).map((k) => k.split('/')[0])).toEqual(['ipRateLimitBuckets', 'dailyBudgetBuckets']);
+  expect(keys.some((k) => /^ipRateLimitBuckets\/feedback-voice-cinema:\d+:/.test(k))).toBe(true);
+  expect(keys.some((k) => /^dailyBudgetBuckets\/feedback:\d{4}-\d{2}-\d{2}$/.test(k)), 'Poster Studio 하루 카운터 이름은 예전 그대로').toBe(true);
+  expect(db._docs('feedbackVoiceCinema')).toHaveLength(1);
+});
+
+test('Voice Cinema 의견: 하루 한도에 닿으면 429 · 저장하지 않는다', async () => {
+  const db = makeFeedbackDb();
+  const counter = async (collection) => ({ allowed: collection !== 'dailyBudgetBuckets' });
+  await withFeedbackServer({ db, kakao: makeKakao({}), counter }, async (base) => {
+    const res = await postVoiceFeedback(base, goodFeedback());
+    expect(res.status).toBe(429);
+    expect((await res.json()).code).toBe('feedback_busy');
+  });
+  expect(db._docs('feedbackVoiceCinema')).toEqual([]);
+});
+
+test('cleanupOldFeedback: Voice Cinema 의견도 받은 지 90일이 지나면 지운다', async () => {
+  const db = makeFeedbackDb();
+  const now = Date.now();
+  db._put('feedback', 'p-old', { createdAt: new Date(now - FEEDBACK_TTL_MS - 1000) });
+  db._put('feedbackVoiceCinema', 'v-old', { createdAt: new Date(now - FEEDBACK_TTL_MS - 1000) });
+  db._put('feedbackVoiceCinema', 'v-new', { createdAt: new Date(now - 1000) });
+  expect(await cleanupOldFeedback(db, now)).toBe(2);
+  expect(db._docs('feedback')).toEqual([]);
+  expect(db._docs('feedbackVoiceCinema').map(([id]) => id)).toEqual(['v-new']);
 });

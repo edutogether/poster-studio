@@ -2,17 +2,40 @@
    링크는 개인정보처리방침과 같은 줄 · 같은 글자다(자리는 feedback.css). 창: 이름(그 기기에 기억) · 의견(500자) · 함께 보내는 것 안내 · «취소» · «보내기».
    개인정보처리방침은 바꾸지 않는다(11 ②) — 알림은 이 창의 «함께 보내는 것» · «보내지 않는 것»으로 한다. */
 import { useEffect, useRef, useState } from "react";
-import { FEEDBACK_NAME_MAX, FEEDBACK_TEXT_MAX, rememberName, rememberedName, sendFeedback, type FeedbackResult } from "../feedback.js";
+import { FEEDBACK_CLOSES_AT, FEEDBACK_NAME_MAX, FEEDBACK_TEXT_MAX, feedbackOpen, rememberName, rememberedName, sendFeedback, type FeedbackResult } from "../feedback.js";
 import "./feedback.css";
 
 const PROBLEM: Record<Exclude<FeedbackResult, "ok">, string> = {
   offline: "인터넷 연결을 확인해 주세요.",
   busy: "잠시 뒤에 다시 보내 주세요.",
+  closed: "의견은 이제 받지 않아요.",
   error: "지금은 보낼 수 없어요. 잠시 뒤에 다시 해 주세요.",
 };
 
+const MAX_TIMER_MS = 2 ** 31 - 1;   // setTimeout이 받는 가장 긴 시간(약 24.8일) — 그보다 멀면 그만큼 기다렸다 다시 잰다
+
+/** 마감 시각이 되면 거짓이 된다(2026-11-08) — 페이지를 열어 둔 채 0시를 넘겨도 링크 · 창이 내려간다.
+ *  잠든 탭은 타이머가 늦을 수 있어 화면이 다시 보일 때도 잰다. */
+function useFeedbackOpen(): boolean {
+  const [open, setOpen] = useState(() => feedbackOpen());
+  useEffect(() => {
+    if (!open) return;
+    let timer = 0;
+    const check = () => {
+      window.clearTimeout(timer);
+      if (!feedbackOpen()) { setOpen(false); return; }
+      timer = window.setTimeout(check, Math.min(FEEDBACK_CLOSES_AT - Date.now(), MAX_TIMER_MS));
+    };
+    check();
+    document.addEventListener("visibilitychange", check);
+    return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", check); };
+  }, [open]);
+  return open;
+}
+
 export default function FeedbackLink({ step }: { step: number }) {
   const [open, setOpen] = useState(false);
+  if (!useFeedbackOpen()) return null;
   return <>
     <button type="button" className="feedback-link" onClick={() => setOpen(true)}>의견 보내기</button>
     {open && <FeedbackDialog step={step} onClose={() => setOpen(false)} />}

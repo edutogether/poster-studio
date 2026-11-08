@@ -117,8 +117,9 @@
   (`denyWithCleanup`, 핸들러의 `finally`). Cloud Run의 `/tmp`는 메모리라 누수가 곧 가용성 문제이기도 하다.
 - Firestore 보관: 정수 카운터 4종(`rateLimitBuckets`, `ipRateLimitBuckets`, `photoGenCounts`, `dailyBudgetBuckets`)과
   사진의 SHA-256 해시뿐. 사진 원본·이름은 없다. `cleanupOldCountersSchedule`(매일 04시 KST)이 30일 지난 것을 자동 삭제.
-  - **예외 두 컬렉션(2026-11-05 Bumm님 9 ① · 10 A)** — 아래 «현장 의견 받기» 절. `feedback`(진행자가 적은 이름 · 의견 · 판 번호 · 화면 크기 · 기기 · 단계 · 받은 시각)과
-    `kakaoAuth`(카카오톡 알림용 토큰 · 사용자 번호 · 연결 대기 state의 해시). 사진 · 아동 정보 · 영화 제목은 없다. 둘 다 서버 Admin SDK만 읽고 쓴다.
+  - **예외 컬렉션(2026-11-05 Bumm님 9 ① · 10 A · 11/8 Voice Cinema)** — 아래 «현장 의견 받기» 절. `feedback`(진행자가 적은 이름 · 의견 · 판 번호 · 화면 크기 · 기기 · 단계 · 받은 시각),
+    같은 모양의 Voice Cinema 의견 `feedbackVoiceCinema`(11/8 — 앱별 컬렉션),
+    `kakaoAuth`(카카오톡 알림용 토큰 · 사용자 번호 · 연결 대기 state의 해시). 사진 · 아동 정보 · 영화 제목은 없다. 모두 서버 Admin SDK만 읽고 쓴다.
 - 노트북에 남는 것: PC 화면(폭 761 이상)에는 저장 단추가 없다 — 10/2 결과 화면 재구성(d2a490f, 승인 Bumm 10/2)부터 PC는 인쇄만 한다(«PNG 저장» 단추는 그때 빠졌다).
   휴대폰 배치(폭 760 이하)의 «내 휴대폰에 저장»을 누른 경우에만 아동 얼굴+이름이 담긴 PNG가 그 기기에 남는다(노트북 창을 760 이하로 좁혀 누르면 노트북 다운로드 폴더).
   그렇게 남은 파일은 **2026-12-31까지 보관 후 삭제**하며, 앱이 자동화하지 않고 **교육청 장학사가 직접 처리**한다(2026-08-29 대표 결정 — 그때는 PC «PNG 저장» 단추였다).
@@ -135,7 +136,19 @@
 - **자리**: 1단계 머리글, 개인정보처리방침과 같은 줄 · 같은 글자 «의견 보내기»(`src/studio/FeedbackLink.tsx` · `feedback.css`). PC · 태블릿은 다운로드 아이콘 왼쪽 16px,
   휴대폰은 방침 바로 왼쪽 14px. 1단계에만 있고 **설치판에는 없다**(서버 요청 0 원칙). 방침 링크 · 다운로드 아이콘은 한 화소도 옮기지 않는다.
   창 안 설명글은 휴대폰에서 세로 · 가로 모두 뺀다(11/7 Bumm님) — 가로로 든 휴대폰은 갈래 이름이 pc이므로 폭 조건이 아니라 `html[data-phone]`(`device-canvas.js`)으로 가른다. 화면에서만 숨기고 보내는 값은 그대로다.
-- 🟠 **스위치는 `src/feedback.ts`의 `FEEDBACK_OPEN` 한 줄**이다. 모으기가 끝나면 `false`로 바꿔 배포하면 링크가 사라진다(`test/feedback.test.tsx`).
+- 🔴 **2026-11-14 00:00(한국 시간)에 저절로 닫힌다**(11/8 Bumm님, 팀장 전달 — `_docs/intents/2026-11-08-feedback-close-voice-cinema`). 그날 배포하지 않는다.
+  시각은 **`functions/feedback-window.json`의 `closesAt` 한 곳**이고, 서버(`functions/index.js`)와 화면(`src/feedback.ts`가 `../functions/feedback-window.json`을 가져옴)이 같은 파일을 읽는다 — 다른 곳에 시각을 적지 않는다(시험이 막는다).
+  서버는 그 시각부터 두 경로 모두 **본문을 읽기 전에 410 `feedback_closed`**(카운터 · 저장 · 카카오 0). 화면은 그 뒤 연 페이지에 링크가 없고, 열어 둔 페이지는 0시 타이머 · 탭이 다시 보일 때 링크와 열린 창을 내린다.
+  기기 시계가 틀려 보내면 410 → 창에 «의견은 이제 받지 않아요.». 경계(1ms 전 받음 · 그 시각부터 거절)는 `functions/test/index.test.js` · `test/feedback.test.tsx`가 고정한다.
+- 🟠 **그 전에 끄는 스위치는 `src/feedback.ts`의 `FEEDBACK_OPEN` 한 줄**이다. `false`로 바꿔 배포하면 링크가 사라진다(`test/feedback.test.tsx`).
+- 🟠 **Voice Cinema 의견도 이 서버가 받는다**(11/8 Bumm님 «포스터랑 똑같은 걸 써 — 하위 폴더만 갈라서»): `POST /feedback/voice-cinema`.
+  - 부스 토큰 대신 Origin을 본다. Voice Cinema 화면에는 이 서버의 토큰이 없고, 그 앱의 App Check는 다른 프로젝트(`inky-voice-cinema`) 것이라 여기서 확인할 수 없다.
+  - 받는 Origin: `voice.edutogether.kr` · `voice-cinema.web.app` · `voice-cinema.firebaseapp.com` · Portal `edutogether.kr`. 그 밖은 403 `feedback_origin`.
+  - 칸 검사 · 8KB · 같은 곳 10분 10건 · 하루 300건 · 마감은 Poster Studio와 같다. 카운터 문서 접두가 `feedback-voice-cinema:`라 두 앱이 서로의 한도를 먹지 않는다.
+  - 저장은 `feedbackVoiceCinema`이고, 카카오 글 첫머리는 «[Voice Cinema 의견]»이다. 링크는 두 앱 모두 이미 등록한 `poster.edutogether.kr`이라 카카오 콘솔에 더할 것이 없다.
+  - 🟠 Voice Cinema 전용 주소 세 곳은 CORS 목록(`ALLOWED_ORIGINS`)에 있지만 **이 경로만** 쓴다(`voiceCinemaOriginFence` — `/generate` · `/health` · `/feedback` · `/kakao/*`는 403).
+    Origin은 브라우저 밖에서 꾸밀 수 있으니 진짜 막는 것은 칸 검사 · 한도 · 마감이다.
+  - 앱 표는 `FEEDBACK_APPS`(서버)와 `APPS`(내보내기 도구)가 같아야 한다(`test/feedback-export.test.js`).
 - **보내는 것은 여섯 칸뿐**: 이름(그 기기에 기억 — `localStorage`) · 의견(500자 — 11/5 Bumm님, 화면 `FEEDBACK_TEXT_MAX` · 서버 같은 이름 상수 두 곳) · 판 번호 · 화면 크기 · 기기 · 단계. 사진 · 영화 제목 · 출연진은 싣지 않고,
   서버 `validateFeedback`이 여섯 칸 밖 · 모양이 다른 값을 400으로 거절한다. 개인정보처리방침은 바꾸지 않는다(11 ②) — 창의 «함께 보내는 것» · «보내지 않는 것: 여러분이 찍은 사진»이 알림이다.
 - **서버** `POST /feedback`(부스 토큰): 검사 → IP당 10분 10건 · 하루 300건(숫자 카운터) → Firestore `feedback`에 저장 → 카카오톡 «나에게 보내기»(200자, 넘으면 «…»).
@@ -149,8 +162,9 @@
 - **연결**: 키를 넣고 배포한 뒤 `https://asia-northeast3-inky-poster-studio.cloudfunctions.net/posterStudio/kakao/start`를 열어 알림을 받을 카카오 계정으로 로그인 → «연결 완료»와 시험 메시지.
   카카오 개발자 콘솔의 Redirect URI는 같은 주소의 `/kakao/callback`이다. state는 해시로만 10분 · 한 번만 쓴다. **처음 연결한 계정만** 다시 연결할 수 있다(다른 계정은 403) —
   받는 계정을 바꾸려면 Firestore `kakaoAuth/owner` 문서를 콘솔에서 지운 뒤 다시 연결한다. 토큰은 `kakaoAuth/owner`(서버 전용)에 두고 매일 04시 작업이 새로 받는다.
-- **보관**: 받은 지 90일 지난 의견은 매일 04시 작업이 지운다(`cleanupOldFeedback`). 모으기가 끝나면 `node scripts/ops/feedback-export.mjs export <폴더>`로 CSV · json을 내보내 넘기고,
-  `delete <json> --confirm`으로 **내보낸 것만** 지운다(`test/feedback-export.test.js`). 권한은 프로젝트 소유 계정의 `gcloud auth application-default login`.
+- **보관**: 받은 지 90일 지난 의견은 매일 04시 작업이 지운다(`cleanupOldFeedback` — 두 앱 컬렉션 모두). 모으기가 끝나면 `node scripts/ops/feedback-export.mjs export <폴더>`로 CSV · json을 내보내 넘기고
+  (Voice Cinema는 `export <폴더> --app voice-cinema` → `feedback-voice-cinema-<시각>.csv · json`),
+  `delete <json> --confirm`으로 **내보낸 것만** 지운다 — json에 적힌 컬렉션만이다(`test/feedback-export.test.js`). 권한은 프로젝트 소유 계정의 `gcloud auth application-default login`.
 
 ## 이 앱에서 절대 하면 안 되는 것
 - 🔴 **행사 당일(2026-11-14) 라이브 부하테스트 금지.** `/generate` 한 번이 실제 OpenAI 과금(약 $0.05)이고,
@@ -182,7 +196,7 @@
   URL만 보고 있으면 본문에 무엇이 실리는지 아예 볼 수 없다 — **보고 있지 않은 층에는 게이트를
   세울 수 없다.**
 - 🔴 **Firestore에 개인정보를 추가하지 않는다.** 대표 승인 조건이 "순수 숫자 카운터만"이었다.
-  **예외는 `feedback` 하나다**(2026-11-05 Bumm님 9 ①): 현장 진행자 · 교사가 «의견 보내기»로 적은 이름 · 의견. 모으기가 끝나면 내보내 넘긴 뒤 지우고,
+  **예외는 `feedback`과 같은 모양의 Voice Cinema 몫 `feedbackVoiceCinema`뿐이다**(2026-11-05 Bumm님 9 ① · 11/8): 현장 진행자 · 교사가 «의견 보내기»로 적은 이름 · 의견. 모으기가 끝나면 내보내 넘긴 뒤 지우고,
   그 전에도 `cleanupOldCountersSchedule`이 받은 지 90일 지난 것을 지운다. 이 예외를 넓히지 않는다 — 사진 · 아동 이름 · 영화 제목 · 출연진을 싣지 않는다
   (서버 `validateFeedback`이 여섯 칸 밖을 거절한다). `kakaoAuth`는 개인정보가 아니라 알림을 받는 계정 하나의 토큰이다.
 - 🟠 **대기 영상 투명 처리 기준(2026-10-06 Bumm님 확정 86·101·102)**: 흰 카드가 아니라 투명 처리. 그림자는 «검정 + 투명도», 모양·위치는 원화 그대로 두고 **진하기만 ×1.6**(가장 진한 곳 0.85). 그림자와 그림은 **밝기 대비 색 기운(HSV 채도) 0.3**으로 가르고 «지워진 그림 되살리기»는 덩어리 평균으로 판정, 밝기 120 미만 바깥 화소는 그림자 — 빨간 신발빛이 비친 접지 그림자를 그림으로 되살리면 밑창 밑에 갈색·회색 띠가 남는다(04번 실측). **가장자리 안정화도 기준이다(결정 119)**: 흰 테두리 소품(포스터)은 소수 화소까지 추적해 고정 직선 경계로 그리고(정수 화소로 꼭짓점을 옮기면 1화소씩 툭 뛰어 «선이 울컥 두꺼워진다» — 04번 실측 5프레임), 캐릭터 가장자리 띠는 색이 같은(움직이지 않은) 앞뒤 2프레임끼리만 평균한다. 반투명 폭 제한은 쓰지 않는다(깜박임이 늘었다). 도구는 `scripts/media/matte/`에 있다(2026-10-07 옮김 — 설명 `README.md`, 장면 설정 `scenes.json`, 한 편 실행 `run_scene.sh`). 같은 입력이면 단계별 결과가 화소 차이 0이다(04번 안정화 192프레임·AI 투명도로 확인), Veo 원본부터 7단계 전체도 돌아간다(약 45분/편). 흰 테두리 소품의 꼭짓점·추적 영역·손가락 구간은 **장면별로 `scenes.json`에** 적는다(지금은 04번만). 예전 방식(`temporal_matte.py`·`fix_polygon.py`, 정수 화소 꼭짓점)은 결정 119로 대체돼 옮기지 않았다.
@@ -344,9 +358,12 @@
   24fps 193프레임(8.04초), 로비 소리 · J컷 0.3 · 찰칵 7.45 · 멈춤 7.6, 숫자 4.8 · 5.6 · 6.4. 재료 · 목록은 `.cache/camera-video-20261108-group-stand/`.
   진짜 영상은 Bumm님이 만든다 — 명세는 저장소 밖 `ps-group-two-rows-1108/영상-명세-단체-모두서기.md`, 받으면 같은 순서(뒤처리 → 굽기 → 목록 → 탐침)로 바꾼다.
   🟠 단체 화면 문구: 칸 아래 안내와 안내 1번 제목은 «모두 잘 보이게 서주세요»(Bumm님 글자 그대로), 예시 이름표 «이렇게, 모두의 얼굴이 보이게». «앞줄은 앉고 뒷줄은 서서»는 화면 · 설명서 어디에도 쓰지 않는다. 혼자는 그대로다.
-- 🟠 **«샘플 포스터 보기»의 사진은 웹 · 설치판이 같다**(2026-11-08 Bumm님, 팀장 전달): 혼자는 촬영 예시 속 여학생(`public/studio/camera-student.webp`), 단체는 새 단체 포즈 그림.
+- 🟠 **«샘플 포스터 보기»의 사진은 웹 · 설치판이 같다**(2026-11-08 Bumm님, 팀장 전달): 혼자는 2단계 예시 영상 끝 장면의 여학생(`public/studio/camera-v1/solo-end.webp` — 로비 · 청남방 · 브이), 단체는 새 단체 포즈 그림(단체 예시 영상 끝 장면과 같은 것).
+  🟠 **샘플 사진은 그 모드의 예시 영상 끝 장면 사람이다** — 11/8 저녁에 혼자를 영상이 나오기 전 정지 그림(`camera-student.webp` — 미술실 · 남색 카디건)으로 했다가 «예시 영상 여학생과 다르다»(팀장)로 바꿨다.
+  `camera-student.webp`는 예시 영상을 못 틀 때만 보이는 옛 정지 그림이다.
   설치판이 찍은 사진에 하는 «사람 둘레 세로 2:3 자르기»를 미리 한 그림(`src/studio/sample-solo.webp` · `sample-group.webp`, 무손실 WebP)을 `PosterStudio.tsx`가 정적으로 가져온다 —
-  번들에는 주소 글자만 들고 누를 때 받는다. 다시 만들 때는 `desktop-crop-probe.mjs`의 `측정.json` 자른 자리로 원본을 잘라(화소가 브라우저와 같다) 무손실로 저장한다. 예전 AI 판타지 원화(`design-sample.webp`)는 지웠다.
+  번들에는 주소 글자만 들고 누를 때 받는다. 다시 만들 때는 `desktop-crop-probe.mjs`가 남긴 `자른자리/<이름>-자른그림.png`(브라우저가 자른 화소)를 무손실로 저장한다 —
+  원본이 손실 WebP면 다른 디코더(PIL)로 자른 화소가 1~2단계 달라진다(11/8 실측). 예전 AI 판타지 원화(`design-sample.webp`)는 지웠다.
 - 🔴 **그 뒤의 유료 영상 생성(Higgsfield 등)도 매번 Bumm님 허락이 먼저다.** 10/19 허락은 이 두 편(편당 1회, 명백히 깨졌을 때만 1회 더)까지였다.
   생성 직전에 팀장에게 «모델 · 길이 · 화질 · 소리 · 회당 크레딧 · 잔액 · 횟수» 한 줄을 보낸다.
 - 기록: 그 전 임시판(10/17, 키프레임 5장을 컷으로 넘긴 «슬라이드식» 8초 + 직접 합성 찰칵)은 작업 가지 `retry-star-20261016`(83d1cd9)에만 있고 출시되지 않았다.

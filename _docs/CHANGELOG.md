@@ -1,5 +1,26 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-08(일) 밤 2 — «의견 보내기» 11/14 0시 마감 · Voice Cinema 의견도 이 서버로 · 혼자 샘플 사진 = 예시 영상 여학생 (Bumm님, 팀장 전달)
+
+- 혼자 샘플 사진: 바로 아래 항목의 «촬영 예시 여학생(`camera-student.webp` — 미술실 · 남색 카디건)»은 예시 영상을 못 틀 때만 보이는 옛 정지 그림이었다.
+  2단계 «촬영 구도 예시» 영상 끝 장면의 여학생(`public/studio/camera-v1/solo-end.webp` — 로비 · 청남방 · 브이)과 달라 팀장이 짚었다.
+  → `src/studio/sample-solo.webp`를 그 끝 장면에서 사람 둘레 세로 2:3(720×1080, 553,716바이트 · 무손실)으로 바꿨다 — `desktop-crop-probe.mjs`가 브라우저로 자른 화소 그대로(PIL로 다시 풀면 1~2단계 달라진다).
+  흐린 배경 연장이 8종 중 6 → 3종. 단체는 그대로.
+- «의견 보내기» 마감: 시각은 `functions/feedback-window.json`의 `closesAt`(`2026-11-14T00:00:00+09:00`) 한 곳이다. 서버와 화면(`src/feedback.ts`가 그 파일을 가져옴)이 같은 값을 읽는다.
+  - 서버: 그 시각부터 `/feedback` · `/feedback/voice-cinema`가 본문을 읽기 전에 410 `feedback_closed` — 카운터 · 저장 · 카카오 0. 이미 받은 의견 · 내보내기 · 90일 정리는 그대로.
+  - 화면(웹 PC · 휴대폰): 그 뒤 연 화면에는 링크가 없다. 열어 둔 화면은 0시 타이머 · 탭이 다시 보일 때 링크와 열린 창을 내린다. 410을 받으면 창에 «의견은 이제 받지 않아요.»(서브셋에 있는 글자만).
+  - 설치판: 11/5부터 의견 보내기가 없다(`StudioView.tsx`의 `!DESKTOP`). 설명서 00~03에도 안내가 없어 바꾸지 않았다.
+- Voice Cinema 의견: `POST /feedback/voice-cinema`(Bumm님 «포스터랑 똑같은 걸 써 — 하위 폴더만 갈라서»).
+  - 부스 토큰 대신 Origin을 본다 — `voice.edutogether.kr` · `voice-cinema.web.app` · `voice-cinema.firebaseapp.com` · Portal `edutogether.kr`. 그 밖은 403 `feedback_origin`.
+  - 칸 검사 · 8KB · 같은 곳 10분 10건 · 하루 300건 · 마감은 Poster Studio와 같고, 카운터 문서 접두가 앱마다 달라 서로의 한도를 먹지 않는다.
+  - 저장은 Firestore `feedbackVoiceCinema`, 카카오 글 첫머리는 «[Voice Cinema 의견]»(Poster Studio는 «[Poster Studio 의견]»). 카카오 링크는 둘 다 이미 등록한 `poster.edutogether.kr`이라 콘솔 작업이 없다.
+  - Voice Cinema 전용 주소 세 곳은 CORS 목록에 넣되 `voiceCinemaOriginFence`로 이 경로만 쓴다(`/generate` · `/health` · `/feedback` · `/kakao/*`는 403).
+  - 내보내기 `feedback-export.mjs export <폴더> --app voice-cinema`, 지우기는 json에 적힌 컬렉션만, 90일 정리는 두 컬렉션 모두.
+- 확인: functions vitest 149(+8) · 루트 vitest 632(+7) · lint 둘 · typecheck · `fonts:check` · `verify:selftest` · build · build:desktop 모두 0.
+  마감 경계(1ms 전 200 · 그 시각 · 하루 뒤 410, 저장 · 카운터 · 카카오 0)를 시험으로 고정하고 일부러 깨뜨린 10가지(서버 5 · 화면 5)가 모두 걸렸다.
+  전/후 캡처(웹 PC 2560 · 휴대폰 3배 · 시계를 마감 1분 뒤로 돌린 1단계, 설치판 2.9.1 ↔ 새 빌드)는 저장소 밖 `decisions-20261102/img/ps-feedback-solo-1108/`.
+  설치판 `desktop-app-probe.mjs --dev` 38건 통과(설치된 2.9.1은 새 «샘플 사진» 검사 1건만 걸림 — 옛 판이라 맞다). 라이브 «생성» · 유료 호출 · 카카오 실제 호출 0건.
+
 ## 2026-11-08(일) 밤 — 단체 «모두 잘 보이게 서주세요» · 새 단체 그림(모두 서기) · 샘플 포스터 사진 (Bumm님 결정 1~3, 팀장 전달)
 
 - 바로 아래 «앞줄은 앉고 뒷줄은 서기»(벤치)는 Bumm님이 거두셨다 — 라이브에 나가지 않았다(intent `group-shoot-front-sit` dropped, 대신 `group-stand-sample-photos`).

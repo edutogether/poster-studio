@@ -167,6 +167,16 @@ describe('첫 화면 «의견 보내기»', () => {
     expect(localStorage.getItem('posterStudio.feedbackName')).toBe(null);
   });
 
+  test('서버가 마감(410)이라고 하면 «의견은 이제 받지 않아요.»', async () => {
+    await act(async () => { renderApp(); });
+    await openDialog();
+    fireEvent.change(nameBox(), { target: { value: '김진행' } });
+    fireEvent.change(textBox(), { target: { value: '의견 글' } });
+    answer = () => new Response(JSON.stringify({ code: 'feedback_closed' }), { status: 410 });
+    await submit();
+    expect(problem()).toBe('의견은 이제 받지 않아요.');
+  });
+
   test('«취소»와 Esc는 보내지 않고 창을 닫는다', async () => {
     await act(async () => { renderApp(); });
     await openDialog();
@@ -176,5 +186,56 @@ describe('첫 화면 «의견 보내기»', () => {
     await act(async () => { fireEvent.keyDown(dialog()!, { key: 'Escape' }); });
     expect(dialog()).toBe(null);
     expect(sent).toEqual([]);
+  });
+});
+
+/* 2026-11-08 Bumm님(팀장 전달) — 11/14 00:00(한국 시간)에 배포 없이 저절로 빠진다. 시각은 functions/feedback-window.json 한 곳. */
+describe('«의견 보내기» 마감 시각', () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  test('시각은 2026-11-14 00:00 한국 시간 — 서버와 같은 파일', async () => {
+    const { FEEDBACK_CLOSES_AT, feedbackOpen } = await import('../src/feedback.js');
+    expect(new Date(FEEDBACK_CLOSES_AT).toISOString()).toBe('2026-11-13T15:00:00.000Z');
+    expect(feedbackOpen(FEEDBACK_CLOSES_AT - 1)).toBe(true);
+    expect(feedbackOpen(FEEDBACK_CLOSES_AT)).toBe(false);
+  });
+
+  test('마감 1초 전에 연 화면: 링크와 열린 창이 0시가 되는 순간 내려간다', async () => {
+    const { FEEDBACK_CLOSES_AT } = await import('../src/feedback.js');
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(FEEDBACK_CLOSES_AT - 1000);
+    await act(async () => { renderApp(); });
+    expect(link()).not.toBe(null);
+    await openDialog();
+    expect(dialog()).not.toBe(null);
+    await act(async () => { vi.advanceTimersByTime(999); });
+    expect(link(), '1ms 전에는 그대로').not.toBe(null);
+    await act(async () => { vi.advanceTimersByTime(1); });
+    expect(link()).toBe(null);
+    expect(dialog()).toBe(null);
+    expect(sent).toEqual([]);
+  });
+
+  test('잠든 탭(타이머가 늦음): 화면이 다시 보이는 순간 잰다', async () => {
+    const { FEEDBACK_CLOSES_AT } = await import('../src/feedback.js');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(FEEDBACK_CLOSES_AT - 60_000);
+    await act(async () => { renderApp(); });
+    expect(link()).not.toBe(null);
+    vi.setSystemTime(FEEDBACK_CLOSES_AT + 5_000);   // 타이머는 아직 안 돌았다
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    expect(link()).toBe(null);
+  });
+
+  test('마감 뒤에 연 화면: 처음부터 링크가 없다', async () => {
+    const { FEEDBACK_CLOSES_AT } = await import('../src/feedback.js');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    for (const at of [FEEDBACK_CLOSES_AT, FEEDBACK_CLOSES_AT + 86_400_000]) {
+      vi.setSystemTime(at);
+      await act(async () => { renderApp(); });
+      expect(link(), `시각 ${new Date(at).toISOString()}`).toBe(null);
+      cleanup();
+      makeAppContainer();
+    }
   });
 });

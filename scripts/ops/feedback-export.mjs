@@ -2,10 +2,12 @@
 /* 현장 의견(Firestore `feedback`) 내보내기 · 지우기 — 2026-11-05 Bumm님 9 ① «모으기가 끝나면 내보내 넘긴 뒤 지운다».
    _docs/intents/2026-11-05-field-feedback · app.md «현장 의견 받기».
 
-   내보내기: node scripts/ops/feedback-export.mjs export <결과 폴더>
+   내보내기: node scripts/ops/feedback-export.mjs export <결과 폴더> [--app voice-cinema]
      → <결과 폴더>/feedback-<시각>.csv(엑셀용 BOM · 받은 시각 순) · feedback-<시각>.json(문서 번호 포함 · 지우기의 입력)
+       --app voice-cinema면 Voice Cinema 의견(feedbackVoiceCinema)을 feedback-voice-cinema-<시각>.csv · json으로(2026-11-08 — 앱별 컬렉션).
+       앱을 주지 않으면 예전 그대로 Poster Studio(feedback)다.
    지우기:   node scripts/ops/feedback-export.mjs delete <내보낸 json> --confirm
-     → 그 json에 적힌 문서만 지운다. 내보낸 뒤에 들어온 의견은 남는다(다시 내보내면 나온다).
+     → 그 json에 적힌 컬렉션 · 문서만 지운다. 내보낸 뒤에 들어온 의견은 남는다(다시 내보내면 나온다).
 
    권한: 이 컴퓨터의 Google 기본 자격(ADC). 프로젝트 소유 계정으로 `gcloud auth application-default login`을 먼저 한다.
    프로젝트는 inky-poster-studio로 고정이다(GOOGLE_CLOUD_PROJECT보다 우선). 사진은 이 컬렉션에 없다. */
@@ -15,7 +17,12 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const PROJECT = 'inky-poster-studio';
-const COLLECTION = 'feedback';
+// 앱별 컬렉션 — functions/index.js의 FEEDBACK_APPS와 같다(test/feedback-export.test.js가 맞춰 본다).
+export const APPS = {
+  'poster-studio': { collection: 'feedback', prefix: 'feedback' },
+  'voice-cinema': { collection: 'feedbackVoiceCinema', prefix: 'feedback-voice-cinema' },
+};
+const COLLECTIONS = Object.values(APPS).map((a) => a.collection);
 const BATCH = 400;
 const COLUMNS = [
   ['받은 시각(한국)', (d) => kst(d.createdAt)],
@@ -50,23 +57,25 @@ export function toCsv(rows) {
   return '﻿' + lines.join('\r\n') + '\r\n';
 }
 
-export async function exportFeedback(db, outDir, now = new Date()) {
-  const snap = await db.collection(COLLECTION).orderBy('createdAt').get();
+export async function exportFeedback(db, outDir, now = new Date(), app = 'poster-studio') {
+  const target = APPS[app];
+  if (!target) throw new Error(`모르는 앱: ${app}`);
+  const snap = await db.collection(target.collection).orderBy('createdAt').get();
   const rows = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   const stamp = kst(now).replace(/[-: ]/g, '').slice(0, 12);
   fs.mkdirSync(outDir, { recursive: true });
-  const csvPath = path.join(outDir, `feedback-${stamp}.csv`);
-  const jsonPath = path.join(outDir, `feedback-${stamp}.json`);
+  const csvPath = path.join(outDir, `${target.prefix}-${stamp}.csv`);
+  const jsonPath = path.join(outDir, `${target.prefix}-${stamp}.json`);
   if (fs.existsSync(csvPath) || fs.existsSync(jsonPath)) throw new Error(`이미 있는 파일을 덮지 않는다: ${jsonPath}`);
   fs.writeFileSync(csvPath, toCsv(rows));
   const json = rows.map((r) => ({ ...r, createdAt: toDate(r.createdAt)?.toISOString() ?? null }));
-  fs.writeFileSync(jsonPath, JSON.stringify({ project: PROJECT, collection: COLLECTION, exportedAt: now.toISOString(), count: rows.length, rows: json }, null, 2) + '\n');
+  fs.writeFileSync(jsonPath, JSON.stringify({ project: PROJECT, collection: target.collection, exportedAt: now.toISOString(), count: rows.length, rows: json }, null, 2) + '\n');
   return { count: rows.length, csvPath, jsonPath };
 }
 
 export async function deleteExported(db, jsonPath) {
   const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-  if (data.project !== PROJECT || data.collection !== COLLECTION || !Array.isArray(data.rows) || data.rows.length !== data.count) {
+  if (data.project !== PROJECT || !COLLECTIONS.includes(data.collection) || !Array.isArray(data.rows) || data.rows.length !== data.count) {
     throw new Error('내보내기 도구가 만든 json이 아니다(프로젝트 · 컬렉션 · 건수가 맞지 않음)');
   }
   const ids = data.rows.map((r) => r.id);
@@ -74,7 +83,7 @@ export async function deleteExported(db, jsonPath) {
   let deleted = 0;
   for (let i = 0; i < ids.length; i += BATCH) {
     const batch = db.batch();
-    for (const id of ids.slice(i, i + BATCH)) batch.delete(db.collection(COLLECTION).doc(id));
+    for (const id of ids.slice(i, i + BATCH)) batch.delete(db.collection(data.collection).doc(id));
     await batch.commit();
     deleted += Math.min(BATCH, ids.length - i);
   }
@@ -89,18 +98,18 @@ async function openDb() {
 }
 
 async function main(argv) {
-  const [cmd, target, flag] = argv;
-  if (cmd === 'export' && target) {
-    const r = await exportFeedback(await openDb(), path.resolve(target));
+  const [cmd, target, flag, appName] = argv;
+  if (cmd === 'export' && target && (flag === undefined || (flag === '--app' && APPS[appName]))) {
+    const r = await exportFeedback(await openDb(), path.resolve(target), new Date(), appName ?? 'poster-studio');
     console.log(`내보냄 ${r.count}건\n${r.csvPath}\n${r.jsonPath}`);
     return 0;
   }
-  if (cmd === 'delete' && target && flag === '--confirm') {
+  if (cmd === 'delete' && target && flag === '--confirm' && appName === undefined) {
     const r = await deleteExported(await openDb(), path.resolve(target));
     console.log(`지움 ${r.deleted}건`);
     return 0;
   }
-  console.error('쓰는 법: export <결과 폴더> | delete <내보낸 json> --confirm');
+  console.error('쓰는 법: export <결과 폴더> [--app voice-cinema] | delete <내보낸 json> --confirm');
   return 1;
 }
 
