@@ -113,7 +113,6 @@ describe("포스터 생성 대기", () => {
     expect(view.queryByRole('button')).toBeNull();
     expect(document.querySelector('.generation-pause')).toBeNull();
     const first=headline();
-    expect(document.getElementById('spinner')?.dataset.paused).toBe('false');
     act(()=>vi.advanceTimersByTime(8_000));expect(headline()).not.toBe(first);
     view.unmount();expect(document.documentElement.style.overflow).toBe(previousOverflow);
     expect(vi.getTimerCount()).toBe(0);
@@ -125,12 +124,13 @@ describe("포스터 생성 대기", () => {
     expect(document.querySelector('.generation-note')).toBeNull();
     expect(document.querySelector('progress')).toBe(null);
   });
-  test("움직임 줄이기에서는 선택된 장면의 정지 이미지를 유지한다",()=>{
-    vi.stubGlobal('matchMedia',()=>({matches:true}));
+  // 2026-11-11 Bumm님 «가. 늘 돌게 하기»(팀장 전달): «움직임 줄이기» 신호가 켜진 브라우저에서 로딩 화면이 첫 장면 정지 그림에 멈춰 «고장»처럼 보였다 —
+  // 신호와 상관없이 영상을 틀고 장면을 넘긴다.
+  test("움직임 줄이기여도 대기 영상을 틀고 장면을 넘긴다",()=>{
+    vi.stubGlobal('matchMedia',()=>({matches:true,addEventListener(){},removeEventListener(){}}));
     render(<GenerationWait spinTextRef={createRef()}/>);const first=headline();
-    act(()=>vi.advanceTimersByTime(24_000));expect(headline()).toBe(first);
-    expect(activeImage().src).toContain('/studio/waiting-v3/');
-    expect(document.querySelector('video')).toBeNull();
-    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    expect(document.querySelector('video')).not.toBeNull();
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalled();
+    act(()=>vi.advanceTimersByTime(8_000));expect(headline()).not.toBe(first);
   });
 });

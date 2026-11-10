@@ -184,12 +184,14 @@ test("카메라를 켜거나 2단계를 떠나면 영상 요소를 내려 소리
   expect(view.container.querySelector("video")!.getAttribute("src")).toBe(fake.src);
 });
 
-test("움직임 줄이기는 영상 요소를 만들지 않는다", () => {
+// 예시 영상은 장식이 아니라 «이렇게 서세요» 안내다 — «움직임 줄이기» 신호와 상관없이 언제나 튼다(2026-11-11 Bumm님 «가. 늘 돌게 하기», 팀장 전달).
+// 원격으로 연 PC의 크롬이 사람이 켠 적 없는 이 신호를 보고해 개인 · 단체 예시가 끝 정지 그림으로 멈춰 있었다.
+test("움직임 줄이기여도 영상을 재생하고 정지 그림은 첫 프레임이다", () => {
   reduce = true;
   const view = render(<CameraExample {...base} />);
-  expect(view.container.querySelector("video")).toBeNull();
-  expect(view.container.querySelector(".camera-example-still")!.getAttribute("src")).toBe(fake.endStill);
-  expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+  expect(view.container.querySelector("video")!.getAttribute("src")).toBe(fake.src);
+  expect(view.container.querySelector(".camera-example-still")!.getAttribute("src")).toBe(fake.still);
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
 });
 
 // 1단계에 있는 동안 2단계 영상 요소를 미리 연다(2026-11-07 Bumm님 «넘기면 처음에 좀 딜레이되었다 시작», 팀장 전달).
@@ -291,10 +293,12 @@ test("1단계를 떠나 다른 단계로 가면 영상 요소를 내려 다운�
   expect(HTMLMediaElement.prototype.load).toHaveBeenCalled();
 });
 
-test("움직임 줄이기 · 데이터 절약 · 카메라 켬에서는 1단계에 미리 받지 않는다", () => {
+test("움직임 줄이기여도 1단계에 미리 받는다 — 데이터 절약 · 카메라 켬에서는 받지 않는다", () => {
   reduce = true;
   const a = render(<CameraExample {...step1} />);
-  expect(a.container.querySelector("video")).toBeNull();
+  idle();
+  expect(a.container.querySelector("video")!.getAttribute("src")).toBe(fake.src);
+  expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
   a.unmount();
   reduce = false;
   const b = render(<CameraExample {...step1} hidden />);

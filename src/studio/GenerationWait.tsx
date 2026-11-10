@@ -35,7 +35,7 @@ export function createWaitSequence() {
 }
 
 /** 생성이 끝났을 때 부르는 «지금 대기 영상이 끝날 때까지 기다리기»(2026-10-20 Bumm님 «재생 중인 대기 영상은 끝까지 틀고 넘어감» — PC도).
- *  영상이 재생 중이 아니면(정지 그림 · 움직임 줄이기) 바로 끝난다. 기다리는 동안은 8초 장면 넘김을 멈춘다 — 늦게 시작한 영상이
+ *  영상이 재생 중이 아니면(정지 그림) 바로 끝난다. 기다리는 동안은 8초 장면 넘김을 멈춘다 — 늦게 시작한 영상이
  *  장면 경계에서 잘리지 않게. 한도는 남은 길이 + 0.3초(«ended»가 오지 않는 경우), 많아야 9초. */
 export type SceneEnd = () => Promise<void>;
 
@@ -44,12 +44,11 @@ export type SceneEnd = () => Promise<void>;
 export default function GenerationWait({ spinTextRef, sceneEndRef, sceneLimit }: { spinTextRef: RefObject<HTMLParagraphElement | null>; sceneEndRef?: { current: SceneEnd | null }; sceneLimit?: number }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  const [reduced, setReduced] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
   const [scenes] = useState(createWaitSequence);
   const [sceneIndex, setSceneIndex] = useState(0);
   const holdRef = useRef(false);
-  // 로딩 화면은 멈추는 화면이 아니다(2026-10-06 Bumm님 결정 118) — 자동 넘김은 «움직임 줄이기» 설정에서만 멈춘다.
-  const still = reduced;
+  // 로딩 화면은 멈추는 화면이 아니다(2026-10-06 Bumm님 결정 118). 11/11 Bumm님 «가. 늘 돌게 하기»(팀장 전달): «움직임 줄이기»(prefers-reduced-motion)
+  // 신호에서도 멈추지 않는다 — 원격으로 연 PC의 크롬이 사람이 켠 적 없는 그 신호를 보고해 첫 장면 정지 그림에 멈춘 «고장»처럼 보였다.
   const scene = scenes[sceneIndex];
 
   useEffect(() => {
@@ -59,29 +58,24 @@ export default function GenerationWait({ spinTextRef, sceneEndRef, sceneLimit }:
     if (typeof element.showModal === "function") element.showModal();
     else element.setAttribute("open", "");
     heading.current?.focus();
-    const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    const update = () => setReduced(media?.matches ?? false);
-    media?.addEventListener?.("change", update);
     return () => {
       document.documentElement.style.overflow = previousOverflow;
-      media?.removeEventListener?.("change", update);
       if (element.open && typeof element.close === "function") element.close();
     };
   }, []);
 
   useEffect(() => {
-    if (still) return;
     const timer = window.setInterval(() => {
       if (!holdRef.current) setSceneIndex(value => (sceneLimit && value + 1 >= sceneLimit ? value : (value + 1) % scenes.length));
     }, SCENE_MS);
     return () => window.clearInterval(timer);
-  }, [still, scenes.length, sceneLimit]);
+  }, [scenes.length, sceneLimit]);
 
   useEffect(() => {
     if (!sceneEndRef) return;
     sceneEndRef.current = () => new Promise<void>((resolve) => {
       const v = dialog.current?.querySelector<HTMLVideoElement>('video[data-active="true"]');
-      if (still || !v || v.paused || v.ended) { resolve(); return; }
+      if (!v || v.paused || v.ended) { resolve(); return; }
       holdRef.current = true;
       const left = Math.max(0, ((Number.isFinite(v.duration) ? v.duration : SCENE_MS / 1000) - v.currentTime) * 1000);
       const done = () => { v.removeEventListener("ended", done); window.clearTimeout(timer); resolve(); };
@@ -89,7 +83,7 @@ export default function GenerationWait({ spinTextRef, sceneEndRef, sceneLimit }:
       v.addEventListener("ended", done);
     });
     return () => { sceneEndRef.current = null; };
-  }, [sceneEndRef, still]);
+  }, [sceneEndRef]);
 
   useEffect(() => {
     const next = new Image();
@@ -107,16 +101,16 @@ export default function GenerationWait({ spinTextRef, sceneEndRef, sceneLimit }:
   useEffect(() => { current.current = sceneIndex; }, [sceneIndex]);
   const onSceneLoaded = () => {
     const at = sceneIndex;
-    const video = reduced ? undefined : approvedWaitingVideo(scenes[(at + 1) % scenes.length].id);
+    const video = approvedWaitingVideo(scenes[(at + 1) % scenes.length].id);
     if (at > 0 || !video) waitingVideosReady();
     void backgroundIdle().then(() => (video && alive.current && current.current === at ? prefetchWaitingVideo(video) : undefined));
   };
 
   return (
-    <dialog ref={dialog} id="spinner" className="generation-wait spinner" data-paused={still} data-scene={sceneIndex} data-set-id={scene.id} aria-labelledby="generationTitle" onCancel={event => event.preventDefault()}>
+    <dialog ref={dialog} id="spinner" className="generation-wait spinner" data-scene={sceneIndex} data-set-id={scene.id} aria-labelledby="generationTitle" onCancel={event => event.preventDefault()}>
       <div className="generation-content">
         <div className="generation-film waiting-art-frame" data-art={scene.id}>
-          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} paused={still} reduced={reduced} onLoaded={onSceneLoaded} />
+          <WaitingArtwork key={scene.id} image={scene.image} theme={scene.theme} video={approvedWaitingVideo(scene.id)} onLoaded={onSceneLoaded} />
         </div>
         <h1 ref={heading} tabIndex={-1} id="generationTitle" className="generation-copy-stack">
           {scenes.map(({ id, title }, index) => <span key={id} className="generation-copy" data-active={index === sceneIndex} aria-hidden={index !== sceneIndex}>{title}</span>)}

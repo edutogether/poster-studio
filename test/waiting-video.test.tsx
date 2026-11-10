@@ -7,7 +7,7 @@ import { approvedWaitingVideo } from "../src/studio/waitingVideo";
 import manifest from "../src/studio/waiting-videos.json";
 
 // 2026-10-07 장착 가지의 재생 부품 시험을 옮겼다(숨은 탭·시작 세트 지정은 옮기지 않은 기능이라 뺐다).
-const props = { image: "/studio/waiting-v3/11.webp", theme: "움직임에 생기를", video: "/test-only.mp4", paused: false, reduced: false };
+const props = { image: "/studio/waiting-v3/11.webp", theme: "움직임에 생기를", video: "/test-only.mp4" };
 beforeEach(() => {
   vi.useFakeTimers();
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
@@ -59,37 +59,13 @@ test("영상 종료 뒤 재시작하지 않고 마지막 프레임을 유지한�
   expect(video.dataset.active).toBe("true");
   expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
 });
-test("일시 정지는 현재 재생 위치를 보존하며 재개한다", () => {
+test("장면 해제는 재생과 다운로드를 정리한다", () => {
   const view = render(<WaitingArtwork {...props}/>);
   const video = view.container.querySelector("video")!;
-  video.currentTime = 1.2; fireEvent.playing(video);
-  view.rerender(<WaitingArtwork {...props} paused/>);
-  act(() => vi.advanceTimersByTime(10000));
-  expect(video.currentTime).toBe(1.2); expect(video.getAttribute("src")).toBe(props.video);
-  view.rerender(<WaitingArtwork {...props}/>);
-  expect(video.currentTime).toBe(1.2); expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
-});
-test("움직임 줄이기는 영상 요소를 만들지 않는다", () => {
-  const view = render(<WaitingArtwork {...props} reduced/>);
-  expect(view.container.querySelector("video")).toBeNull();
-  expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
-});
-test("움직임 설정 변경·장면 해제는 재생과 다운로드를 정리한다", () => {
-  const view = render(<WaitingArtwork {...props}/>);
-  const video = view.container.querySelector("video")!;
-  view.rerender(<WaitingArtwork {...props} reduced/>);
+  view.unmount();
   expect(video.hasAttribute("src")).toBe(false);
   expect(HTMLMediaElement.prototype.load).toHaveBeenCalled();
   expect(vi.getTimerCount()).toBe(0);
-});
-test("움직임 줄이기 해제 후 새 영상의 로드 정체도 감지한다", () => {
-  const view = render(<WaitingArtwork {...props}/>);
-  fireEvent.playing(view.container.querySelector("video")!);
-  view.rerender(<WaitingArtwork {...props} reduced/>);
-  view.rerender(<WaitingArtwork {...props}/>);
-  expect(view.container.querySelector("video")!.dataset.active).toBe("false");
-  act(() => vi.advanceTimersByTime(4000));
-  expect(view.container.querySelector("video")).toBeNull();
 });
 test("자동 재생 거부는 정지 그림으로 복구하고 재시도 폭주가 없다", async () => {
   vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValue(new Error("NotAllowedError"));

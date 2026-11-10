@@ -154,14 +154,6 @@ body:has(#splash)::after {
   animation-play-state: paused;
 }
 
-/* 표준 개정 2차 — **장식 애니메이션만 끄고 유지·페이드 타이밍은 남긴다.**
-   스플래시의 유지까지 없애면 덜 그려진 화면을 가려주는 역할이 사라져,
-   로드 게이트로 막으려던 문제가 그대로 되돌아온다. */
-@media (prefers-reduced-motion: reduce) {
-  #splash .logo {
-    animation: none;
-  }
-  #splash .sbar i {
-    animation: none;
-  }
-}
+/* «움직임 줄이기»(prefers-reduced-motion) 신호로 로고 · 막대를 끄지 않는다(2026-11-11 Bumm님 «가. 늘 돌게 하기», 팀장 전달).
+   예전(표준 개정 2차)에는 그 신호에서 로고 · 막대를 껐다 — 원격으로 연 PC의 크롬이 사람이 켠 적 없는 그 신호를 보고해 막대가 멈춘 «고장»처럼 보였다.
+   유지 · 페이드(splashOut, §27 두 바퀴)는 예전에도 지금도 그대로다. 확인: scripts/verify/reduced-motion-probe.mjs. */

@@ -1539,18 +1539,15 @@ dialog .secondary-button {
     align-items: center;
   }
 }
+/* «움직임 줄이기»에서는 바뀜(transition) · 부드러운 스크롤만 끈다. 애니메이션을 전부 끄던 규칙(*:not(#splash) { animation: none !important })은 뺐다 —
+   스플래시 막대 · 로딩 점이 멈춘 «고장»처럼 보였다(2026-11-11 Bumm님 «가. 늘 돌게 하기», 팀장 전달). 장식 움직임(첫 화면 «아래로» 화살표 · 촬영 중 빨간 점 ·
+   3단계 넘김 안내)은 각자 자리의 «움직임 줄이기» 규칙이 그대로 끈다(studio.css). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *:before,
   *:after {
     transition: none !important;
     scroll-behavior: auto !important;
-  }
-  /* 스플래시 소멸은 로드 게이트이므로 유지하고 장식 움직임만 끈다. */
-  *:not(#splash),
-  *:before,
-  *:after {
-    animation: none !important;
   }
 }
 

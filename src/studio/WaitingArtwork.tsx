@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 
-type Props = { image: string; theme: string; video?: string; paused: boolean; reduced: boolean; onLoaded?: () => void };
+type Props = { image: string; theme: string; video?: string; onLoaded?: () => void };
 
 // 장면 교체 시 부모의 key로 폐기한다. 인쇄 캔버스나 생성 요청과 연결하지 않는다.
 // 2026-10-07 장착 가지(codex/claude-handoff-20261005)의 재생 부품을 2026-10-12 Seedance 최종본(흰 바탕 mp4)에 맞춰 옮겼다.
-// onLoaded: 이 장면 영상을 끝까지 받았거나 받을 영상이 없을 때(움직임 줄이기 · 실패 포함) 한 번 — 다음 차례 받기를 여는 신호(waitingNetwork.ts)
-export default function WaitingArtwork({ image, theme, video, paused, reduced, onLoaded }: Props) {
+// onLoaded: 이 장면 영상을 끝까지 받았거나 받을 영상이 없을 때(실패 포함) 한 번 — 다음 차례 받기를 여는 신호(waitingNetwork.ts)
+// 11/11 Bumm님 «가. 늘 돌게 하기»: «움직임 줄이기» 신호로 영상을 막지 않는다(GenerationWait.tsx).
+export default function WaitingArtwork({ image, theme, video, onLoaded }: Props) {
   const player = useRef<HTMLVideoElement>(null);
   const [visible, setVisible] = useState(false);
   const [failed, setFailed] = useState(false);
   const [buffering, setBuffering] = useState(true);
-  const enabled = Boolean(video) && !reduced && !failed;
+  const enabled = Boolean(video) && !failed;
   const loaded = useRef(false);
   const onLoadedRef = useRef(onLoaded);
   useEffect(() => { onLoadedRef.current = onLoaded; });
@@ -45,20 +46,19 @@ export default function WaitingArtwork({ image, theme, video, paused, reduced, o
     const element = player.current;
     if (!enabled || !element) return;
     let cancelled = false;
-    if (paused) element.pause();
-    else if (!element.ended) {
+    if (!element.ended) {
       element.muted = true;
       // 자동 재생 거부 시에도 검은 화면 대신 정지 그림을 표시한다.
       void element.play().catch(() => { if (!cancelled) setFailed(true); });
     }
     return () => { cancelled = true; element.pause(); };
-  }, [enabled, paused, video]);
+  }, [enabled, video]);
 
   useEffect(() => {
-    if (!enabled || paused || !buffering) return;
+    if (!enabled || !buffering) return;
     const timer = window.setTimeout(() => setFailed(true), 4_000);
     return () => window.clearTimeout(timer);
-  }, [enabled, paused, buffering]);
+  }, [enabled, buffering]);
 
   return <>
     {/* 정지 그림은 영상 첫 프레임과 같은 그림이다(scripts/media/encode-waiting-videos.py) — 영상이 실제로 재생되기 시작하면

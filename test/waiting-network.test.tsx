@@ -8,7 +8,7 @@ import { approvedWaitingVideo } from "../src/studio/waitingVideo";
 import { waitingSets } from "../src/studio/waitingSets";
 
 // 대기 화면 동안 망을 쓰는 차례(2026-10-26 팀장 지시 1번 ③): 지금 장면 영상 → 다음 장면 영상 → 조판 글꼴 · 로고(그동안 그다음 영상은 기다림).
-const props = { image: "/studio/waiting-v3/11.webp", theme: "움직임에 생기를", video: "/test-only.mp4", paused: false, reduced: false };
+const props = { image: "/studio/waiting-v3/11.webp", theme: "움직임에 생기를", video: "/test-only.mp4" };
 beforeEach(() => {
   vi.useFakeTimers();
   _resetWaitingNetworkForTesting();
@@ -113,12 +113,11 @@ test("브라우저가 «충분히 받았다»며 받기를 쉬면(suspend · 끝
   expect(onLoaded).toHaveBeenCalledTimes(1);
 });
 
-test("받을 영상이 없거나(움직임 줄이기 · 승인 안 된 편) 영상이 실패하면 기다리지 않고 바로 알린다", () => {
-  const none = vi.fn(), reduced = vi.fn(), broken = vi.fn();
+test("받을 영상이 없거나(승인 안 된 편) 영상이 실패하면 기다리지 않고 바로 알린다", () => {
+  const none = vi.fn(), broken = vi.fn();
   render(<WaitingArtwork {...props} video={undefined} onLoaded={none}/>);
-  render(<WaitingArtwork {...props} reduced onLoaded={reduced}/>);
   const view = render(<WaitingArtwork {...props} onLoaded={broken}/>);
-  expect([none, reduced].map((f) => f.mock.calls.length)).toEqual([1, 1]);
+  expect(none).toHaveBeenCalledTimes(1);
   expect(broken).not.toHaveBeenCalled();
   fireEvent.error(view.container.querySelectorAll("video")[0]);
   expect(broken).toHaveBeenCalledTimes(1);
@@ -173,15 +172,17 @@ test("대기 화면: 조판 받기가 끝나기 전에 장면이 넘어갔으면
   expect(third).not.toBe(fourth);
 });
 
-test("움직임 줄이기(영상 없음)면 첫 장면에서 곧바로 조판 받기를 연다 — 지킬 영상이 없다", async () => {
-  const fetchMock = vi.fn();
+test("움직임 줄이기여도 받기 차례는 같다 — 첫 장면 영상을 다 받기 전에는 조판 받기를 열지 않고, 다 받으면 다음 장면 영상을 받는다(2026-11-11)", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response(new Uint8Array(4)));
   vi.stubGlobal("fetch", fetchMock);
   const job = vi.fn(async () => {});
   afterWaitingVideos(job);
-  openWait(true);
+  const { order: [, second], loadCurrent } = openWait(true);
   await act(async () => {});
-  expect(job).toHaveBeenCalledTimes(1);
+  expect(job).not.toHaveBeenCalled();
   expect(fetchMock).not.toHaveBeenCalled();
+  await loadCurrent();
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([approvedWaitingVideo(second)]);
 });
 
 test("장면을 열 때 영상 주소를 한 번만 건다 — 같은 주소를 다시 넣어 받던 요청을 끊고 새로 받지 않게(캐시에 있던 영상을 망에서 또 받았다)", () => {
