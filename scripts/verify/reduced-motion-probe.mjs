@@ -10,6 +10,9 @@
    ① 스플래시 막대(#splash .sbar i)의 애니메이션이 splashBar · running이고, 막대 자리(transform)가 실제로 바뀐다
    ② 개인 · 단체 촬영 예시 영상이 목록(camera-videos.json)의 주소로 재생되고 currentTime이 1.5초 동안 실제로 는다
    ③ «샘플 포스터 보기» 로딩 화면: 대기 영상 currentTime이 늘고, 점 애니메이션이 running이고, 8초 뒤 다음 장면으로 넘어간다
+   ④ 휴대폰(폭 768 미만): 3단계 넘김 안내(포스터 줄 움찔) 애니메이션이 running
+   ⑤ 단추 바뀜(transition)이 0초가 아니고, 휴대폰은 첫 화면 «아래로» 화살표 애니메이션이 running
+      (④ · ⑤는 11/11 Bumm님 «움직임 줄이기 신호로 멈추는 것은 하나도 남기지 않는다» — 장식도 그 신호로 끄지 않는다)
    카메라 · 인쇄는 막고, 로컬 주소면 https 전부 · 라이브면 AI 서버만 막는다(생성 요청 0 — 샘플 흐름은 서버에 아무것도 보내지 않는다).
    --shots면 스플래시 · 개인 · 단체 재생 중 화면을 원본 해상도 PNG로 남긴다.
    --force면 흉내(emulateMedia) 대신 크롬을 --force-prefers-reduced-motion으로 띄운다 — 브라우저 설정 자체가 reduce인 상태(원격으로 연 PC처럼)로, reduce 조건만 잰다. */
@@ -138,6 +141,36 @@ for (const motion of motions) {
     let c = b;
     for (let i = 0; i < 100 && c && c.scene === '0'; i++) { await sleep(100); c = await read(); }
     check(Boolean(c && c.scene !== '0'), `${tag}: 로딩 화면이 다음 장면으로 넘어간다`, c && c.scene);
+    // ④ 휴대폰 3단계 넘김 안내(포스터 줄이 한 번 움찔 — data-hint)도 그 신호와 상관없이 뜬다(11/11 «하나도 남기지 않는다»)
+    if (vw < 768) {
+      await page.waitForFunction(() => document.body.dataset.step === '3', null, { timeout: 60_000 });
+      let hint = null;
+      for (let i = 0; i < 30 && !(hint && hint.running); i++) {
+        hint = await page.evaluate(() => {
+          const s = document.querySelector('.poster-carousel[data-hint] .poster-slide');
+          return s ? { running: s.getAnimations().some((x) => x.playState === 'running'), name: getComputedStyle(s).animationName } : null;
+        });
+        await sleep(50);
+      }
+      check(Boolean(hint && hint.running), `${tag}: 휴대폰 3단계 넘김 안내 애니메이션이 running`, hint);
+    }
+    await context.close();
+  }
+  // ⑤ 장식 움직임: 단추 바뀜(transition)이 남아 있고, 휴대폰 첫 화면 «아래로» 화살표가 돈다(11/11 «하나도 남기지 않는다»)
+  {
+    const { context, page } = await open(motion);
+    await page.goto(url);
+    await page.waitForFunction(() => !!document.getElementById('prepareNextBtn') && !document.getElementById('splash'), null, { timeout: 60_000 });
+    const deco = await page.evaluate(() => {
+      const btn = document.getElementById('prepareNextBtn');
+      const arrow = document.querySelector('.hero-next');
+      return {
+        transition: btn && getComputedStyle(btn).transitionDuration,
+        arrow: arrow && getComputedStyle(arrow).display !== 'none' ? arrow.getAnimations().some((x) => x.playState === 'running') : null,
+      };
+    });
+    check(Boolean(deco.transition && deco.transition.split(',').some((d) => parseFloat(d) > 0)), `${tag}: 단추 바뀜(transition)이 꺼지지 않았다`, deco.transition);
+    if (vw < 768) check(deco.arrow === true, `${tag}: 휴대폰 첫 화면 «아래로» 화살표 애니메이션이 running`, deco.arrow);
     await context.close();
   }
 }
