@@ -1,5 +1,11 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-11-11(수) — «움직임 줄이기»와 상관없이 도는 화면 · 설치판 3.2.5 (배포 · 공개 파일 교체 끝)
+
+- 내용 · 확인은 CHANGELOG 11/11. 라이브 = master(태그 `poster-studio-freeze-20261111-reduced-motion`), 공개 설치 파일 = 3.2.5.
+- 규칙은 app.md ««움직임 줄이기»와 상관없이 도는 것» — 확인 도구는 reduce · no-preference 두 조건으로 잰다.
+- 🔴 11/14에는 배포하지 않는다(아래 11/8 밤 2~3 그대로).
+
 ## 2026-11-10(화) 밤 — 단체 예시 영상 진짜 영상으로 · 감사 · 설치판 3.2.4 (배포 · 공개 파일 교체 끝)
 
 - 내용 · 확인은 CHANGELOG 11/10 밤. 라이브 = master(감사 태그 `poster-studio-freeze-20261110-audited-100`), 공개 설치 파일 = 3.2.4.

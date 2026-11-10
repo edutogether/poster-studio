@@ -1,5 +1,24 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-11(수) — «움직임 줄이기»와 상관없이 스플래시 · 촬영 예시 영상 · 로딩 화면이 돈다 · 설치판 3.2.5 (Bumm님 «가. 늘 돌게 하기», 팀장 전달)
+
+- 원인: Bumm님이 원격으로 이 PC의 크롬을 열자 크로미움이 사람이 켠 적 없는 `prefers-reduced-motion: reduce`를 보고했다. 그 신호에서 스플래시 막대 · 로고(`splash.css`),
+  `style.css`의 전역 `*:not(#splash) { animation: none }`, 촬영 예시 영상(재생 · 1단계 미리 받기 — `CameraExample.tsx` `useReducedMotion`), 로딩 화면(첫 장면 정지 그림에 머묾 ·
+  장면 넘김 · 점 — `GenerationWait.tsx` · `WaitingArtwork.tsx` · `generation-wait.css`)이 멈춰 «고장»처럼 보였다.
+- 고침 `a943d48`: 위 넷은 그 신호를 보지 않는다. 자동 재생 거부 · 오류 · 4초 정체 때 정지 그림으로 가는 처리는 그대로, 미리 받기 제외는 카메라 켬 · 데이터 절약 · 설치판만.
+  그대로 끄는 것(사소한 장식): 바뀜(transition) · 부드러운 스크롤, 첫 화면 «아래로» 화살표 · 촬영 중 빨간 점 · 휴대폰 3단계 넘김 안내, 카드 · 단추 올림 효과.
+- 시험: 고치기 전에 실패를 먼저 확인했다(바뀐 시험 4건 실패 → 고친 뒤 54건 통과). 새 `test/reduced-motion.test.ts`(CSS의 reduce 블록이 스플래시 · 로딩 점 · `*`의 애니메이션을 끄지 않음,
+  네 부품의 matchMedia 0건 — 옛 코드로 되돌리면 걸림). 루트 vitest 756 · functions 143 · lint 둘 · typecheck · build · fonts:check · verify:selftest 모두 0.
+- 확인 도구 `06b8152` · 이번 커밋: 새 `scripts/verify/reduced-motion-probe.mjs`(스플래시 막대 · 개인 · 단체 영상 currentTime · 로딩 영상 · 점 · 장면 넘김, reduce · no-preference 두 조건,
+  `--force`는 크롬을 `--force-prefers-reduced-motion`으로 띄워 흉내가 아닌 브라우저 설정 자체로 잼 · 고치기 전 판에서 reduce 9건 실패).
+  `camera-example-probe` · `waiting-videos-live` · `splash` · `desktop-app-probe`가 «줄이지 않음» 흉내 대신 두 조건으로 잰다 — 11/10 `8d52896`이 흉내로 통과시켜 실제 화면 멈춤을 놓친 것을 막는다.
+- 배포: 되돌릴 자리 `poster-studio-freeze-20261111-pre-deploy`(= `7bec5d1`, 되돌림 트리 차이 0 확인) → master `af6af8d` push. CI `42847408469` test · changes · functions · hosting 모두 성공.
+  라이브(생성 요청 0): `reduced-motion-probe` poster.edutogether.kr PC 2560 · 휴대폰 390×844@3 각 20건 · poster-studio.web.app 1366 20건 통과, `--force` PC 2560 · 휴대폰 각 10건 통과,
+  `camera-example-probe` 혼자 · 단체 각 24표본(두 조건) 실패 0. 캡처(원본 해상도)는 저장소 밖 `_shared/ops/decisions-20261102/img/ps-reduced-motion-1111/`.
+- 설치판 3.2.5(`af6af8d`, `app-version.mjs`): `Poster Studio Setup.exe` 157,739,021바이트 · SHA-256 `79af4dc98b436583685a82ba2b8b558661aec33fcc65ce6ecd8dcc6575b03359`.
+  이 PC에 3.2.4 위로 덮어 설치(`desktop-installer-probe.ps1 -Replace -NoRun`) 33건 통과, 설치된 앱 `desktop-app-probe --exe` reduce · no-preference 각 45건 통과(스플래시 막대 · 개인 · 단체 영상).
+  공개 파일 교체(3.2.4는 소프트 삭제 7일), `download-live.mjs --compare --button-same` 27건 통과.
+
 ## 2026-11-10(화) 밤 — 단체 촬영 예시 영상을 진짜 영상으로 · 그 부분 감사 · 설치판 3.2.4 (Bumm님 «포스터 영상은 그냥 넣고 … 싹 다 마무리», 직접 승인 · 팀장 전달)
 
 - 영상: Seedance 2.5 초안 한 판을 Topaz로 1080p로 키운 원본(저장소 밖 `ps-group-oneshot-1110/03-최종-…-39fd1d5e.mp4`)을 손대지 않고 개인(10/19)과 같은 뒤처리 —
