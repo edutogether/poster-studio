@@ -493,7 +493,6 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
 .camera-live-indicator i { width: 8px; height: 8px; border-radius: 50%; background: #ff453a; animation: camera-on-pulse 1.6s ease-in-out infinite; }
 @keyframes camera-on-pulse { 0%, 38%, 100% { opacity: 1; } 50%, 88% { opacity: .18; } }
 .camera-example-caption .camera-start-button { align-self: flex-end; }
-@media (prefers-reduced-motion: reduce) { .camera-live-indicator i { animation: none; } }
 @media (min-width: 1100px) and (max-height: 820px), (min-width: 761px) and (max-width: 1099px) and (min-height: 700px) and (max-height: 820px) {
   #cameraWorkspace { padding-top: 36px; }
   #cameraWorkspace .page-heading { margin-bottom: 16px; }
@@ -649,9 +648,6 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   :root { --phone-header-h: 129px; }
 }
 @keyframes hero-next-nudge { 0%, 100% { translate: 0 0; } 50% { translate: 0 6px; } }
-@media (prefers-reduced-motion: reduce) {
-  .hero-next { animation: none; }
-}
 /* 첫 페이지 단추 글: 앞에 Lucide clapperboard + «주인공이 될 순간 보러 가기» — 모든 해상도(10/24 Bumm님, 10/20 저녁 휴대폰에 먼저 넣었던 것) */
 #prepareNextBtn .next-label { display: inline-flex; align-items: center; gap: 8px; }
 #prepareNextBtn .btn-icon { width: 20px; height: 20px; flex: 0 0 auto; }
@@ -892,10 +888,6 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   .poster-dialog .dialog-close { position: fixed; top: 10px; right: 10px; }
 }
 @keyframes carousel-hint { 0%, 100% { translate: 0 0; } 40% { translate: -28px 0; } 70% { translate: 4px 0; } }
-@media (prefers-reduced-motion: reduce) {
-  .poster-carousel[data-hint] .poster-slide { animation: none; }
-  .poster-slide { transition: none; }
-}
 /* 2단계 오른쪽 칸 — 작은 PC · 태블릿 가로(폭 1100 이상 · 높이 959 이하: 1536×864 · 1440×900 · 1366×768 · 1280×720 · 1600×900 · 1920×947 ·
    태블릿 1180×820 등). 2026-10-24 Bumm님(1549×877에서 봄): «제목 · 설명 글씨를 줄이고 그만큼 영화 포스터 그림을 키운다(지금 너무 작음) · 티켓과 아래 단추가 붙어 있다».
    제목(32px) · 1·2·3 설명(18/15px, 사이 22 · 아래 40)이 칸 높이를 먹어 포스터가 최소 크기(94×140)로 줄고, 그래도 넘쳐 티켓이 단추 줄에 닿았다(1536×864에서 1px).

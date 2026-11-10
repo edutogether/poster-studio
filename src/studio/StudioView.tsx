@@ -47,7 +47,6 @@ export const FIRST_GENRE = "sf";
 // 휴대폰 판정은 기기 갈래(data-device — 비율 기준 전환 10/23)로. 갈래가 없거나(시험 · 옛 판) PC 캔버스가 꺼진 PC(창 크기로 고르는 라이브 배치 —
 // 760보다 좁은 PC 창은 휴대폰 화면)는 예전처럼 창 폭으로
 const isPhone = () => { const d = deviceKind(); return d && (d !== "pc" || pcCanvas()) ? d === "phone" : window.matchMedia?.(PHONE_QUERY)?.matches ?? false; };
-const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 export interface StudioViewProps {
   mode: string;
   setMode: (mode: string) => void;
@@ -303,7 +302,7 @@ export default function StudioView(p: StudioViewProps) {
   /* ② 휴대폰 1단계: 극장 사진(첫 페이지) 어디를 눌러도 둘째 페이지(«오늘의 주인공, 등장 !»)로 넘어간다. PC에서는 아무 일도 없다. */
   const toStoryForm = () => {
     if (!isPhone()) return;
-    document.getElementById("prepareWorkspace")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
+    document.getElementById("prepareWorkspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   /* ⑧~⑩ 휴대폰 3단계: 큰 포스터 줄(과 크게 보기 창의 줄)을 밀면 가운데에 온 장이 그 자리에서 선택된다. 썸네일을 누르면 거꾸로 줄이 그 장으로 간다.
      11/3 Bumm님 «다른 걸 골랐을 때 불이 들어오는 게 많이 느리다»: 예전에는 줄이 멈춘 뒤(자석 정렬 끝 + 0.09초) 골랐다 — 이제 밀어서 반을 넘는 순간 고른다.
@@ -328,11 +327,11 @@ export default function StudioView(p: StudioViewProps) {
     if (gallery && thumb) gallery.scrollTo({ left: thumb.offsetLeft - (gallery.clientWidth - thumb.offsetWidth) / 2, behavior });
   };
   useEffect(() => {
-    if (step === 3 && isPhone()) showSelected(reducedMotion() ? "auto" : "smooth");
+    if (step === 3 && isPhone()) showSelected("smooth");
   }, [p.selected, step, p.posters]);
-  // 처음 3단계에 들어올 때 한 번만 줄을 살짝 움찔해 «옆으로 밀 수 있다»를 알린다(움직임 줄이기면 하지 않는다).
+  // 처음 3단계에 들어올 때 한 번만 줄을 살짝 움찔해 «옆으로 밀 수 있다»를 알린다(«움직임 줄이기» 신호와 상관없이 — 11/11 Bumm님).
   useEffect(() => {
-    if (step !== 3 || hinted.current || !isPhone() || reducedMotion()) return;
+    if (step !== 3 || hinted.current || !isPhone()) return;
     hinted.current = true;
     setHint(true);
     const timer = window.setTimeout(() => setHint(false), 1300);

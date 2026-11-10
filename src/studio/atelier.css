@@ -1225,14 +1225,3 @@ input:focus-visible {
     font-size: 36px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .genre-option,
-  .primary-button,
-  .segmented button {
-    transition: none;
-  }
-  .genre-option:hover,
-  .primary-button:hover {
-    transform: none;
-  }
-}

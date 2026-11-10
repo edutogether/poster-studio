@@ -46,7 +46,3 @@
   /* 10/20 저녁 Bumm님이 고른 끊는 자리(waitingSets.ts 설명의 \n) — 세 폭 모두 같은 자리에서 끊는다. PC는 그대로 한 덩어리. */
   .movie-fact-bodies > p { white-space: pre-line; }
 }
-/* «움직임 줄이기»에서도 점은 돈다 — 멈추면 로딩 화면이 «고장»처럼 보인다(2026-11-11 Bumm님 «가. 늘 돌게 하기», 팀장 전달). 바뀜만 끈다. */
-@media (prefers-reduced-motion: reduce) {
-  .generation-copy-stack > *, .generation-robot-film, .generation-dots i { transition: none; }
-}

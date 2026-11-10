@@ -1245,9 +1245,3 @@ body[data-step="1"] .action-dock {
     margin-top: 9px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .card-action,
-  .primary-button {
-    transition: none;
-  }
-}

@@ -1663,17 +1663,6 @@ dialog:has(#dialogContent > .poster):not(:has(#dialogContent > .primary-button))
   outline-offset: 3px;
   box-shadow: 0 0 0 3px #fff;
 }
-@media (prefers-reduced-motion: reduce) {
-  .genre-option .genre-art,
-  .genre-option .genre-caption {
-    transition: none;
-  }
-  .genre-option:hover .genre-art,
-  .genre-option[aria-pressed="true"]:hover .genre-art,
-  .genre-option:active .genre-art {
-    transform: none;
-  }
-}
 
 .exhibition .movie-ticket #ticketName .ticket-cast {
   font-weight: 400;
@@ -1861,10 +1850,5 @@ dialog:has(#dialogContent > .poster):not(:has(#dialogContent > .primary-button))
 @media (max-width: 760px) {
   #prepareWorkspace .identity-section {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  #prepareWorkspace .segmented button {
-    transition: none;
   }
 }

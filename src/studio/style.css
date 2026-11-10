@@ -1539,17 +1539,9 @@ dialog .secondary-button {
     align-items: center;
   }
 }
-/* «움직임 줄이기»에서는 바뀜(transition) · 부드러운 스크롤만 끈다. 애니메이션을 전부 끄던 규칙(*:not(#splash) { animation: none !important })은 뺐다 —
-   스플래시 막대 · 로딩 점이 멈춘 «고장»처럼 보였다(2026-11-11 Bumm님 «가. 늘 돌게 하기», 팀장 전달). 장식 움직임(첫 화면 «아래로» 화살표 · 촬영 중 빨간 점 ·
-   3단계 넘김 안내)은 각자 자리의 «움직임 줄이기» 규칙이 그대로 끈다(studio.css). */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *:before,
-  *:after {
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
-}
+/* «움직임 줄이기»(prefers-reduced-motion) 신호로 끄는 규칙을 두지 않는다 — 애니메이션 · 바뀜 · 부드러운 스크롤 모두(2026-11-11 Bumm님 «여덟 앱 모두 같은 규칙:
+   움직임 줄이기 신호로 멈추는 것은 하나도 남기지 않는다», 팀장 전달). 원격으로 연 PC의 크롬이 사람이 켠 적 없는 그 신호를 보고해 화면이 멈춰 있었다.
+   test/reduced-motion.test.ts가 화면 코드 전체에서 그 신호를 막는다. */
 
 .poster {
   position: relative;
