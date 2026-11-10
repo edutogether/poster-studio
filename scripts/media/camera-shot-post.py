@@ -61,7 +61,9 @@ def main(argv):
             with wave.open(bed) as w: b = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
             if len(b) < len(mix): b = np.pad(b, (0, len(mix) - len(b)))
             mix = mix + b[:len(mix)]
-        if len(mix) < i0 + len(s): mix = np.pad(mix, (0, i0 + len(s) - len(mix)))
+        # 소리가 영상보다 짧으면(11/10 단체 원본 — 소리 7.97 · 영상 8.04초) 끝을 무음으로 채운다. 안 채우면 -shortest가 영상 끝 프레임을 자른다
+        need = max(i0 + len(s), int(round(48000 * dur)))
+        if len(mix) < need: mix = np.pad(mix, (0, need - len(mix)))
         mix[i0:i0 + len(s)] += s
         mix = np.clip(mix, -1, 1)
         mixed = os.path.join(tmp, 'm.wav')
