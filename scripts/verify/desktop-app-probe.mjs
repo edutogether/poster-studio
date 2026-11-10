@@ -152,8 +152,33 @@ try {
   await click('#prepareNextBtn');
   check('2단계로 간다', await waitFor(`document.body.dataset.step === '2'`));
   await sleep(2500);
-  const example = await main.evaluate(`(() => { const v = document.querySelector('#cameraView video:not(#video)'); return v ? { src: v.currentSrc.replace(/^.*\\/studio\\//, '/studio/'), ready: v.readyState, t: Math.round(v.currentTime * 10) / 10 } : null; })()`);
-  check('촬영 예시 영상이 재생된다(필수 미디어)', !example || (example.ready >= 2 && example.t > 0), example ?? '예시 영상 없음(정지 그림)');
+  // 촬영 예시 영상: 목록(src/studio/camera-videos.json)의 승인 영상이 그 주소 그대로 실제로 재생돼야 한다.
+  // 11/10 단체 영상을 바꾸며 고침 — 예전 판정은 영상이 없어도 통과했고(«정지 그림») 단체 모드는 아예 보지 않았다.
+  const cameraVideos = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/studio/camera-videos.json'), 'utf8'));
+  const exampleNow = () => main.evaluate(`(() => { const v = document.querySelector('#cameraView video:not(#video)'); return v ? { src: v.currentSrc.replace(/^.*\\/studio\\//, '/studio/'), ready: v.readyState, t: Math.round(v.currentTime * 10) / 10, paused: v.paused, muted: v.muted } : null; })()`);
+  const checkExample = (mode, example) => {
+    const want = cameraVideos.find((e) => e.mode === mode);
+    const ok = want?.status === 'approved' ? Boolean(example && example.src === want.src && example.ready >= 2 && example.t > 0 && !example.paused)
+      : example === null;
+    check(`촬영 예시 영상(${mode === 'group' ? '단체' : '혼자'})이 목록의 주소로 재생된다`, ok, { want: want?.src ?? null, got: example });
+  };
+  checkExample('solo', await exampleNow());
+  // 단체: 1단계로 돌아가 «우리 같이»를 고르고 2단계 — 숫자 «3»(4.8~5.5초)이 뜬 순간을 찍는다. 끝나면 혼자로 되돌려 아래 흐름을 잇는다.
+  await click('.back-button');
+  check('2단계 «이전» → 1단계', await waitFor(`document.body.dataset.step === '1'`));
+  await click('[data-mode="group"]');
+  await click('#prepareNextBtn');
+  check('단체로 2단계', await waitFor(`document.body.dataset.step === '2'`));
+  await sleep(2500);
+  checkExample('group', await exampleNow());
+  await waitFor(`(() => { const v = document.querySelector('#cameraView video:not(#video)'); return !!v && v.currentTime >= 5.1; })()`, 8000);
+  await shot('2단계-단체-예시영상');
+  await click('.back-button');
+  check('단체 2단계 «이전» → 1단계', await waitFor(`document.body.dataset.step === '1'`));
+  await click('[data-mode="solo"]');
+  await click('#prepareNextBtn');
+  check('혼자로 다시 2단계', await waitFor(`document.body.dataset.step === '2'`));
+  await sleep(2500);
   // 10/28 Bumm님: 설치판도 카메라를 켜기 전에는 빨간 단추가 «샘플 포스터 보기», «사진 불러오기»는 없다
   const idle = await main.evaluate(`({ shot: document.getElementById('shotBtn')?.textContent.trim(), load: !!document.getElementById('loadPhotoBtn'), file: !!document.querySelector('input[type=file]') })`);
   check('카메라를 켜기 전 빨간 단추 = «샘플 포스터 보기» · «사진 불러오기» 없음', idle.shot === '샘플 포스터 보기' && !idle.load && !idle.file, idle);
