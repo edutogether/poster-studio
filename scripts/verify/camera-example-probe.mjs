@@ -64,6 +64,9 @@ try {
   // 라이브(https)에서 https 전부를 막으면 페이지 자체가 안 열린다(10/19) — 그때는 AI 서버(Cloud Functions)만 막는다.
   await call('Network.setBlockedURLs', { urls: url.startsWith('https://') ? ['https://*.cloudfunctions.net/*'] : ['https://*'] });
   await call('Page.enable');
+  // Windows 애니메이션이 꺼진 PC(원격 데스크톱 등)에서는 크롬이 «움직임 줄이기»로 보고해 앱이 영상 대신 끝 정지 그림을 보인다(설계대로) —
+  // 이 확인은 영상이 도는 보통 경로를 보므로 PC 설정과 상관없이 «줄이지 않음»으로 연다(11/10: 개인 · 단체 모두 «재생되지 않았다»로 걸림, waiting-videos-live.mjs와 같은 처방)
+  await call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
   await call('Page.addScriptToEvaluateOnNewDocument', { source: "if(navigator.mediaDevices){navigator.mediaDevices.getUserMedia=async()=>{throw Error('확인 중 카메라 차단');};}window.print=()=>{throw Error('확인 중 인쇄 차단');};" });
   // https를 막아 생기는 «AI 서버 연결» 알림은 이 확인과 상관없고 캡처를 가린다 — 이 확인에서만 숨긴다(알림 자리는 status-toast-probe.mjs가 따로 본다).
   await call('Page.addScriptToEvaluateOnNewDocument', { source: "document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.studio-status{display:none!important}';document.head.append(s);});" });
