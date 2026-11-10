@@ -1,5 +1,18 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-11(수) 둘째 — «움직임 줄이기» 신호를 화면 코드에서 모두 지움 · 설치판 3.2.6 (Bumm님 «여덟 앱 모두 같은 규칙: 움직임 줄이기 신호로 멈추는 것은 하나도 남기지 않는다», 팀장 전달)
+
+- 첫째 고침에서 «그대로 둠»으로 남긴 장식 다섯 가지도 그 신호로 끄지 않는다 `19299f6`: 바뀜 · 부드러운 스크롤(`style.css` · `StudioView.tsx`), 첫 화면 «아래로» 화살표 · 촬영 중 빨간 점 ·
+  휴대폰 3단계 넘김 안내(`studio.css` · `StudioView.tsx`), 장르 카드 · 단추 올림 효과(`atelier.css` · `cinema.css` · `compact.css`), 로딩 화면 바뀜(`generation-wait.css`). `src`에서 그 신호를 읽는 곳 0.
+- 정책 시험 `test/reduced-motion.test.ts`: 주석을 뺀 화면 코드(`src` 전체 · `public` · 진입 HTML)에 신호 이름이 나오면 실패 — 고치기 전 판에서 7개 파일이 걸리는 것을 먼저 확인.
+  루트 vitest 755(이 시험 파일 3 → 2건) · functions 143 · lint 둘 · typecheck · build · fonts:check · verify:selftest 모두 0.
+- 확인 도구 `cee953b`: `reduced-motion-probe`가 단추 바뀜 · 휴대폰 «아래로» 화살표 · 3단계 넘김 안내도 잰다 — 라이브(옛 코드) 휴대폰 reduce에서 이 3건이 실패, 새 빌드는 휴대폰 26건 · PC 22건 통과(두 조건).
+- 배포: 되돌릴 자리 `poster-studio-freeze-20261111-reduced-motion`(= `0a12c79`, 첫째 고침 라이브) → master `d47fe2a` push. CI `42851905017` test · changes · functions · hosting 모두 성공.
+  라이브(생성 요청 0): 두 주소 모두 `main-DKFlG2WB.css`(신호 0건), `reduced-motion-probe` poster.edutogether.kr 휴대폰 3배 26건 · PC 2560 22건(두 조건), poster-studio.web.app `--force` 휴대폰 13건 통과.
+- 설치판 3.2.6(`d47fe2a`, `app-version.mjs`) — 설치판도 같은 `src` CSS · 화면을 싣는다(설치판 CSS의 신호 0건): `Poster Studio Setup.exe` 157,738,619바이트 ·
+  SHA-256 `73e2a110d882a2d7a6384c24746a7bc337454fa3e244c4a2f5dc4f11a7185f1c`. 이 PC에 3.2.5 위로 덮어 설치 33건 통과, `desktop-app-probe --exe` reduce · no-preference 각 45건 통과.
+  공개 파일 교체(3.2.5는 소프트 삭제 7일), `download-live.mjs --compare --button-same` 27건 통과.
+
 ## 2026-11-11(수) — «움직임 줄이기»와 상관없이 스플래시 · 촬영 예시 영상 · 로딩 화면이 돈다 · 설치판 3.2.5 (Bumm님 «가. 늘 돌게 하기», 팀장 전달)
 
 - 원인: Bumm님이 원격으로 이 PC의 크롬을 열자 크로미움이 사람이 켠 적 없는 `prefers-reduced-motion: reduce`를 보고했다. 그 신호에서 스플래시 막대 · 로고(`splash.css`),
