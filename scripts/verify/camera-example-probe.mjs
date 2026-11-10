@@ -1,6 +1,10 @@
 /* 촬영 화면 예시 영상(2026-10-16, src/studio/CameraExample.tsx)이 실제 브라우저에서 어떻게 보이는지 재고 캡처한다.
 
-     node scripts/verify/camera-example-probe.mjs [주소] [결과 폴더] [--mode solo|group] [--sizes 2560x1600,1366x768,390x844@3]
+     node scripts/verify/camera-example-probe.mjs [주소] [결과 폴더] [--mode solo|group] [--sizes 2560x1600,1366x768,390x844@3] [--motion both|reduce|no-preference]
+
+   «움직임 줄이기»(prefers-reduced-motion)는 두 조건(reduce · no-preference) 모두로 연다(기본 both — 캡처 이름 앞에 reduce- · normal-).
+   예시 영상은 그 신호와 상관없이 재생돼야 한다(2026-11-11 Bumm님 «가. 늘 돌게 하기»). ⚠ 11/10에는 «줄이지 않음»만 흉내 내 고쳤다가,
+   원격으로 연 실제 크롬(그 신호를 보고함)에서 영상이 멈춘 것을 놓쳤다 — 흉내로 PC 설정을 지우고 재면 실제 사용자 화면을 놓친다.
 
    2단계로 가는 단추를 «진짜 클릭»(CDP 입력 사건 — 사람의 클릭처럼 사용자 활성화가 생긴다)으로 눌러, 소리 있는 자동 재생이 실제와 같은
    조건에서 허용되는지 본다. 카메라·인쇄·AI 서버는 막는다(로컬 http 주소면 https 전부, 라이브 https 주소면 AI 서버만 — 10/19 라이브 확인). 크기마다 처음부터 다시 돌아 영상 0초부터 잰다.
@@ -19,11 +23,12 @@ import { spawn } from 'node:child_process';
 
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
-const positional = args.filter((a, i) => !a.startsWith('--') && !['--mode', '--sizes'].includes(args[i - 1]));
+const positional = args.filter((a, i) => !a.startsWith('--') && !['--mode', '--sizes', '--motion'].includes(args[i - 1]));
 const url = positional[0] || 'http://127.0.0.1:5602/';
 const out = path.resolve(positional[1] || '.cache/camera-example-probe');
 const mode = opt('--mode', 'group');
 const sizes = opt('--sizes', '2560x1600,1366x768,390x844@3').split(',').map((s) => { const [wh, dpr] = s.split('@'); const [w, h] = wh.split('x').map(Number); return { w, h, dpr: Number(dpr || 1) }; });
+const motions = opt('--motion', 'both') === 'both' ? ['reduce', 'no-preference'] : [opt('--motion')];
 const entry = JSON.parse(fss.readFileSync('src/studio/camera-videos.json', 'utf8')).find((e) => e.mode === mode);
 assert.ok(entry, `목록에 ${mode} 항목`);
 const approved = entry.status === 'approved';
@@ -64,17 +69,16 @@ try {
   // 라이브(https)에서 https 전부를 막으면 페이지 자체가 안 열린다(10/19) — 그때는 AI 서버(Cloud Functions)만 막는다.
   await call('Network.setBlockedURLs', { urls: url.startsWith('https://') ? ['https://*.cloudfunctions.net/*'] : ['https://*'] });
   await call('Page.enable');
-  // Windows 애니메이션이 꺼진 PC(원격 데스크톱 등)에서는 크롬이 «움직임 줄이기»로 보고해 앱이 영상 대신 끝 정지 그림을 보인다(설계대로) —
-  // 이 확인은 영상이 도는 보통 경로를 보므로 PC 설정과 상관없이 «줄이지 않음»으로 연다(11/10: 개인 · 단체 모두 «재생되지 않았다»로 걸림, waiting-videos-live.mjs와 같은 처방)
-  await call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
   await call('Page.addScriptToEvaluateOnNewDocument', { source: "if(navigator.mediaDevices){navigator.mediaDevices.getUserMedia=async()=>{throw Error('확인 중 카메라 차단');};}window.print=()=>{throw Error('확인 중 인쇄 차단');};" });
   // https를 막아 생기는 «AI 서버 연결» 알림은 이 확인과 상관없고 캡처를 가린다 — 이 확인에서만 숨긴다(알림 자리는 status-toast-probe.mjs가 따로 본다).
   await call('Page.addScriptToEvaluateOnNewDocument', { source: "document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style');s.textContent='.studio-status{display:none!important}';document.head.append(s);});" });
-  for (const { w, h, dpr } of sizes) {
-    const tag = `${w}x${h}${dpr > 1 ? '@' + dpr : ''}`;
+  for (const motion of motions) for (const { w, h, dpr } of sizes) {
+    const tag = `${motion === 'reduce' ? 'reduce' : 'normal'}-${w}x${h}${dpr > 1 ? '@' + dpr : ''}`;
+    await call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: motion }] });
     await call('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: dpr, mobile: w < 768 });
     await call('Page.navigate', { url });
     for (let i = 0; i < 150; i++) { if (await evaluate('!!document.getElementById("prepareNextBtn") && !document.getElementById("splash")')) break; await delay(100); }
+    if (await evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches") !== (motion === 'reduce')) fails.push(`${tag}: 움직임 줄이기 흉내가 걸리지 않았다`);
     await evaluate('document.fonts.ready.then(() => true)');
     await evaluate(`document.querySelector('[data-mode="${mode}"]').click()`);
     await delay(200);
@@ -134,7 +138,7 @@ try {
     }
   }
   await fs.writeFile(path.join(out, 'report.json'), JSON.stringify(report, null, 1));
-  console.log(JSON.stringify({ mode, approved, 표본: report.length, 실패: fails }, null, 1));
+  console.log(JSON.stringify({ mode, approved, motions, 표본: report.length, 실패: fails }, null, 1));
   await call('Browser.close');
 } finally { socket?.close(); chrome.kill(); await delay(500); await fs.rm(profile, { recursive: true, force: true }).catch(() => {}); }
 process.exit(fails.length ? 1 : 0);

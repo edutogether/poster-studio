@@ -3,6 +3,8 @@
      node scripts/verify/desktop-app-probe.mjs <결과 폴더> --exe <설치된 PosterStudio.exe>   설치한 판을 띄운다
      node scripts/verify/desktop-app-probe.mjs <결과 폴더> --dev                             desktop/의 개발 Electron으로 desktop/web을 띄운다
        [--photo <사진>]  가짜 카메라에 쓸 사진(기본: 앱에 이미 공개된 예시 그림 public/studio/camera-student.webp)
+       [--motion reduce|no-preference]  «움직임 줄이기»를 그 값으로 흉내 낸다(없으면 이 PC가 보고하는 값 그대로). 11/11 Bumm님 «가. 늘 돌게 하기» —
+                         스플래시 막대 · 촬영 예시 영상은 어느 값에서도 돌아야 한다. 확인은 두 값 모두로 한 번씩 돌린다.
 
    설치판을 원격 디버깅 포트와 가짜 카메라(그 사진)로 띄우고, 사람이 하는 순서대로 누른다:
      1단계(설치판 표시 · 다운로드 단추 없음 · 화면 글꼴 · 한글 입력) → 2단계(예시 영상 · 켜기 전 «샘플 포스터 보기» · 카메라 켜기 · 3초 뒤 찍기)
@@ -99,11 +101,23 @@ try {
   await main.send('DOM.enable');
   await main.send('CSS.enable');
   await main.send('Page.enable');
+  const motion = opt('--motion');
+  if (motion) await main.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: motion }] });
   // 이미 그려진 첫 화면의 요청까지 기록하려고 한 번 다시 연다(사람이 앱을 처음 연 것과 같다).
   await main.send('Page.reload', { ignoreCache: true });
-  await sleep(1500);
+  // 스플래시 막대가 실제로 도는지 — 애니메이션이 running이고 막대 자리(transform)가 바뀐다(11/11: «움직임 줄이기»에서 멈춰 있었다)
+  const bar = { running: false, transforms: new Set(), reduce: null };
+  for (const until = Date.now() + 1500; Date.now() < until;) {
+    const b = await main.evaluate(`(() => { const i = document.querySelector('#splash .sbar i'); const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!i || document.documentElement.classList.contains('splash-fonts-wait')) return { reduce };
+      return { reduce, running: i.getAnimations().some((a) => a.playState === 'running'), transform: getComputedStyle(i).transform }; })()`).catch(() => null);
+    if (b) { bar.reduce = b.reduce; if (b.running) bar.running = true; if (b.transform) bar.transforms.add(b.transform); }
+    await sleep(40);
+  }
   await main.evaluate(`new Promise((r) => { const t = setInterval(() => { if (document.body.classList.contains('app-ready') && !document.getElementById('splash')) { clearInterval(t); r(); } }, 100); setTimeout(() => { clearInterval(t); r(); }, 8000); })`);
   await sleep(2600);
+  if (motion) check(`«움직임 줄이기» 흉내가 걸렸다(${motion})`, bar.reduce === (motion === 'reduce'), bar.reduce);
+  check('스플래시 막대가 돈다(running · 자리가 바뀐다)', bar.running && bar.transforms.size >= 3, { reduce: bar.reduce, 자리: bar.transforms.size });
 
   const shot = async (name) => {
     const r = await main.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });

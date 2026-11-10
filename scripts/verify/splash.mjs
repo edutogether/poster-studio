@@ -170,10 +170,11 @@ try {
     // Bumm님 요청으로 Voice Cinema와 같은 2300ms 유지 + 600ms 페이드로 맞췄다.
     assert.equal(state.duration,600);
     assert.equal(state.delay,2300);
-    assert.equal(state.barDuration,reduced ? '0s' : '1.15s');
-    assert.equal(state.logoDuration,reduced ? '0s' : '0.6s');
-    assert.equal(state.logoAnimation,reduced ? 'none' : 'splashPop');
-    if (!reduced) assert.equal(state.barEase,'linear');
+    // «움직임 줄이기»에서도 같다(2026-11-11 Bumm님 «가. 늘 돌게 하기» — 예전에는 그 신호에서 로고 · 막대를 껐다)
+    assert.equal(state.barDuration,'1.15s');
+    assert.equal(state.logoDuration,'0.6s');
+    assert.equal(state.logoAnimation,'splashPop');
+    assert.equal(state.barEase,'linear');
     assert.equal(state.imageLoaded,true,'Apple 이모지 PNG 로드');
     assert.equal(state.imagePath,'/studio/clapperboard-apple.png');
     const education=await evaluate(`(()=>{const img=document.querySelector('#splash .splash-education-logo');const r=img.getBoundingClientRect();const copy=document.querySelector('#splash .stagline').getBoundingClientRect();const bar=document.querySelector('#splash .sbar').getBoundingClientRect();return {loaded:img.complete&&img.naturalWidth>0,barBelowCopy:bar.top>=copy.bottom,belowBar:r.top>=bar.bottom,center:Math.abs(r.x+r.width/2-document.documentElement.clientWidth/2)}})()`);

@@ -11,6 +11,8 @@
          ② 재생 주소가 목록(src/studio/waiting-videos.json)과 같다
          ③ 이음매: 브라우저가 디코딩한 영상 첫 프레임과 정지 그림의 평균 화소 차이 < 4(편마다) — 정지 그림은 ffmpeg로 디코딩한
             첫 프레임이라 크롬과 색 가장자리 보간만 다르다(1~3.7, 압축 잡음 수준). 장면이 다르면 수십이 나온다(옛 정지 그림 02는 42)
+         ④ «움직임 줄이기»(prefers-reduced-motion) 두 조건 — 바퀴마다 reduce · no-preference를 번갈아 걸고, 두 조건 모두 나온 장면마다 영상이 재생됐다
+            (2026-11-11 Bumm님 «가. 늘 돌게 하기». 예전에는 «줄이지 않음»만 흉내 내 원격으로 연 실제 크롬에서 멈춘 화면을 놓쳤다)
    하나라도 어긋나면 종료코드 1. 서버·카메라·인쇄는 쓰지 않는다(샘플 모드). 캡처는 원본 해상도 PNG. */
 import fs from 'node:fs/promises';
 import fss from 'node:fs';
@@ -71,9 +73,6 @@ try {
   const capture = async (name) => { const s = await call('Page.captureScreenshot', { format: 'png' }); await fs.writeFile(path.join(out, `${name}.png`), Buffer.from(s.data, 'base64')); };
   await call('Page.enable');
   await call('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
-  // 원격 데스크톱으로 접속하면 Windows 애니메이션이 꺼져 크롬이 «움직임 줄이기»로 보고하고, 앱은 영상 대신 정지 그림을 보인다(설계대로) —
-  // 이 검사는 영상이 도는 보통 경로를 보므로 이 PC 설정과 상관없이 «줄이지 않음»으로 연다(10/31: 원격 접속 중 12편 모두 «재생 0»으로 걸렸다)
-  await call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
   // 로딩 화면의 장면·영상 사건을 페이지 안에서 적는다(media 사건은 거품이 없어 문서에서 «잡기» 단계로 받는다).
   // 로딩 화면(#spinner) 안의 영상만 센다 — 10/19 촬영 화면 예시 영상이 2단계에서 재생되자 그 사건이 미리 정해 둔 장면 번호(6번)에 붙어 «주소 다름»으로 실패했다.
   await call('Page.addScriptToEvaluateOnNewDocument', { source: `
@@ -85,7 +84,10 @@ try {
     window.print = () => { throw Error('확인 중 인쇄 차단'); };` });
 
   const seen = new Map();   // id -> { scenes, playing, fallback, src, startMs }
-  for (let run = 1; run <= RUNS && seen.size < 12; run++) {
+  const byMotion = { reduce: { scenes: 0, played: 0 }, 'no-preference': { scenes: 0, played: 0 } };
+  for (let run = 1; run <= RUNS && (seen.size < 12 || !byMotion.reduce.scenes || !byMotion['no-preference'].scenes); run++) {
+    const motion = run % 2 ? 'reduce' : 'no-preference';
+    await call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: motion }] });
     await call('Page.navigate', { url });
     for (let i = 0; i < 100; i++) { if (await evaluate('!!document.getElementById("shotBtn") && !document.getElementById("splash")')) break; await delay(100); }
     await evaluate("document.getElementById('prepareNextBtn').click()"); await delay(400);
@@ -100,6 +102,10 @@ try {
     }
     const events = await evaluate('window.__wv');
     assert.ok(events.some(e => e.type === 'scene'), '장면 기록 0건 — 기록 장치가 안 붙었다(통과가 아니라 실패)');
+    assert.equal(await evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches"), motion === 'reduce', '움직임 줄이기 흉내가 걸렸다');
+    const runSets = events.filter(e => e.type === 'scene').map(e => e.set);
+    byMotion[motion].scenes += runSets.length;
+    byMotion[motion].played += runSets.filter(id => events.some(e => e.type === 'playing' && e.set === id)).length;
     let current = null;
     for (const ev of events) {
       if (ev.type === 'scene') { current = ev; const v = seen.get(ev.set) || { scenes: 0, playing: 0, fallback: 0, src: new Set(), startMs: [] }; v.scenes++; seen.set(ev.set, v); continue; }
@@ -136,6 +142,8 @@ try {
   });
   await fs.writeFile(path.join(out, 'result.json'), JSON.stringify(rows, null, 1));
   console.table(rows);
+  console.table(byMotion);
+  for (const [m, v] of Object.entries(byMotion)) if (!(v.scenes > 0 && v.played === v.scenes)) { failed = true; console.error(`실패: «${m}»에서 나온 장면 ${v.scenes} 중 영상 재생 ${v.played}`); }
   for (const r of rows) {
     if (!(r.나온횟수 > 0 && r.재생 > 0 && r.정지그림으로되돌아감 === 0 && r.주소맞음 && r.이음매 < 4)) { failed = true; console.error(`실패: ${r.id}`); }
   }
