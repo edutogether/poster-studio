@@ -1,5 +1,11 @@
 # 보안 참고사항 (감사마다 반복 질문되지 않도록 기록)
 
+## 2026-11-12 Dependabot #93 — `fast-xml-parser` 5.11.0 → 5.12.0 (낮음)
+
+닫히지 않은 stop-node 태그를 훑을 때 CPU를 제곱으로 쓰는 권고다. firebase-admin → `@google-cloud/storage`(범위 `^5.3.4`)만 끌어오고 `index.js`는 Storage를 부르지 않아
+닿는 경로는 없지만 남겨 두지 않는다(팀장 전달). `npm update fast-xml-parser`로 잠금 파일만 갱신 — 딸린 `@nodable/entities` 3.1.0 · `is-unsafe` 2.0.3 · `strnum` 2.5.1.
+overrides · 상위 패키지 · `--force`는 쓰지 않았다. `npm audit` 0건, 시험 143 · 린트 0.
+
 ## 2026-10-26 종합감사 — 새 권고 8건을 강제 없는 고침으로 0건
 
 10/17 이후 `package.json`·잠금 파일이 그대로라 새 권고가 쌓였다(루트 4 · Functions 4). 양쪽 다 `npm audit fix`(비강제)로 허용 범위 안에서 갱신했다.

@@ -12,12 +12,15 @@
   휴대폰 결함도 고쳤다: 칸 높이가 flex로 늘어나는 자리라 칸을 기준으로 잰 `cqh`가 0이어서 로고가 폭 배율(0.18)로만 줄어 있었다(11/12 «휴대폰 38px»은 영상 배율이면 63px였다).
   로고를 칸을 꽉 채운 틀(`.camera-example-mark`, `container-type: size`) 안에 두어 배율을 그 틀에서 잰다. 화면 로고 폭: PC 2560 366px · 1366 150px · 휴대폰 84px — 모두 280 × 영상이 칸을 덮는 배율과 같다.
   캡처: `D:\Projects\_shared\ops\decisions-20261102\img\ps-badge-1113\앱캡처\`(끝 장면 · 원본 해상도 6장).
-- 확인: 루트 vitest 757(로고 2건 더함 — 숨김 줄을 빼면 걸리는 것 확인) · functions 143 · lint 둘 · typecheck · build · fonts:check · verify:selftest 모두 0. `camera-example-probe` 개인 · 단체 × reduce · no-preference 표본 24건씩 실패 0. 배포 · 설치판 3.2.7은 로고 그림 확정 뒤 한 번에.
+- 확인: 루트 vitest 757(로고 2건 더함 — 숨김 줄을 빼면 걸리는 것 확인) · functions 143 · lint 둘 · typecheck · build · fonts:check · verify:selftest 모두 0. `camera-example-probe` 개인 · 단체 × reduce · no-preference 표본 24건씩 실패 0. 배포는 흰 로고까지 넣은 뒤 한 번에 했고, 설치판 판 번호는 `app-version.mjs` 셈(feat 둘 → 둘째 자리 +2)대로 3.4.6이다(아래).
 - 배포 11/12 23시(팀장이 «11/13 결정»으로 전달 — Bumm님 «개인 영상은 지금 파일 그대로 · 단체 새 영상을 기다리지 말고 배포», 팀장 전달): 되돌릴 자리 `poster-studio-freeze-20261111-no-reduced-motion`(= `3df6986`, 그때 라이브) →
   master `20abcf9` push. CI `43235667987` test · changes · functions · hosting 모두 성공. 두 주소 모두 `main-BZ97s-Ly.js`(로컬 빌드와 같은 이름) · `camera-bottom` 0건 · `camera-logo-Ds2BQtvr.png` 200(29,856바이트).
   라이브 캡처(생성 요청 0, AI 서버 주소 막음): `D:\Projects\_shared\ops\decisions-20261102\img\ps-badge-1113\라이브\` 6장 — 칸 아래 안내 줄 없음 · 흰 로고 오른쪽 위, 로고 자리 · 크기가 로컬 빌드와 같다.
 - 설치판 3.4.6(`20abcf9`, `app-version.mjs` — feat 둘): `Poster Studio Setup.exe` 157,765,959바이트 · SHA-256 `ad52186d1b0988b5810f2171b709b9591555458c11416b3621d627afb59e91a6`.
   이 PC에 3.2.6 위로 덮어 설치 33건 통과, `desktop-app-probe --exe` reduce · no-preference 각 45건 통과. 공개 파일 교체(3.2.6은 소프트 삭제 7일), `download-live.mjs --compare --button-same` 27건 통과.
+- Dependabot #93(낮음 — functions `fast-xml-parser` 5.11.0, 닫히지 않은 stop-node 태그를 훑을 때 CPU 제곱 소모): 잠금 파일만 5.12.0으로(`@google-cloud/storage`가 적은 범위 `^5.3.4` 안 — overrides 없음).
+  딸린 것 `@nodable/entities` 3.1.0 · `is-unsafe` 2.0.3 · `strnum` 2.5.1. 끌어오는 것은 firebase-admin → `@google-cloud/storage`뿐이고 `index.js`는 Storage를 부르지 않는다.
+  functions `npm audit` 0 · vitest 143 · lint 0. 기록은 `functions/security-notes.md`.
 
 ## 2026-11-11(수) 둘째 — «움직임 줄이기» 신호를 화면 코드에서 모두 지움 · 설치판 3.2.6 (Bumm님 «여덟 앱 모두 같은 규칙: 움직임 줄이기 신호로 멈추는 것은 하나도 남기지 않는다», 팀장 전달)
 
