@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { activeCues, type ApprovedCameraVideo, type CameraCue } from "./cameraVideo.js";
 import { cameraPrefetchAllowed, whenPageIdle } from "./cameraPrefetch.js";
+import CAMERA_LOGO from "./camera-logo.png";
 
 type Props = { mode: string; video?: ApprovedCameraVideo; hidden: boolean; offstage: boolean; prefetch?: boolean };
 
@@ -21,6 +22,9 @@ const ALT = {
 // 영상은 계속 받아 재생이 시작되면 넘기며, 2단계를 떠나거나 카메라를 켜면 실패 표시를 지워 다음에 다시 시도한다.
 // 11/11 Bumm님 «가. 늘 돌게 하기»(팀장 전달): 예시 영상은 장식이 아니라 «이렇게 서세요» 안내라 «움직임 줄이기»(prefers-reduced-motion) 신호로 막지 않는다 —
 // 원격으로 연 PC의 크롬이 사람이 켠 적 없는 그 신호를 보고해 개인 · 단체 예시가 끝 정지 그림으로 멈춰 있었다. 행사 노트북도 모르게 켜져 있을 수 있다.
+// 11/12 Bumm님 «안 1»(팀장 전달): 영상을 만든 도구의 로고(camera-logo.png)를 영상에 굽지 않고 칸의 보이는 오른쪽 위에 얹는다 — 영상이 칸을 덮어 좌우가 잘리므로
+// 영상 모서리에 구우면 칸 밖으로 잘린다. 그림은 1920×1080 영상 안에서 보일 크기 그대로 그린 파일이고(지금 209×76), 화면 크기는 그 그림의 폭(naturalWidth)에
+// 영상이 칸을 덮는 배율을 곱한 것이다 — 그림 파일만 바꾸면 크기 · 비율이 따라간다(studio.css «.camera-example-logo»).
 export default function CameraExample({ mode, video, hidden, offstage, prefetch = false }: Props) {
   const alt = mode === "group" ? ALT.group : ALT.solo;
   const player = useRef<HTMLVideoElement>(null);
@@ -29,6 +33,7 @@ export default function CameraExample({ mode, video, hidden, offstage, prefetch 
   const [stalled, setStalled] = useState(false);
   const [buffering, setBuffering] = useState(true);
   const [cues, setCues] = useState<CameraCue[]>([]);
+  const [logoWidth, setLogoWidth] = useState(0);
   const onstage = Boolean(video) && !hidden && !offstage;
   const enabled = onstage && !failed;
   // 영상 요소가 있어야 하는 때: 2단계이거나, 1단계에서 미리 준비할 때
@@ -104,7 +109,8 @@ export default function CameraExample({ mode, video, hidden, offstage, prefetch 
     return <img className={`camera-example${mode === "group" ? " camera-example-group" : ""}`}
       src={mode === "group" ? "/studio/camera-group.webp" : "/studio/camera-student.webp"} alt={alt} hidden={hidden} />;
   }
-  return <div className="camera-example-stage" hidden={hidden}>
+  return <>
+  <div className="camera-example-stage" hidden={hidden}>
     <img className="camera-example-still" data-active={!(enabled && visible)} src={failed || stalled ? video.endStill : video.still} alt={alt} />
     {armed && <video ref={player} className="camera-example-video" data-active={visible} poster={video.still}
       playsInline preload="auto" aria-hidden="true" disablePictureInPicture
@@ -114,5 +120,8 @@ export default function CameraExample({ mode, video, hidden, offstage, prefetch 
     {cues.map(cue => cue.kind === "count"
       ? <span key={`c${cue.from}`} className="camera-example-count" aria-hidden="true">{cue.text}</span>
       : <span key={`s${cue.from}`} className="camera-example-say" style={{ left: `${cue.x}%`, top: `${cue.y}%` }}>{cue.text}</span>)}
-  </div>;
+  </div>
+  <img className="camera-example-logo" src={CAMERA_LOGO} alt="" aria-hidden="true" hidden={hidden}
+    style={logoWidth ? { "--logo-px": logoWidth } as CSSProperties : undefined} onLoad={(e) => setLogoWidth(e.currentTarget.naturalWidth)} />
+  </>;
 }

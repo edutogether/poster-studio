@@ -354,6 +354,11 @@ main.app {
 .camera-example-stage > .camera-example-video { opacity: 0; transition: opacity .18s ease-out; }
 .camera-example-stage > .camera-example-video[data-active="true"] { opacity: 1; }
 .camera-example-stage > .camera-example-still[data-active="false"] { visibility: hidden; transition: visibility 0s .18s; }
+/* 영상을 만든 도구의 로고(11/12 Bumm님 «안 1»): 칸의 보이는 오른쪽 위. 크기 · 여백 = 1920 영상 기준 값(그림 폭 --logo-px · 여백 24) × 영상이 칸을 덮는 배율(가로 · 세로 중 큰 쪽).
+   그림 폭을 읽기 전에는 숨긴다(원래 크기로 한 번 보였다 줄어들지 않게). */
+.cameraBox > .camera-example-logo { inset: auto; top: max(100cqw * 24 / 1920, 100cqh * 24 / 1080); right: max(100cqw * 24 / 1920, 100cqh * 24 / 1080);
+  width: calc(var(--logo-px, 0) * max(100cqw / 1920, 100cqh / 1080)); height: auto; object-fit: fill; pointer-events: none; }
+.cameraBox > .camera-example-logo:not([style]) { visibility: hidden; }
 /* 10/20 Bumm님 «숫자 3 · 2 · 1을 지금보다 크게, 영상 칸의 위아래 · 좌우 정중앙에» — 위 34% → 50%, 14cqh(72~150px) → 24cqh(80~260px) */
 .camera-example-count { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #fff; font-size: clamp(80px, 24cqh, 260px); font-weight: 800; line-height: 1; text-shadow: 0 3px 22px #0009; }
 .camera-example-say { position: absolute; transform: translate(-50%, -100%); width: max-content; max-width: 34%; padding: 8px 14px; border-radius: 16px; background: #fff; color: #1c1c1c; font-size: clamp(14px, 3.4cqh, 22px); font-weight: 700; line-height: 1.35; box-shadow: 0 4px 16px #0003; }
@@ -452,7 +457,6 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
 #cameraView { height: calc(100dvh - 76px); min-height: 0; }
 #cameraView .camera-surface { min-height: 0; padding: 28px 28px 20px; justify-content: flex-start; background: #fff; }
 #cameraView .camera-large { flex: 1; min-height: 220px; aspect-ratio: auto; }
-#cameraView .camera-bottom { flex-shrink: 0; margin: 16px 0 0; font-size: 16px; font-weight: 500; line-height: 1.5; color: #444; }
 #cameraView .camera-tips { display: grid; grid-template-columns: 1fr; flex-shrink: 0; gap: 22px; margin: 0 0 40px; }
 .camera-instructions { display: grid; flex-shrink: 0; }
 .camera-instructions > .camera-tips, .camera-instructions > .photo-review { grid-area: 1 / 1; }
@@ -654,7 +658,7 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
 .phone-shot { display: none; }
 @media (max-width: 760px) {
   /* ⑤ 2단계: 카메라 칸을 화면 높이에 맞춰 줄여 «나답게, 편하게 웃어주세요.»와 안내 1~3이 첫 화면에 들어오게.
-     카메라 칸 아래 설명(«얼굴과 어깨가 … 맞춰주세요.»)은 안내 1과 같은 말이라 휴대폰에서는 원형 단추에 자리를 내준다. */
+     카메라 칸 아래 설명 줄은 2026-11-12 Bumm님 지시로 모든 화면에서 뺐다(«모두 잘 보이게 서주세요. 빼» · «개인에서도 이거 빼버려»). */
   #cameraView .camera-surface { padding: 34px 22px 14px; }
   /* 이름표 줄(카메라 미리 보기 · 촬영 구도 예시)은 머리말 아래 «개인정보처리방침»과 겹쳐 휴대폰에서는 뺀다 — 상태는 칸 안의 표시(실시간 미리보기 · 촬영 완료)가 알린다 */
   #cameraView .camera-top { display: none; }
@@ -750,7 +754,6 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   #cameraView:has(.camera-instructions[data-review="true"]) #cameraWorkspace { background: #fff; }
   .retake-overlay { width: 60px; height: 60px; margin-left: -30px; }
   .retake-overlay .studio-icon { width: 27px; height: 27px; }
-  #cameraView .camera-bottom { display: none; }
   #cameraWorkspace { padding-top: 18px; }   /* 찍은 뒤 화면 — 찍기 전은 위(10/20)에서 0 */
   /* ⑥ 엄지 자리 빨간 원형 촬영 단추 — 카메라 칸 아래 가운데에 반쯤 걸친다(Lucide camera) */
   .phone-shot {
@@ -1090,7 +1093,6 @@ body[data-hover-rest] #cameraWorkspace .camera-actions .back-button:hover:not(:d
   /* 위 32: 머리글 아래 «개인정보처리방침»(오른쪽 위)과 «촬영 구도 예시»가 겹치지 않게. 아래 32: 사진과 회색 안내 칸 사이도 위쪽 여백과 같게
      (Bumm님 «회색이 너무 올라가 사진과 딱 붙었다», 12 → 32) */
   #cameraView .camera-surface { padding: 32px 28px 32px; }
-  #cameraView .camera-bottom { display: none; }   /* 칸 아래 설명은 안내 1과 같은 말 — 그 높이를 카메라 칸에(휴대폰과 같음) */
   .camHint.camera-example-caption { flex-direction: row; align-items: flex-end; }
   .camera-example-label { padding-bottom: 0; translate: 0 4px; }
   #cameraWorkspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 28px; padding: 26px 28px 0; }

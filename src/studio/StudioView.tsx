@@ -737,7 +737,6 @@ export default function StudioView(p: StudioViewProps) {
             {...phoneShotTap}>
             <StudioIcon name="camera"/>
           </button>
-          <p className="camera-bottom">{p.mode === "group" ? "모두 잘 보이게 서주세요." : "얼굴과 어깨가 화면 안에 들어오도록 맞춰주세요."}</p>
 
         </div>
         <div className="workspace" id="cameraWorkspace">

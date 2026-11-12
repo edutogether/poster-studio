@@ -680,8 +680,7 @@ input:focus-visible {
 .camera-top {
   color: #333;
 }
-.camera-sample,
-.camera-bottom {
+.camera-sample {
   color: #666;
 }
 .camera-large {

@@ -174,9 +174,6 @@ dialog #dialogContent > .poster {
 .camera-guides {
   inset: 9% 26%;
 }
-.camera-bottom {
-  font-size: 14px;
-}
 .camera-demo {
   background: #161616bd;
 }

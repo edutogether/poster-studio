@@ -783,13 +783,6 @@ main {
 .is-captured .camera-guides {
   display: none;
 }
-.camera-bottom {
-  font-size: 14px;
-  color: #596578;
-  text-align: center;
-  line-height: 1.7;
-  margin-top: 18px;
-}
 .camera-tips {
   list-style: none;
   margin: 3px 0 28px;
@@ -1419,10 +1412,6 @@ dialog .secondary-button {
   }
   .camera-guides {
     inset: 14% 22%;
-  }
-  .camera-bottom {
-    font-size: 13px;
-    margin-top: 13px;
   }
   .camera-demo {
     font-size: 12px;

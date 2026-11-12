@@ -634,9 +634,6 @@ input:focus-visible {
 .camera-large {
   box-shadow: 0 12px 35px #35233020;
 }
-.camera-bottom {
-  color: #7c6072;
-}
 .camera-layout .workspace {
   padding: 32px 32px 0;
 }
@@ -1139,9 +1136,6 @@ input:focus-visible {
   }
   .camera-sample {
     font-size: 11px;
-  }
-  .camera-bottom {
-    font-size: 13px;
   }
   .camera-tips {
     gap: 21px;
