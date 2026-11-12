@@ -23,8 +23,13 @@ const ALT = {
 // 11/11 Bumm님 «가. 늘 돌게 하기»(팀장 전달): 예시 영상은 장식이 아니라 «이렇게 서세요» 안내라 «움직임 줄이기»(prefers-reduced-motion) 신호로 막지 않는다 —
 // 원격으로 연 PC의 크롬이 사람이 켠 적 없는 그 신호를 보고해 개인 · 단체 예시가 끝 정지 그림으로 멈춰 있었다. 행사 노트북도 모르게 켜져 있을 수 있다.
 // 11/12 Bumm님 «안 1»(팀장 전달): 영상을 만든 도구의 로고(camera-logo.png)를 영상에 굽지 않고 칸의 보이는 오른쪽 위에 얹는다 — 영상이 칸을 덮어 좌우가 잘리므로
-// 영상 모서리에 구우면 칸 밖으로 잘린다. 그림은 1920×1080 영상 안에서 보일 크기 그대로 그린 파일이고(지금 209×76), 화면 크기는 그 그림의 폭(naturalWidth)에
-// 영상이 칸을 덮는 배율을 곱한 것이다 — 그림 파일만 바꾸면 크기 · 비율이 따라간다(studio.css «.camera-example-logo»).
+// 영상 모서리에 구우면 칸 밖으로 잘린다. 그림은 1920×1080 영상 안에서 보일 크기의 3배로 그린 파일이고(11/13 흰 Higgsfield 로고 840×166 → 영상 기준 280px),
+// 화면 크기는 그 그림의 폭(naturalWidth ÷ 3)에 영상이 칸을 덮는 배율을 곱한 것이다 — 3배 그림 파일만 바꾸면 크기 · 비율이 따라가고,
+// 큰 화면 · 고해상도 화면에서도 그림을 키우지 않아 선명하다(studio.css «.camera-example-logo»). 로고는 칸을 꽉 채운 틀(.camera-example-mark) 안에 둔다 —
+// 휴대폰은 칸 높이가 늘어나는 자리(flex)라 칸 자체를 기준으로 재면 높이가 0으로 읽혀(11/13 실측) 로고가 영상보다 작게 나왔다.
+// 로고 그림은 영상 기준 크기의 3배로 그린다
+const LOGO_DENSITY = 3;
+
 export default function CameraExample({ mode, video, hidden, offstage, prefetch = false }: Props) {
   const alt = mode === "group" ? ALT.group : ALT.solo;
   const player = useRef<HTMLVideoElement>(null);
@@ -121,7 +126,9 @@ export default function CameraExample({ mode, video, hidden, offstage, prefetch 
       ? <span key={`c${cue.from}`} className="camera-example-count" aria-hidden="true">{cue.text}</span>
       : <span key={`s${cue.from}`} className="camera-example-say" style={{ left: `${cue.x}%`, top: `${cue.y}%` }}>{cue.text}</span>)}
   </div>
-  <img className="camera-example-logo" src={CAMERA_LOGO} alt="" aria-hidden="true" hidden={hidden}
-    style={logoWidth ? { "--logo-px": logoWidth } as CSSProperties : undefined} onLoad={(e) => setLogoWidth(e.currentTarget.naturalWidth)} />
+  <div className="camera-example-mark" aria-hidden="true" hidden={hidden}>
+    <img className="camera-example-logo" src={CAMERA_LOGO} alt=""
+      style={logoWidth ? { "--logo-px": logoWidth } as CSSProperties : undefined} onLoad={(e) => setLogoWidth(e.currentTarget.naturalWidth / LOGO_DENSITY)} />
+  </div>
   </>;
 }
