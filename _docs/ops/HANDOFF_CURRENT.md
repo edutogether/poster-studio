@@ -1,5 +1,10 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-11-12(목) 밤 — 2단계 사진 칸 아래 안내 줄 뺌 · 예시 칸 흰 Higgsfield 로고 · 설치판 3.4.6 (배포 · 공개 파일 교체 끝)
+
+- 내용 · 확인은 CHANGELOG 11/12. 라이브 = master(태그 `poster-studio-freeze-20261112-camera-logo`), 공개 설치 파일 = 3.4.6.
+- 남은 것: 단체 새 예시 영상(팀장이 만들어 넘김 — 받으면 `encode-camera-videos.py`로 굽고 목록을 바꿔 배포), 설명서 2단계 캡처 6장 교체.
+
 ## 2026-11-11(수) — «움직임 줄이기» 신호를 화면 코드에서 모두 지움 · 설치판 3.2.6 (배포 · 공개 파일 교체 끝)
 
 - 내용 · 확인은 CHANGELOG 11/11(첫째 · 둘째). 라이브 = master(태그 `poster-studio-freeze-20261111-no-reduced-motion`), 공개 설치 파일 = 3.2.6.

@@ -1,6 +1,6 @@
 # CHANGELOG — Poster Studio
 
-## 2026-11-12(목) — 2단계 사진 칸 아래 안내 줄 뺌 · 촬영 예시 칸에 Higgsfield 로고 (Bumm님 «모두 잘 보이게 서주세요. 빼» · «개인에서도 이거 빼버려» · 로고 «안 1», 팀장 전달 — 배포 전)
+## 2026-11-12(목) — 2단계 사진 칸 아래 안내 줄 뺌 · 촬영 예시 칸에 Higgsfield 로고 (Bumm님 «모두 잘 보이게 서주세요. 빼» · «개인에서도 이거 빼버려» · 로고 «안 1» · 11/13 흰 로고, 팀장 전달 — 11/12 밤 배포 · 설치판 3.4.6)
 
 - 사진 칸 아래 한 줄(`.camera-bottom` — 단체 «모두 잘 보이게 서주세요.» · 개인 «얼굴과 어깨가 화면 안에 들어오도록 맞춰주세요.»)을 개인 · 단체 모두 지웠다(`StudioView.tsx` · 스타일 다섯 파일). 남은 높이는 사진 칸이 쓴다.
   `step2-geometry.mjs` 라이브 대조 535개 크기: 다른 것은 사진 칸(cameraBox)이 커진 것뿐, 겹침 · 화면 밖 · 잘림 0. 휴대폰 · 태블릿 세로는 전에도 숨겨 바뀌지 않는다.
@@ -11,8 +11,13 @@
   여백을 시안대로 오른쪽 30 · 위 34(영상 기준)로. 그림은 영상 기준의 3배로 그리고 앱이 폭 ÷ 3을 쓴다(`LOGO_DENSITY`) — 큰 화면에서 그림을 키우지 않아 선명하다.
   휴대폰 결함도 고쳤다: 칸 높이가 flex로 늘어나는 자리라 칸을 기준으로 잰 `cqh`가 0이어서 로고가 폭 배율(0.18)로만 줄어 있었다(11/12 «휴대폰 38px»은 영상 배율이면 63px였다).
   로고를 칸을 꽉 채운 틀(`.camera-example-mark`, `container-type: size`) 안에 두어 배율을 그 틀에서 잰다. 화면 로고 폭: PC 2560 366px · 1366 150px · 휴대폰 84px — 모두 280 × 영상이 칸을 덮는 배율과 같다.
-  캡처: `D:Projects_sharedopsdecisions-20261102imgps-badge-1113앱캡처`(끝 장면 · 원본 해상도 6장).
+  캡처: `D:\Projects\_shared\ops\decisions-20261102\img\ps-badge-1113\앱캡처\`(끝 장면 · 원본 해상도 6장).
 - 확인: 루트 vitest 757(로고 2건 더함 — 숨김 줄을 빼면 걸리는 것 확인) · functions 143 · lint 둘 · typecheck · build · fonts:check · verify:selftest 모두 0. `camera-example-probe` 개인 · 단체 × reduce · no-preference 표본 24건씩 실패 0. 배포 · 설치판 3.2.7은 로고 그림 확정 뒤 한 번에.
+- 배포 11/12 23시(팀장이 «11/13 결정»으로 전달 — Bumm님 «개인 영상은 지금 파일 그대로 · 단체 새 영상을 기다리지 말고 배포», 팀장 전달): 되돌릴 자리 `poster-studio-freeze-20261111-no-reduced-motion`(= `3df6986`, 그때 라이브) →
+  master `20abcf9` push. CI `43235667987` test · changes · functions · hosting 모두 성공. 두 주소 모두 `main-BZ97s-Ly.js`(로컬 빌드와 같은 이름) · `camera-bottom` 0건 · `camera-logo-Ds2BQtvr.png` 200(29,856바이트).
+  라이브 캡처(생성 요청 0, AI 서버 주소 막음): `D:\Projects\_shared\ops\decisions-20261102\img\ps-badge-1113\라이브\` 6장 — 칸 아래 안내 줄 없음 · 흰 로고 오른쪽 위, 로고 자리 · 크기가 로컬 빌드와 같다.
+- 설치판 3.4.6(`20abcf9`, `app-version.mjs` — feat 둘): `Poster Studio Setup.exe` 157,765,959바이트 · SHA-256 `ad52186d1b0988b5810f2171b709b9591555458c11416b3621d627afb59e91a6`.
+  이 PC에 3.2.6 위로 덮어 설치 33건 통과, `desktop-app-probe --exe` reduce · no-preference 각 45건 통과. 공개 파일 교체(3.2.6은 소프트 삭제 7일), `download-live.mjs --compare --button-same` 27건 통과.
 
 ## 2026-11-11(수) 둘째 — «움직임 줄이기» 신호를 화면 코드에서 모두 지움 · 설치판 3.2.6 (Bumm님 «여덟 앱 모두 같은 규칙: 움직임 줄이기 신호로 멈추는 것은 하나도 남기지 않는다», 팀장 전달)
 
