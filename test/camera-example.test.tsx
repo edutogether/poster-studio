@@ -380,7 +380,7 @@ test("로고는 승인된 영상이 있을 때만 칸에 얹고, 카메라를 �
   expect(logo.getAttribute("style")).toBeNull();   // 폭을 읽기 전에는 숨김(studio.css :not([style]))
   vi.spyOn(logo, "naturalWidth", "get").mockReturnValue(840);
   fireEvent.load(logo);
-  expect(logo.style.getPropertyValue("--logo-px")).toBe("280");
+  expect(logo.style.getPropertyValue("--logo-px")).toBe("210");
   view.rerender(<CameraExample {...base} hidden />);
   expect(mark.hidden).toBe(true);
   view.rerender(<CameraExample {...base} offstage />);
@@ -393,13 +393,13 @@ test("로고 그림은 파일 하나이고, 화면 크기 · 여백은 그 그�
   const png = fs.readFileSync(path.join("src", "studio", "camera-logo.png"));
   expect(png.subarray(1, 4).toString()).toBe("PNG");
   expect(png.readUInt8(25)).toBe(6);   // 투명 바탕(RGBA)
-  expect(png.readUInt32BE(16)).toBe(840);   // 영상 기준 280px의 3배(11/13 흰 Higgsfield 로고)
+  expect(png.readUInt32BE(16)).toBe(840);   // 영상 기준 210px의 4배(11/13 흰 Higgsfield 로고 · «(나) 75%»)
   const css = fs.readFileSync(path.join("src", "studio.css"), "utf8");
   expect(css).toContain("width: calc(var(--logo-px, 0) * max(100cqw / 1920, 100cqh / 1080))");
-  expect(css).toContain("top: max(100cqw * 34 / 1920, 100cqh * 34 / 1080); right: max(100cqw * 30 / 1920, 100cqh * 30 / 1080);");
+  expect(css).toContain("top: max(100cqw * 25.5 / 1920, 100cqh * 25.5 / 1080); right: max(100cqw * 22.5 / 1920, 100cqh * 22.5 / 1080);");
   expect(css).toContain(".cameraBox > .camera-example-mark { position: absolute; inset: 0; container-type: size; pointer-events: none; }");
   expect(css).toContain(".camera-example-mark > .camera-example-logo:not([style]) { visibility: hidden; }");
   const source = fs.readFileSync(path.join("src", "studio", "CameraExample.tsx"), "utf8");
   expect(source).toContain('import CAMERA_LOGO from "./camera-logo.png";');
-  expect(source).toContain("const LOGO_DENSITY = 3;");
+  expect(source).toContain("const LOGO_DENSITY = 4;");
 });

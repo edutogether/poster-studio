@@ -355,11 +355,11 @@ main.app {
 .camera-example-stage > .camera-example-video[data-active="true"] { opacity: 1; }
 .camera-example-stage > .camera-example-still[data-active="false"] { visibility: hidden; transition: visibility 0s .18s; }
 /* 영상을 만든 도구의 로고(11/12 Bumm님 «안 1»): 칸의 보이는 오른쪽 위. 크기 · 여백 = 1920 영상 기준 값(그림 폭 --logo-px · 여백) × 영상이 칸을 덮는 배율(가로 · 세로 중 큰 쪽).
-   여백은 11/13 시안(오른쪽 30 · 위 34)이다.
+   여백은 11/13 시안(오른쪽 30 · 위 34)을 로고와 함께 75%로 줄인 오른쪽 22.5 · 위 25.5다(11/13 Bumm님 «(나) 75%»).
    그림 폭을 읽기 전에는 숨긴다(원래 크기로 한 번 보였다 줄어들지 않게). 배율은 칸을 꽉 채운 틀(.camera-example-mark)에서 잰다 — 휴대폰은 칸 높이가 flex로 늘어나
    칸 자체를 기준으로 재면 cqh가 0이었다(11/13 실측: 로고 폭 50px, 영상 배율이면 84px). */
 .cameraBox > .camera-example-mark { position: absolute; inset: 0; container-type: size; pointer-events: none; }
-.camera-example-mark > .camera-example-logo { position: absolute; top: max(100cqw * 34 / 1920, 100cqh * 34 / 1080); right: max(100cqw * 30 / 1920, 100cqh * 30 / 1080);
+.camera-example-mark > .camera-example-logo { position: absolute; top: max(100cqw * 25.5 / 1920, 100cqh * 25.5 / 1080); right: max(100cqw * 22.5 / 1920, 100cqh * 22.5 / 1080);
   width: calc(var(--logo-px, 0) * max(100cqw / 1920, 100cqh / 1080)); height: auto; }
 .camera-example-mark > .camera-example-logo:not([style]) { visibility: hidden; }
 /* 10/20 Bumm님 «숫자 3 · 2 · 1을 지금보다 크게, 영상 칸의 위아래 · 좌우 정중앙에» — 위 34% → 50%, 14cqh(72~150px) → 24cqh(80~260px) */
