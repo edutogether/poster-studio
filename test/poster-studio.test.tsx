@@ -618,6 +618,60 @@ describe('카메라', () => {
     expect(box.hasAttribute('data-fit')).toBe(false);
   });
 
+  /* 촬영 칸 카메라 비율(2026-11-13 Bumm님 «추천대로 해 봐», 팀장 전달) — PC 화면(설치판 포함)은 16:9를 달라고 한다.
+     예전 1280×960 요청은 16:9 노트북 웹캠도 4:3으로 잘라 받아 칸이 «정사각형처럼» 보였다. 휴대폰 · 태블릿 · 갈래 없음은 예전 그대로. */
+  test.each([
+    ['pc', { width: { ideal: 1920 }, height: { ideal: 1080 }, aspectRatio: { ideal: 16 / 9 }, facingMode: 'user' }],
+    ['phone', { width: 1280, height: 960, facingMode: 'user' }],
+    ['tablet-l', { width: 1280, height: 960, facingMode: 'user' }],
+    [undefined, { width: 1280, height: 960, facingMode: 'user' }],
+  ])('카메라 요청: 갈래 %s', async (device, video) => {
+    if (device) document.documentElement.dataset.device = device;
+    try {
+      await act(async () => renderApp());
+      await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+      await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({ video, audio: false });
+    } finally { delete document.documentElement.dataset.device; }
+  });
+
+  test('카메라 요청: PC 갈래라도 760 이하 창(휴대폰 배치)은 예전 1280×960', async () => {
+    document.documentElement.dataset.device = 'pc';
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q === PHONE_QUERY, addEventListener() {}, removeEventListener() {} }));
+    try {
+      await act(async () => renderApp());
+      await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+      await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({ video: { width: 1280, height: 960, facingMode: 'user' }, audio: false });
+    } finally { delete document.documentElement.dataset.device; }
+  });
+
+  /* 넘기는 사진은 영상 전체를 줄이기만 한다(자르지 않는다). 가로 사진은 짧은 변 768 — 4:3은 예전 그대로 1024×768, 16:9는 1365×768. 세로(휴대폰)는 폭 1024까지. */
+  test.each([
+    [1920, 1080, 1365, 768],
+    [1280, 720, 1280, 720],
+    [1280, 960, 1024, 768],
+    [960, 1280, 960, 1280],
+    [1080, 1920, 1024, 1820],
+  ])('찍은 사진 크기: 영상 %i×%i → %i×%i', async (vw, vh, w, h) => {
+    const sizes: [number, number][] = [];
+    const real = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (this: HTMLCanvasElement, cb: BlobCallback, type?: string) {
+      if (type === 'image/jpeg') sizes.push([this.width, this.height]);
+      return real.call(this, cb, type);
+    };
+    await act(async () => renderApp());
+    await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });
+    await act(async () => { el<HTMLButtonElement>('startBtn').click(); });
+    makeVideoReady(el<HTMLVideoElement>('video'), vw, vh);
+    vi.useFakeTimers();
+    await act(async () => { el<HTMLButtonElement>('shotBtn').click(); });
+    await runCountdown();
+    vi.useRealTimers();
+    expect(sizes).toEqual([[w, h]]);
+    expect(Math.abs(w / h - vw / vh)).toBeLessThan(0.002);   // 비율 그대로(자르지 않음)
+  });
+
   test('카메라 끄기는 스트림을 해제하고 켜짐 표시와 준비 알림을 지운다', async () => {
     const view = await act(async () => renderApp());
     await act(async () => { el<HTMLButtonElement>('prepareNextBtn').click(); });

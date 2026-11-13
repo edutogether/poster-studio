@@ -46,7 +46,7 @@ export const PHONE_QUERY = "(max-width: 760px)";
 export const FIRST_GENRE = "sf";
 // 휴대폰 판정은 기기 갈래(data-device — 비율 기준 전환 10/23)로. 갈래가 없거나(시험 · 옛 판) PC 캔버스가 꺼진 PC(창 크기로 고르는 라이브 배치 —
 // 760보다 좁은 PC 창은 휴대폰 화면)는 예전처럼 창 폭으로
-const isPhone = () => { const d = deviceKind(); return d && (d !== "pc" || pcCanvas()) ? d === "phone" : window.matchMedia?.(PHONE_QUERY)?.matches ?? false; };
+export const isPhone = () => { const d = deviceKind(); return d && (d !== "pc" || pcCanvas()) ? d === "phone" : window.matchMedia?.(PHONE_QUERY)?.matches ?? false; };
 export interface StudioViewProps {
   mode: string;
   setMode: (mode: string) => void;

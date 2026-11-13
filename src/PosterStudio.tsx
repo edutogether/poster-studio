@@ -15,7 +15,8 @@ import {
 import { buildPosters, preparePosterAssets, releasePosters } from "./poster.js";
 import { boothCodeHeaders, saveBoothCode, verifyBoothCode } from "./boothCode.js";
 import { classifyGenerateFailure, type GenerateFailure } from "./generateFailure.js";
-import StudioView, { FIRST_GENRE } from "./studio/StudioView.js";
+import StudioView, { FIRST_GENRE, isPhone } from "./studio/StudioView.js";
+import { deviceKind } from "./deviceCanvas.js";
 import { afterWaitingVideos } from "./studio/waitingNetwork.js";
 import { SCENE_MS, type SceneEnd } from "./studio/GenerationWait.js";
 import { DEFAULT_MOVIE_TITLE, DEFAULT_PERSON_NAME } from "./defaults.js";
@@ -41,6 +42,19 @@ const MAX_FAILURES_PER_PHOTO = 3;
 
 /* 설치판(src/desktop.ts)은 사진을 AI에 보내지 않고 그대로 포스터(1200×1800)에 넣는다 — 찍은 사진의 긴 변을 이만큼까지 남긴다. */
 const DESKTOP_PHOTO_MAX = 1920;
+/* 웹은 가로 사진의 짧은 변을 768까지 남긴다(세로 사진은 폭 1024까지 — 휴대폰). 4:3 카메라는 예전 그대로 1024×768이고,
+   16:9 카메라는 1365×768이라 얼굴 화소가 4:3 때와 같다 — 폭 1024로 자르면 1024×576이 되어 얼굴 화소가 25% 준다(2026-11-13 촬영 칸 카메라 비율). */
+const WEB_PHOTO_SHORT = 768;
+const WEB_PHOTO_PORTRAIT_W = 1024;
+
+/* 카메라에 달라는 크기(2026-11-13 Bumm님 «추천대로 해 봐» — 촬영 칸 카메라 비율, 팀장 전달). PC 화면(설치판 포함)은 16:9를 달라고 한다:
+   노트북 웹캠은 대개 16:9로 찍는데, 예전처럼 1280×960을 달라고 하면 브라우저가 가로를 잘라 4:3으로 줬다(«왜 사진이 정사각형으로 잘려 있어»).
+   칸은 받은 영상 비율을 그대로 따르므로(StudioView «사진 틀» · studio.css data-fit) 보이는 것 = 찍히는 것 = 넘기는 사진이고 잘림이 없다.
+   16:9를 못 주는 카메라는 주는 비율 그대로다(ideal). 휴대폰 · 태블릿 화면은 예전 그대로 — 휴대폰은 세로로 들면 가로 · 세로를 바꿔 3:4를 준다. */
+const cameraVideo = (): MediaTrackConstraints =>
+  deviceKind() === "pc" && !isPhone()
+    ? { width: { ideal: 1920 }, height: { ideal: 1080 }, aspectRatio: { ideal: 16 / 9 }, facingMode: "user" }
+    : { width: 1280, height: 960, facingMode: "user" };
 
 /* 부스 토큰은 웹만 싣는다 — 설치판 빌드에서는 DESKTOP이 참으로 접혀 토큰 값이 번들에서 빠진다(2026-10-27 «키 · 토큰을 설치판에 넣지 않는다»).
    토큰 줄(src/constants.ts)은 CI 배포 단계(deploy.yml)와 확인 스크립트가 그 모양 그대로 읽으므로 그 줄은 건드리지 않는다. */
@@ -282,7 +296,7 @@ export default function PosterStudio() {
     const epoch = cameraEpoch.current;
     const opening = (async () => {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 960, facingMode: "user" },
+        video: cameraVideo(),
         audio: false,
       });
       // 권한 창이 열린 사이 다른 단계로 돌아갔으면 뒤늦게 카메라를 켜지 않는다.
@@ -344,8 +358,10 @@ export default function PosterStudio() {
         return;
       }
       // 전송용 축소(AI가 스타일을 새로 그리므로 화질 손해 없음). 설치판은 사진이 그대로 인쇄되므로 카메라 화질을 남긴다.
-      const MAXW = DESKTOP ? DESKTOP_PHOTO_MAX : 1024;
-      const scale = Math.min(1, MAXW / video.videoWidth);
+      // 축소만 한다 — 자르지 않는다(넘기는 사진 = 영상 전체 = 화면의 사진 틀).
+      const scale = DESKTOP
+        ? Math.min(1, DESKTOP_PHOTO_MAX / video.videoWidth)
+        : Math.min(1, video.videoWidth > video.videoHeight ? WEB_PHOTO_SHORT / video.videoHeight : WEB_PHOTO_PORTRAIT_W / video.videoWidth);
       const cap = document.createElement("canvas");
       cap.width = Math.round(video.videoWidth * scale);
       cap.height = Math.round(video.videoHeight * scale);
