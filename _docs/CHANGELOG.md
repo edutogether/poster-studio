@@ -26,6 +26,14 @@
   이 PC에서 3.4.6 위에 덮어 설치(`desktop-installer-probe.ps1 -Step install -Mode all -Replace`) 34건 통과, 깐 앱 `desktop-app-probe.mjs --exe` reduce 45 · no-preference 45건 통과(단체 예시 영상 재생 포함).
   실제 창 `desktop-real-window --dev` 956크기 × 4화면 결함 0 · `desktop-window-sweep --quick` 통과. 캡처(원본 해상도): `D:\Projects\_shared\ops\decisions-20261102\img\ps-final-1113\`(단체 예시 웹 · 설치판, ①~⑥ 고친 뒤).
   → 촬영 칸 고침을 같은 묶음에 넣으며 **3.6.4**로 다시 셈(fix 하나 더): 158,025,167바이트 · SHA-256 `aa9fb064…9af1d0`. 3.6.3 위 덮어 설치 34건 · 깐 앱 reduce 45 · no-preference 45건 통과. 3.6.3은 공개하지 않았다.
+- 배포 11/13 밤(팀장 전달 — «10커밋 push + 웹 배포 + 설치판 3.6.4 교체 진행»): 되돌릴 자리 `poster-studio-freeze-20261113-logo-left10-down3`(= `abb9e7d`, 직전 라이브) → master `2d9df75..2548b29` push.
+  CI `43413944245` test · changes · functions · hosting 모두 성공. 두 주소 모두 `main-Bm1EpKO-.js` · `main-NE4Ydt-e.css`(로컬 빌드와 같은 이름), 라이브 JS에 16:9 요청 있음.
+  빌드 ↔ 라이브 파일 대조 622개 중 621 같음 — 다른 하나(`fonts/poster/anton/OFL.txt`)는 이 PC 체크아웃이 CRLF로 빌드한 것이라 줄끝만 다르다(라이브는 저장소 규칙대로 LF, 93줄 = 93바이트 차).
+  단체 예시 영상 라이브 200 · 해시 같음, `camera-example-probe` 라이브 혼자 · 단체 각 24표본 통과. 설치 파일 교체(Cloud Storage 객체 158,025,167바이트) 뒤 `download-live.mjs --sha256 aa9fb064…` 26건 통과.
+- 16:9 AI 생성 1회(Bumm님 «예», 팀장 전달 — 약 $0.05): 라이브 PC 2560×1440 · 가짜 카메라 16:9 샘플 사진(실제 아이 얼굴 아님) · 두 번째 요청부터 막는 장치. 응답 200 · 누르고 3단계까지 40.7초
+  (서버 기록 «완료 32.3초 · sf/solo · gpt-image-2 · medium», 재시도 · 폴백 없음). 8종 모두 얼굴이 칸 안. 보낸 사진은 JPEG 1280×720 = 카메라 영상 전체(요청을 브라우저 안에서 막은 채 따로 잼 — 서버로 안 감).
+  캡처 `D:\Projects\_shared\ops\decisions-20261102\img\ps-final-1113\AI16x9\`(1단계 · 켠 뒤 · 찍은 뒤 · 로딩 · 3단계 8종 · AI 원본 1024×1536).
+  ⚠ 크롬은 요청 크기에 맞추려고 영상을 잘라 준다(가짜 카메라 실측: 예전 1280×960 요청은 16:9 카메라를 4:3으로 잘랐다) — 4:3만 되는 웹캠은 지금 요청에서 위아래가 잘린 16:9를 받을 수 있다.
 
 ## 2026-11-13(금) — 촬영 예시 칸 Higgsfield 로고 75% → 2/3 (Bumm님 «(나) 75%» · «라이브에 적용», 팀장 전달 → 이 창에 직접 «75 생각보다 크네 67»)
 
