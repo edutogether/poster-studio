@@ -27,6 +27,7 @@
 
 | 날짜 | 슬러그 | 등급 | 상태 | 요약 |
 |---|---|---|---|---|
+| 2026-11-13 | [final-wrap](2026-11-13-final-wrap/intent.md) | 2 | in-progress | 최종 마무리 — 단체 예시 영상 v11 1080p · 해상도 6묶음 고침 · 웹 + 설치판 3.4.7 · 종합감사 · 프리즈 태그 |
 | 2026-11-08 | [poster-cover-fill](2026-11-08-poster-cover-fill/intent.md) | 2 | in-progress | 포스터 사진 칸 덮어 채우기 — 8종 모두 «시네마 · 트립틱처럼»(흐린 위 · 아래 연장 0, 좁은 칸은 단체 양끝이 잘림 · 에디토리얼 제호가 머리 위) |
 | 2026-11-08 | [feedback-close](2026-11-08-feedback-close/intent.md) | 2 | in-progress | «의견 보내기» 11/14 0시 저절로 마감(서버 410 · 화면 내림, 시각은 `functions/feedback-window.json` 하나) · 설치판 제외. 함께 했던 «Voice Cinema 의견도 이 서버로»는 Bumm님 «받을 필요 없어»로 취소 · 되돌림 |
 | 2026-11-08 | [group-stand-sample-photos](2026-11-08-group-stand-sample-photos/intent.md) | 2 | in-progress | 단체 촬영 «모두 잘 보이게 서주세요» · 모두 선 새 단체 그림(슬라이드식 임시 예시 영상) · 샘플 포스터 사진(혼자 = 예시 영상 끝 장면 여학생 · 단체 = 새 그림, 웹 · 설치판 같음) · 설명서 00~03 |
