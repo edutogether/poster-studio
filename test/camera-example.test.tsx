@@ -396,7 +396,7 @@ test("로고 그림은 파일 하나이고, 화면 크기 · 여백은 그 그�
   expect(png.readUInt32BE(16)).toBe(840);   // 영상 기준 140px의 6배(11/13 흰 Higgsfield 로고 · «50» — 처음 280px의 절반)
   const css = fs.readFileSync(path.join("src", "studio.css"), "utf8");
   expect(css).toContain("width: calc(var(--logo-px, 0) * max(100cqw / 1920, 100cqh / 1080))");
-  expect(css).toContain("top: max(100cqw * 17 / 1920, 100cqh * 17 / 1080); right: max(100cqw * 20.8 / 1920, 100cqh * 20.8 / 1080);");   // 오른쪽은 PC 2560에서 5px 더(11/13 Bumm님)
+  expect(css).toContain("top: max(100cqw * 19.3 / 1920, 100cqh * 19.3 / 1080); right: max(100cqw * 24.6 / 1920, 100cqh * 24.6 / 1080);");   // PC 2560에서 왼쪽 5px · 다시 왼쪽 5px · 아래 3px(11/13 Bumm님)
   expect(css).toContain(".cameraBox > .camera-example-mark { position: absolute; inset: 0; container-type: size; pointer-events: none; }");
   expect(css).toContain(".camera-example-mark > .camera-example-logo:not([style]) { visibility: hidden; }");
   const source = fs.readFileSync(path.join("src", "studio", "CameraExample.tsx"), "utf8");
