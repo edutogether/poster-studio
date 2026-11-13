@@ -14,6 +14,9 @@
   - ⑥ 낮은 PC 창 1단계(폭 1100~1399 · 높이 700~820): «단독 주연»만 위 칸 한 줄 — 1280×720 장르 포스터 80×120 → 104×155. «우리 같이»는 칸이 셋이라 그대로(시안도 단독 주연만).
 - 확인: 루트 vitest 759(경계 시험 2건 더함) · functions 143 · lint 둘 · typecheck · fonts:check · verify:selftest 모두 0. 30크기 × 7화면 전/후 `layout-compare` — 바뀐 화면은 폭 1100 두 크기의 1~5화면과 ⑥ 범위 1단계 4크기(14/210)뿐, 태블릿 · 휴대폰 0.
   휴대폰 `mobile-layout-probe` 샘플 40 · `--real` 아이폰 56 · 갤럭시 56 화면 결함 0. 생성 · 의견 요청 0, 돈 0.
+- 설치판 **3.6.3**(`app-version.mjs HEAD` 셈 — 3.4.6 뒤 feat 둘(로고 · 단체 영상) · fix 셋 → 팀장 예상 «3.4.7»이 아니라 3.6.3): `Poster Studio Setup.exe` 158,025,156바이트 · SHA-256 `1e1da347…6db594d`.
+  이 PC에서 3.4.6 위에 덮어 설치(`desktop-installer-probe.ps1 -Step install -Mode all -Replace`) 34건 통과, 깐 앱 `desktop-app-probe.mjs --exe` reduce 45 · no-preference 45건 통과(단체 예시 영상 재생 포함).
+  실제 창 `desktop-real-window --dev` 956크기 × 4화면 결함 0 · `desktop-window-sweep --quick` 통과. 캡처(원본 해상도): `D:\Projects\_shared\ops\decisions-20261102\img\ps-final-1113\`(단체 예시 웹 · 설치판, ①~⑥ 고친 뒤).
 
 ## 2026-11-13(금) — 촬영 예시 칸 Higgsfield 로고 75% → 2/3 (Bumm님 «(나) 75%» · «라이브에 적용», 팀장 전달 → 이 창에 직접 «75 생각보다 크네 67»)
 
