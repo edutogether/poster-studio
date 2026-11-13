@@ -745,3 +745,7 @@ lines in Korean by the matching person: 1.8-2.6s A: "야, 빨리 와~". 3.6-4.4s
   - 확인 뒤 합성 영상과 목록은 되돌렸다.
 - 확인한 것(10/19, 진짜 영상 장착): 개인·단체 각 세 크기 12개 표본이 모두 통과했다(`camera-example-probe.mjs`, 캡처 `.cache/camera-video-20261019/probe/`).
   - 폴더에는 목록이 가리키는 파일만 있어야 한다 — `test/camera-example.test.tsx`가 남은 옛 파일을 막는다(일부러 남겨 실패 확인).
+- 확인한 것(11/13, 단체 v11 1080p 장착 — Bumm님 «어색 · 호들갑은 알고 그냥 넣자», 팀장 전달): 원본 `ps-group-v11-1113/10-v11-1080p-8초-b91dab0f.mp4`를 손대지 않고
+  11/10 판과 같은 뒤처리(원본 소리 · J컷 0.3 · 찰칵 7.45 · 멈춤 7.6) · CRF 21 veryslow로 구웠다 → `group-0a13903e51d8.mp4` 3.69MB(193프레임 · 8.05초). 숫자 4.8 · 5.6 · 6.4는 그대로 —
+  0.1초마다 본 판(`.cache/camera-video-20261113-group-v11/sheet-*.jpg`)에서 7.4초에 넷이 렌즈를 봐 찰칵 · 멈춤이 그 자세 위다.
+  `camera-example-probe.mjs --mode group` 두 조건(reduce · no-preference) × 세 크기 24개 표본 모두 통과(빌드본, 캡처는 저장소 밖 작업 폴더).
