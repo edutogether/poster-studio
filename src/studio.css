@@ -262,8 +262,11 @@ main.app {
   display: grid;
   place-items: center;
 }
+/* 화면 높이에 맞춘다(창 안쪽 여백 24px × 2). 그리드 칸 높이가 «내용대로»라 예전 height: 100%는 그림 원래 높이(1800)로 풀려
+   PC 1280×720에서 아래 61%가 화면 밖이었다(2026-11-13 해상도 점검 ①, Bumm님 «고침»). 휴대폰은 아래 넘김 갈래(⑩)가 따로 그린다. */
 .poster-dialog > img {
-  height: 100%;
+  height: calc(100dvh - 48px);
+  width: auto;
   max-width: 100%;
   object-fit: contain;
 }
@@ -1369,4 +1372,40 @@ html.ps-canvas #cameraWorkspace, html.ps-canvas #resultView #resultWorkspace, ht
   #cameraView .camera-tips { gap: 6px; }
   #cameraWorkspace .camera-ticket-name { flex-shrink: 0; }   /* 좁은 티켓에서 세로 칸이 모자라면 이 줄이 글자 높이(15px)보다 낮게 눌려 아래가 잘렸다 — 대신 정보 칸 사이가 준다 */
   #resultView #gallery.style-grid, #resultView .result-actions { max-width: calc((100svh - 352px + 12px) * 4 / 3); }
+}
+
+/* ── 2026-11-13 해상도 점검(결정판 카드 ② · Bumm님 «넣고 라이브 설치판 싹 다 업데이트», 팀장 전달 — 세 장 `_shared/ops/decisions-20261102/img/ps-res3-1113/`) ──
+   ②④(정확히 1100 폭)는 style.css · atelier.css · cinema.css의 «max-width: 1100px» 경계를 1099로 맞춰 고쳤다. ⑤는 desktop.css(설치판만).
+   ③ 단체 촬영 예시 영상: «카메라 켜기»가 오른쪽 아이 가슴의 하트 와펜을 가렸다(PC 1366×768 98% · 1280 100% · 태블릿 세로 57~60%).
+      단추를 예시 칸 아래 가로 가운데로 옮긴다 — 자리(줄 높이 · 아래 여백)는 그대로 두고 가로로만 민다: 단추 오른쪽 끝(칸 폭 − 24)에서 칸 가운데까지
+      = 50%(단추 폭의 절반) − 50cqw(칸 폭의 절반, .cameraBox.has-example-video가 크기 칸) + 24px. 개인 예시 · 휴대폰(칸 안 단추 없음)은 그대로다. */
+@media (min-width: 761px) {
+  #cameraView:has(.camera-ticket[data-mode="group"]) .cameraBox.has-example-video .camera-example-caption > #startBtn { translate: calc(50% - 50cqw + 24px) 0; }
+}
+/* ⑥ 낮은 PC 창 1단계(1280×720 · 1366×768): 위 칸(모드 카드 132px · 입력칸 두 줄)이 높이를 먹어 장르 포스터가 80×120 · 96×144(화면 폭의 6.3 · 7.0%)로 작았다.
+      «단독 주연»이면 모드 카드를 한 줄 높이(62px — 아이콘 옆에 이름)로, 영화 제목 · 이름 칸을 나란히 두어 아낀 높이(70px)를 포스터 두 줄이 받는다(1280×720에서 104×155).
+      시안이 잰 두 크기가 드는 폭 1100~1399 · 높이 700~820만 — 1440 · 1536 · 1920과 높이 699 이하(여덟 장 한 줄) · 821 이상은 그대로다.
+      «우리 같이»는 그대로(모드 카드 132 = 입력칸 두 줄) — 칸이 셋(영화 제목 · 단체 이름 · 출연진 이름)이라 한 줄이면 출연진 칸이 150px 아래로 좁아진다(시안도 단독 주연만 그렸다).
+      그래서 이 크기에서 모드를 바꾸면 위 칸 높이와 포스터 크기가 함께 바뀐다. 단독 주연은 이름 칸(.participant-fields)에 hidden 클래스가 붙는 것으로 가른다(StudioView). */
+@media (min-width: 1100px) and (max-width: 1399px) and (min-height: 700px) and (max-height: 820px) {
+  #prepareWorkspace:has(.participant-fields.hidden) .segmented button { height: 62px; min-height: 62px; flex-direction: row; justify-content: center; gap: 8px; padding: 0 10px; overflow: visible; }
+  #prepareWorkspace:has(.participant-fields.hidden) .people-icon, #prepareWorkspace:has(.participant-fields.hidden) .people-icon svg { width: 22px; height: 22px; }
+  #prepareWorkspace:has(.participant-fields.hidden) .people-icon { flex: 0 0 22px; margin: 0; }
+  #prepareWorkspace:has(.participant-fields.hidden) .mode-copy { margin: 0; }
+  #prepareWorkspace:has(.participant-fields.hidden) .mode-check { top: -7px; right: -7px; transform: scale(0.8); }
+  #prepareWorkspace:has(.participant-fields.hidden) .field-row { grid-template-columns: 1fr 1fr; grid-template-rows: 62px; column-gap: 12px; }
+}
+/* ④ 세로 티켓이 좁을 때 제목이 눌리지 않게(2026-11-13 해상도 점검 ④, Bumm님 «고침»): 위 칸이 모자라면 제목(style.css의 overflow: auto)이 1~7px 눌려 오른쪽에 스크롤 화살표가 생겼다.
+   단체는 이름 줄이 하나 더(단체 이름 · 출연진)라 티켓 폭 160px 아래에서(설치판 최소 창 1100×648 · 1100×700, 낮은 PC 창 1280×587 · 1366×635),
+   개인은 131px까지(높이 560~569 — 휴대폰 가로 1440×560 등) 눌렸다. 위아래 여백 · 정보 칸 간격을 줄여 자리를 만들고 제목은 줄어들지 않게 한다 — 단체 160 · 개인 140 아래만이라 그 위(지금 멀쩡한 크기)는 그대로다.
+   티켓이 세로일 때만 이 칸이 크기 컨테이너다(위 세로 티켓 규칙). */
+@container (width < 160px) {
+  #cameraWorkspace .camera-ticket[data-mode="group"] > div:first-child { padding-top: 5cqi; padding-bottom: 3cqi; }
+  #cameraWorkspace .camera-ticket[data-mode="group"] strong { flex-shrink: 0; overflow: visible; margin: 0.5cqi 0; }
+  #cameraWorkspace .camera-ticket[data-mode="group"] .ticket-info { margin-top: 2.5cqi; padding-top: 2.5cqi; gap: 2cqi 4cqi; }
+}
+@container (width < 140px) {
+  #cameraWorkspace .camera-ticket > div:first-child { padding-top: 5cqi; padding-bottom: 3cqi; }
+  #cameraWorkspace .camera-ticket strong { flex-shrink: 0; overflow: visible; margin: 0.5cqi 0; }
+  #cameraWorkspace .camera-ticket .ticket-info { margin-top: 2.5cqi; padding-top: 2.5cqi; gap: 2cqi 4cqi; }
 }

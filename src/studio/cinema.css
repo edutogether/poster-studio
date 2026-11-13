@@ -823,7 +823,9 @@ input:focus-visible {
     bottom: 16px;
   }
 }
-@media (min-width: 761px) and (max-width: 1100px) {
+/* 2026-11-13 해상도 점검 ②④: 예전 경계 «max-width: 1100px»가 «min-width: 1100px» 규칙과 폭 1100에서 겹쳐, 정확히 1100 폭(설치판 최소 창)만 오른쪽 칸이 350px로 좁아져
+   «이 사진으로 포스터 만들기»가 칸 밖으로 36px 나가고 «카메라 미리 보기 · 촬영 구도 예시»가 두 줄이 됐다. 다른 규칙과 같은 1099로 맞춰 1100은 1101과 같은 배치다. */
+@media (min-width: 761px) and (max-width: 1099px) {
   .header-inner {
     padding: 0 24px;
     gap: 14px;
