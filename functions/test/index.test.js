@@ -2199,6 +2199,18 @@ const connectedOwner = (now, over = {}) => ({
   ...over
 });
 
+// 받는 길 시험은 마감 일주일 전 시각에서 돈다 — 실제 시계로 돌리면 마감(2026-11-14 00:00 한국 시간)이 지난 뒤 전부 410이 된다
+// (11/14 0시 뒤 첫 CI에서 12건이 걸렸다). Date만 가짜이고 실제 시간만큼 흐른다(응답 시간을 재는 시험이 있다).
+async function beforeClose(body) {
+  vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true });
+  vi.setSystemTime(FEEDBACK_CLOSES_AT - 7 * 86_400_000);
+  try {
+    return await body();
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
 async function withFeedbackServer({ db, kakao, counter }, body) {
   _setFeedbackDbForTesting(db);
   _setKakaoFetchForTesting(kakao);
@@ -2257,7 +2269,7 @@ test('POST /feedback: 부스 토큰이 없으면 401이고 아무것도 저장�
   expect(db._docs('feedback')).toEqual([]);
 });
 
-test('POST /feedback: 받은 여섯 칸 + 받은 시각만 저장하고, 연결된 카카오로 «나에게 보내기»를 한 번 보낸다', async () => {
+test('POST /feedback: 받은 여섯 칸 + 받은 시각만 저장하고, 연결된 카카오로 «나에게 보내기»를 한 번 보낸다', () => beforeClose(async () => {
   const db = makeFeedbackDb();
   const now = Date.now();
   db._put('kakaoAuth', 'owner', connectedOwner(now));
@@ -2281,9 +2293,9 @@ test('POST /feedback: 받은 여섯 칸 + 받은 시각만 저장하고, 연결�
   expect(template.text).toContain('노트북 4번 자리예요.');
   expect(template.text).toContain('판 index-AbC12_x.js · 2560x1440@1 · pc · 1단계');
   expect(template.link).toEqual({ web_url: 'https://poster.edutogether.kr', mobile_web_url: 'https://poster.edutogether.kr' });
-});
+}));
 
-test('POST /feedback: 카카오 글은 200자를 넘으면 줄여 보내고, 저장은 원문 그대로다', async () => {
+test('POST /feedback: 카카오 글은 200자를 넘으면 줄여 보내고, 저장은 원문 그대로다', () => beforeClose(async () => {
   const db = makeFeedbackDb();
   db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
   const kakao = makeKakao({ [MEMO_URL]: { status: 200 } });
@@ -2295,9 +2307,9 @@ test('POST /feedback: 카카오 글은 200자를 넘으면 줄여 보내고, 저
   expect([...text]).toHaveLength(200);
   expect(text.endsWith('…')).toBe(true);
   expect(db._docs('feedback')[0][1].text).toBe(long);
-});
+}));
 
-test('POST /feedback: 카카오가 실패하거나 아직 연결 전이어도 저장은 남고 화면에는 200이다', async () => {
+test('POST /feedback: 카카오가 실패하거나 아직 연결 전이어도 저장은 남고 화면에는 200이다', () => beforeClose(async () => {
   for (const connected of [true, false]) {
     const db = makeFeedbackDb();
     if (connected) db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
@@ -2308,7 +2320,7 @@ test('POST /feedback: 카카오가 실패하거나 아직 연결 전이어도 �
     expect(db._docs('feedback'), `연결 ${connected}`).toHaveLength(1);
     expect(kakao.calls, `연결 ${connected}`).toHaveLength(connected ? 1 : 0);
   }
-});
+}));
 
 test('매일 04시 작업: 세 일은 서로 막지 않는다 — 앞의 일이 실패해도 뒤의 일이 돌고, 다 실패해도 던지지 않는다', async () => {
   const err = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -2352,7 +2364,7 @@ function makeHangingKakao() {
   return fake;
 }
 
-test('POST /feedback: 카카오가 멈춰도 서버는 응답 예산 안에 200을 주고 저장은 한 번이다', async () => {
+test('POST /feedback: 카카오가 멈춰도 서버는 응답 예산 안에 200을 주고 저장은 한 번이다', () => beforeClose(async () => {
   for (const expired of [false, true]) {   // 토큰이 살아 있으면 보내기에서, 만료면 갱신에서 멈춘다
     const db = makeFeedbackDb();
     const now = Date.now();
@@ -2373,9 +2385,9 @@ test('POST /feedback: 카카오가 멈춰도 서버는 응답 예산 안에 200�
     expect(kakao.calls.map((c) => c.url), `만료 ${expired}`).toEqual([expired ? TOKEN_URL : MEMO_URL]);
     expect(kakao.calls[0].aborted(), `만료 ${expired}`).toBe(true);
   }
-});
+}));
 
-test('POST /feedback: 응답 예산이 이미 다 됐으면 카카오를 부르지 않고 저장만 한다', async () => {
+test('POST /feedback: 응답 예산이 이미 다 됐으면 카카오를 부르지 않고 저장만 한다', () => beforeClose(async () => {
   const db = makeFeedbackDb();
   db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
   const kakao = makeKakao({ [MEMO_URL]: { status: 200 } });
@@ -2389,7 +2401,7 @@ test('POST /feedback: 응답 예산이 이미 다 됐으면 카카오를 부르�
   }
   expect(db._docs('feedback')).toHaveLength(1);
   expect(kakao.calls).toHaveLength(0);
-});
+}));
 
 test('의견 응답 예산 + 여유 5초 ≤ 화면이 기다리는 시간(src/feedback.ts TIMEOUT_MS)', () => {
   const root = path.resolve(import.meta.dirname, '../..');
@@ -2401,7 +2413,7 @@ test('의견 응답 예산 + 여유 5초 ≤ 화면이 기다리는 시간(src/f
   expect(FEEDBACK_REPLY_BUDGET_MS_DEFAULT + 5_000).toBeLessThanOrEqual(clientWait);
 });
 
-test('POST /feedback: 저장이 실패하면 503이고 카카오도 보내지 않는다', async () => {
+test('POST /feedback: 저장이 실패하면 503이고 카카오도 보내지 않는다', () => beforeClose(async () => {
   const db = makeFeedbackDb({ failAdd: true });
   db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
   const kakao = makeKakao({ [MEMO_URL]: { status: 200 } });
@@ -2411,9 +2423,9 @@ test('POST /feedback: 저장이 실패하면 503이고 카카오도 보내지 �
     expect((await res.json()).code).toBe('feedback_store');
   });
   expect(kakao.calls).toHaveLength(0);
-});
+}));
 
-test('POST /feedback: 형식이 틀리면 저장하지 않는다 — JSON이 아니면 415 · 8KB가 넘으면 413 · 깨진 JSON · 모르는 칸은 400', async () => {
+test('POST /feedback: 형식이 틀리면 저장하지 않는다 — JSON이 아니면 415 · 8KB가 넘으면 413 · 깨진 JSON · 모르는 칸은 400', () => beforeClose(async () => {
   const db = makeFeedbackDb();
   await withFeedbackServer({ db, kakao: makeKakao({}) }, async (base) => {
     const plain = await fetch(`${base}/feedback`, {
@@ -2427,9 +2439,9 @@ test('POST /feedback: 형식이 틀리면 저장하지 않는다 — JSON이 아
     expect((await postFeedback(base, { ...goodFeedback(), photo: 'x' })).status).toBe(400);
   });
   expect(db._docs('feedback')).toEqual([]);
-});
+}));
 
-test(`POST /feedback: 같은 곳에서 10분에 ${FEEDBACK_IP_MAX}건까지 받고 그다음은 429 · 저장하지 않는다`, async () => {
+test(`POST /feedback: 같은 곳에서 10분에 ${FEEDBACK_IP_MAX}건까지 받고 그다음은 429 · 저장하지 않는다`, () => beforeClose(async () => {
   const db = makeFeedbackDb();
   await runInSingleRateLimitBucket(async () => {
     await withFeedbackServer({ db, kakao: makeKakao({}), counter: makeInMemoryCounterImpl() }, async (base) => {
@@ -2440,18 +2452,18 @@ test(`POST /feedback: 같은 곳에서 10분에 ${FEEDBACK_IP_MAX}건까지 받�
     });
   });
   expect(db._docs('feedback').length % FEEDBACK_IP_MAX).toBe(0);
-});
+}));
 
-test('POST /feedback: 하루 전체 한도에 닿으면 429다', async () => {
+test('POST /feedback: 하루 전체 한도에 닿으면 429다', () => beforeClose(async () => {
   const db = makeFeedbackDb();
   const counter = async (collectionName) => ({ allowed: collectionName !== 'dailyBudgetBuckets', count: 0 });
   await withFeedbackServer({ db, kakao: makeKakao({}), counter }, async (base) => {
     expect((await postFeedback(base, goodFeedback())).status).toBe(429);
   });
   expect(db._docs('feedback')).toEqual([]);
-});
+}));
 
-test('POST /feedback: 기록(로그)에 이름 · 글 · 토큰 · 앱 키를 남기지 않는다(카카오가 실패한 경로까지)', async () => {
+test('POST /feedback: 기록(로그)에 이름 · 글 · 토큰 · 앱 키를 남기지 않는다(카카오가 실패한 경로까지)', () => beforeClose(async () => {
   const lines = [];
   const spies = ['log', 'error', 'warn'].map((m) => vi.spyOn(console, m).mockImplementation((...a) => lines.push(a.join(' '))));
   try {
@@ -2471,9 +2483,9 @@ test('POST /feedback: 기록(로그)에 이름 · 글 · 토큰 · 앱 키를 �
   for (const secret of ['김진행', '노트북 4번', 'ref-old', 'acc-old', 'test-kakao-rest-key', 'test-kakao-client-secret']) {
     expect(all, secret).not.toContain(secret);
   }
-});
+}));
 
-test('카카오 토큰: 액세스 토큰이 곧 끝나면 먼저 갱신하고, 새 리프레시 토큰이 오면 덮어쓰고 안 오면 예전 것을 둔다', async () => {
+test('카카오 토큰: 액세스 토큰이 곧 끝나면 먼저 갱신하고, 새 리프레시 토큰이 오면 덮어쓰고 안 오면 예전 것을 둔다', () => beforeClose(async () => {
   for (const withNewRefresh of [true, false]) {
     const db = makeFeedbackDb();
     const now = Date.now();
@@ -2504,9 +2516,9 @@ test('카카오 토큰: 액세스 토큰이 곧 끝나면 먼저 갱신하고, �
     expect(owner.refreshToken, `새 리프레시 ${withNewRefresh}`).toBe(withNewRefresh ? 'ref-new' : 'ref-old');
     expect(owner.userId).toBe('777');
   }
-});
+}));
 
-test('카카오 토큰: 보내기가 401이면 한 번만 갱신해 다시 보내고, 또 401이면 멈춘다(저장은 남음)', async () => {
+test('카카오 토큰: 보내기가 401이면 한 번만 갱신해 다시 보내고, 또 401이면 멈춘다(저장은 남음)', () => beforeClose(async () => {
   for (const secondStatus of [200, 401]) {
     const db = makeFeedbackDb();
     db._put('kakaoAuth', 'owner', connectedOwner(Date.now()));
@@ -2520,7 +2532,7 @@ test('카카오 토큰: 보내기가 401이면 한 번만 갱신해 다시 보�
     expect(kakao.calls.map((c) => c.url)).toEqual([MEMO_URL, TOKEN_URL, MEMO_URL]);
     expect(db._docs('feedback')).toHaveLength(1);
   }
-});
+}));
 
 test('GET /kakao/start: 카카오 로그인으로 보내고, 대기 문서에는 state 원문이 아니라 해시만 둔다', async () => {
   const db = makeFeedbackDb();

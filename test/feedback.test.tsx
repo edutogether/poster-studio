@@ -68,6 +68,15 @@ async function submit() {
 }
 
 describe('첫 화면 «의견 보내기»', () => {
+  // 받는 동안의 화면을 보는 시험이라 마감 일주일 전 시각에서 돈다 — 실제 시계로 돌리면 마감(2026-11-14 00:00 한국 시간)이
+  // 지난 뒤 링크가 없어 전부 걸린다(11/14 0시 뒤 첫 CI). Date만 가짜이고 실제 시간만큼 흐른다.
+  beforeEach(async () => {
+    const { FEEDBACK_CLOSES_AT } = await import('../src/feedback.js');
+    vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true });
+    vi.setSystemTime(FEEDBACK_CLOSES_AT - 7 * 86_400_000);
+  });
+  afterEach(() => { vi.useRealTimers(); });
+
   test('1단계에 링크 하나 — 개인정보처리방침과 같은 줄(머리글 도구 칸) · 누르기 전 요청 0건', async () => {
     await act(async () => { renderApp(); });
     const links = [...document.querySelectorAll<HTMLElement>('.feedback-link')];
