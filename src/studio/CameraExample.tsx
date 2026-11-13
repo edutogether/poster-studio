@@ -27,7 +27,6 @@ const ALT = {
 // 11/13 Bumm님: 3배로 그려 280px로 보이던 것을 «(나) 75%» · «67»을 거쳐 «50까지 줄여도 되겠는데 ? 줄여봐»로 절반까지 줄임), 화면 크기는 그 그림의 폭(naturalWidth ÷ 6)에 영상이 칸을 덮는 배율을 곱한 것이다 — 그림 파일만 바꾸면 크기 · 비율이 따라가고,
 // 큰 화면 · 고해상도 화면에서도 그림을 키우지 않아 선명하다(studio.css «.camera-example-logo»). 로고는 칸을 꽉 채운 틀(.camera-example-mark) 안에 둔다 —
 // 휴대폰은 칸 높이가 늘어나는 자리(flex)라 칸 자체를 기준으로 재면 높이가 0으로 읽혀(11/13 실측) 로고가 영상보다 작게 나왔다.
-// 로고 그림은 영상 기준 크기의 6배다(11/13 «50» — 840px 그림이 영상 기준 140px, 처음 280px의 절반)
 const LOGO_DENSITY = 6;
 
 export default function CameraExample({ mode, video, hidden, offstage, prefetch = false }: Props) {
