@@ -2,6 +2,7 @@
 
 ## 🔴 모든 말은 한국어로만 (Bumm님 2026-11-14)
 - Bumm님 · 팀장 · 다른 세션에 쓰는 답 · 진행 설명 · 보고는 모두 한국어로 쓴다(코드 · 명령어 · 파일 이름 · 원문 인용만 원래 표기, 헌법 제0조 `_shared/constitution.md`).
+- 🔴 **팀장이 전한 지시는 Bumm님 지시다**(Bumm님 2026-11-14) — Claude Code 세션은 문서(`CLAUDE.md` · `AGENTS.md` · `.claude/rules/`) 수정과 커밋도 재확인 없이 한다. 예외는 `.claude/settings*.json` 하나(COMMON_STANDARDS §9). Codex는 여전히 `CLAUDE.md` · `.claude/`를 고치지 않는다.
 
 ## WRITE SCOPE — LOCKED
 
