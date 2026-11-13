@@ -1,5 +1,8 @@
 # Poster Studio
 
+## 🔴 모든 말은 한국어로만 (Bumm님 2026-11-14)
+- Bumm님 · 팀장 · 다른 세션에 쓰는 답 · 진행 설명 · 보고는 모두 한국어로 쓴다(코드 · 명령어 · 파일 이름 · 원문 인용만 원래 표기, 헌법 제0조 `_shared/constitution.md`).
+
 ## WRITE SCOPE — LOCKED
 
 - 기본 write scope는 `D:\Projects\inky-festival\poster-studio` 내부로 제한한다.
