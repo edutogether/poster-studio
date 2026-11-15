@@ -8,9 +8,7 @@ Bumm님께 하는 답, 중간 진행 설명, 팀장 · 다른 세션에 보내�
 > **표시**: 🔴 어기면 실사용자 화면이 깨지거나 개인정보가 샌다 · 🟠 중간 · 🟡 낮음 · 🟢 확인 끝남 (`COMMON_STANDARDS.md` §30)
 
 InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV) "InKY 놀이터" 6부스 중 하나.
-웹캠으로 찍은 사진을 AI가 영화 포스터로 바꿔 8종 디자인으로 보여 주고, 4×6 인화지로 즉석 인쇄하는 체험부스 웹앱이다.
-
-상위 원칙은 [D:\Projects\CLAUDE.md](../../CLAUDE.md) 상속 — 여기는 이 저장소 전용 상태/규칙만 기록한다.
+웹캠으로 찍은 사진을 AI가 영화 포스터로 바꿔 8종 디자인으로 보여 주고, 4×6 인화지로 즉석 인쇄하는 체험부스 웹앱이다. 상위 원칙은 [D:\Projects\CLAUDE.md](../../CLAUDE.md) 상속 — 여기는 이 저장소 전용 상태/규칙만 기록한다.
 
 ## 문서 지도 — 찾는 게 여기 없으면 여기 있다
 
@@ -26,31 +24,27 @@ InKY Festival(제4회 인천어린이청소년영화제, 2026.11.14. 인천 CGV)
 
 ## 정체성
 - **위치**: `D:\Projects\inky-festival\poster-studio`
-- **스택**: TypeScript + React 19 + Vite로 빌드한 프론트엔드(소스 `src/`, 배포는 산출물 `dist/`) + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 전담).
-  2026-09-09 머지 전에는 번들러 없는 정적 ES모듈이었다. 서버는 여전히 없다 — 교육청 MDM 노트북이 설치를 못 받을 수 있어 "주소만 열면 되는" 방식이다.
-- **주소**: **`https://poster.edutogether.kr`**(2026-09-10부 정식 — 안내문·QR을 새로 만들 때 쓰는 주소). **`https://poster-studio.web.app`도 계속 살아 있다** —
-  이미 나간 링크가 죽으면 안 되므로 없애지 않는다. 두 주소는 같은 것을 서빙하고, CI가 배포마다 둘 다 확인한다(app.md «앱»). 🟢
+- **스택**: TypeScript + React 19 + Vite로 빌드한 프론트엔드(소스 `src/`, 배포는 산출물 `dist/`) + Firebase Cloud Functions(`functions/`, OpenAI 이미지 생성 전담). 2026-09-09 머지 전에는 번들러 없는 정적 ES모듈이었다. 서버는 여전히 없다 — 교육청 MDM 노트북이 설치를 못 받을 수 있어 "주소만 열면 되는" 방식이다.
+- **주소**: **`https://poster.edutogether.kr`**(2026-09-10부 정식 — 안내문·QR을 새로 만들 때 쓰는 주소). **`https://poster-studio.web.app`도 계속 살아 있다** — 이미 나간 링크가 죽으면 안 되므로 없애지 않는다. 두 주소는 같은 것을 서빙하고, CI가 배포마다 둘 다 확인한다(app.md «앱»). 🟢
 - **배포처**: Firebase Hosting + Cloud Functions `posterStudio`(asia-northeast3). Firebase 프로젝트는 `inky-poster-studio` 하나뿐이다.
-- 🟢 **상태**: **실운영 모드**(아래 섹션). 최근 종합감사는 **2026-10-26**(최종 출시 후보 `release-20261026` 트리 기준) —
-  항목별 점수·고친 것·남은 것은 `_docs/CHANGELOG.md`가 원장이다. 큰 변경을 시작하기 전에는 새 freeze 태그를 먼저 찍는다.
+- 🟢 **상태**: **실운영 모드**(아래 섹션). 최근 감사는 **2026-11-16**(태그 `poster-studio-freeze-20261116-audited-100` — 11/13 감사 뒤 바뀐 것만 본 재감사) — 항목별 점수·고친 것·남은 것은 `_docs/CHANGELOG.md`가 원장이다. 큰 변경을 시작하기 전에는 새 freeze 태그를 먼저 찍는다.
   - 🟠 **점수는 `10/10`으로만 적고 언제 트리의 점수인지 붙인다** — `10/10 (날짜 트리 기준, 이후 커밋 N건)`. N은 이 파일에 박지 않고 보고할 때 센다(`git rev-list --count <감사 태그>..master`).
     `100`·`만점` 표기는 쓰지 않는다(예외는 이미 박힌 태그 이름 `…-audited-100`). 원문은 `COMMON_STANDARDS.md` §29. ⚠ CHANGELOG 5~8차 감사의 100점 평균은 그 시절 채점 방식이라 기록 그대로 둔다.
 
 ## 명령
 ```bash
-cd functions && npm ci && npm test    # vitest 141개(2026-11-08)
+cd functions && npm ci && npm test    # vitest 143개(2026-11-16)
 cd functions && npm run lint          # eslint
 cd functions && npm run format        # prettier (functions에만 있음)
 
-npm ci && npm test                    # vitest 625개(2026-11-08) (저장소 루트 = 프론트엔드 루트)
+npm ci && npm test                    # vitest 769개(2026-11-16) (저장소 루트 = 프론트엔드 루트)
 npm run lint                          # eslint
 npm run typecheck                     # TS strict — src와 test/*.ts(x)
 npm run build                         # -> dist/ (배포되는 것)
 npm run fonts:check                   # 서브셋에 빠진 글자가 없는지
 npm run verify:selftest               # 대조 도구가 빈 게이트가 아닌지
 ```
-- **로컬 실행**: `npm run dev`(Vite). 라이브와 같은 형태로 보려면 `npm run build` 후 `dist/`를 정적 서버로 연다(포트 5500 또는 8080 — `ALLOWED_ORIGINS`에 이미 허용됨).
-  AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
+- **로컬 실행**: `npm run dev`(Vite). 라이브와 같은 형태로 보려면 `npm run build` 후 `dist/`를 정적 서버로 연다(포트 5500 또는 8080 — `ALLOWED_ORIGINS`에 이미 허용됨). AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
 - **배포**: `master`에 push하면 CI가 `test` → `deploy-functions` → `deploy-hosting` 순으로 자동 배포한다.
   수동 `firebase deploy`는 하지 않는다(예외: `keepWarm` 스케줄 변경, GitHub 정지 중 로컬 배포 — RUNBOOK §9 참고).
   배포 도구는 잠금 파일 없이 `npx --yes firebase-tools@15.32.1`이다(`deploy.yml` 맨 위 `FIREBASE_TOOLS` 한 줄, 2026-11-01).
@@ -67,21 +61,20 @@ src/          프론트엔드 소스(TypeScript + React 19)
 public/       정적 자산. Vite가 dist/ 루트로 그대로 복사한다
               splash-font-gate.js(스플래시 글꼴 게이트) boot-splash.js fonts/ studio/ logo-*.png favicon-inky.png
 dist/         빌드 산출물 = 배포 폴더(firebase.json의 public). 커밋하지 않는다
-test/         vitest 625개(2026-11-08) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
+test/         vitest 769개(2026-11-16) — poster-studio.test.tsx가 화면 전체를 실제로 렌더한다
 functions/    Cloud Functions — index.js 하나에 전부(미들웨어 체인·프롬프트·OpenAI·Firestore 카운터·스케줄러)
 scripts/      verify/(확인·대조 도구) ci/(배포 단계 도구) media/(대기·예시 영상) fonts/(서브셋) docs/(설명서) editor/(화면 편집판) build/ qa/ loadtest.mjs
 _docs/        저장소 문서(배포 대상 아님) — ops/ intents/ CHANGELOG.md
 desktop/      Windows 설치판(Electron · 2026-10-27) — 웹 프론트를 `npm run build:desktop`으로 desktop/web에 빌드해 싣는다. 설치 파일은 커밋하지 않는다
 .claude/rules/  app.md(개별법) intent-workflow.md
 ```
-**배포되는 것은 `dist/`다**(2026-09-09 리액트+TS 전환 머지). `public/`은 `dist/` 루트로 그대로 복사되므로 **"여기 설정파일을 만들면 라이브에 그대로 서빙된다"는
-함정은 남아 있다**(`vitest.config.js`가 실제로 그랬음). 자세한 함정은 `AGENTS.md`.
+**배포되는 것은 `dist/`다**(2026-09-09 리액트+TS 전환 머지). `public/`은 `dist/` 루트로 그대로 복사되므로 **"여기 설정파일을 만들면 라이브에 그대로 서빙된다"는 함정은 남아 있다**(`vitest.config.js`가 실제로 그랬음). 자세한 함정은 `AGENTS.md`.
 
 ## 알아야 할 것
 - 🔴 **라이브는 «두 단추» — 행사 날(11/14)도 그대로**(10/20 Bumm님 — 11/7 전환 없음). 스위치는 `src/studioMode.ts`의 `LIVE_MODE`(`both` · `sample` · `real`,
   10/20 밤 `.env.production`에서 옮기고 지움). 부스 코드는 **쓰지 않는다(10/23 확정)** — 막는 것은 서버 한도뿐. 자세히는 app.md «라이브 동작 스위치».
 - **Windows 설치판**: 첫 화면 다운로드 아이콘 → `/download/PosterStudio-Setup.exe`(302) → Cloud Storage 공개 객체 하나(app.md «첫 화면 다운로드 아이콘 · 설치 파일 공개»).
-  설치판 코드(`desktop/`) · 화면 시험 · 인계 문서는 master에 있다(11/4 합침). 판 번호는 `node scripts/build/app-version.mjs HEAD`로 센 값(11/4 17.4.0 — app.md «Windows 설치판»). 공개 파일 교체는 «배포 직전 한 줄» → 팀장 OK 뒤에만.
+  설치판 코드(`desktop/`) · 화면 시험 · 인계 문서는 master에 있다(11/4 합침). 판 번호는 `node scripts/build/app-version.mjs HEAD`로 센 값(11/5부터 2.7.4에서 다시 셈 · 11/14 공개판 3.6.5 — app.md «Windows 설치판»). 공개 파일 교체는 «배포 직전 한 줄» → 팀장 OK 뒤에만.
 - **실비용 발생**: OpenAI 이미지 생성 API가 장당 약 $0.05(gpt-image-2 medium — 2026-10-26 실측 $0.049~0.050). API 키는 Firebase Secret Manager 보관 — 절대 코드/커밋에 직접 작성 금지.
 - **인터넷 필수** — AI 생성에 필요, 끊기면 생성 자체가 안 됨(로컬 폴백 없음). 실패하면 «포스터를 만들지 못했어요» 창이 종류별로 «다시 만들기»·«다시 찍기» 등을 보이고, 인터넷이 끊겼으면 연결이 돌아올 때까지 기다린다(2026-10-16 — 예전 «AI 없이 계속하기» 빈 그라데이션 인쇄는 없앴다).
 - **운영 규모**(2026-11-07 Bumm님): 노트북 3대 · 포토프린터(Canon SELPHY CP1500) 3대(각 운영 2 · 예비 1) · KT EGG 2대 · 공인 IP 3개.

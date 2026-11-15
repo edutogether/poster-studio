@@ -1,5 +1,48 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-16(월) — 규칙 밖 태그 22개 정리 · 11/13 감사 뒤 바뀐 것 재감사 10/10 (지시 Bumm님 · 팀장 전달)
+
+- **태그 22개를 지웠다**(Bumm님 결정 (가), Voice Cinema 11/14와 같은 방식). COMMON_STANDARDS §23-4의 두 이름(`-pre-<작업>` · `-audited-100`)을 벗어난 것과, 같은 날 같은 종류를 두 번째부터 찍은 것이다.
+  §23-5(«지나온 태그는 지우지 않는다»)의 예외이고, Bumm님 직접 결정이다. 릴리스가 붙은 것은 없었고 GitHub 룰셋도 없다(`rulesets` 0개).
+  - 가리키던 커밋은 `rollback-20261016-night` 하나를 빼고 모두 `master`에 들어 있어 사라지지 않는다. 다시 찍어야 하면 아래 커밋에 같은 이름으로 찍는다.
+  - 🟠 **`rollback-20261016-night`는 지우지 않고 `refs/archive/tags/rollback-20261016-night`로 옮겼다**(§23-6 방식, 원격 · 로컬 모두). 그 커밋(10/16 밤 작업 트리 스냅숏)은 어느 가지에도 없다.
+    태그를 지우면 하나뿐인 참조가 사라져 커밋이 지워질 수 있다. 꺼내는 법은 `_docs/ops/rollback-20261016.md` 맨 위.
+
+  | 태그 | 가리키던 커밋 | 찍은 때 | 왜 | 제목(태그 메시지 첫 줄) |
+  |---|---|---|---|---|
+  | `poster-studio-before-poster-redesign-20261014` | `28bd0b0610ad6a5528dd01db7fb39f7d1143e4a6` | 10/14 11:40 | 이름 | (가벼운 태그) |
+  | `rollback-20261016-night` | `083912d9df68c81f35a84f188335cdda53dda58c` | 10/16 20:45 | 이름 — **아카이브로 옮김** | 롤백 지점 2026-10-16 밤 |
+  | `poster-studio-freeze-20261017-rc` | `33b4b6c6def1f19ece243feef36a865ec011a0e1` | 10/17 05:33 | 이름 | 출시 후보 10/17 밤 |
+  | `poster-studio-freeze-20261017-rc2` | `65dcb5ffa06c8e7d8e676e22010af2ce5c94ea51` | 10/17 06:22 | 이름 | 출시 후보 10/17 아침 |
+  | `poster-studio-freeze-20261017-rc3` | `a34a1ede1376f050a7410f19068be35255714080` | 10/17 07:04 | 이름 | 출시 후보 10/17 아침(2) |
+  | `poster-studio-freeze-20261023-before-ratio` | `00922e887aa0c185794fcd997c530b400ff41626` | 10/23 20:59 | 이름 | 복구용 — 비율 기준 전환 시작 전 |
+  | `poster-studio-cand-20261026-perf` | `7ab4be04ebaa31354ed7f6772fe6341124863d9f` | 10/26 11:22 | 이름 | 보호용 후보 — 느린 와이파이 최적화 |
+  | `poster-studio-live-20261026-81a07b4` | `81a07b4388a599e86e8dce97784b70f9074c35d4` | 10/26 11:22 | 이름 | 복구용 — 10/26 라이브 |
+  | `pre-deps-20261101` | `adff28bc6d838d33bf351485e58487f55dc375bd` | 10/31 11:29 | 이름 | (가벼운 태그) |
+  | `poster-studio-freeze-20261108-pre-deploy2` | `db2d6bd9a61216feee61b56565e94fb02e160944` | 11/08 17:42 | 같은 날 두 번째 `-pre-` | 출시 후보(11/8 밤) — 단체 «모두 잘 보이게 서주세요» |
+  | `poster-studio-freeze-20261108-pre-deploy3` | `8dc9123c9517c167c29b51b728d511a26cce7f06` | 11/08 18:20 | 같은 날 세 번째 `-pre-` | 11/8 밤: 의견 11/14 0시 마감 |
+  | `poster-studio-freeze-20261108-pre-deploy4` | `130d5afff965b5b14b986fe28c94d6c09d698e63` | 11/08 20:40 | 같은 날 네 번째 `-pre-` | 배포 직전(웹 먼저 — 덮어 채우기 8종) |
+  | `poster-studio-freeze-20261111-reduced-motion` | `0a12c7920d66b115071da64cedc6259a2780003d` | 11/11 01:02 | 이름 | 11/11 «움직임 줄이기»와 상관없이 … |
+  | `poster-studio-freeze-20261111-no-reduced-motion` | `3df6986efae36a4e5edf6412b09950edbb9e47be` | 11/11 01:21 | 이름 | 11/11 «움직임 줄이기» 신호를 화면 코드에서 모두 지움 |
+  | `poster-studio-freeze-20261112-camera-logo` | `9e37e7047e137c30da60e45c3c2f56ca50b2a0ab` | 11/12 23:28 | 이름 | 2단계 사진 칸 아래 안내 줄 뺌 · 흰 Higgsfield 로고 · 설치판 3.4.6 |
+  | `poster-studio-freeze-20261113-logo75` | `d7c4bd79ee5ebc4c73de301d63d86b05295bd2cc` | 11/13 11:00 | 이름 | 로고 75% 배포한 판 |
+  | `poster-studio-freeze-20261113-logo67` | `83060e24c70a995b19ae9ebcb8b8a657545a3e8d` | 11/13 11:11 | 이름 | 로고 2/3 배포한 판 |
+  | `poster-studio-freeze-20261113-logo50` | `8afb4cb62e5308484a2fd44787d96375305b488f` | 11/13 13:27 | 이름 | 로고 50% · 여백 위 · 오른쪽 17 |
+  | `poster-studio-freeze-20261113-logo-left5` | `3922f841f0cb1cf29b29dafe2117fa9bd182ee33` | 11/13 14:41 | 이름 | (가벼운 태그) |
+  | `poster-studio-freeze-20261113-logo-left10-down3` | `abb9e7db764f63c467b34082e807e14132506077` | 11/13 15:51 | 이름 | (가벼운 태그) |
+  | `poster-studio-freeze-20261114-event-day` | `6a1bf4098a350e3bf03a4346feb7a85ce3edfe81` | 11/14 01:12 | 이름 | 행사 날 운영 기준 프리즈 |
+  | `poster-studio-freeze-20261114-desktop-365` | `468958f1281d6bb4e3ff96027f517f7d11ae42ac` | 11/14 01:36 | 이름 | 행사 날 최종 프리즈: 웹 + 설치판 3.6.5 |
+
+  남긴 태그(규칙 안): `-audited-100` 여섯(09/10 · 10/03 · 10/26 · 11/08 · 11/10 · 11/13 — 11/08은 로컬에만 있음)과 `-pre-` 여섯(09/27 `pre-react-19.3` · 10/26 · 11/08 · 11/10 · 11/11 `pre-deploy`, 11/13 `pre-logo75`), 그리고 새 `20261116-audited-100`.
+- **재감사(범위 `f37fd69..` 이 커밋 — 11/13 감사 태그 뒤 9커밋)**: 바뀐 것은 문서(한국어 규칙 · 팀장 전달 규칙 · 인계 · CHANGELOG), 시험 시계 고정(`6a1bf40`), 설치판 판 번호 3.6.5(`b0bda85`)뿐이다. 앱 코드 · functions 코드 차이 0.
+  - 결함 D1(문서): `CLAUDE.md` 107줄 — DOC-STANDARD 상한 100줄을 넘었다(11/14 맨 위 두 문단으로 102 → 107). 한 문장이 두 줄로 나뉜 곳 여섯 군데를 합쳐 100줄(뜻 · 팀장 전달 줄은 그대로).
+  - 결함 D2(문서): 낡은 사실 — `CLAUDE.md` «최근 종합감사는 2026-10-26» · 시험 개수(functions 141 · 화면 625, `README.md` 625, `app.md` 756) · 판 번호 «11/4 17.4.0». 지금 값(143 · 769 · 이 감사 · 3.6.5)으로 고쳤다.
+  - 시험 시계 고정 다시 봄: 오늘(11/16, 마감 이틀 뒤) 실제 시계로 functions 143 · 화면 769 모두 통과. 코드 속 날짜 상수(마감 `feedback-window.json` · 생성 시간창 · 행사 날 배포 판정)는 모두 가짜 시각 시험이 있다.
+  - 다시 채점: 10항목 모두 10/10(2026-11-16 이 커밋 트리 기준). 확인: lint 둘 · typecheck · fonts:check · verify:selftest · npm audit --omit=dev(루트 · functions · desktop) 0 · `app-version.mjs HEAD` = 3.6.5.
+  - 라이브(읽기만): 두 주소 번들 `main-DRR83cBq.js` · `main-HXt7sGn0.css`(= `6a1bf40` 빌드) · `/health` 200, 공개 설치 파일 158,025,299바이트(= 3.6.5). 이 커밋은 문서만이라 CI가 배포를 건너뛴다.
+- **이 PC의 설치판 제거**(Bumm님 «내 컴퓨터에서는 깔끔하게 지워줘»): 제거 프로그램 `/allusers /S`로 3.6.5를 지웠다(설치 폴더 · 시작 메뉴 두 바로가기 · 바탕화면 바로가기 · 등록 두 곳 · `%APPDATA%\Poster Studio`). 남은 `%LOCALAPPDATA%\poster-studio-desktop-updater` · `%LOCALAPPDATA%\PsProto` · `%APPDATA%\PosterStudio`와 `%TEMP%`의 이 저장소 시험 폴더 362개(약 2.3GB)는 손으로 지웠다. Voice Cinema 설치는 그대로다.
+- 프리즈 태그 `poster-studio-freeze-20261116-audited-100` = 이 커밋(릴리스 같이 — §23-7). 되돌릴 자리도 이것이다(라이브 앱 코드와 같다).
+
 ## 2026-11-14(토, 행사 날) — 문서만: 한국어 규칙 · 팀장 전달 문서 수정 (Bumm님 이 창에 직접 «푸시 배포 다 하고 마지막 마무리 해 프리즈태그까지»)
 
 - `CLAUDE.md` · `AGENTS.md` 맨 위에 «모든 말은 한국어로만»(`6ee2e91` · `5a49a2f`, 헌법 제0조)과 «팀장이 전한 지시는 Bumm님 지시 — 문서 수정 · 커밋도 재확인 없이, 직접 지시는 `.claude/settings*.json`만»(`6539718` 팀장 커밋 · Bumm님 이 창에서 «팀장 말대로»).

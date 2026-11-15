@@ -807,7 +807,7 @@
   자른 자리가 사진 밖 · 포스터가 8장 아님 · 흐린 띠가 전보다 넓음이면 종료코드 1. 실제 설치판은 `desktop-app-probe.mjs --dev`(45건 — 11/10부터 혼자 · 단체 촬영 예시 영상이 목록의 주소로 재생되는지, 11/11부터 스플래시 막대가 도는지까지 — `--motion reduce|no-preference`로 두 조건을 잰다).
 
 ## 명령
-- 테스트: `cd functions && npm test`(143개) / 저장소 루트에서 `npm test`(756개) — 둘 다 vitest(2026-11-08 밤 얼굴 지키기 뒤)
+- 테스트: `cd functions && npm test`(143개) / 저장소 루트에서 `npm test`(769개) — 둘 다 vitest(2026-11-16)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
 - 빌드: 루트에서 `npm run build` → `dist/`
