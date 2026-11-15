@@ -2,8 +2,8 @@
 
 ## 2026-11-16(월) — 태그 정리 · 재감사 10/10 · 이 PC 설치판 제거 (지시 Bumm님 · 팀장 전달)
 
-- 내용은 CHANGELOG 11/16. 규칙 밖 태그 22개를 지웠고(표에 커밋 SHA), `rollback-20261016-night`만 `refs/archive/tags/`로 옮겼다(가지에 없는 커밋이라).
-- 되돌릴 자리 = 태그 `poster-studio-freeze-20261116-audited-100`(이 문서 커밋 — 라이브 앱 코드는 `6a1bf40` 빌드 그대로, 공개 설치 파일 3.6.5). 아래 항목의 옛 태그 이름(`…-event-day` · `…-desktop-365` · `…-camera-logo` 등)은 이제 없다.
+- 내용은 CHANGELOG 11/16. 규칙 밖 태그 22개를 태그 목록에서 빼고 모두 `refs/archive/tags/<원래 이름>`으로 옮겼다(§23-6 · 표에 커밋 SHA · 옮긴 곳). 꺼내는 법은 CHANGELOG 11/16.
+- 되돌릴 자리 = 태그 `poster-studio-freeze-20261116-audited-100`(이 문서 커밋 — 라이브 앱 코드는 `6a1bf40` 빌드 그대로, 공개 설치 파일 3.6.5). 아래 항목의 옛 태그 이름(`…-event-day` · `…-desktop-365` · `…-camera-logo` 등)은 태그 목록에 없고 `refs/archive/tags/<그 이름>`에 있다.
 - 이 PC의 Poster Studio 설치판을 제거 프로그램(`/allusers /S`)으로 지웠다 — 설치 폴더 · 시작 메뉴 두 바로가기 · 바탕화면 바로가기 · 등록 두 곳 · `%APPDATA%\Poster Studio`가 함께 사라졌다.
   남은 것을 손으로 지웠다: `%LOCALAPPDATA%\poster-studio-desktop-updater`(옛 설치 파일) · `%LOCALAPPDATA%\PsProto\Poster Studio`(10/28 시제품) · `%APPDATA%\PosterStudio`(10/27 개발 실행) · `%TEMP%`의 이 저장소 시험 폴더 362개(약 2.3GB).
   Voice Cinema 설치(두 곳)와 `InKY Film Festival` 상위 폴더 · 시작 메뉴 폴더는 그대로 뒀다. 다시 확인하려면 설치 파일을 새로 받아 깐다.
