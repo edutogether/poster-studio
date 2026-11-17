@@ -1,5 +1,9 @@
 # HANDOFF_CURRENT — Poster Studio 공통 인계 문서
 
+## 2026-11-17(화) — 기본 가지 master → main
+
+- 가지 이름을 `main`으로 바꿨다(CHANGELOG 11/17). 배포는 `main` push → CI. 아래 옛 항목의 «master»는 그때 이름이다.
+
 ## 2026-11-16(월) — 설명서 새 판(시안 (가) 11쪽)
 
 - 새 판 폴더: `C:\Users\817be\Documents\poster-studio-매뉴얼-20261116\` · `…\InKY-설치판-현장매뉴얼-20261116\`. 내용 · 확인은 CHANGELOG 11/16 «설명서 새 판».

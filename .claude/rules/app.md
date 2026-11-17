@@ -512,7 +512,7 @@
   그래서 파일은 Firebase 콘솔의 Storage 탭이 아니라 Google Cloud 콘솔의 Cloud Storage에서 보인다.
 - **비용**: 한 번 받을 때 약 0.15GB가 나간다(인터넷 송신 GB당 약 $0.12 → 한 번에 약 $0.02). 저장은 월 1센트 미만.
 - 🟢 **10/31부터 master가 이 단추와 연결을 품는다**(가지 `download-20261027`을 master로 빨리감기 — 인계 10/31). 그 전에는 «master 변경 금지»(10/27)라
-  master를 push하면 단추와 `/download`가 사라지는(404) 상태였다. 지금은 master에서 배포해도 그대로 남는다(`test/download-link.test.tsx`가 `firebase.json` 리디렉션과 주소를 맞춰 본다).
+  master를 push하면 단추와 `/download`가 사라지는(404) 상태였다. 지금은 main에서 배포해도 그대로 남는다(`test/download-link.test.tsx`가 `firebase.json` 리디렉션과 주소를 맞춰 본다).
 - **확인**: dist는 `node scripts/verify/download-button-probe.mjs <dist> <결과> (--before | --compare <전>)`(가짜 1KB 설치 파일 · 7크기 화소 대조),
   라이브는 `node scripts/verify/download-live.mjs <결과> (--before | --sha256 <해시> --compare <전>)`(세 주소 끝까지 받아 해시 · 머리글, PC 2560 · 휴대폰 3배 누르기, 전/후 화소).
   - 🟠 라이브 전/후 화소의 «전»은 배포 직후 같은 시각에 되돌림 채널(배포 전 판)을 `--before --site <채널 주소>`로 찍은 것을 쓴다.
@@ -822,10 +822,12 @@
   dist 서버에 같은 주소를 주면 1단계 그대로 — 확인함). 서버·카메라·AI 요청 0건.
   AI 생성은 로컬에서도 라이브 Functions를 호출하므로 **실비용이 나간다**.
 - 에뮬레이터: 사용하지 않는다. 헤더(CSP 등) 확인이 필요하면 `firebase emulators:start --only hosting`.
-- 배포: `master`에 push → CI가 test → functions → hosting 순으로 자동 배포. 수동 배포는 하지 않는다
+- 배포: `main`에 push → CI가 test → functions → hosting 순으로 자동 배포. 수동 배포는 하지 않는다
   (예외: `keepWarm` 스케줄 변경 배포, GitHub 정지 중 로컬 배포 — `_docs/ops/runbook.md` §9와 아래 절 참고).
 
 ## 자주 틀리는 것
+- 🟠 **기본 가지는 `main`이다 — 2026-11-17에 `master`에서 이름을 바꿨다**(지시 Bumm님 · 팀장 전달). 배포는 `main` push에서만 돈다(`deploy.yml` · `pr-check.yml`의 `branches: [main]`).
+  CHANGELOG · HANDOFF · intents · 도구 주석에 남은 «master `커밋`»은 그때 이름으로 적은 기록이라 그대로다 — 명령에 `master`를 넣지 않는다(옛 클론은 `git branch -m master main` · `git fetch` · `git branch -u origin/main main` · `git remote set-head origin -a`).
 - 🟠 **캔버스 필터(`ctx.filter = 'blur(…)'`)는 아이폰 사파리가 그리지 않는다**(10/20 저녁 Bumm님 «휴대폰에서 아치 프레임 바깥 블러가 안 보임»). 그래서 아치 바깥 · 배경 연장 · 빛 번짐이
   휴대폰에서 선명하게 나갔다. 흐림은 `src/templates.ts`의 `drawBlurred`로만 그린다 — 필터가 실제로 그려지는지 한 번 재 보고(속성만 있고 무시하는 브라우저도 있다), 그리면 예전 명령 그대로
   (PC 출력 화소 동일), 못 그리면 1/4로 줄여 화소를 직접 흐린다. 확인: `node scripts/verify/poster-blur-probe.mjs <dist> <out> [--no-filter] [--compare <다른 결과>]`

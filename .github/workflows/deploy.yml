@@ -14,7 +14,7 @@ name: Test, Deploy Functions, Deploy Hosting
 # 직후 삭제). functions/security-notes.md 참고.
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

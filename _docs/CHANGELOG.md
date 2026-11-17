@@ -1,5 +1,10 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-17(화) — 기본 가지 이름 master → main (지시 Bumm님 · 팀장 전달)
+
+- GitHub에서 가지 이름을 바꿨다(`gh api -X POST …/branches/master/rename -f new_name=main` — 기본 가지가 함께 옮겨짐, 열린 PR · 보호 규칙은 없었다). 바꾸기 전 라이브는 `e3822ea` CI 배포분, 되돌릴 자리는 태그 `poster-studio-freeze-20261117-pre-main-rename`.
+  워크플로 둘(`deploy.yml` push · `pr-check.yml` PR)의 대상 가지와 지금 절차를 적은 문서(CLAUDE.md · AGENTS.md · README · app.md · runbook)를 main으로 고쳤다. 지난 일을 적은 줄(CHANGELOG · HANDOFF의 옛 항목 · intents · 도구 주석의 «master `커밋`»)은 그대로 둔다.
+
 ## 2026-11-17(화) — `.cache` 정리: 20.31GB를 E:로 옮김 (지시 Bumm님 · 팀장 전달)
 
 - 문서 · 코드가 가리키지 않는 작업 폴더(Veo 시절 장면 작업 프레임 · 옛 검증 캡처)를 `E:\Projects-cleanup-20261117\…`로 옮겼다(지우지 않음). 승인 원본 · 결과물 · 매뉴얼 그림은 남겼다. 목록 · 이유 · 되돌리기는 [`archive/cleanup-20261117.md`](archive/cleanup-20261117.md). 테스트 769개 · 빌드 통과.

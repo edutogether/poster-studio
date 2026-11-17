@@ -34,7 +34,7 @@ _docs/           저장소 문서 (배포 대상 아님 — hosting public은 di
   archive/         끝났지만 근거로 남기는 것
 AGENTS.md        AI 코딩 도구(Claude Code / Codex 등)가 읽는 저장소 안내
 firebase.json    hosting(poster-studio 타겟) + functions 설정, 보안헤더(CSP 등) 포함
-.github/workflows/deploy.yml   master 푸시 시 test → functions 배포 → hosting 배포 순서로 자동 진행
+.github/workflows/deploy.yml   main 푸시 시 test → functions 배포 → hosting 배포 순서로 자동 진행
 ```
 
 ## 운영 순서 (행사 당일)
@@ -47,7 +47,7 @@ firebase.json    hosting(poster-studio 타겟) + functions 설정, 보안헤더(
 
 ## 개발/배포 (관리자용)
 ### 프론트엔드
-`src/`(React+TypeScript)·`public/`(정적 자산)을 고치고 `master`에 푸시하면 `.github/workflows/deploy.yml`이 `npm run build`로 만든 `dist/`를 Firebase Hosting(`poster-studio` 사이트)에 배포한다. GitHub가 정지돼 CI가 돌지 않을 때는 `_docs/ops/runbook.md` §9의 로컬 배포 절차만 쓴다. 로컬 미리보기는 `npm run dev`, 배포본과 같은 형태는 `npm run build` 뒤 `dist/`를 정적 서버로 연다 — 단, AI 생성은 로컬에서도 라이브 Functions를 부르므로 실비용이 나간다. `firebase.json`의 CSP 등 보안헤더는 정적 서버 미리보기에는 안 걸리므로, 헤더 관련 동작을 확인하려면 `firebase deploy --only hosting:poster-studio`로 실제 배포하거나 `firebase emulators:start --only hosting`을 쓸 것.
+`src/`(React+TypeScript)·`public/`(정적 자산)을 고치고 `main`에 푸시하면 `.github/workflows/deploy.yml`이 `npm run build`로 만든 `dist/`를 Firebase Hosting(`poster-studio` 사이트)에 배포한다. GitHub가 정지돼 CI가 돌지 않을 때는 `_docs/ops/runbook.md` §9의 로컬 배포 절차만 쓴다. 로컬 미리보기는 `npm run dev`, 배포본과 같은 형태는 `npm run build` 뒤 `dist/`를 정적 서버로 연다 — 단, AI 생성은 로컬에서도 라이브 Functions를 부르므로 실비용이 나간다. `firebase.json`의 CSP 등 보안헤더는 정적 서버 미리보기에는 안 걸리므로, 헤더 관련 동작을 확인하려면 `firebase deploy --only hosting:poster-studio`로 실제 배포하거나 `firebase emulators:start --only hosting`을 쓸 것.
 
 ### Firebase Functions (AI 생성 API)
 ```bash

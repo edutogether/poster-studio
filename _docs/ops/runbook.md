@@ -152,14 +152,14 @@
 1. 새 무작위 토큰 생성: `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`
 2. Firebase Secret Manager에 새 값 등록: `printf '<새토큰>' | firebase functions:secrets:set BOOTH_TOKEN --project inky-poster-studio --data-file -`
 3. `public/constants.js`의 `BOOTH_TOKEN` 상수를 **같은 값**으로 수정
-4. 커밋 후 `master`에 push — CI가 `test` → `deploy-functions`(새 시크릿 반영) → `deploy-hosting`(새 constants.js 반영) 순서로 자동 배포한다. **2·3번을 같은 커밋에 같이 넣을 것** — 하나만 먼저 나가면 그 사이에 401이 뜬다.
+4. 커밋 후 `main`에 push — CI가 `test` → `deploy-functions`(새 시크릿 반영) → `deploy-hosting`(새 constants.js 반영) 순서로 자동 배포한다. **2·3번을 같은 커밋에 같이 넣을 것** — 하나만 먼저 나가면 그 사이에 401이 뜬다.
 5. 배포 완료 후 실제로 `/generate`가 새 토큰으로 정상 응답하는지 확인(CI의 "부스토큰 스모크테스트" 단계가 자동으로 확인하고, 실패하면 파이프라인이 실패로 표시된다).
 
 ## 8. 배포가 나갔는데 라이브가 깨졌을 때 (롤백)
 2026-10-01 현재 조직 규칙에 맞춘 절차다. 이전 문서의 콘솔·수동 CLI 롤백 안내는 사용하지 않는다.
 
 1. 공통 인계 문서에 적힌 직전 정상 프리즈 태그와 배포 커밋을 확인한다.
-2. 작업 가지에서 문제가 된 변경을 `git revert`하고 PR을 만든다. `reset --hard`·강제 푸시·master 직접 푸시는 하지 않는다.
+2. 작업 가지에서 문제가 된 변경을 `git revert`하고 PR을 만든다. `reset --hard`·강제 푸시·main 직접 푸시는 하지 않는다.
 3. 프론트와 Functions 검사 후 정해진 승인 경로로 병합하여 기존 CI가 두 서비스를 다시 배포하게 한다.
 4. 해당 커밋의 CI 성공과 두 Hosting 주소의 응답·번들을 확인한다. 실제 `/generate` 호출은 비용이 발생하므로 별도 지시 없이 검사하지 않는다.
 
@@ -171,21 +171,21 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
 2026-10-15에 이 절차로 master `8d752d4`를 배포했다(기록은 `_docs/CHANGELOG.md`와 `_docs/intents/2026-10-15-local-deploy-github-suspended/`).
 
 1. **무엇이 나가는지 본다.** 기준(`<라이브 커밋>`)은 **지금 라이브에 나가 있는 커밋**이다 — 공통 인계 문서(`_docs/ops/HANDOFF_CURRENT.md`) 맨 위
-   «라이브는 …»에 적힌 것. 🟠 이 절차로 한 번 배포한 뒤로는 `origin/master`가 아니다(2026-10-15 로컬 배포 뒤 라이브는 `8d752d4`,
+   «라이브는 …»에 적힌 것. 🟠 이 절차로 한 번 배포한 뒤로는 `origin/main`이 아니다(2026-10-15 로컬 배포 뒤 라이브는 `8d752d4`,
    `origin/master`는 그보다 56커밋 앞의 `a658d89` — `origin/master`를 기준으로 잡으면 3번 대조에서 멈춘다. 2026-10-17 점검에서 발견).
-   GitHub가 정상이고 CI로만 배포해 왔다면 `origin/master`와 같다.
-   - 전체: `git diff --stat <라이브 커밋> master`
-   - functions: `git diff --stat <라이브 커밋> master -- functions/`. 비어 있으면 hosting만 낸다.
+   GitHub가 정상이고 CI로만 배포해 왔다면 `origin/main`과 같다.
+   - 전체: `git diff --stat <라이브 커밋> main`
+   - functions: `git diff --stat <라이브 커밋> main -- functions/`. 비어 있으면 hosting만 낸다.
 2. **LF 사본을 만든다.** 이 컴퓨터의 체크아웃은 CRLF(`core.autocrlf=true`)라 그대로 빌드하면 CI(LF)와 다른 파일이 나간다.
    ```bash
    git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/base <라이브 커밋>
-   git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/master master
+   git -c core.autocrlf=false worktree add --detach .cache/deploy-<날짜>/main main
    ```
 3. **이 컴퓨터의 빌드가 CI를 재현하는지 본다.** `base`에서 `npm ci && npm run build`를 하고, 라이브와 바이트 대조한다.
    - 명령: `node scripts/verify/dist-vs-live.mjs ../base/dist https://poster-studio.web.app`
    - 전부 같아야 다음으로 간다. 다르면 기준 커밋이 지금 라이브가 아니거나 빌드 환경이 다르다 — 멈추고 팀장에게 보고한다.
    - 2026-10-17 점검: `8d752d4` LF 빌드가 두 주소 모두와 323개 파일 바이트까지 같았다.
-4. **CI 검사를 `master` 사본에서 전부 돌린다.** 하나라도 종료코드가 0이 아니면 멈춘다.
+4. **CI 검사를 `main` 사본에서 전부 돌린다.** 하나라도 종료코드가 0이 아니면 멈춘다.
    - functions: `npm ci` · `npm run lint` · `npm test`
    - 루트: `npm ci` · `npm run lint` · `npm run typecheck` · `npm run fonts:check` · `npm test` · `npm run verify:selftest` · `npm run build`
    - dist 점검: `node scripts/ci/run-workflow-step.mjs "dist에 나가면 안 되는 것이 없는지"`(CI 단계의 명령을 워크플로 파일에서 꺼내 그대로 실행한다)
@@ -209,7 +209,7 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
    - 2026-10-17 연습: 하루짜리 채널 `rehearsal-1017`에 새 판(미리보기 채널)을 `hosting:clone`으로 올렸다가 되돌림 채널을 다시 `hosting:clone`해
      되돌렸다 — 두 번 다 `dist-vs-live.mjs`로 바이트까지 같았다(300개 · 323개). 9번의 hosting 되돌리기와 같은 명령 꼴이다. 라이브는 건드리지 않았다.
      함수 지문은 그날 `posterStudio` `b327ed39…` · `keepWarm` · `cleanupOldCountersSchedule` `e0f59577…`였다.
-7. **배포한다**(`master` 사본에서, CI와 같은 순서).
+7. **배포한다**(`main` 사본에서, CI와 같은 순서).
    - functions가 바뀌었으면 먼저 `firebase deploy --only functions --project inky-poster-studio --non-interactive`를 낸다.
      그다음 `node scripts/ci/run-workflow-step.mjs "부스토큰 스모크테스트 (배포 직후 실제 인증 확인)"`가 통과해야 hosting으로 간다.
      (부스 코드는 쓰지 않는다 — 10/23 확정. 아래 한 줄은 다시 켤 때를 위해 남겨 둔다.) 부스 코드 스위치가 켜졌으면 이 단계는 `BOOTH_CODE_REQUIRED=true`와 `BOOTH_CODE`(값은 비공개 운영 문서)를 환경변수로 넣고 돌린다 —
@@ -234,11 +234,11 @@ GitHub가 정지돼 push·CI가 안 될 때만 쓴다. 매번 팀장을 거친 B
      새 함수 다시 배포 → 지문이 배포 직후 기록과 같음. 한 번에 약 1분 20초.
      2026-10-26 격리 리허설(demo- 프로젝트 에뮬레이터 + 이 컴퓨터의 가짜 OpenAI — 클라우드 자원 0 · $0): 라이브 판 7ad0ad5 → 후보 6a457b8 → 되돌리기(7ad0ad5) → 다시 후보, 단계마다 25개 확인 전부 통과(100/100). Hosting 번들이 그 판의 것 · /health · 부스 토큰 없음 401 · 사진 없음 400 · CORS 반사 · 히어로 단체와 애니메이션 혼자에서 서버가 보낸 지시문 = 그 판(후보 v2 · v1plus2, 되돌리면 v1) · 안전 차단은 OpenAI 1회 · 일시 오류(500)는 재시도 뒤 200 · 잔액 소진은 후보 credit 1회(7ad0ad5는 재시도 5회 — 이번에 고친 동작).
      에뮬레이터는 Hosting 헤더를 붙이지 않고 함수 CORS를 전부 반사하므로 그 둘은 라이브 `curl` · 단위 시험 · 배포 직후 CI 확인으로 본다. 도구는 저장소 밖(세션 임시 폴더)에 두었다.
-     🟠 `base` 사본에는 `functions/node_modules`가 없다 — `git diff <라이브 커밋> master -- functions/package*.json`이 비어 있으면
+     🟠 `base` 사본에는 `functions/node_modules`가 없다 — `git diff <라이브 커밋> main -- functions/package*.json`이 비어 있으면
      본 체크아웃의 것을 연결하고(`cmd //c "mklink /J node_modules <본 체크아웃>\functions\node_modules"`, 끝나면 `rmdir`로 연결만 걷는다), 다르면 `npm ci`.
    - 되돌린 뒤 `dist-vs-live.mjs ../base/dist`로 확인한다. Firebase 콘솔 Hosting의 출시 기록에서도 이전 판으로 되돌릴 수 있다.
 10. **기록한다.** CHANGELOG에 한 줄, 공통 인계 문서(`_docs/ops/HANDOFF_CURRENT.md`)에 배포 커밋·라이브 판 번호·되돌림 채널을 적는다.
-    GitHub가 돌아오면 master를 push한다. CI가 같은 파일을 다시 배포한다(바이트가 같으므로 화면 변화 없음).
+    GitHub가 돌아오면 main을 push한다. CI가 같은 파일을 다시 배포한다(바이트가 같으므로 화면 변화 없음).
 
 ## 참고
 - 노트북 재부팅/브라우저 재시작으로 대부분의 일시적 문제는 해결된다.

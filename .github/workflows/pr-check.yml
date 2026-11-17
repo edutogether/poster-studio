@@ -1,16 +1,16 @@
 name: PR Check
 
-# PR(대상 master)이면 사람이 요청하지 않아도 도는 검사(2026-09-27 대표 지시).
-# Codex 클라우드 등이 올린 PR이 master에 들어가기 전에, 배포 워크플로(deploy.yml)가
+# PR(대상 main)이면 사람이 요청하지 않아도 도는 검사(2026-09-27 대표 지시).
+# Codex 클라우드 등이 올린 PR이 main에 들어가기 전에, 배포 워크플로(deploy.yml)가
 # 배포 **전에** 돌리는 검사를 똑같이 돌린다 — test 잡 전부 + 빌드·dist 점검.
 #
 # 🔴 여기에는 배포·비밀 키·라이브 호출이 **없다.** 그래서 트리거는 pull_request다
 #    (pull_request_target은 비밀 키에 접근할 수 있어 쓰지 않는다). 권한도 읽기뿐이다.
 # 🟠 deploy.yml의 검사 단계를 바꾸면 여기도 같이 바꾼다 — 둘이 어긋나면
-#    PR에서는 초록인데 master에서 막히는(또는 그 반대) 일이 생긴다.
+#    PR에서는 초록인데 main에서 막히는(또는 그 반대) 일이 생긴다.
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
 
 permissions:
   contents: read
