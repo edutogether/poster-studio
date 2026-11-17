@@ -79,7 +79,14 @@ test('행사 날은 워크플로에 2026-11-14로 적혀 있고, 배포 잡 둘 
 test('워크플로가 쓰는 시간대 KST-9는 진짜 date에서 한국 날짜를 준다(11/14 0시 · 24시 경계)', () => {
   expect(script).toContain('TZ=KST-9 date +%F');
   if (!BASH) throw new Error('bash를 찾지 못했다');
-  const day = (utc) => spawnSync(BASH, ['--noprofile', '--norc', '-c', `TZ=KST-9 date -d '${utc}' +%F`], { encoding: 'utf8' }).stdout.trim();
+  // 위 단계 실행과 같이 bash 옆 폴더(Git\usr\bin — date.exe가 있다)를 PATH 앞에 둔다. 시험을 띄운 창의 PATH에 기대면 그 폴더가 없는 창에서 «date: command not found»로 빈 값이 나왔다(11/17).
+  const toolPath = path.isAbsolute(BASH) ? [path.dirname(BASH)] : [];
+  const env = { ...process.env, PATH: [...toolPath, process.env.PATH].join(path.delimiter) };
+  const day = (utc) => {
+    const r = spawnSync(BASH, ['--noprofile', '--norc', '-c', `TZ=KST-9 date -d '${utc}' +%F`], { encoding: 'utf8', env });
+    expect(r.stderr).toBe('');
+    return r.stdout.trim();
+  };
   expect(day('2026-11-13T14:59:59Z')).toBe('2026-11-13');
   expect(day('2026-11-13T15:00:00Z')).toBe('2026-11-14');
   expect(day('2026-11-14T14:59:59Z')).toBe('2026-11-14');
