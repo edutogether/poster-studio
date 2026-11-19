@@ -176,7 +176,8 @@ test('main.mjs: 저장이 끝나면 결과를 그 화면에 보낸다(취소는 
 });
 
 test('main.mjs의 원인 기록은 바로 쓴다 — 안내 뒤 곧 끝나도 마지막 줄(멈춘 까닭)을 잃지 않는다', () => {
-  const main = fs.readFileSync('desktop/main.mjs', 'utf8');
+  // 줄끝이 CRLF인 체크아웃(core.autocrlf=true)에서도 함수 끝 «\n}\n»을 찾도록 LF로 맞춰 읽는다(11/19 — 복제본에서 -1을 받아 본문이 엉뚱하게 잘렸다).
+  const main = fs.readFileSync('desktop/main.mjs', 'utf8').replace(/\r\n/g, '\n');
   const body = main.slice(main.indexOf('function log(line) {'), main.indexOf('\n}\n', main.indexOf('function log(line) {')));
   expect(body).toMatch(/appendFileSync\(LOG_FILE,/);
   expect(body).not.toMatch(/fs\.appendFile\(|\.then\(/);

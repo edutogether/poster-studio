@@ -18,6 +18,18 @@ test('화면 진입 HTML은 외부 글꼴 서비스를 부르지 않고 자체 �
   expect(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')).toContain('href="fonts/poster.css"');
 });
 
+// 파일 머리 4바이트만 읽는다 — 파일 395개(9.6MB)를 통째로 읽으면 디스크가 식은 복제본에서 8.5초가 걸려 기본 제한 5초를 넘겼다(11/19).
+function readMagic(file) {
+  const fd = fs.openSync(file, 'r');
+  try {
+    const buf = Buffer.alloc(4);
+    fs.readSync(fd, buf, 0, 4, 0);
+    return buf.toString('latin1');
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 test('포스터 글꼴 규칙의 파일이 전부 있고 woff2이며, 쓰지 않는 파일이 남아 있지 않다', () => {
   // 🔴 대상이 0건이면 통과하지 않는다.
   expect(urls.length, '글꼴 규칙에서 파일 주소를 하나도 못 찾았다').toBeGreaterThan(100);
@@ -29,8 +41,7 @@ test('포스터 글꼴 규칙의 파일이 전부 있고 woff2이며, 쓰지 않
   for (const url of urls) {
     expect(url, '외부 주소가 남으면 안 된다').toMatch(/^poster\/[a-z0-9]+\/[A-Za-z0-9_.-]+\.woff2$/);
     const file = path.join(FONTS, url);
-    const head = fs.readFileSync(file).subarray(0, 4).toString('latin1');
-    expect(head, url).toBe('wOF2');
+    expect(readMagic(file), url).toBe('wOF2');
     referenced.add(path.normalize(file));
   }
   const onDisk = fs
