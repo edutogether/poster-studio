@@ -65,6 +65,8 @@ test("장면 해제는 재생과 다운로드를 정리한다", () => {
   view.unmount();
   expect(video.hasAttribute("src")).toBe(false);
   expect(HTMLMediaElement.prototype.load).toHaveBeenCalled();
+  // jsdom 31은 video의 volumechange 알림을 setImmediate로 대기열에 올린다 — 그건 앱 타이머가 아니라 바로 돌리면 사라진다. 0ms 몫만 비운 뒤 센다(앱의 4초 · 8초 타이머가 남아 있으면 여전히 걸린다).
+  vi.advanceTimersByTime(0);
   expect(vi.getTimerCount()).toBe(0);
 });
 test("자동 재생 거부는 정지 그림으로 복구하고 재시도 폭주가 없다", async () => {
@@ -103,5 +105,7 @@ test("장면 제거 후 늦게 도착하는 play 거부는 새 장면에 영향�
   const view = render(<WaitingArtwork {...props}/>);
   view.unmount();
   await act(async () => { reject(new Error("AbortError")); });
+  // jsdom 31은 video의 volumechange 알림을 setImmediate로 대기열에 올린다 — 그건 앱 타이머가 아니라 바로 돌리면 사라진다. 0ms 몫만 비운 뒤 센다(앱의 4초 · 8초 타이머가 남아 있으면 여전히 걸린다).
+  vi.advanceTimersByTime(0);
   expect(vi.getTimerCount()).toBe(0);
 });

@@ -804,8 +804,8 @@
   자른 자리가 사진 밖 · 포스터가 8장 아님 · 흐린 띠가 전보다 넓음이면 종료코드 1. 실제 설치판은 `desktop-app-probe.mjs --dev`(45건 — 11/10부터 혼자 · 단체 촬영 예시 영상이 목록의 주소로 재생되는지, 11/11부터 스플래시 막대가 도는지까지 — `--motion reduce|no-preference`로 두 조건을 잰다).
 
 ## 명령
-- 🟠 **jsdom은 30.0.1에 못 박았다**(`^` 없음 · 2026-11-19). 30.1.3 이상은 대기 영상 시험 3건(`vi.getTimerCount()`가 0이 아님)을 깨고, 31은 `device-canvas` 시험의 zoom 값 자릿수(0.440972)를 바꾼다.
-  앱 코드가 아니라 시험 환경 차이다. 풀리면(시험을 새 동작에 맞춰 고친 뒤) 올리고 이 줄을 지운다. `npm run typecheck`는 TypeScript 7(7.0.2)로 돈다 — typescript-eslint를 쓰지 않아 걸림이 없다.
+- 🟠 `npm run typecheck`는 TypeScript 7(7.0.2)로 돈다 — typescript-eslint를 쓰지 않아 걸림이 없다. jsdom 31은 video 소리 바꿈 알림을 `setImmediate`로 대기열에 올리고 `style.zoom`을 소수 6자리로 적는다:
+  타이머 개수 시험은 `vi.advanceTimersByTime(0)`으로 그 몫을 비운 뒤 세고, zoom 시험은 `toBeCloseTo(…, 5)`로 견준다(일부러 깨뜨려 빨간불 확인, 2026-11-19).
 - 테스트: `cd functions && npm test`(143개) / 저장소 루트에서 `npm test`(776개) — 둘 다 vitest(2026-11-16)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)

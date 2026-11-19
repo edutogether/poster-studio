@@ -95,7 +95,8 @@ describe("기기 판정(public/device-canvas.js)", () => {
   test("터치 노트북(마우스가 주 입력) · 일반 PC → PC, 창 크기로 zoom(기준 크기 창은 zoom 없음)", () => {
     expect(run({ ua: WINDOWS, tp: 10, coarse: false, win: [1280, 720] })).toMatchObject({ device: "pc", zoom: "0.5" });
     expect(run({ ua: WINDOWS, win: [2560, 1440] })).toMatchObject({ device: "pc", zoom: "" });
-    expect(run({ ua: WINDOWS, win: [1366, 635] }).zoom).toBe(String(635 / 1440));
+    // jsdom 31은 style.zoom을 소수 6자리로 줄여 적는다(0.440972) — 수치로 견주되 높이 한 칸(1/1440)이 다르면 걸리게 소수 5자리까지 본다.
+    expect(Number(run({ ua: WINDOWS, win: [1366, 635] }).zoom)).toBeCloseTo(635 / 1440, 5);
     expect(run({ ua: WINDOWS, win: [3440, 1440] })).toMatchObject({ device: "pc", zoom: "" });
   });
   test("PC 화면에서는 휴대폰 갈래가 되지 않는다(창이 760보다 좁아도)", () => {
