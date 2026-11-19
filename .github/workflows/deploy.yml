@@ -27,7 +27,7 @@ concurrency:
 # 배포 도구(firebase-tools)는 잠금 파일에 두지 않고 쓰는 자리에서 정확한 판을 npx로 부른다
 # (_shared/CONVENTIONS.md §3.7, 2026-11-01 Bumm님 결정). 판을 올릴 때는 이 한 줄만 바꾼다 — 범위·@latest 금지.
 env:
-  FIREBASE_TOOLS: firebase-tools@15.32.1
+  FIREBASE_TOOLS: firebase-tools@15.37.0
   # 행사 당일(한국 시간)에는 설치판(desktop/)만 바뀐 커밋이 웹 · 서버 함수를 다시 배포하지 않는다(2026-11-04 Bumm님 결정 3 ①, F-3-2).
   # 판정은 아래 changes 잡. 다른 날은 지금과 같고, 11/15부터는 저절로 꺼진다.
   EVENT_DAY: '2026-11-14'
@@ -48,7 +48,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       # ${{ }} 값은 env로 넘긴다 — test/deploy-filter-step.test.js가 이 명령을 워크플로에서 그대로 꺼내 돌린다(extractRun).
@@ -107,8 +107,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '26'
       - run: npm ci
@@ -136,8 +136,8 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '26'
       - run: npm ci
@@ -159,7 +159,7 @@ jobs:
           BOOTH_CODE_REQUIRED: ${{ vars.BOOTH_CODE_REQUIRED }}
           BOOTH_CODE: ${{ secrets.BOOTH_CODE }}
         run: node scripts/ci/booth-code-env.mjs functions/.env.inky-poster-studio
-      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
       # github-actions-deploy 서비스 계정은 project-level roles/secretmanager.secretAccessor
@@ -248,10 +248,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # 2026-09-09 리액트+TS 전환으로 빌드 단계가 처음 생겼다. 배포되는 것은
       # 소스(public/)가 아니라 산출물(dist/)이다 — firebase.json의 hosting.public 참고.
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '26'
       - run: npm ci
@@ -289,7 +289,7 @@ jobs:
           V=$(npx --yes "$FIREBASE_TOOLS" --version)
           echo "firebase-tools $V"
           if [ "$V" != "${FIREBASE_TOOLS#firebase-tools@}" ]; then echo "::error::배포 도구 판이 ${FIREBASE_TOOLS#firebase-tools@}이 아닙니다($V)"; exit 1; fi
-      - uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
       - run: npx --yes "$FIREBASE_TOOLS" deploy --only hosting:poster-studio --project inky-poster-studio --non-interactive

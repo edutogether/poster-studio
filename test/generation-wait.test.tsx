@@ -115,6 +115,8 @@ describe("포스터 생성 대기", () => {
     const first=headline();
     act(()=>vi.advanceTimersByTime(8_000));expect(headline()).not.toBe(first);
     view.unmount();expect(document.documentElement.style.overflow).toBe(previousOverflow);
+    // jsdom 31은 video의 volumechange 알림을 setImmediate로 대기열에 올린다 — 그건 앱 타이머가 아니라 바로 돌리면 사라진다. 0ms 몫만 비운 뒤 센다(앱의 4초 · 8초 타이머가 남아 있으면 여전히 걸린다).
+    vi.advanceTimersByTime(0);
     expect(vi.getTimerCount()).toBe(0);
   });
   test("60초가 지나도 지연 안내를 표시하지 않는다",()=>{

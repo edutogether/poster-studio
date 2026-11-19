@@ -201,15 +201,12 @@
   2026-09-07에 라이브에서 실제로 뚫리는 것을 재현했다. `clientIpForRateLimit()`(맨 오른쪽)만 쓴다.
 - **부스토큰(`src/constants.ts`) 변경과 Secret Manager 갱신을 다른 커밋으로 쪼개지 않는다.** 그 사이 전 부스가 401.
 - **`npm audit fix --force`를 `functions/`에서 돌리지 않는다.** firebase-functions 메이저 다운그레이드를 유발한다.
-- 🟠 **배포 도구(firebase-tools)는 잠금 파일에 두지 않는다 — CI·로컬 배포 모두 `npx --yes firebase-tools@15.32.1`**(2026-11-01 Bumm님 결정, `_shared/CONVENTIONS.md` §3.7).
+- 🟠 **배포 도구(firebase-tools)는 잠금 파일에 두지 않는다 — CI·로컬 배포 모두 `npx --yes firebase-tools@15.37.0`**(2026-11-01 Bumm님 결정, `_shared/CONVENTIONS.md` §3.7).
   판은 `deploy.yml` 맨 위 `FIREBASE_TOOLS` 한 곳이다. 설치 스크립트는 끈다(`npm_config_ignore_scripts=true`). `tools/deploy/`(firebase-tools만 담은 잠금 파일)는 지웠다 —
   firebase-tools가 고친 판이 없는 옛 minimatch(3·5·6·9)를 끌고 와 Dependabot 알림 #88 · #90이 닫히지 않았기 때문이다. 대가: 하위 의존성은 실행할 때마다 정해지고 Dependabot이 추적하지 않는다.
   🔴 firebase-tools 아래에 minimatch 11을 `overrides`로 덮지 않는다 — `fsAsync`·`superstatic`이 «m is not a function»으로 깨져 배포가 멈춘다(§3.7).
-- 🟠 **루트·functions의 `overrides`는 고친 판을 끌어올리는 자리다**(2026-11-01, 알림 #84 · #85 · #86 · #87, Codyssey PR #104와 같은 방식). 지금: functions `uuid ^11.1.1` · `qs ^6.16.1`(6.16.2) ·
-  `glob ^14.0.2`(14.0.3) · `minimatch ^11.0.1`(11.0.3), 루트 `minimatch ^11.0.1`(11.0.3). 위쪽 최신판(eslint 10.14.0 · Firestore 9.4.0 → firestore-api 0.2.0 → google-gax 5.0.8 → rimraf 5)이 아직 옛 범위를 적는다.
-  - 닿지 않는 근거(동작 변화 0의 근거): functions의 glob · minimatch는 rimraf만 끌어오는데 rimraf를 부르는 코드가 없다(firebase-admin · Firestore · firebase-functions를 불러와도 glob · minimatch · rimraf 모듈 0개).
-    qs는 express가 불러오지만 앱은 `query parser`(express 5 기본 `simple`)도 urlencoded 본문 해석도 쓰지 않는다. 루트는 eslint만 쓰고, minimatch 10과 11에서 린트 대상 98 · 5개와 결과가 같다.
-  - 위쪽이 새 범위를 적으면 그 override는 할 일이 없어진다. 그때 지우고 같은 확인(시험 · 린트 대조 · 에뮬레이터)을 돌린다.
+- 🟠 **루트·functions의 `overrides`는 2026-11-19 의존성 최신화로 걷었다**(§36). 위쪽 최신판(eslint 10.15 · firebase-admin 14.5 · express 5.3)이 고친 판을 직접 끌어와 uuid · glob 항목은 아예 사라졌고,
+  qs 6.16.2 · minimatch 11.0.9가 그대로 깔린다(`npm ls`로 확인, 양쪽 `npm audit` 0건). 다시 알림이 생기면 그때 고친 판을 `overrides`로 끌어올린다.
   - **설치판 `desktop/`도 `minimatch ^11.0.1`(11.0.4)**(2026-11-04, 알림 #92). 끌어오는 것은 빌드 도구뿐이다(electron-builder 26.18.0 최신판도 `@electron/asar` 3.4.1 → minimatch 3 · glob 7을 적는다).
     설치판에는 들어가지 않는다 — `package.json`에 `dependencies`가 없어 `app.asar`의 node_modules 0개. 덮은 판과 안 덮은 판으로 `--win dir` · `--win nsis`를 둘 다 만들어 `app.asar` 안 591개 파일이 `package.json` 하나 빼고 같았다.
     🟠 덮으면 깨지는 것이 하나 있다: `dir-compare`(minimatch 3의 기본 내보내기를 부름 — 11에는 없다)는 «not a function». `@electron/universal`(맥 universal 빌드)만 쓰므로 윈도 설치판 빌드는 닿지 않는다. 맥 빌드를 더하면 이 override부터 다시 본다.
@@ -571,7 +568,7 @@
   되돌리기는 그 채널을 `live`로 다시 복제하는 것이다. 10/15에 실제로 되돌렸다가 다시 냈다.
 - 🔴 **부스 코드 스위치가 켜진 뒤에는 functions를 로컬에서 그냥 내지 않는다**(지금은 쓰지 않음 — 10/23 확정, 다시 켤 때를 위해 남겨 둠). CI의 «부스 코드 설정» 단계가 매 배포마다 환경 파일을 만든다.
   그 파일 없이 내면 켜 둔 스위치가 빠질 수 있다. 비공개 운영 문서 절차로 같은 파일을 먼저 만들거나, 멈추고 보고한다.
-- 배포 도구는 CI와 같은 판 `npx --yes firebase-tools@15.32.1`(`deploy.yml`의 `FIREBASE_TOOLS`)을 쓴다. 이 컴퓨터 전역의 `firebase`(15.22.4)를 쓰지 않는다.
+- 배포 도구는 CI와 같은 판 `npx --yes firebase-tools@15.37.0`(`deploy.yml`의 `FIREBASE_TOOLS`)을 쓴다. 이 컴퓨터 전역의 `firebase`(15.22.4)를 쓰지 않는다.
 
 ## CI — 문서만 고친 커밋은 배포를 건너뛴다 (2026-09-10, COMMON_STANDARDS §23)
 - 워크플로가 **하나**라 테스트·배포가 같은 파일에 있다. 그래서 `on.push.paths-ignore`를
@@ -807,6 +804,8 @@
   자른 자리가 사진 밖 · 포스터가 8장 아님 · 흐린 띠가 전보다 넓음이면 종료코드 1. 실제 설치판은 `desktop-app-probe.mjs --dev`(45건 — 11/10부터 혼자 · 단체 촬영 예시 영상이 목록의 주소로 재생되는지, 11/11부터 스플래시 막대가 도는지까지 — `--motion reduce|no-preference`로 두 조건을 잰다).
 
 ## 명령
+- 🟠 `npm run typecheck`는 TypeScript 7(7.0.2)로 돈다 — typescript-eslint를 쓰지 않아 걸림이 없다. jsdom 31은 video 소리 바꿈 알림을 `setImmediate`로 대기열에 올리고 `style.zoom`을 소수 6자리로 적는다:
+  타이머 개수 시험은 `vi.advanceTimersByTime(0)`으로 그 몫을 비운 뒤 세고, zoom 시험은 `toBeCloseTo(…, 5)`로 견준다(일부러 깨뜨려 빨간불 확인, 2026-11-19).
 - 테스트: `cd functions && npm test`(143개) / 저장소 루트에서 `npm test`(776개) — 둘 다 vitest(2026-11-16)
 - 린트: `cd functions && npm run lint` / 루트에서 `npm run lint`
 - 타입: 루트에서 `npm run typecheck` (TS strict)
