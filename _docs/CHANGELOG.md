@@ -1,5 +1,12 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-19(목) — Node 26 전환: CI · 시험은 26, Functions 런타임은 24 (지시 Bumm님 · 팀장 전달)
+
+- CI(`deploy.yml` 3곳 · `pr-check.yml` 2곳)의 `node-version`을 22 → 26으로, `functions/package.json`(과 잠금 파일 머리)의 `engines.node`를 22 → 24로 바꿨다. Cloud Functions의 정식 지원 최신판이 nodejs24(nodejs26은 아직 Preview)라 운영 서버는 24에 둔다 — 26이 정식이 되면 올린다. 되돌릴 자리: 태그 `poster-studio-freeze-20261119-pre-node26`.
+- Node 26.13.1에서 루트 · functions `npm ci`, 린트, 타입 검사, 시험(776 · 143), 빌드, 글꼴 검사, 대조 도구 자기검사 모두 통과. 22 · 24 전용 우회 코드는 없었다.
+- 이 PC의 Python 3.14.10(누끼 환경)에서 `rembg` birefnet 배경 지우기 한 장이 그대로 된다.
+- ⚠ 이 PC가 바쁠 때(CPU 90%대) `deploy-filter-step` 시험(git · bash를 열 번씩 부름)이 기본 제한 5초를 넘겨 실패할 수 있다 — 부하가 내려가면 통과(776건, 42초).
+
 ## 2026-11-19(목) — 시험 둘 고침 · 시험만 바뀐 커밋은 배포 건너뜀 (지시 Bumm님 · 팀장 전달)
 
 - 복제본(CRLF · 식은 디스크)에서 실패하던 시험 둘을 고쳤다(`6135c3f`): `desktop-recovery`는 main.mjs를 LF로 맞춰 읽고, `poster-fonts`는 글꼴 395개를 머리 4바이트만 읽는다(8.5초 → 약 0.1초). Node 24 · 26 모두 통과.
