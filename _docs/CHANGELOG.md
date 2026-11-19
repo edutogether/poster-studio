@@ -9,6 +9,7 @@
 - 배포(PR #28, `bd1b45f`): main CI 초록. 라이브 두 주소 홈 200 · `/health` 200 · 콘솔 오류 0 · 인증 없는 `/generate` 401 · 세 함수 nodejs24 · 라이브 번들 `main-BFQTzevO.js`가 로컬 빌드와 같다.
 - 설치판 후보(Electron 45.4.1 · electron-builder 26.18.0, 판 번호 3.6.5 그대로 — `chore`는 세지 않음): 158,957,331바이트 · SHA-256 `8fbf2317…4554846`. `win-unpacked` 실행 확인 45건 통과(움직임 줄이기 reduce · no-preference 둘 다). 설치기 화면 · 설치 · 제거 탐침은 아직 안 돌렸다. 공개 파일은 교체하지 않았다.
 - ⏸ **대기(11/19 Bumm님 «셋 다 하는데 나중에 하자. 원격일 땐 하지 말자»)**: 설치기 탐침 3번(설치 · 덮어쓰기 · 제거, 관리자 승인 창 3번)은 Bumm님이 이 PC 앞에 계실 때만 돌린다. 통과하면 위 후보로 공개 파일을 교체하고 공개 주소에서 받은 파일의 크기 · SHA-256을 대조한다. 그 전에는 교체하지 않는다. 후보 설치기는 `desktop/out/Poster Studio Setup.exe`(커밋하지 않음)에 그대로 둔다.
+- 🟢 **설치판 Electron 45 공개 교체(11/20 Bumm님 «이거 이제 해도 돼», 팀장 전달)**: 설치기 탐침 3번을 Bumm님이 PC 앞에 계신 채 돌려 모두 통과했다 — 설치 32건 · 덮어쓰기 34건 · 제거 20건(검사 창은 아래 모니터에만). 공개 파일을 교체했고 세 주소(poster.edutogether.kr · poster-studio.web.app · firebaseapp)에서 받은 파일이 158,957,331바이트 · SHA-256 `8fbf2317…4554846`으로 같다(`download-live.mjs` 26건 통과). 공개판 3.6.5(Electron 45 · electron-builder 26.18.0). 그 전 공개판(Electron 44)은 버킷 소프트 삭제로 7일 동안 되살릴 수 있다.
 
 ## 2026-11-19(목) — Node 26 배포 확인 (PR #27, `3d092cf`)
 
