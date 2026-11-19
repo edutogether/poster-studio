@@ -6,6 +6,8 @@
 - 루트 · functions `overrides`는 위쪽이 고친 판을 직접 끌어와 걷었다(minimatch 11.0.9 · qs 6.16.2 그대로, `npm audit` 0건). desktop의 minimatch 덮기는 electron-builder가 아직 옛 범위라 남았다.
 - jsdom 31.0.1: 깨진 시험 4건을 같은 동작을 보게 고쳤다 — 대기 영상 타이머 3건은 jsdom이 올린 `setImmediate` 몫(0ms)만 비운 뒤 센다, zoom 1건은 소수 6자리 반올림을 감안해 `toBeCloseTo(…, 5)`. 앱 타이머 정리 · zoom 계산을 일부러 깨뜨리면 세 시험 모두 빨간불(6건)이 켜지는 것을 확인했다.
 - 확인: Node 26.13.1에서 루트 776 · functions 143 시험, 린트, 타입(TS 7), 빌드, 글꼴 검사, 자기검사 통과. **포스터 40지문 화소 대조**(`release-baseline.mjs`)가 업데이트 전 태그 빌드와 장마다 같다(vite 8 빌드가 그림을 바꾸지 않음). 설치판 `desktop-app-probe.mjs --dev` 44건 통과(Electron 45).
+- 배포(PR #28, `bd1b45f`): main CI 초록. 라이브 두 주소 홈 200 · `/health` 200 · 콘솔 오류 0 · 인증 없는 `/generate` 401 · 세 함수 nodejs24 · 라이브 번들 `main-BFQTzevO.js`가 로컬 빌드와 같다.
+- 설치판 후보(Electron 45.4.1 · electron-builder 26.18.0, 판 번호 3.6.5 그대로 — `chore`는 세지 않음): 158,957,331바이트 · SHA-256 `8fbf2317…4554846`. `win-unpacked` 실행 확인 45건 통과(움직임 줄이기 reduce · no-preference 둘 다). 설치기 화면 · 설치 · 제거 탐침은 아직 안 돌렸다. 공개 파일은 교체하지 않았다.
 
 ## 2026-11-19(목) — Node 26 배포 확인 (PR #27, `3d092cf`)
 
