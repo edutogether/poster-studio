@@ -1,5 +1,10 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-19(목) — 시험 둘 고침 · 시험만 바뀐 커밋은 배포 건너뜀 (지시 Bumm님 · 팀장 전달)
+
+- 복제본(CRLF · 식은 디스크)에서 실패하던 시험 둘을 고쳤다(`6135c3f`): `desktop-recovery`는 main.mjs를 LF로 맞춰 읽고, `poster-fonts`는 글꼴 395개를 머리 4바이트만 읽는다(8.5초 → 약 0.1초). Node 24 · 26 모두 통과.
+- CI 배포 판정(`deploy.yml` «배포 여부 판정»): `test/**` · `functions/test/**` · `.github/**`도 문서와 같이 배포를 건너뛴다(시험 · 린트는 늘 돈다). 앱 · 함수 소스가 하나라도 섞이면 배포. 판정 시험 7건 추가(776개).
+
 ## 2026-11-17(화) — 기본 가지 이름 master → main (지시 Bumm님 · 팀장 전달)
 
 - GitHub에서 가지 이름을 바꿨다(`gh api -X POST …/branches/master/rename -f new_name=main` — 기본 가지가 함께 옮겨짐, 열린 PR · 보호 규칙은 없었다). 바꾸기 전 라이브는 `e3822ea` CI 배포분, 되돌릴 자리는 태그 `poster-studio-freeze-20261117-pre-main-rename`.

@@ -91,17 +91,18 @@ jobs:
               echo "code=false" >> "$GITHUB_OUTPUT"; exit 0
             fi
           fi
-          # 문서로만 이루어졌는지 본다. 하나라도 문서가 아니면 배포한다.
+          # 문서 · 시험(test/ · functions/test/) · 워크플로(.github/)로만 이루어졌는지 본다. 하나라도 그 밖이면 배포한다 —
+          # 시험 · 워크플로는 배포되는 파일(dist · 함수)을 바꾸지 않는다. 시험과 린트는 test 잡이 늘 돈다(11/19 팀장 결정).
           CODE=false
           while IFS= read -r f; do
             [ -z "$f" ] && continue
             case "$f" in
-              *.md|_docs/*|.claude/*) ;;
-              *) CODE=true; echo "  -> 문서가 아닌 파일: $f"; break ;;
+              *.md|_docs/*|.claude/*|test/*|functions/test/*|.github/*) ;;
+              *) CODE=true; echo "  -> 배포 대상 파일: $f"; break ;;
             esac
           done <<< "$FILES"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
-          if [ "$CODE" = "true" ]; then echo "배포한다."; else echo "문서만 바뀌었다 — 배포는 건너뛰고 테스트만 돈다."; fi
+          if [ "$CODE" = "true" ]; then echo "배포한다."; else echo "문서 · 시험 · 워크플로만 바뀌었다 — 배포는 건너뛰고 테스트만 돈다."; fi
 
   test:
     runs-on: ubuntu-latest
