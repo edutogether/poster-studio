@@ -1,5 +1,16 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-19(목) — 의존성 전부 최신 안정판으로 (§36, 지시 Bumm님 · 팀장 전달)
+
+- 루트: vite 7→8 · @vitejs/plugin-react 5→6 · vitest 5.1.1 · TypeScript 5.9→7.0.2 · react/react-dom 19.3.1 · eslint 10.15 · postcss · @napi-rs/canvas 1.1 · @types/node · @testing-library/dom. functions: firebase-admin 14.5.1 · firebase-functions 7.4 · express 5.3 · openai 7.60 · eslint · prettier · vitest. 설치판 `desktop/`: electron 45.4.1 · electron-builder 26.18.0. CI: actions/checkout v7.0.1 · setup-node v7.1.0 · google-github-actions/auth v3.0.0(SHA 고정) · firebase-tools 15.37.0.
+- 루트 · functions `overrides`는 위쪽이 고친 판을 직접 끌어와 걷었다(minimatch 11.0.9 · qs 6.16.2 그대로, `npm audit` 0건). desktop의 minimatch 덮기는 electron-builder가 아직 옛 범위라 남았다.
+- 못 올린 것: jsdom 30.0.1 고정(위 app.md) — 30.1.3은 대기 영상 시험 3건, 31은 zoom 자릿수 시험 1건을 깬다. 시험 환경 차이라 시험을 새 동작에 맞춘 뒤 올린다.
+- 확인: Node 26.13.1에서 루트 776 · functions 143 시험, 린트, 타입(TS 7), 빌드, 글꼴 검사, 자기검사 통과. **포스터 40지문 화소 대조**(`release-baseline.mjs`)가 업데이트 전 태그 빌드와 장마다 같다(vite 8 빌드가 그림을 바꾸지 않음). 설치판 `desktop-app-probe.mjs --dev` 44건 통과(Electron 45).
+
+## 2026-11-19(목) — Node 26 배포 확인 (PR #27, `3d092cf`)
+
+- main CI(test · deploy-functions · deploy-hosting) 초록. 라이브: 두 주소 홈 200 · `/health` 200(`hasKey` · `openaiReachable` true) · 콘솔 오류 0 · 인증 없는 `/generate` 401 · `functions:list`에서 `posterStudio` · `keepWarm` · `cleanupOldCountersSchedule` 모두 nodejs24.
+
 ## 2026-11-19(목) — Node 26 전환: CI · 시험은 26, Functions 런타임은 24 (지시 Bumm님 · 팀장 전달)
 
 - CI(`deploy.yml` 3곳 · `pr-check.yml` 2곳)의 `node-version`을 22 → 26으로, `functions/package.json`(과 잠금 파일 머리)의 `engines.node`를 22 → 24로 바꿨다. Cloud Functions의 정식 지원 최신판이 nodejs24(nodejs26은 아직 Preview)라 운영 서버는 24에 둔다 — 26이 정식이 되면 올린다. 되돌릴 자리: 태그 `poster-studio-freeze-20261119-pre-node26`.
