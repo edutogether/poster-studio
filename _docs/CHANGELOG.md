@@ -1,5 +1,10 @@
 # CHANGELOG — Poster Studio
 
+## 2026-11-24(화) — Cloud Functions 런타임 nodejs24 → nodejs26 (§36, 지시 팀장 전달)
+
+- Google Cloud Functions 릴리스 노트 2026-11-23 «Support for the Node.js 26 runtime is in General Availability (GA).» · Firebase CLI 15.37.0이 nodejs26 지원. `functions/package.json`(과 잠금 파일 머리)의 `engines.node`를 "24" → "26"으로 바꿨다(`firebase.json`에는 runtime 줄이 없고 engines가 정한다). 되돌릴 자리: 태그 `poster-studio-freeze-20261124-pre-functions-node26`.
+- 확인(Node 26.13.1): functions 143 시험 · 린트 통과, Firebase 에뮬레이터(firebase-tools 15.37.0)가 세 함수(`posterStudio` · `keepWarm` · `cleanupOldCountersSchedule`)를 정상 로드, `/health` 200 · 인증 없는 `/generate` 401. 배포는 팀장 승인 뒤.
+
 ## 2026-11-19(목) — 의존성 전부 최신 안정판으로 (§36, 지시 Bumm님 · 팀장 전달)
 
 - 루트: vite 7→8 · @vitejs/plugin-react 5→6 · vitest 5.1.1 · TypeScript 5.9→7.0.2 · react/react-dom 19.3.1 · eslint 10.15 · postcss · @napi-rs/canvas 1.1 · @types/node · @testing-library/dom. functions: firebase-admin 14.5.1 · firebase-functions 7.4 · express 5.3 · openai 7.60 · eslint · prettier · vitest. 설치판 `desktop/`: electron 45.4.1 · electron-builder 26.18.0. CI: actions/checkout v7.0.1 · setup-node v7.1.0 · google-github-actions/auth v3.0.0(SHA 고정) · firebase-tools 15.37.0.
